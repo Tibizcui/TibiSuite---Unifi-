@@ -1,0 +1,55 @@
+## Interface: 120100, 120007, 120005
+## Title: RenTracker - |cFF9480FFMidnight|r
+## Title-frFR: RenTracker - |cFF9480FFMidnight|r
+## Notes: Reputation tracker multi-extensions. De Vanilla a Midnight, 13 extensions, groupes pliables avec mini-barres, suivi auto par zone.
+## Notes-frFR: Suivi des reputations multi-extensions (Vanilla -> Midnight). 13 extensions, groupes pliables Principales/Secondaires/PvP, mini-barres de progression, quetes hebdo/uniques/quotidiennes, suivi auto par zone.
+## Author: Tibiscui - Kirin Tor
+## Version: 5.0
+## IconTexture: Interface\AddOns\RenTracker\medias\RenTracker
+
+# ----------------------------------------------------------------
+# MODULE DE LA SUITE TibiSuite
+# ----------------------------------------------------------------
+# LoadOnDemand : ce module n'est PLUS charge automatiquement. C'est le
+# core TibiSuite qui l'active (C_AddOns.LoadAddOn) uniquement s'il est
+# coche dans le panneau des modules. Decoche = jamais lu (zero memoire,
+# fichiers data compris).
+## LoadOnDemand: 1
+# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight)
+# et l'API TibiSuite.RegisterModule existent avant que ce module tourne.
+## Dependencies: TibiSuite
+
+# INTOUCHABLE : le nom de dossier reste "RenTracker", donc WoW continue de
+# lire WTF\...\SavedVariables\RenTracker.lua et de recharger RenTrackerDB a
+# l'identique. Aucune migration, aucune perte de progression.
+## SavedVariables: RenTrackerDB
+
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+# NOTE : plus d'entree ## AddonCompartmentFunc ici. Un seul bouton et une
+# seule entree de compartiment pour toute la suite, cree par le core.
+
+## Les fichiers data sont charges en premier
+# (le socle n'est PLUS liste ici : il est fourni une seule fois par le core)
+data\TheWarWithin.lua
+data\Midnight.lua
+data\Dragonflight.lua
+data\Shadowlands.lua
+data\BattleForAzeroth.lua
+data\Legion.lua
+data\WarlordsOfDraenor.lua
+data\MistsOfPandaria.lua
+data\Cataclysme.lua
+data\WrathOfTheLichKing.lua
+data\TheBurningCrusade.lua
+data\Vanilla.lua
+data\GrandMalade.lua
+
+## Donnees des hauts faits de reputation
+data\AchievementsData.lua
+
+## Interface principale
+RenTracker.lua
+## Glue TibiSuite : inscription comme onglet + recherche globale
+RenTracker_Module.lua

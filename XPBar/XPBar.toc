@@ -1,0 +1,14 @@
+## Interface: 120007, 120005
+## Title: XPBar
+## Notes: Barre XP avancée - Niveau, XP, Repos, Quêtes, Stats de session
+## Author: Tibiscui - Kirin Tor
+## Version: 5.0
+## LoadOnDemand: 1
+## Dependencies: TibiSuite
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+## SavedVariables: XPBarDB
+## IconTexture: Interface\AddOns\XPBar\medias\Logo
+
+XPBar.lua
+XPBar_Module.lua

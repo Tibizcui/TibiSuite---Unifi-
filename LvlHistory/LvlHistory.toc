@@ -1,0 +1,44 @@
+## Interface: 120005, 120007, 120100
+## Title: LvlHistory
+## Notes: Leveling & farming session tracker - TibiSuite
+## Notes-frFR: Suivi de sessions leveling & farming - TibiSuite
+## Author: Tibizcui
+## Version: 5.0
+## IconTexture: Interface\AddOns\LvlHistory\Media\icon
+
+# ----------------------------------------------------------------
+# MODULE DE LA SUITE TibiSuite
+# ----------------------------------------------------------------
+# LoadOnDemand : ce module n'est PLUS charge automatiquement. C'est le
+# core TibiSuite qui l'active (C_AddOns.LoadAddOn) uniquement s'il est
+# coche dans le panneau des modules. Decoche = jamais lu (zero memoire).
+## LoadOnDemand: 1
+# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight)
+# et l'API TibiSuite.RegisterModule existent avant que ce module tourne.
+## Dependencies: TibiSuite
+
+# INTOUCHABLE : le nom de dossier reste "LvlHistory", donc WoW continue de
+# lire WTF\...\SavedVariables\LvlHistory.lua et de recharger LvlHistoryDB a
+# l'identique. Aucune migration, aucune perte de progression.
+## SavedVariables: LvlHistoryDB
+
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+# NOTE : plus d'entree ## AddonCompartmentFunc ici. Un seul bouton et une
+# seule entree de compartiment pour toute la suite, cree par le core.
+
+# Le socle n'est PLUS liste ici (TibiMidnightUI.lua) : il est fourni une
+# seule fois par le core TibiSuite.
+Utils.lua
+Bridge.lua
+Core.lua
+Leveling.lua
+Farming.lua
+Minimap.lua
+UI.lua
+Locale\frFR.lua
+## Glue TibiSuite historique : recherche globale, options, habillage fenetre
+LvlHistory_Suite.lua
+## Glue TibiSuite : inscription comme onglet de la barre unifiee
+LvlHistory_Module.lua

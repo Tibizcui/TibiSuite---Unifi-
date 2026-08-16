@@ -1,0 +1,54 @@
+## Interface: 120005, 120007, 120100
+## Title: MiniHub
+## Notes: Regroupe les boutons et icones de la minicarte dans un conteneur unique et retractable.
+## Notes-frFR: Regroupe les boutons et icones de la minicarte dans un conteneur unique et retractable.
+## Author: Tibiscui
+## Version: 5.0
+
+# ----------------------------------------------------------------
+# MODULE DE LA SUITE TibiSuite
+# ----------------------------------------------------------------
+# LoadOnDemand : ce module n'est PLUS charge automatiquement. C'est le
+# core TibiSuite qui l'active (C_AddOns.LoadAddOn) uniquement s'il est
+# coche dans le panneau des modules. Decoche = jamais lu (zero memoire).
+## LoadOnDemand: 1
+# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight)
+# et l'API TibiSuite.RegisterModule existent avant que ce module tourne.
+## Dependencies: TibiSuite
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+# INTOUCHABLE : le nom de dossier reste "MiniHub", donc WoW continue de
+# lire WTF\...\SavedVariables\MiniHub.lua et de recharger MiniHubDB a
+# l'identique. Aucune migration, aucune perte de reglages.
+## SavedVariables: MiniHubDB
+
+## IconTexture: Interface\AddOns\MiniHub\media\Logo_MiniHub
+## X-Website: https://tibiscui.fr
+## X-Category: Map & Minimap
+## X-License: All Rights Reserved
+## X-TibiSuite: module
+## X-TibiSuite-Module: MiniHub
+
+# --- Bibliotheques embarquees (aucune dependance externe obligatoire) ---
+# (le socle TibiMidnightUI.lua n'est PLUS liste ici : il est fourni une
+#  seule fois par le core TibiSuite)
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+
+# --- Code de l'addon ---
+Locale.lua
+MiniHub.lua
+Options.lua
+
+# Note : Bindings.xml n'est PAS liste ici. WoW le charge automatiquement pour
+# le systeme de raccourcis ; l'ajouter au .toc declencherait des avertissements
+# du parseur XML generique.
+
+## Glue historique : options flottantes, recherche globale et habillage
+MiniHub_Suite.lua
+
+## Glue TibiSuite : inscription comme onglet de la barre unifiee
+MiniHub_Module.lua

@@ -1,0 +1,5 @@
+<Bindings>
+	<Binding name="MINIHUB_TOGGLE" header="MINIHUB">
+		if MiniHub and MiniHub.Toggle then MiniHub.Toggle() end
+	</Binding>
+</Bindings>

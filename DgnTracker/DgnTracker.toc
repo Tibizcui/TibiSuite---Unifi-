@@ -1,0 +1,60 @@
+## Interface: 120007, 120005
+## Title: DgnTracker - |cFF9480FFMidnight|r
+## Title-frFR: DgnTracker - |cFF9480FFMidnight|r
+## Notes: Dungeon, Raid, Delve, Torghast entrance tracker. All expansions from Vanilla to Midnight.
+## Notes-frFR: Tracker des entrees d'instances (Donjons, Raids, Gouffres, Torghast) pour toutes les extensions. Vanilla -> Midnight.
+## Author: Tibiscui - Kirin Tor
+## Version: 5.0
+## IconTexture: Interface\AddOns\DgnTracker\medias\DgnTracker
+
+# ----------------------------------------------------------------
+# MODULE DE LA SUITE TibiSuite
+# ----------------------------------------------------------------
+# LoadOnDemand : ce module n'est PLUS charge automatiquement. C'est le
+# core TibiSuite qui l'active (C_AddOns.LoadAddOn) uniquement s'il est
+# coche dans le panneau des modules. Decoche = jamais lu (zero memoire,
+# fichiers data compris).
+## LoadOnDemand: 1
+# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight)
+# et l'API TibiSuite.RegisterModule existent avant que ce module tourne.
+## Dependencies: TibiSuite
+
+# INTOUCHABLE : le nom de dossier reste "DgnTracker", donc WoW continue de
+# lire WTF\...\SavedVariables\DgnTracker.lua et de recharger DgnTrackerDB a
+# l'identique. Aucune migration, aucune perte de progression.
+## SavedVariables: DgnTrackerDB
+
+# NOTE : plus d'entree ## AddonCompartmentFunc ici. Un seul bouton et une
+# seule entree de compartiment pour toute la suite, crees par le core.
+
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+## OptionalDeps: TomTom
+
+# ----------------------------------------------------------------
+# ICONE MINIMAP - Specs Blizzard
+# Fichier : medias/DgnTracker.tga (64x64, TGA 32-bit, fond transparent)
+# ----------------------------------------------------------------
+
+## Les fichiers data sont charges en premier
+# (le socle n'est PLUS liste ici : il est fourni une seule fois par le core)
+data\Midnight.lua
+data\TheWarWithin.lua
+data\Dragonflight.lua
+data\Shadowlands.lua
+data\BattleForAzeroth.lua
+data\Legion.lua
+data\WarlordsOfDraenor.lua
+data\MistsOfPandaria.lua
+data\Cataclysme.lua
+data\WrathOfTheLichKing.lua
+data\TheBurningCrusade.lua
+data\Vanilla.lua
+
+## Interface principale
+DgnTracker.lua
+DgnTracker_Suite.lua
+
+## Glue TibiSuite : inscription comme onglet (recherche & options via _Suite)
+DgnTracker_Module.lua

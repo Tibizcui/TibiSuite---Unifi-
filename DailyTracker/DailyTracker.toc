@@ -1,0 +1,44 @@
+## Interface: 120007
+## Title: DailyTracker - |cFF9480FFMidnight|r
+## Title-frFR: DailyTracker - |cFF9480FFMidnight|r
+## Notes: Daily and weekly activity tracker. Midnight & The War Within. Auto-detection via C_QuestLog.
+## Notes-frFR: Suivi auto des quêtes quotidiennes et hebdomadaires pour Midnight et The War Within. Cases cochées automatiquement selon l'historique de quêtes WoW.
+## Author: Tibiscui - Kirin Tor
+## Version: 5.0
+## IconTexture: Interface\AddOns\DailyTracker\medias\DailyTracker
+
+# ----------------------------------------------------------------
+# MODULE DE LA SUITE TibiSuite
+# ----------------------------------------------------------------
+# LoadOnDemand : ce module n'est PLUS charge automatiquement. C'est le
+# core TibiSuite qui l'active (C_AddOns.LoadAddOn) uniquement s'il est
+# coche dans le panneau des modules. Decoche = jamais lu (zero memoire,
+# fichiers data compris).
+## LoadOnDemand: 1
+# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight)
+# et l'API TibiSuite.RegisterModule existent avant que ce module tourne.
+## Dependencies: TibiSuite
+
+# INTOUCHABLE : le nom de dossier reste "DailyTracker", donc WoW continue de
+# lire WTF\...\SavedVariables\DailyTracker.lua et de recharger DailyTrackerDB a
+# l'identique. Aucune migration, aucune perte de progression.
+## SavedVariables: DailyTrackerDB
+
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+# NOTE : plus d'entree ## AddonCompartmentFunc ici. Un seul bouton et une
+# seule entree de compartiment pour toute la suite, cree par le core.
+
+## Les fichiers data sont charges en premier
+# (le socle TibiMidnightUI.lua n'est PLUS liste ici : il est fourni une seule
+#  fois par le core, via _G.TibiMidnight)
+data\Midnight.lua
+data\TheWarWithin.lua
+
+## Interface principale
+DailyTracker.lua
+## Glue historique conserve tel quel : options flottantes + recherche globale
+DailyTracker_Suite.lua
+## Glue TibiSuite : inscription comme onglet du catalogue unifie
+DailyTracker_Module.lua

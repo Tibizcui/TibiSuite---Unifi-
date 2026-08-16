@@ -1,0 +1,75 @@
+## Interface: 120100
+## Title: LairLens
+## Notes: Audit de groupe et pertinence des recompenses pour les Repaires (12.1).
+## Notes-frFR: Audit de groupe et pertinence des recompenses pour les Repaires (12.1).
+## Author: Tibiscui
+## Version: 5.0
+
+# ----------------------------------------------------------------
+# MODULE DE LA SUITE TibiSuite
+# ----------------------------------------------------------------
+# LoadOnDemand : ce module n'est PLUS charge automatiquement. C'est le
+# core TibiSuite qui l'active (C_AddOns.LoadAddOn) uniquement s'il est
+# coche dans le panneau des modules. Decoche = jamais lu (zero memoire,
+# fichiers data et locales compris).
+## LoadOnDemand: 1
+# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight)
+# et l'API TibiSuite.RegisterModule existent avant que ce module tourne.
+## Dependencies: TibiSuite
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+# INTOUCHABLE : le nom de dossier reste "LairLens", donc WoW continue de
+# lire WTF\...\SavedVariables\LairLens.lua et de recharger LairLensDB et
+# LairLensCharDB a l'identique. Aucune migration, aucune perte de donnees.
+## SavedVariables: LairLensDB
+## SavedVariablesPerCharacter: LairLensCharDB
+
+## X-Category: Raid
+## X-Curse-Project-ID: 000000
+## IconTexture: Interface\AddOns\LairLens\Media\Logo
+
+# -----------------------------------------------------------------------------
+# Interface 120100 = patch 12.1.0 (convention derivee de 12.0.1 = 120001).
+# Le patch etant encore en PTR au moment de l'ecriture, cette valeur doit etre
+# confirmee au build de sortie. Le workflow interface-version.yml auto-bumpe la
+# valeur, donc pas de "AddOn out of date" au moindre nouveau build PTR/live.
+# -----------------------------------------------------------------------------
+
+# 1. Noyau : namespace, constantes, evenements, etat persistant.
+Core\Init.lua
+Core\Constants.lua
+Core\Util.lua
+# 2. Localisation (enUS d'abord comme base, puis surcharges de langue).
+Locales\enUS.lua
+Locales\frFR.lua
+
+# 3. Donnees : taxonomie du contenu et heuristiques de capacites.
+Data\Data.lua
+Data\Capabilities.lua
+
+# 4. Couche d'abstraction : tout ce qui touche l'API instable des Repaires.
+Core\Abstraction\Detection.lua
+Core\Abstraction\Roster.lua
+Core\Abstraction\Lockouts.lua
+
+# 5. Module 1 : audit de groupe (coeur de valeur de la v1).
+Modules\GroupAudit\AuditLogic.lua
+Modules\GroupAudit\AuditFrame.lua
+
+# 5b. Panneau de reglages graphique (API Settings moderne).
+Core\Options.lua
+
+# 6. Module 2 : pertinence des recompenses (couche souple, remplie plus tard).
+Modules\RewardRelevance\RewardData.lua
+Modules\RewardRelevance\RewardLogic.lua
+
+# 6b. Module d'historique / dashboard des runs (donnee -> capture -> UI).
+Modules\RunHistory\RunData.lua
+Modules\RunHistory\RunTracker.lua
+Modules\RunHistory\DashboardFrame.lua
+
+# 7. Integration TibiSuite : inscription comme onglet + recherche globale.
+#    Le socle (TibiMidnightUI) n'est PLUS liste ici : il est fourni une seule
+#    fois par le core. Ce glue remplace l'ancien Modules\Suite\LairLens_Suite.lua.
+LairLens_Module.lua

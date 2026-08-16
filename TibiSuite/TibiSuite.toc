@@ -1,0 +1,32 @@
+## Interface: 120100, 120007, 120005
+## Title: TibiSuite - |cFF9480FFMidnight|r
+## Title-frFR: TibiSuite - |cFF9480FFMidnight|r
+## Notes: Coeur de la suite Tibiscui. Charge le socle une seule fois, un seul bouton minimap, barre d'onglets unifiee, et chargement a la demande des modules coches.
+## Notes-frFR: Coeur de la suite Tibiscui. Socle charge une seule fois, un seul bouton minimap, barre d'onglets unifiee, chargement a la demande (LoadOnDemand) des modules coches.
+## Author: Tibiscui - Kirin Tor
+## Version: 5.0
+
+## IconTexture: Interface\AddOns\TibiSuite\medias\TibiSuite
+
+# Le core ne declare QUE sa propre base. Chaque module garde sa propre
+# SavedVariables dans son .toc (RenTrackerDB, SkillTrackerDB, etc.) : aucune
+# progression n'est deplacee ni fusionnee, donc aucune perte de donnees.
+## SavedVariables: TibiSuiteDB
+## SavedVariablesPerCharacter: TibiSuiteCharDB
+
+## AddonCompartmentFunc: TibiSuite_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: TibiSuite_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: TibiSuite_OnAddonCompartmentLeave
+
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+## X-Website: https://www.curseforge.com/wow/addons/tibisuite
+## X-Discord: https://discord.gg/tibiscui
+
+# Ordre de chargement : le socle d'abord (il expose _G.TibiMidnight),
+# puis le coeur (barre + minimap + chargement conditionnel), puis le
+# panneau des cases a cocher.
+Core\TibiSuiteUI.lua
+Core\TibiSuiteCore.lua
+Core\TibiSuiteOptions.lua

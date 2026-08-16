@@ -1,0 +1,53 @@
+## Interface: 120007, 120100
+## Title: WeeklyCompass
+## Notes: Unified weekly dashboard for Season 2: what is left to do to maximize your rewards.
+## Notes-frFR: Tableau de bord hebdomadaire unifie pour la Saison 1 et 2 : ce qu'il reste a faire pour maximiser vos recompenses.
+## Author: Tibiscui
+## Version: 5.0
+## IconTexture: Interface\AddOns\WeeklyCompass\medias\logo
+
+# ----------------------------------------------------------------
+# MODULE DE LA SUITE TibiSuite
+# ----------------------------------------------------------------
+# LoadOnDemand : ce module n'est PLUS charge automatiquement. C'est le
+# core TibiSuite qui l'active (C_AddOns.LoadAddOn) uniquement s'il est
+# coche dans le panneau des modules. Decoche = jamais lu (zero memoire).
+## LoadOnDemand: 1
+# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight)
+# et l'API TibiSuite.RegisterModule existent avant que ce module tourne.
+## Dependencies: TibiSuite
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+# INTOUCHABLE : le nom de dossier reste "WeeklyCompass", donc WoW continue
+# de lire WTF\...\SavedVariables\WeeklyCompass.lua et de recharger
+# WeeklyCompassDB a l'identique. Aucune migration, aucune perte de donnees.
+## SavedVariables: WeeklyCompassDB
+
+# --- Localisation (base enUS, puis surcharges par langue) ---
+# (le socle n'est PLUS liste ici : il est fourni une seule fois par le core)
+Locales\Locales.lua
+Locales\enUS.lua
+Locales\frFR.lua
+
+# --- Coeur : donnees / logique, aucune connaissance des activites specifiques ---
+Core\Constants.lua
+Core\Init.lua
+Core\SavedVars.lua
+Core\Reset.lua
+Core\Journal.lua
+Core\Registry.lua
+
+# --- Donnees : manifeste + modules d'activite (branchables par la donnee) ---
+Data\Activities.lua
+Data\Activities\GreatVault.lua
+Data\Activities\Lairs.lua
+Data\Activities\Delves.lua
+Data\Activities\HuntRanks.lua
+
+# --- Interface ---
+UI\Dashboard.lua
+UI\Launcher.lua
+
+## Glue TibiSuite : inscription comme onglet + recherche globale (remplace UI\Suite.lua)
+WeeklyCompass_Module.lua

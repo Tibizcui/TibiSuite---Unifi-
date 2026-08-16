@@ -1,0 +1,49 @@
+## Interface: 120007, 120005
+## Title: LegTracker - |cFF9480FFMidnight|r
+## Title-frFR: LegTracker - |cFF9480FFMidnight|r
+## Notes: Suivi des objets legendaires par extension, statut, quetes et composants. Suivi de compte complet.
+## Notes-frFR: Suivi des objets legendaires par extension, statut, quetes et composants. Suivi de compte complet.
+## Author: Tibiscui - Kirin Tor
+## Version: 5.0
+## IconTexture: Interface\AddOns\LegTracker\medias\LegTracker
+
+# ----------------------------------------------------------------
+# MODULE DE LA SUITE TibiSuite
+# ----------------------------------------------------------------
+# LoadOnDemand : ce module n'est PLUS charge automatiquement. C'est le
+# core TibiSuite qui l'active (C_AddOns.LoadAddOn) uniquement s'il est
+# coche dans le panneau des modules. Decoche = jamais lu (zero memoire,
+# fichiers data compris).
+## LoadOnDemand: 1
+# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight)
+# et l'API TibiSuite.RegisterModule existent avant que ce module tourne.
+## Dependencies: TibiSuite
+
+# INTOUCHABLE : le nom de dossier reste "LegTracker", donc WoW continue de
+# lire WTF\...\SavedVariables\LegTracker.lua et de recharger LegTrackerDB a
+# l'identique. Aucune migration, aucune perte de progression.
+## SavedVariables: LegTrackerDB
+
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+# NOTE : plus d'entree ## AddonCompartmentFunc ici. Un seul bouton et une
+# seule entree de compartiment pour toute la suite, cree par le core.
+
+# ----------------------------------------------------------------
+# ICONE MINIMAP - Specs et regles Blizzard
+# ----------------------------------------------------------------
+# Fichier : medias/LegTracker.tga  (et .png pour les outils)
+# Taille  : 64x64 pixels (puissance de 2 obligatoire)
+# Format  : TGA 32-bit avec canal alpha (fond transparent)
+# Affiche : 30x30 dans le bouton 32x32 (1 px de marge)
+# ----------------------------------------------------------------
+
+# (le socle n'est PLUS liste ici : il est fourni une seule fois par le core)
+locales\frFR.lua
+data\LegendaryItems.lua
+LegTracker.lua
+## Ancien glue conserve : panneau d'options + recherche globale
+LegTracker_Suite.lua
+## Glue TibiSuite : inscription comme onglet + masquage minimap
+LegTracker_Module.lua
