@@ -19,6 +19,26 @@ local KEY    = "Weekly"
 
 local function GetUI() return _G.TibiMidnight end
 
+-- MODE DOUBLE : le core est-il present et fonctionnel ?
+local function HasCore()
+  return _G.TibiSuite and _G.TibiSuite.RegisterModule and true or false
+end
+
+-- Rappel du site officiel, 10s apres le login, UNIQUEMENT en mode standalone
+-- (sans core) : si TibiSuite est present, c'est LUI qui affiche ce message
+-- une seule fois (voir TibiSuiteCore.lua) - sinon il apparaitrait jusqu'a
+-- 12 fois, une par module.
+if not HasCore() then
+  C_Timer.After(10, function()
+    print("|cFFC41F3BTibiSuite|r : plus d'infos sur |cFFFFD700https://www.tibiscui.fr|r")
+  end)
+end
+
+local function IsEnabledByCore()
+  if not (TibiSuiteDB and type(TibiSuiteDB.enabledModules) == "table") then return true end
+  return TibiSuiteDB.enabledModules[KEY] == true
+end
+
 -- ---------------------------------------------------------------- Options
 -- Panneau d'options au style socle, porte tel quel depuis l'ancien Suite.lua.
 local panel
@@ -27,7 +47,7 @@ local function BuildOptions()
   if panel then return panel end
   panel = ui.CreateOptionsPanel({
     name = "WeeklyCompassOptionsMidnight",
-    title = "|cFF9480FFWeeklyCompass|r  Options", accent = ACCENT })
+    title = "WeeklyCompass - Options", accent = ACCENT })
 
   panel:Section("Fenêtre")
   panel:Button("Ouvrir / fermer", function()
@@ -109,22 +129,30 @@ local function Decorate()
   })
 end
 
--- Un seul bouton minimap pour la suite : on masque celui de WeeklyCompass.
--- (Le core le re-masque aussi via HookScript ; ceinture et bretelles.)
+-- Un seul bouton minimap pour la suite EN MODE MODULE seulement : on masque
+-- celui de WeeklyCompass (le core le re-masque aussi ; ceinture et bretelles).
+-- En mode standalone, on le laisse visible : c'est le seul bouton disponible.
 local function HideOwnMinimap()
+  if not HasCore() then return end
   local btn = _G["WeeklyCompassMinimapButton"]
   if btn and btn.Hide then
     btn:Hide()
     if not btn.__tibiHooked then
       btn.__tibiHooked = true
-      btn:HookScript("OnShow", function(self) self:Hide() end)
+      -- Differe via C_Timer.After(0, ...) : eviter d'executer notre code de
+      -- facon synchrone dans le script OnShow d'un bouton qui ne nous
+      -- appartient pas (piege ADDON_ACTION_FORBIDDEN, voir TibiSuiteCore.lua).
+      btn:HookScript("OnShow", function(self) C_Timer.After(0, function() self:Hide() end) end)
     end
   end
 end
 
 -- ---------------------------------------------------------- Inscription suite
--- Le core est charge avant nous (## Dependencies: TibiSuite), donc l'API existe.
-if TibiSuite and TibiSuite.RegisterModule then
+-- MODE MODULE : inscription au catalogue, sauf si explicitement desactive.
+-- MODE STANDALONE : rien a faire ici - WeeklyCompass cree deja son propre
+-- bouton minimap (UI\Launcher.lua) et sa commande slash /wc de facon
+-- inconditionnelle.
+if HasCore() and IsEnabledByCore() then
   TibiSuite.RegisterModule({
     key            = KEY,
     label          = "Weekly",

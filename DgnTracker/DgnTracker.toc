@@ -1,23 +1,23 @@
 ## Interface: 120007, 120005
-## Title: DgnTracker - |cFF9480FFMidnight|r
-## Title-frFR: DgnTracker - |cFF9480FFMidnight|r
+## Title: DgnTracker
+## Title-frFR: DgnTracker
 ## Notes: Dungeon, Raid, Delve, Torghast entrance tracker. All expansions from Vanilla to Midnight.
 ## Notes-frFR: Tracker des entrees d'instances (Donjons, Raids, Gouffres, Torghast) pour toutes les extensions. Vanilla -> Midnight.
 ## Author: Tibiscui - Kirin Tor
-## Version: 5.0
-## IconTexture: Interface\AddOns\DgnTracker\medias\DgnTracker
+## Version: 6.0
+## IconTexture: Interface\AddOns\DgnTracker\medias\TibiSuiteIcon
 
 # ----------------------------------------------------------------
-# MODULE DE LA SUITE TibiSuite
+# MODULE DE LA SUITE TibiSuite - MODE DOUBLE (standalone ou integre)
 # ----------------------------------------------------------------
-# LoadOnDemand : ce module n'est PLUS charge automatiquement. C'est le
-# core TibiSuite qui l'active (C_AddOns.LoadAddOn) uniquement s'il est
-# coche dans le panneau des modules. Decoche = jamais lu (zero memoire,
-# fichiers data compris).
-## LoadOnDemand: 1
-# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight)
-# et l'API TibiSuite.RegisterModule existent avant que ce module tourne.
-## Dependencies: TibiSuite
+# Pas de LoadOnDemand : ce module doit pouvoir se charger seul, sans le
+# core, pour fonctionner en addon independant. Dependance SOUPLE sur
+# TibiSuite (OptionalDeps) : voir DgnTracker_Module.lua pour la detection
+# a l'execution (HasCore()). Fusionne avec l'OptionalDeps TomTom existant :
+# une seule directive OptionalDeps par .toc (une deuxieme ecraserait la
+# premiere au lieu de s'y ajouter).
+## OptionalDeps: TibiSuite
+## Group: TibiSuite, TomTom
 
 # INTOUCHABLE : le nom de dossier reste "DgnTracker", donc WoW continue de
 # lire WTF\...\SavedVariables\DgnTracker.lua et de recharger DgnTrackerDB a
@@ -30,15 +30,18 @@
 ## Category: TibiSuite - Tracker
 ## Category-frFR: TibiSuite - Tracker
 
-## OptionalDeps: TomTom
+## X-Website: https://www.tibiscui.fr
 
 # ----------------------------------------------------------------
 # ICONE MINIMAP - Specs Blizzard
 # Fichier : medias/DgnTracker.tga (64x64, TGA 32-bit, fond transparent)
 # ----------------------------------------------------------------
 
+## Copie embarquee du socle (no-op si le core en charge deja une version
+## egale ou superieure)
+Core\TibiSuiteUI.lua
+
 ## Les fichiers data sont charges en premier
-# (le socle n'est PLUS liste ici : il est fourni une seule fois par le core)
 data\Midnight.lua
 data\TheWarWithin.lua
 data\Dragonflight.lua

@@ -1,0 +1,46 @@
+## Interface: 120100, 120007, 120005
+## Title: Stats
+## Title-frFR: Stats
+## Notes: Suivi autonome des quetes, de l'or, des donjons/M+ et du temps de jeu par jour et par personnage, avec tableau de bord et export web. Module de la suite TibiSuite par Tibiscui.
+## Notes-frFR: Suivi autonome des quetes, de l'or, des donjons/M+ et du temps de jeu par jour et par personnage, avec tableau de bord et export web. Module de la suite TibiSuite par Tibiscui.
+## Author: Tibiscui - Kirin Tor
+## Version: 1.0
+
+# ----------------------------------------------------------------
+# MODULE DE LA SUITE TibiSuite - MODE DOUBLE (standalone ou integre)
+# ----------------------------------------------------------------
+# Pas de LoadOnDemand : ce module doit pouvoir se charger seul, sans le
+# core, pour fonctionner en addon independant. Dependance SOUPLE sur
+# TibiSuite (OptionalDeps) : voir Stats_Module.lua pour la detection a
+# l'execution (HasCore()). Autonomie totale : Stats pose ses propres
+# crochets d'evenements, aucune dependance a un autre module de la suite.
+## OptionalDeps: TibiSuite
+## Group: TibiSuite
+
+## SavedVariables: StatsDB
+
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+## X-Website: https://www.tibiscui.fr
+## X-Website: https://www.curseforge.com/wow/addons/tibisuite
+## X-Discord: https://discord.gg/tibiscui
+
+# Copie embarquee du socle (no-op si le core en charge deja une version
+# egale ou superieure)
+Core\TibiSuiteUI.lua
+
+# Compresseur LZW maison (pas de dependance externe) - utilise par Export.lua
+Libs\LZW.lua
+
+# Localisation (enUS = base, frFR = surcharge si le client est en francais)
+Locales\enUS.lua
+Locales\frFR.lua
+
+Constants.lua
+Core.lua
+UI.lua
+Export.lua
+
+## Glue TibiSuite : inscription comme onglet du catalogue unifie
+Stats_Module.lua

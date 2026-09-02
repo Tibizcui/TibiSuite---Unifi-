@@ -48,5 +48,5 @@ ns:AddLocale("frFR", {
     UI_HEADER_CHAR        = "Personnage",
     UI_EMPTY              = "Aucune donnee de personnage. Connecte-toi sur tes rerolls pour remplir la vue compte.",
     UI_STALE              = "Donnees anterieures au dernier reset",
-    SLASH_HINT            = "Commandes : /wc | /wc dump | /wc minimap | /wc debug",
+    SLASH_HINT            = "Commandes : /wc | /wc options | /wc dump | /wc minimap | /wc debug",
 })

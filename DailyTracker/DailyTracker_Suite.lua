@@ -3,7 +3,7 @@
   ---------------------------------------------------------------------------
   Ajoute, sans toucher au code existant :
     - un panneau d'Options flottant Midnight (DailyTracker_OpenOptions)
-    - une roue crantée + une loupe dans l'en-tête de la fenêtre
+    - un bouton texte "Options" + une loupe dans l'en-tête de la fenêtre
     - une recherche (locale + inscrite pour la recherche globale de TibiSuite)
     - l'harmonisation de la bordure a la couleur d'identite de l'addon
   Requiert TibiMidnightUI.lua (charge avant, via le .toc).
@@ -24,7 +24,7 @@ local function BuildOptions()
   if panel then return panel end
   panel = ui.CreateOptionsPanel({
     name = "DailyTrackerOptionsMidnight",
-    title = "|cFF9480FFDailyTracker|r  Options", accent = ACCENT })
+    title = "DailyTracker - Options", accent = ACCENT })
 
   panel:Section("Fenêtre")
   panel:Button("Ouvrir / fermer", function()

@@ -1,23 +1,21 @@
 ## Interface: 120007, 120005
-## Title: LegTracker - |cFF9480FFMidnight|r
-## Title-frFR: LegTracker - |cFF9480FFMidnight|r
+## Title: LegTracker
+## Title-frFR: LegTracker
 ## Notes: Suivi des objets legendaires par extension, statut, quetes et composants. Suivi de compte complet.
 ## Notes-frFR: Suivi des objets legendaires par extension, statut, quetes et composants. Suivi de compte complet.
 ## Author: Tibiscui - Kirin Tor
-## Version: 5.0
-## IconTexture: Interface\AddOns\LegTracker\medias\LegTracker
+## Version: 6.0
+## IconTexture: Interface\AddOns\LegTracker\medias\TibiSuiteIcon
 
 # ----------------------------------------------------------------
-# MODULE DE LA SUITE TibiSuite
+# MODULE DE LA SUITE TibiSuite - MODE DOUBLE (standalone ou integre)
 # ----------------------------------------------------------------
-# LoadOnDemand : ce module n'est PLUS charge automatiquement. C'est le
-# core TibiSuite qui l'active (C_AddOns.LoadAddOn) uniquement s'il est
-# coche dans le panneau des modules. Decoche = jamais lu (zero memoire,
-# fichiers data compris).
-## LoadOnDemand: 1
-# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight)
-# et l'API TibiSuite.RegisterModule existent avant que ce module tourne.
-## Dependencies: TibiSuite
+# Pas de LoadOnDemand : ce module doit pouvoir se charger seul, sans le
+# core, pour fonctionner en addon independant. Dependance SOUPLE sur
+# TibiSuite (OptionalDeps) : voir LegTracker_Module.lua pour la detection
+# a l'execution (HasCore()).
+## OptionalDeps: TibiSuite
+## Group: TibiSuite
 
 # INTOUCHABLE : le nom de dossier reste "LegTracker", donc WoW continue de
 # lire WTF\...\SavedVariables\LegTracker.lua et de recharger LegTrackerDB a
@@ -26,6 +24,8 @@
 
 ## Category: TibiSuite - Tracker
 ## Category-frFR: TibiSuite - Tracker
+
+## X-Website: https://www.tibiscui.fr
 
 # NOTE : plus d'entree ## AddonCompartmentFunc ici. Un seul bouton et une
 # seule entree de compartiment pour toute la suite, cree par le core.
@@ -39,7 +39,10 @@
 # Affiche : 30x30 dans le bouton 32x32 (1 px de marge)
 # ----------------------------------------------------------------
 
-# (le socle n'est PLUS liste ici : il est fourni une seule fois par le core)
+## Copie embarquee du socle (no-op si le core en charge deja une version
+## egale ou superieure)
+Core\TibiSuiteUI.lua
+
 locales\frFR.lua
 data\LegendaryItems.lua
 LegTracker.lua

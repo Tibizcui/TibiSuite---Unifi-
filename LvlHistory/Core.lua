@@ -8,7 +8,7 @@ local T = LvlHistory
 -- ─────────────────────────────────────────────
 -- Constantes
 -- ─────────────────────────────────────────────
-local ADDON_VERSION = "0.1.0"
+local ADDON_VERSION = "6.0"
 local SAVE_INTERVAL = 300  -- sauvegarde incrémentale toutes les 5 minutes
 
 -- Structure par défaut d'un personnage
@@ -279,6 +279,10 @@ coreFrame:SetScript("OnEvent", function(self, event, ...)
         end)
 
         T.Utils.Log("v%s chargé — %s — Mode: %s", ADDON_VERSION, T.charKey, db.mode)
+        -- T.Utils.Log() ci-dessus est reduit au mode debug (voir Utils.lua) - le
+        -- message de connexion uniforme de la suite doit rester visible pour
+        -- tout le monde, d'ou ce print() simple en plus.
+        print("|cFFF0B429LvlHistory|r v" .. ADDON_VERSION .. " chargé -- tapez |cFFFFD700/lvlh|r pour ouvrir.")
 
     elseif event == "PLAYER_LOGOUT" then
         SaveCurrentSession()
@@ -480,6 +484,9 @@ SlashCmdList["LVLHISTORY"] = function(msg)
             LvlHistoryDB.settings.minimapButton = T.Minimap.IsShown and T.Minimap.IsShown() or true
         end
 
+    elseif cmd == "options" or cmd == "config" then
+        if LvlHistory_OpenOptions then LvlHistory_OpenOptions() end
+
     elseif cmd == "debug" then
         T.debug = not T.debug
         LvlHistoryDB.settings.debug = T.debug
@@ -498,6 +505,6 @@ SlashCmdList["LVLHISTORY"] = function(msg)
 
     else
         print(T.Utils.Colorize("[LvlHistory]", "F0B429")
-            .. " Commandes : /lvlh | /lvlh minimap | /lvlh debug | /lvlh reset")
+            .. " Commandes : /lvlh | /lvlh options | /lvlh minimap | /lvlh debug | /lvlh reset")
     end
 end

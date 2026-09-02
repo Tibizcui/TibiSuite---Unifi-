@@ -32,6 +32,12 @@ local enUS = {
   NO_DATA           = "No data yet.",
   CURRENT_CHAR      = "This character",
   MAXED             = "Maxed",
+  MAXED_SHORT       = "maxed",
+
+  -- Bascule de vue (onglet Metiers)
+  METIER_VIEW_CURRENT = "Current expansion",
+  METIER_VIEW_ALL      = "All expansions",
+  METIER_VIEW_ACCOUNT  = "Account",
 
   -- Multi-personnages
   CHARS_ONE         = "%d character",
@@ -42,13 +48,12 @@ local enUS = {
   PICK_CHARS        = "Pick the characters to display (click to toggle):",
 
   -- Options
-  OPT_TITLE         = "SkillTracker options",
+  OPT_TITLE         = "SkillTracker - Options",
   OPT_GENERAL       = "General",
   OPT_ENABLED       = "Module enabled",
   OPT_ENABLED_TT    = "Disable to stop scans and hide the panel.",
   OPT_HIDE_MAXED    = "Hide maxed expansions",
   OPT_HIDE_MAXED_TT = "Only show professions/expansions that are not at 100%.",
-  OPT_SHOW_ALLCHARS = "Show all characters in the summary",
   OPT_MINIMAP       = "Show minimap button",
   OPT_DATA          = "Data sharing (multi-account)",
   OPT_EXPORT        = "Export my data",
@@ -77,6 +82,7 @@ local enUS = {
   TODO_MORE         = "... and %d more",
   TODO_COUNT_ONE    = "%d tier to finish",
   TODO_COUNT_MANY   = "%d tiers to finish",
+  TODO_EXT_FILTER   = "Filter by expansion (click to toggle):",
 
   -- Concentration & connaissances
   META_TITLE        = "Concentration & knowledge",
@@ -91,7 +97,6 @@ local enUS = {
   -- Options (suite)
   OPT_HIDE_MAXPROF  = "Hide fully maxed professions",
   OPT_SHOW_TODO     = "Show the \"to finish\" list",
-  OPT_SHOW_META     = "Show concentration & knowledge",
   OPT_CONC_ALERT    = "Warn when concentration is full",
   OPT_VIEW          = "Display",
 
@@ -119,6 +124,11 @@ local frFR = {
   NO_DATA           = "Aucune donnee pour l'instant.",
   CURRENT_CHAR      = "Ce personnage",
   MAXED             = "Au max",
+  MAXED_SHORT       = "au max",
+
+  METIER_VIEW_CURRENT = "Extension en cours",
+  METIER_VIEW_ALL      = "Toutes les extensions",
+  METIER_VIEW_ACCOUNT  = "Compte",
 
   CHARS_ONE         = "%d personnage",
   CHARS_MANY        = "%d personnages",
@@ -127,13 +137,12 @@ local frFR = {
   AVG_PROGRESS      = "moy %d%%",
   PICK_CHARS        = "Choisissez les personnages a afficher (clic pour cocher) :",
 
-  OPT_TITLE         = "Options de SkillTracker",
+  OPT_TITLE         = "SkillTracker - Options",
   OPT_GENERAL       = "General",
   OPT_ENABLED       = "Module actif",
   OPT_ENABLED_TT    = "Desactivez pour stopper les scans et masquer le panneau.",
   OPT_HIDE_MAXED    = "Masquer les extensions au max",
   OPT_HIDE_MAXED_TT = "N'affiche que les metiers ou extensions qui ne sont pas a 100%.",
-  OPT_SHOW_ALLCHARS = "Afficher tous les personnages dans le recapitulatif",
   OPT_MINIMAP       = "Afficher le bouton minimap",
   OPT_DATA          = "Partage de donnees (multi-comptes)",
   OPT_EXPORT        = "Exporter mes donnees",
@@ -159,6 +168,7 @@ local frFR = {
   TODO_MORE         = "... et %d de plus",
   TODO_COUNT_ONE    = "%d palier a finir",
   TODO_COUNT_MANY   = "%d paliers a finir",
+  TODO_EXT_FILTER   = "Filtrer par extension (clic pour cocher) :",
 
   META_TITLE        = "Concentration & connaissances",
   CONCENTRATION     = "Concentration",
@@ -171,7 +181,6 @@ local frFR = {
 
   OPT_HIDE_MAXPROF  = "Masquer les metiers entierement au max",
   OPT_SHOW_TODO     = "Afficher la liste \"a finir\"",
-  OPT_SHOW_META     = "Afficher concentration & connaissances",
   OPT_CONC_ALERT    = "Alerter quand la concentration est pleine",
   OPT_VIEW          = "Affichage",
 

@@ -1,5 +1,5 @@
 -- ================================================================
--- LegTracker v3.0
+-- LegTracker v6.0
 -- Suivi des objets legendaires de toutes les extensions WoW
 -- Auteur : Tibiscui - Kirin Tor
 -- Design & architecture propre a LegTracker
@@ -1124,17 +1124,14 @@ local function BuildUI()
   end
   mainFrame.defaultW = FRAME_W
   mainFrame.defaultH = FRAME_H
-  mainFrame:SetScript("OnKeyDown", function(self, key)
-    if key == "ESCAPE" then self:Hide() ; LegTrackerDB.open = false end
-  end)
-  mainFrame:EnableKeyboard(true)
-  mainFrame:SetPropagateKeyboardInput(true)
-
-  -- Fermeture ESC native (comportement standard Blizzard) + synchro du flag.
+  -- Fermeture par Echap via UISpecialFrames (mecanisme natif Blizzard) : voir
+  -- note detaillee dans TibiSuiteCore.lua (WireEscapeFor) - piege reel
+  -- confirme en jeu quand un autre addon intercepte lui aussi Echap. AUCUN
+  -- OnHide/OnKeyDown ne doit etre accroche a cette fenetre desormais (c'est
+  -- exactement la combinaison qui causait le tout premier blocage trouve
+  -- ici) : LegTrackerDB.open n'est donc plus resynchronise sur une fermeture
+  -- par Echap (repli assume, cf. Toggle/slash qui restent, eux, corrects).
   tinsert(UISpecialFrames, "LegTrackerMainFrame")
-  mainFrame:SetScript("OnHide", function()
-    if LegTrackerDB then LegTrackerDB.open = false end
-  end)
   -- Redimensionnement manuel desactive : la fenetre s'adapte au contenu
 
   -- Titre
@@ -1183,7 +1180,7 @@ local function BuildUI()
 
   local dragHint = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   dragHint:SetPoint("TOP", 0, -30)
-  dragHint:SetText("|cFF888888Glisser pour deplacer  -  /tlt  ou  /tibileg|r")
+  dragHint:SetText("|cFF888888Glisser pour deplacer  -  /lt|r")
 
   -- Separateur haut : PLEINE LARGEUR (de bord a bord de la fenetre)
   local sepTop = mainFrame:CreateTexture(nil, "ARTWORK")
@@ -1403,19 +1400,14 @@ local function BuildUI()
   mainFrame.resizeBtn = resizeBtn
 
   -- ================================================================
-  -- BOUTON OPTIONS (roue crantee, en haut a droite)
+  -- Bouton Options : voir le bouton texte "Options" ajoute par le socle
+  -- (UI.AddHeaderControls, cf. LegTracker_Module.lua / LegTracker_Suite.lua)
+  -- au-dessus de la fenetre - meme convention que les autres modules de la
+  -- suite. L'ancienne roue crantee dediee a ete retiree pour ne garder
+  -- qu'un seul point d'entree Options ; le panneau riche ci-dessous a ete
+  -- migre integralement dans LegTracker_Suite.lua (BuildOptions), ouvert
+  -- par ce meme bouton du socle via LegTracker_OpenOptions().
   -- ================================================================
-  local optBtn = CreateFrame("Button", nil, mainFrame)
-  optBtn:SetSize(22, 22)
-  optBtn:SetPoint("TOPRIGHT", -30, -6)
-  optBtn:SetNormalTexture("Interface\\Buttons\\UI-OptionsButton")
-  optBtn:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-  optBtn:SetScript("OnEnter", function(s)
-    GameTooltip:SetOwner(s, "ANCHOR_LEFT")
-    GameTooltip:AddLine("Options", 0.95, 0.78, 0.35)
-    GameTooltip:Show()
-  end)
-  optBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
   -- ================================================================
   -- CASE "MASQUER OBTENUS" toujours visible (acces rapide)
@@ -1442,179 +1434,6 @@ local function BuildUI()
   end)
   hideObtCheck:SetScript("OnLeave", function() GameTooltip:Hide() end)
   mainFrame.hideObtainedCheck = hideObtCheck
-
-  -- ================================================================
-  -- PANNEAU OPTIONS
-  -- ================================================================
-  local optPanel = CreateFrame("Frame", "LegTrackerOptionsPanel", mainFrame, "BackdropTemplate")
-  optPanel:SetSize(300, 400)
-  optPanel:SetPoint("TOPLEFT", mainFrame, "TOPRIGHT", 8, 0)
-  optPanel:SetBackdrop(BACKDROP_MAIN)
-  optPanel:SetBackdropColor(0.04, 0.02, 0.06, 0.98)
-  optPanel:SetBackdropBorderColor(0.72, 0.60, 0.28, 1.0)
-  optPanel:SetFrameStrata("DIALOG")
-  optPanel:EnableMouse(true)
-  optPanel:Hide()
-
-  local optTitle = optPanel:CreateFontString(nil, "OVERLAY")
-  optTitle:SetFont("Fonts\\FRIZQT__.TTF", 13, "OUTLINE")
-  optTitle:SetPoint("TOP", 0, -14)
-  optTitle:SetText(COL_GOLD .. "Options LegTracker" .. COL_RESET)
-
-  local optClose = CreateFrame("Button", nil, optPanel, "UIPanelCloseButton")
-  optClose:SetPoint("TOPRIGHT", -4, -4)
-  optClose:SetScript("OnClick", function() optPanel:Hide() end)
-
-  local oy = -44
-
-  -- Helper : case a cocher avec libelle
-  local function AddCheck(label, tooltip, getFn, setFn)
-    local cb = CreateFrame("CheckButton", nil, optPanel, "UICheckButtonTemplate")
-    cb:SetSize(24, 24)
-    cb:SetPoint("TOPLEFT", 16, oy)
-    local fs = optPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    fs:SetPoint("LEFT", cb, "RIGHT", 4, 0)
-    fs:SetText("|cFFEEEEEE" .. label .. "|r")
-    cb:SetChecked(getFn() and true or false)
-    cb:SetScript("OnClick", function(s) setFn(s:GetChecked() and true or false) end)
-    if tooltip then
-      cb:SetScript("OnEnter", function(s)
-        GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
-        GameTooltip:AddLine(tooltip, 0.9, 0.9, 0.9, true)
-        GameTooltip:Show()
-      end)
-      cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    end
-    oy = oy - 28
-    return cb
-  end
-
-  -- Helper : curseur (avec libelle propre, sans dependre des sous-frames nommees)
-  local function AddSlider(label, minV, maxV, step, getFn, setFn, fmt)
-    local cap = optPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    cap:SetPoint("TOPLEFT", 24, oy)
-    local function setCap(v)
-      cap:SetText("|cFFEEEEEE" .. (fmt and string.format(fmt, v) or label) .. "|r")
-    end
-    local sl = CreateFrame("Slider", nil, optPanel, "OptionsSliderTemplate")
-    sl:SetSize(250, 16)
-    sl:SetPoint("TOPLEFT", 24, oy - 16)
-    sl:SetMinMaxValues(minV, maxV)
-    sl:SetValueStep(step)
-    sl:SetObeyStepOnDrag(true)
-    -- Neutralise les libelles par defaut du template (peuvent etre nil si anonyme)
-    if sl.Low  then sl.Low:SetText("")  end
-    if sl.High then sl.High:SetText("") end
-    if sl.Text then sl.Text:SetText("") end
-    setCap(getFn())
-    sl:SetValue(getFn())
-    sl:SetScript("OnValueChanged", function(_, v)
-      setFn(v) ; setCap(v)
-    end)
-    oy = oy - 46
-    return sl
-  end
-
-  -- --- Filtres ---
-  local secFilters = optPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  secFilters:SetPoint("TOPLEFT", 14, oy)
-  secFilters:SetText(COL_YELLOW .. "Filtres d'affichage" .. COL_RESET)
-  oy = oy - 22
-
-  mainFrame.optHideObtained = AddCheck("Masquer les objets obtenus",
-    "Cache les legendaires deja possedes sur le compte.",
-    function() return (LegTrackerDB.filters or {}).hideObtained end,
-    function(v)
-      LegTrackerDB.filters.hideObtained = v
-      if mainFrame.hideObtainedCheck then mainFrame.hideObtainedCheck:SetChecked(v) end
-      mainFrame:RefreshContent()
-    end)
-
-  AddCheck("Masquer les non-equipables",
-    "Cache les objets reserves a d'autres classes.",
-    function() return (LegTrackerDB.filters or {}).hideUnavailable end,
-    function(v) LegTrackerDB.filters.hideUnavailable = v ; mainFrame:RefreshContent() end)
-
-  AddCheck("Masquer les objets legacy",
-    "Cache les objets d'anciennes versions non obtenables aujourd'hui.",
-    function() return (LegTrackerDB.filters or {}).hideLegacy end,
-    function(v) LegTrackerDB.filters.hideLegacy = v ; mainFrame:RefreshContent() end)
-
-  -- --- Fenetre ---
-  local secWin = optPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  secWin:SetPoint("TOPLEFT", 14, oy - 4)
-  secWin:SetText(COL_YELLOW .. "Fenetre" .. COL_RESET)
-  oy = oy - 26
-
-  AddSlider("Echelle", 0.7, 1.4, 0.05,
-    function() return LegTrackerDB.scale or 1.0 end,
-    function(v) LegTrackerDB.scale = v ; mainFrame:ApplyOptions() end,
-    "Echelle : %.2f")
-
-  AddSlider("Opacite", 0.4, 1.0, 0.05,
-    function() return LegTrackerDB.alpha or 0.97 end,
-    function(v) LegTrackerDB.alpha = v ; mainFrame:ApplyOptions() end,
-    "Opacite : %.2f")
-
-  AddCheck("Verrouiller la position",
-    "Empeche de deplacer ou redimensionner la fenetre par accident.",
-    function() return LegTrackerDB.locked end,
-    function(v) LegTrackerDB.locked = v ; mainFrame:ApplyOptions() end)
-
-  AddCheck("Afficher le bouton minimap",
-    "Affiche ou masque l'icone sur la minicarte.",
-    function() return LegTrackerDB.showMinimap ~= false end,
-    function(v) LegTrackerDB.showMinimap = v ; mainFrame:ApplyOptions() end)
-
-  AddCheck("Ouvrir automatiquement au login",
-    "Rouvre la fenetre a la connexion.",
-    function() return LegTrackerDB.autoOpen end,
-    function(v) LegTrackerDB.autoOpen = v end)
-
-  -- --- Boutons flottants (barre TibiSuite) ---
-  local secFloat = optPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  secFloat:SetPoint("TOPLEFT", 14, oy - 4)
-  secFloat:SetText(COL_YELLOW .. "Boutons flottants" .. COL_RESET)
-  oy = oy - 26
-
-  AddCheck("Masquer le bouton Options",
-    "Masque le bouton Options qui deborde au-dessus de la fenetre. Meme masque, Maj+clic droit sur la fenetre l'ouvre.",
-    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("LegTrackerMainFrame", "options") end,
-    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("LegTrackerMainFrame", "options", v) end end)
-
-  AddCheck("Masquer le champ Recherche",
-    "Masque le champ Recherche qui deborde au-dessus de la fenetre.",
-    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("LegTrackerMainFrame", "search") end,
-    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("LegTrackerMainFrame", "search", v) end end)
-
-  -- --- Boutons d'action ---
-  local resetBtn = CreateFrame("Button", nil, optPanel, "UIPanelButtonTemplate")
-  resetBtn:SetSize(130, 22)
-  resetBtn:SetPoint("TOPLEFT", 16, oy - 6)
-  resetBtn:SetText("Recentrer")
-  resetBtn:SetScript("OnClick", function()
-    LegTrackerDB.pos = {x=0, y=0}
-    mainFrame:ClearAllPoints()
-    mainFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-  end)
-
-  local autoFitBtn = CreateFrame("Button", nil, optPanel, "UIPanelButtonTemplate")
-  autoFitBtn:SetSize(130, 22)
-  autoFitBtn:SetPoint("LEFT", resetBtn, "RIGHT", 8, 0)
-  autoFitBtn:SetText("Taille par defaut")
-  autoFitBtn:SetScript("OnClick", function()
-    LegTrackerDB.width  = mainFrame.defaultW
-    LegTrackerDB.height = mainFrame.defaultH
-    mainFrame:SetSize(mainFrame.defaultW, mainFrame.defaultH)
-    mainFrame:RefreshContent()
-  end)
-
-  optPanel:SetHeight(-oy + 48)
-
-  optBtn:SetScript("OnClick", function()
-    if optPanel:IsShown() then optPanel:Hide() else optPanel:Show() end
-  end)
-  mainFrame.optPanel = optPanel
 
   -- ================================================================
   -- RAFRAICHISSEMENT PRINCIPAL
@@ -1879,8 +1698,7 @@ end
 -- ================================================================
 -- COMMANDES SLASH
 -- ================================================================
-SLASH_LEGTRACKER1 = "/tlt"
-SLASH_LEGTRACKER2 = "/tibileg"
+SLASH_LEGTRACKER1 = "/lt"
 SlashCmdList["LEGTRACKER"] = function(msg)
   msg = (msg or ""):lower()
   if msg == "scan" then
@@ -1892,6 +1710,10 @@ SlashCmdList["LEGTRACKER"] = function(msg)
   if msg == "reset" then
     if LegTrackerDB then LegTrackerDB.accountData = {} end
     print(COL_BLUE .. "LegTracker" .. COL_RESET .. " Donnees de compte reinitialises.")
+    return
+  end
+  if msg == "options" or msg == "config" then
+    if LegTracker_OpenOptions then LegTracker_OpenOptions() end
     return
   end
   if mainFrame:IsShown() then
@@ -1997,9 +1819,9 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
     end
 
-    print(COL_BLUE .. "LegTracker v3.0" .. COL_RESET
-          .. " charge -- tapez " .. COL_GOLD .. "/tlt" .. COL_RESET .. " pour ouvrir."
-          .. " |cFF888888(/tlt scan = forcer scan, /tlt reset = reinit donnees compte)|r")
+    print(COL_BLUE .. "LegTracker v6.0" .. COL_RESET
+          .. " charge -- tapez " .. COL_GOLD .. "/lt" .. COL_RESET .. " pour ouvrir."
+          .. " |cFF888888(/lt scan = forcer scan, /lt reset = reinit donnees compte)|r")
 
   elseif event == "BANKFRAME_OPENED" or event == "BANKFRAME_CLOSED" then
     -- Rescanner apres ouverture/fermeture banque (pour detecter items en banque)

@@ -19,7 +19,7 @@ local function BuildOptions()
   if panel then return panel end
   panel = ui.CreateOptionsPanel({
     name = "LvlHistoryOptionsMidnight",
-    title = "|cFF9480FFLvlHistory|r  Options", accent = ACCENT })
+    title = "LvlHistory - Options", accent = ACCENT })
 
   panel:Section("Fenêtre")
   panel:Button("Ouvrir / fermer", function()

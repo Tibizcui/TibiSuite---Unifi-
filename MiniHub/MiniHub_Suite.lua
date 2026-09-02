@@ -23,7 +23,7 @@ local function BuildOptions()
   if panel then return panel end
   panel = ui.CreateOptionsPanel({
     name = "MiniHubOptionsMidnight",
-    title = "|cFF9480FFMiniHub|r  Options", accent = ACCENT })
+    title = "MiniHub - Options", accent = ACCENT })
 
   panel:Section("Disposition")
   panel:Check("Orientation verticale",

@@ -1,5 +1,5 @@
 -- ================================================================
--- RenTracker v3.0
+-- RenTracker v6.0
 -- Suivi des reputations | Toutes les extensions depuis vanilla
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
@@ -322,12 +322,61 @@ local CLASSIC_LEVELS = {
 }
 
 -- ================================================================
+-- SYSTEME AMITIE (Friendship) : rangs personnalises nommes (ex.
+-- Capitaine Tokka, patch 12.1), API native C_GossipInfo.GetFriendshipReputation.
+-- Different du systeme "renown" (pas de Renom 1-20, pas de Paragon) : chaque
+-- faction a ses propres noms de rang, lus en direct depuis l'API - aucun
+-- palier n'est code en dur ici, on affiche exactement ce que le jeu renvoie.
+-- ================================================================
+local function GetFriendshipData(factionId, fac)
+  local ranks = (fac and fac.ranks) or {}
+  local info
+  if C_GossipInfo and C_GossipInfo.GetFriendshipReputation then
+    local ok, res = pcall(C_GossipInfo.GetFriendshipReputation, factionId)
+    if ok and res and res.standing then info = res end
+  end
+  if info then
+    local cur     = info.standing or 0
+    local capped  = not info.nextThreshold
+    local max     = info.nextThreshold or info.maxRep or math.max(cur, 1)
+    local pct     = capped and 1.0 or math.min(1.0, cur / math.max(max, 1))
+    return {
+      system     = "friendship",
+      cur        = cur,
+      max        = max,
+      pct        = pct,
+      paragon    = false,
+      exalted    = false,
+      hasParagon = false,
+      capped     = capped,
+      cap        = #ranks,
+      color      = {r=0.20, g=0.70, b=0.55},
+      label      = info.name or info.text or ranks[1] or "?",
+      found      = true,
+    }
+  end
+  -- Repli : API absente ou faction jamais rencontree (hors-jeu / mock / non
+  -- encore debloquee). Affiche le premier rang connu sans pretendre a un
+  -- pourcentage reel.
+  return {
+    system = "friendship", cur = 0, max = 1, pct = 0,
+    paragon = false, exalted = false, hasParagon = false, capped = false,
+    cap = #ranks, color = {r=0.20, g=0.70, b=0.55}, label = ranks[1] or "?",
+    found = false,
+  }
+end
+
+-- ================================================================
 -- LECTURE REPUTATION UNIVERSELLE
--- Supporte : renown (Shadowlands+) et classic (BfA et avant)
+-- Supporte : renown (Shadowlands+), classic (BfA et avant), et friendship
+-- (rangs personnalises nommes, ex. Capitaine Tokka - voir fac.friendship).
 -- hasParagon=true  -> affiche PARAGON apres exalte
 -- hasParagon=false -> affiche EXALTÉ (violet) apres exalte
 -- ================================================================
-local function GetRenownData(factionId)
+local function GetRenownData(factionId, fac)
+  if fac and fac.friendship then
+    return GetFriendshipData(factionId, fac)
+  end
   local extData    = GetActiveExtData()
   local system     = extData.system     or "renown"
   local RENOWN_CAP = extData.renownCap  or 20
@@ -500,7 +549,10 @@ local function GetExtRepCounts(extKey)
   local done  = 0
   for _, fac in ipairs(extD.factions) do
     if fac.id then
-      if extD.system == "renown" then
+      if fac.friendship then
+        local fd = GetFriendshipData(fac.id, fac)
+        if fd.capped then done = done + 1 end
+      elseif extD.system == "renown" then
         if C_MajorFactions and C_MajorFactions.GetMajorFactionData then
           local ok, d = pcall(C_MajorFactions.GetMajorFactionData, fac.id)
           if ok and d and (d.renownLevel or 0) >= (extD.renownCap or 20) then
@@ -538,11 +590,10 @@ local function BuildUI()
   mainFrame:SetSize(FRAME_W, FRAME_H_MIN)
   mainFrame:SetClipsChildren(false)
 
-  mainFrame:SetScript("OnKeyDown", function(self, key)
-    if key == "ESCAPE" then self:Hide() ; RenTrackerDB.open = false end
-  end)
-  mainFrame:EnableKeyboard(true)
-  mainFrame:SetPropagateKeyboardInput(true)
+  -- Fermeture par Echap via UISpecialFrames (mecanisme natif Blizzard) : voir
+  -- note detaillee dans TibiSuiteCore.lua (WireEscapeFor) - piege reel
+  -- confirme en jeu quand un autre addon intercepte lui aussi Echap.
+  tinsert(UISpecialFrames, "RNTMainFrame")
   mainFrame:SetFrameStrata("HIGH")
   mainFrame:SetMovable(true)
   mainFrame:EnableMouse(true)
@@ -888,6 +939,12 @@ local function BuildUI()
     local extD = GetActiveExtData()
     if not fac.id then
       return 0, "?", 0.4, 0.4, 0.4
+    end
+    if fac.friendship then
+      local fd = GetFriendshipData(fac.id, fac)
+      if fd.capped then return 1.0, "Max", fd.color.r, fd.color.g, fd.color.b end
+      if not fd.found then return 0, "?", 0.4, 0.4, 0.4 end
+      return fd.pct, fd.label, fd.color.r, fd.color.g, fd.color.b
     end
     if extD.system == "renown" then
       if C_MajorFactions and C_MajorFactions.GetMajorFactionData then
@@ -1348,7 +1405,7 @@ local function BuildUI()
     self.scrollBg:SetPoint("TOPRIGHT", -14, questY - 38)
 
     -- Données réputation
-    local rd  = GetRenownData(fac.id)
+    local rd  = GetRenownData(fac.id, fac)
     local col = rd.color
 
     -- Barre de réputation
@@ -1372,7 +1429,16 @@ local function BuildUI()
     end
 
     -- Texte barre
-    if rd.system == "classic" then
+    if rd.system == "friendship" then
+      if rd.capped then
+        self.barText:SetText(string.format("|cFF%02X%02X%02X%s - Max|r",
+          math.floor(col.r*255), math.floor(col.g*255), math.floor(col.b*255), rd.label))
+      else
+        self.barText:SetText(string.format("|cFF%02X%02X%02X%s|r  %d / %d rep",
+          math.floor(col.r*255), math.floor(col.g*255), math.floor(col.b*255),
+          rd.label, rd.cur, rd.max))
+      end
+    elseif rd.system == "classic" then
       if rd.exalted and not rd.hasParagon then
         self.barText:SetText("|cFFFFFFFFExalté - 100%|r")
       elseif rd.liveParagon then
@@ -2046,14 +2112,14 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- zone) si la connexion est deja effective. Aucun impact sur les donnees.
     if IsLoggedIn() then
       if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-        print("|cFF4D99FFRenTracker|r v3.0 chargé -- tapez |cFFFFD700/rt|r pour ouvrir.")
+        print("|cFF4D99FFRenTracker|r v6.0 chargé -- tapez |cFFFFD700/rt|r pour ouvrir.")
       end
       C_Timer.After(2, AutoTrackFactionByZone)
     end
 
   elseif event == "PLAYER_LOGIN" then
     if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-      print("|cFF4D99FFRenTracker|r v3.0 chargé -- tapez |cFFFFD700/rt|r pour ouvrir.")
+      print("|cFF4D99FFRenTracker|r v6.0 chargé -- tapez |cFFFFD700/rt|r pour ouvrir.")
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)

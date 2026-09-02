@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v4.0
+-- TibiSuiteCore v6.0
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "5.0"
+local VERSION = "6.0"
 
 -- Table globale minimale exposée pour les modules récents (ex. MiniHub).
 -- Elle leur permet de détecter TibiSuite comme parent, de s'y enregistrer,
@@ -41,7 +41,12 @@ local DEFAULTS = {
   vertical = false,
   cols     = 2,        -- grille de toggles par defaut : 2 colonnes
   rows     = 5,        -- ... et 5 lignes
+  logoSize = 22,        -- taille de l'icone du logo dans l'en-tete de la barre
 }
+
+-- Bornes de taille du logo : au-dela de la resolution native du fichier
+-- (64x64, TibiSuite/medias/TibiSuite.png), l'agrandissement se met a flouter.
+local LOGO_SIZE_MIN, LOGO_SIZE_MAX = 16, 64
 
 -- ================================================================
 -- HELPERS VISUELS
@@ -236,6 +241,34 @@ local MODULES = {
     saved       = { "SkillTrackerDB" },
     escClose    = true,
   },
+  {
+    key         = "Post",
+    addonName   = "PostBox",
+    label       = "PostBox",
+    frameGlobal = "PostBoxMainFrame",
+    mmBtnGlobal = "PostBoxMinimapBtn",  -- propre bouton minimap seulement en mode standalone (masque si TibiSuite present)
+    toggleFn    = "PostBox_Toggle",
+    optionsFn   = "PostBox_OpenOptions",
+    col         = { r=0.720, g=0.470, b=0.220 },  -- laiton / cachet de cire (identite PostBox)
+    curseUrl    = "https://www.curseforge.com/wow/addons/postbox",
+    saved       = { "PostBoxDB" },
+    escClose    = true,   -- fenetre de courrier : Echap la ferme (+ referme la barre)
+    badgeFn     = function() return HasNewMail() end,  -- pastille rouge : meme API que l'icone minimap Blizzard
+  },
+  {
+    key         = "Stats",
+    addonName   = "Stats",
+    label       = "Stats",
+    frameGlobal = "StatsMainFrame",
+    mmBtnGlobal = "StatsMinimapBtn",  -- Stats n'a pas de bouton minimap propre (ouverture via la barre ou /ts stats)
+    toggleFn    = "Stats_Toggle",
+    optionsFn   = "Stats_OpenOptions",
+    slashList   = "TIBISTATS",  -- secours : /tstats si la fonction Toggle est absente
+    col         = { r=1.000, g=0.843, b=0.000 },  -- or (module transverse, palette GOLD du socle)
+    curseUrl    = "https://www.curseforge.com/wow/addons/tibisuite",
+    saved       = { "StatsDB" },
+    escClose    = true,
+  },
 }
 
 -- ================================================================
@@ -298,6 +331,15 @@ local function UpdateTabHighlights()
       btn:SetBackdropColor(0.06, 0.03, 0.10, 0.88)
       btn:SetBackdropBorderColor(
         mod.col.r * 0.45, mod.col.g * 0.45, mod.col.b * 0.45, 0.65)
+    end
+
+    if btn._badge then
+      local show = loaded and type(mod.badgeFn) == "function"
+      if show then
+        local ok, result = pcall(mod.badgeFn)
+        show = ok and result and true or false
+      end
+      btn._badge:SetShown(show)
     end
   end
 end
@@ -503,6 +545,13 @@ end
 -- ================================================================
 -- CONSTRUCTION DE LA BARRE D'ONGLETS
 -- ================================================================
+-- Position par defaut (premiere installation, recentrage, reinstallation) :
+-- coin haut-gauche de l'ecran.
+local DEFAULT_BAR_POS = { point = "TOPLEFT", x = 20, y = -20 }
+local function CopyDefaultBarPos()
+  return { point = DEFAULT_BAR_POS.point, x = DEFAULT_BAR_POS.x, y = DEFAULT_BAR_POS.y }
+end
+
 -- Sauvegarde la position courante de la barre (par personnage)
 local function SaveBarPos()
   if not barFrame then return end
@@ -512,11 +561,11 @@ end
 
 -- Restaure la position sauvegardée (par personnage), avec valeurs de secours
 local function RestoreBarPos()
-  local pos = TibiSuiteCharDB.barPos or { point = "CENTER", x = 0, y = -300 }
+  local pos = TibiSuiteCharDB.barPos or DEFAULT_BAR_POS
   barFrame:ClearAllPoints()
   barFrame:SetPoint(
-    pos.point or "CENTER", UIParent, pos.point or "CENTER",
-    pos.x or 0, pos.y or -300)
+    pos.point or "TOPLEFT", UIParent, pos.point or "TOPLEFT",
+    pos.x or 20, pos.y or -20)
 end
 
 local function BuildBar()
@@ -535,13 +584,14 @@ local function BuildBar()
 
   RestoreBarPos()
 
-  -- ── Zone logo : icône TibiSuite.tga + texte "TibiSuite" ─────────
+  -- ── Zone logo : icône TibiSuite seule (pas de texte, façon bouton
+  -- minimap) ───────────────────────────────────────────────────────
   local logoBtn = CreateFrame("Button", nil, barFrame)
   logoBtn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   barFrame._logo = logoBtn
 
   local logoIcon = logoBtn:CreateTexture(nil, "ARTWORK")
-  logoIcon:SetSize(22, 22)
+  logoIcon:SetSize(TibiSuiteDB.logoSize or 22, TibiSuiteDB.logoSize or 22)
   logoIcon:SetTexture("Interface\\AddOns\\TibiSuite\\medias\\TibiSuite")
   local logoMask = logoBtn:CreateMaskTexture()
   logoMask:SetAllPoints(logoIcon)
@@ -551,18 +601,10 @@ local function BuildBar()
   logoIcon:AddMaskTexture(logoMask)
   barFrame._logoIcon = logoIcon
 
-  local logoText = logoBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  logoText:SetText("|cFFC41F3BTibiSuite|r")
-  barFrame._logoText = logoText
-
-  -- Groupe logo (icône + texte) TOUJOURS centré dans le bouton : le texte est
-  -- centré avec un décalage de (largeur icône + espace)/2 = 14, l'icône collée
-  -- à sa gauche. Quelle que soit la largeur du bouton (en-tête pleine largeur),
-  -- l'ensemble « icône + TibiSuite » reste centré.
-  logoText:ClearAllPoints()
-  logoText:SetPoint("CENTER", logoBtn, "CENTER", 14, 0)
+  -- Icône seule, centrée dans le bouton (quelle que soit sa largeur, le
+  -- bouton occupe l'en-tête pleine largeur).
   logoIcon:ClearAllPoints()
-  logoIcon:SetPoint("RIGHT", logoText, "LEFT", -6, 0)
+  logoIcon:SetPoint("CENTER", logoBtn, "CENTER", 0, 0)
 
   -- ── Drag : maintien clic gauche déplace la barre (sauf si verrouillée) ──
   logoBtn:RegisterForDrag("LeftButton")
@@ -712,6 +754,26 @@ local function BuildBar()
     lbl:SetAllPoints()
     lbl:SetText(ColorCode(mod.col.r, mod.col.g, mod.col.b) .. mod.label .. "|r")
 
+    -- Pastille "notification" (ex: courrier non lu) : simple point rouge en
+    -- coin haut-droit, visible seulement si mod.badgeFn() renvoie vrai.
+    -- Generique a dessein : n'importe quel module peut declarer badgeFn.
+    -- Pastille notification rouge, carree (forme ronde non fiable sans
+    -- texture d'image verifiee - cf. le pari perdant sur MiniMap-MailIcon).
+    -- "!" plutot qu'un chiffre : HasNewMail() ne donne qu'un oui/non, jamais
+    -- un compte exact tant que la boite aux lettres n'est pas ouverte -
+    -- afficher "1" en dur serait faux des qu'il y a plus d'un courrier.
+    local badge = CreateFrame("Frame", nil, btn, "BackdropTemplate")
+    badge:SetSize(15, 15)
+    badge:SetPoint("TOPRIGHT", btn, "TOPRIGHT", 2, 2)
+    badge:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    badge:SetBackdropColor(0.85, 0.15, 0.15, 1)
+    badge:SetBackdropBorderColor(1, 1, 1, 0.9)
+    local badgeTxt = badge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    badgeTxt:SetAllPoints()
+    badgeTxt:SetText("|cFFFFFFFF!|r")
+    badge:Hide()
+    btn._badge = badge
+
     local capturedMod = mod
 
     btn:SetScript("OnEnter", function(s)
@@ -837,7 +899,7 @@ function LayoutBar()
                       + ALL_W + ALL_GAP + ALL_W + ALL_GAP + CLOSE_W
     local gridW = (m > 0) and (cols * (TAB_W + TAB_GAP) - TAB_GAP) or 0
     local gridH = (m > 0) and (drawRows * (TAB_H + TAB_GAP) - TAB_GAP) or TAB_H
-    local logoH = 26
+    local logoH = math.max(26, (TibiSuiteDB.logoSize or 22) + 4)
 
     openAll:SetSize(ALL_W, ALL_W)
     closeAll:SetSize(ALL_W, ALL_W)
@@ -881,7 +943,7 @@ function LayoutBar()
     anchor(closeBtn, "TOPLEFT", barFrame, "TOPLEFT", x, -ctrlTop)
   else
     -- ---------------- MODE VERTICAL ------------------
-    local logoH = 26
+    local logoH = math.max(26, (TibiSuiteDB.logoSize or 22) + 4)
     -- Une colonne large (aspect d'origine) ; plusieurs colonnes -> largeur d'onglet standard
     local cw       = (cols == 1) and VCOL_W or TAB_W
     local gridW    = (m > 0) and (cols * (cw + TAB_GAP) - TAB_GAP) or VCOL_W
@@ -958,10 +1020,22 @@ function RefreshOptions()
   if not f then return end
   f._scaleVal:SetText(string.format("%d%%",
     math.floor((TibiSuiteDB.scale or 1) * 100 + 0.5)))
+  f._logoSizeVal:SetText(tostring(TibiSuiteDB.logoSize or 22) .. "px")
   f._lockBtn._label:SetText("Barre verrouillée : " ..
     (TibiSuiteDB.locked and "|cFF66FF66Oui|r" or "|cFFFF7777Non|r"))
   f._vertBtn._label:SetText("Barre verticale : " ..
     (TibiSuiteDB.vertical and "|cFF66FF66Oui|r" or "|cFFFF7777Non|r"))
+
+  -- Position (X / Y) : synchronise les curseurs avec la position courante.
+  if f._xSlider and f._ySlider then
+    local pos = TibiSuiteCharDB.barPos or DEFAULT_BAR_POS
+    local x = math.floor((pos.x or 0) + 0.5)
+    local y = math.floor((pos.y or 0) + 0.5)
+    f._xSlider:SetValue(x)
+    f._ySlider:SetValue(y)
+    f._xVal:SetText(tostring(x))
+    f._yVal:SetText(tostring(y))
+  end
 
   -- Grille de toggles : colonnes (pilotées) et lignes (déduites)
   if f._colsVal then
@@ -992,7 +1066,7 @@ local function BuildOptions()
   optionsFrame = f
   -- Hauteur calculee pour englober tout le contenu (une ligne par module) :
   -- evite qu'un bouton deborde sous le cadre.
-  f:SetSize(300, 440 + #MODULES * 26)
+  f:SetSize(300, 510 + #MODULES * 26)  -- +30 Position (X / Y), +40 Taille du logo
   f:SetPoint("CENTER", UIParent, "CENTER", 0, 80)
   f:SetFrameStrata("DIALOG")
   f:SetMovable(true)
@@ -1014,12 +1088,17 @@ local function BuildOptions()
   xBtn:SetScript("OnClick", function() f:Hide() end)
 
   -- ── Échelle : label + [-] valeur [+] ──
+  -- CTRL_COL_X : colonne fixe ou demarrent les boutons [-], commune a
+  -- Echelle et Taille du logo, pour que les deux rangees s'alignent
+  -- malgre leurs libelles de longueurs differentes.
+  local CTRL_COL_X = 140
+
   local scaleLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   scaleLbl:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -50)
   scaleLbl:SetText("Échelle")
 
   local minus = MakeTextButton(f, 26, 22, "|cFFFFD700-|r")
-  minus:SetPoint("LEFT", scaleLbl, "RIGHT", 26, 0)
+  minus:SetPoint("LEFT", scaleLbl, "LEFT", CTRL_COL_X, 0)
   local scaleVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   scaleVal:SetPoint("LEFT", minus, "RIGHT", 8, 0)
   scaleVal:SetWidth(48)
@@ -1038,9 +1117,37 @@ local function BuildOptions()
   minus:SetScript("OnClick", function() stepScale(-SCALE_STEP) end)
   plus:SetScript("OnClick",  function() stepScale( SCALE_STEP) end)
 
+  -- ── Taille du logo (independante de l'echelle globale) ──
+  -- Plafonnee a la resolution native du fichier (64x64) : au-dela, WoW
+  -- agrandit par interpolation et l'icone se met a flouter.
+  local logoSizeLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  logoSizeLbl:SetPoint("TOPLEFT", scaleLbl, "BOTTOMLEFT", 0, -16)
+  logoSizeLbl:SetText("Taille du logo")
+
+  local logoMinus = MakeTextButton(f, 26, 22, "|cFFFFD700-|r")
+  logoMinus:SetPoint("LEFT", logoSizeLbl, "LEFT", CTRL_COL_X, 0)
+  local logoSizeVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  logoSizeVal:SetPoint("LEFT", logoMinus, "RIGHT", 8, 0)
+  logoSizeVal:SetWidth(48)
+  logoSizeVal:SetJustifyH("CENTER")
+  f._logoSizeVal = logoSizeVal
+  local logoPlus = MakeTextButton(f, 26, 22, "|cFFFFD700+|r")
+  logoPlus:SetPoint("LEFT", logoSizeVal, "RIGHT", 8, 0)
+
+  local function stepLogoSize(d)
+    local v = (TibiSuiteDB.logoSize or 22) + d
+    if v < LOGO_SIZE_MIN then v = LOGO_SIZE_MIN elseif v > LOGO_SIZE_MAX then v = LOGO_SIZE_MAX end
+    TibiSuiteDB.logoSize = v
+    if barFrame and barFrame._logoIcon then barFrame._logoIcon:SetSize(v, v) end
+    LayoutBar()
+    RefreshOptions()
+  end
+  logoMinus:SetScript("OnClick", function() stepLogoSize(-4) end)
+  logoPlus:SetScript("OnClick",  function() stepLogoSize( 4) end)
+
   -- ── Verrou ──
   local lockBtn = MakeTextButton(f, 260, 24, "")
-  lockBtn:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -84)
+  lockBtn:SetPoint("TOPLEFT", logoSizeLbl, "BOTTOMLEFT", 0, -14)
   f._lockBtn = lockBtn
   lockBtn:SetScript("OnClick", function()
     TibiSuiteDB.locked = not TibiSuiteDB.locked
@@ -1061,7 +1168,14 @@ local function BuildOptions()
   local reinstallBtn = MakeTextButton(f, 260, 24, "|cFFC41F3BRéinstaller TibiSuite|r")
   reinstallBtn:SetPoint("TOPLEFT", vertBtn, "BOTTOMLEFT", 0, -8)
   reinstallBtn:SetScript("OnClick", function()
-    if StaticPopup_Show then StaticPopup_Show("TIBISUITE_REINSTALL_CORE") end
+    -- Fenetre maison (pas StaticPopupDialogs) : voir piege ADDON_ACTION_FORBIDDEN
+    -- documente dans TibiSuiteOptions.lua.
+    if TibiSuite.ShowConfirm then
+      TibiSuite.ShowConfirm(
+        "Reinstaller TibiSuite ?\n\nCela remet a zero les reglages de la suite (barre, modules actives, installation) puis recharge l'interface. La progression de chaque module est conservee.",
+        function() if TibiSuite.ReinstallCore then TibiSuite.ReinstallCore() end end
+      )
+    end
   end)
 
   -- ── Disposition : grille de toggles (colonnes × lignes, liées) ──
@@ -1125,19 +1239,83 @@ local function BuildOptions()
   local recenter = MakeTextButton(f, 80, 24, "|cFFAAD4FFRecentrer|r")
   recenter:SetPoint("LEFT", closeA, "RIGHT", 8, 0)
   recenter:SetScript("OnClick", function()
-    TibiSuiteCharDB.barPos = { point = "CENTER", x = 0, y = -300 }
+    TibiSuiteCharDB.barPos = CopyDefaultBarPos()
     if barFrame then
       RestoreBarPos()
       barFrame:Show()
       TibiSuiteCharDB.barOpen = true
       UpdateTabHighlights()
     end
+    RefreshOptions()
   end)
+
+  -- ── Position (X / Y) : emplacement precis, ajustable par curseur ──
+  local POS_RANGE = 1500  -- large marge ; SetClampedToScreen empeche de sortir de l'ecran
+
+  local posLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  posLbl:SetPoint("TOPLEFT", openA, "BOTTOMLEFT", 0, -14)
+  posLbl:SetText("Position")
+
+  local xLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  xLbl:SetPoint("TOPLEFT", posLbl, "BOTTOMLEFT", 4, -14)
+  xLbl:SetText("X")
+
+  local xSlider = CreateFrame("Slider", nil, f, "OptionsSliderTemplate")
+  xSlider:SetSize(190, 16)
+  xSlider:SetPoint("LEFT", xLbl, "RIGHT", 8, 0)
+  xSlider:SetMinMaxValues(-POS_RANGE, POS_RANGE)
+  xSlider:SetValueStep(1)
+  xSlider:SetObeyStepOnDrag(true)
+  if xSlider.Low then xSlider.Low:SetText("") end
+  if xSlider.High then xSlider.High:SetText("") end
+  if xSlider.Text then xSlider.Text:SetText("") end
+  f._xSlider = xSlider
+
+  local xVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  xVal:SetPoint("LEFT", xSlider, "RIGHT", 8, 0)
+  xVal:SetWidth(36)
+  xVal:SetJustifyH("CENTER")
+  f._xVal = xVal
+
+  local yLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  yLbl:SetPoint("TOPLEFT", xLbl, "BOTTOMLEFT", 0, -26)
+  yLbl:SetText("Y")
+
+  local ySlider = CreateFrame("Slider", nil, f, "OptionsSliderTemplate")
+  ySlider:SetSize(190, 16)
+  ySlider:SetPoint("LEFT", yLbl, "RIGHT", 8, 0)
+  ySlider:SetMinMaxValues(-POS_RANGE, POS_RANGE)
+  ySlider:SetValueStep(1)
+  ySlider:SetObeyStepOnDrag(true)
+  if ySlider.Low then ySlider.Low:SetText("") end
+  if ySlider.High then ySlider.High:SetText("") end
+  if ySlider.Text then ySlider.Text:SetText("") end
+  f._ySlider = ySlider
+
+  local yVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  yVal:SetPoint("LEFT", ySlider, "RIGHT", 8, 0)
+  yVal:SetWidth(36)
+  yVal:SetJustifyH("CENTER")
+  f._yVal = yVal
+
+  -- Applique la position des curseurs (point d'ancrage conserve tel quel,
+  -- ou TOPLEFT par defaut).
+  local function ApplyBarPosSliders()
+    local pos = TibiSuiteCharDB.barPos or DEFAULT_BAR_POS
+    local x = math.floor(xSlider:GetValue() + 0.5)
+    local y = math.floor(ySlider:GetValue() + 0.5)
+    TibiSuiteCharDB.barPos = { point = pos.point or "TOPLEFT", x = x, y = y }
+    xVal:SetText(tostring(x))
+    yVal:SetText(tostring(y))
+    if barFrame then RestoreBarPos() end
+  end
+  xSlider:SetScript("OnValueChanged", ApplyBarPosSliders)
+  ySlider:SetScript("OnValueChanged", ApplyBarPosSliders)
 
   -- ── Séparateur + section "Onglets affichés" ──
   local div = f:CreateTexture(nil, "ARTWORK")
   div:SetSize(260, 1)
-  div:SetPoint("TOPLEFT", openA, "BOTTOMLEFT", 0, -12)
+  div:SetPoint("TOPLEFT", yLbl, "BOTTOMLEFT", -4, -14)
   div:SetColorTexture(COL_BORDER.r, COL_BORDER.g, COL_BORDER.b, 0.40)
 
   local secLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -1389,9 +1567,9 @@ BuildPill = function()
   pill:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
   -- Position : au point sauvegardé de la barre
-  local pos = TibiSuiteCharDB.barPos or { point = "CENTER", x = 0, y = -300 }
+  local pos = TibiSuiteCharDB.barPos or DEFAULT_BAR_POS
   pill:ClearAllPoints()
-  pill:SetPoint(pos.point or "CENTER", UIParent, pos.point or "CENTER", pos.x or 0, pos.y or -300)
+  pill:SetPoint(pos.point or "TOPLEFT", UIParent, pos.point or "TOPLEFT", pos.x or 20, pos.y or -20)
   pill:Hide()
 
   barFrame._pill = pill
@@ -1405,7 +1583,7 @@ CollapseBar = function()
   SaveBarPos()                   -- mémorise la position actuelle de la barre
   BuildPill()
   -- Place la pastille à la position mémorisée de la barre
-  local pos = TibiSuiteCharDB.barPos or { point = "CENTER", x = 0, y = -300 }
+  local pos = TibiSuiteCharDB.barPos or DEFAULT_BAR_POS
   barFrame._pill:ClearAllPoints()
   barFrame._pill:SetPoint(pos.point or "CENTER", UIParent, pos.point or "CENTER", pos.x or 0, pos.y or -300)
   if barFrame then barFrame:Hide() end
@@ -1471,6 +1649,21 @@ local function BuildMinimapButton()
   ring:SetSize(52, 52)
   ring:SetPoint("TOPLEFT", minimapBtn, "TOPLEFT", 0, 0)
   ring:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+
+  -- ── Badge (ex: courriers PostBox non lus) - voir TibiSuite.SetMinimapBadge
+  local badge = CreateFrame("Frame", nil, minimapBtn, "BackdropTemplate")
+  badge:SetSize(16, 14)
+  badge:SetPoint("TOPRIGHT", minimapBtn, "TOPRIGHT", 2, -4)
+  badge:SetFrameLevel(minimapBtn:GetFrameLevel() + 2)
+  badge:SetBackdrop(MakeBackdrop(2))
+  badge:SetBackdropColor(0.75, 0.15, 0.15, 0.95)
+  badge:SetBackdropBorderColor(0, 0, 0, 0.8)
+  local badgeText = badge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  badgeText:SetPoint("CENTER")
+  badgeText:SetTextColor(1, 1, 1)
+  badge.text = badgeText
+  badge:Hide()
+  minimapBtn.badge = badge
 
   -- ── Position initiale ─────────────────────────────────────────
   SetMinimapPos(TibiSuiteDB.mmAngle or 200)
@@ -1552,6 +1745,9 @@ local INDIVIDUAL_MM_BTNS = {
   "LibDBIcon10_MiniHub",     -- MiniHub (bouton maître LibDBIcon)
   "LibDBIcon10_XPBar",       -- XPBar (si présent)
   "SkillTrackerMinimapBtn",  -- SkillTracker
+  "PostBoxMinimapBtn",       -- PostBox (mode standalone uniquement)
+  "RepBarMinimapBtn",        -- RepBar (mode standalone uniquement)
+  "LairLensMinimapBtn",      -- LairLens (mode standalone uniquement)
 }
 
 local function HideIndividualMinimapButtons()
@@ -1564,7 +1760,16 @@ local function HideIndividualMinimapButtons()
       -- pour éviter les doublons de boutons minimap tant que TibiSuite est actif.
       if not btn.__tibiSuiteHooked then
         btn.__tibiSuiteHooked = true
-        btn:HookScript("OnShow", function(self) self:Hide() end)
+        -- PIEGE REEL, CONFIRME EN JEU (ADDON_ACTION_FORBIDDEN "SpellStopCasting"
+        -- des la connexion, avant toute interaction) : ces boutons appartiennent
+        -- a d'autres addons/librairies (LibDBIcon...) parentes sur la minicarte.
+        -- Appeler self:Hide() DIRECTEMENT dans leur script OnShow execute notre
+        -- code de facon synchrone dans une pile d'appels qui ne nous appartient
+        -- pas, ce qui peut la contaminer. On differe via C_Timer.After(0, ...)
+        -- pour agir dans un tick propre, comme pour MiniHub (voir MiniHub.lua).
+        btn:HookScript("OnShow", function(self)
+          C_Timer.After(0, function() self:Hide() end)
+        end)
       end
     end
   end
@@ -1587,21 +1792,28 @@ local function ToggleBar()
 end
 
 -- ================================================================
--- ECHAP : fermer la fenetre du module ET la barre TibiSuite
+-- ECHAP : fermer la fenetre du module
 -- ----------------------------------------------------------------
--- Objectif : quand une fenetre de module est ouverte, Echap la ferme et
--- referme aussi la barre TibiSuite (on quitte l'addon et la suite d'un
--- coup). Methode SANS TAINT : on capte Echap directement sur la frame
--- (OnKeyDown + SetPropagateKeyboardInput), exactement comme le font deja
--- certains modules (DgnTracker, RenTracker...). En consommant Echap au
--- niveau de la fenetre, on n'appelle jamais le menu Blizzard securise
--- (ToggleGameMenu), donc aucune action protegee n'est bloquee.
+-- HISTORIQUE (piege reel, confirme en jeu par /etrace) : la premiere version
+-- captait Echap via OnKeyDown + SetPropagateKeyboardInput sur chaque fenetre,
+-- pour aussi refermer la barre TibiSuite au meme moment. Ca fonctionnait seul,
+-- mais des qu'un AUTRE addon (ex. un addon de chat) reagit LUI AUSSI a la
+-- meme touche Echap physique avec du code insecure, les deux executions se
+-- melangent dans le meme tick, et l'annulation native de sort/ciblage que
+-- Blizzard tente systematiquement sur Echap se fait bloquer
+-- (ADDON_ACTION_FORBIDDEN "SpellStopCasting"/"SpellStopTargeting") - meme a
+-- l'arret, sans sort ni ciblage en cours. Le fautif rapporte peut etre
+-- TibiSuite alors que l'origine est un autre addon : les deux partagent le
+-- meme risque des qu'ils touchent Echap eux-memes.
 --
--- IMPORTANT : ne PAS ajouter ces fenetres a UISpecialFrames et ne PAS
--- hooker leur OnHide pour fermer la barre : ce hook s'executerait pendant
--- la fermeture securisee declenchee par Echap et contaminerait la suite
--- (« action reservee a l'IU de Blizzard »). Ici tout se fait avant, dans
--- OnKeyDown, cote insecure pur.
+-- SOLUTION ROBUSTE : ne plus JAMAIS executer de code a nous en reaction
+-- directe a la touche Echap. On utilise UNIQUEMENT UISpecialFrames, le
+-- mecanisme natif de Blizzard : c'est Blizzard qui ferme la fenetre lui-meme,
+-- dans son propre contexte protege, donc aucune interference possible avec
+-- ce qu'un autre addon fait sur la meme touche. Repli assume : impossible de
+-- refermer la barre TibiSuite en meme temps (aucun OnHide/OnKeyDown ne doit
+-- etre ajoute sur ces fenetres - c'est exactement la combinaison qui causait
+-- le tout premier blocage trouve sur LegTracker).
 --
 -- Les elements permanents (XPBar, MiniHub) n'ont pas escClose : ce ne sont
 -- pas des fenetres a fermer avec Echap.
@@ -1609,6 +1821,8 @@ end
 
 -- Masque entierement la barre TibiSuite (et sa pastille / son popup de
 -- recherche). Reouvrable via le bouton minimap ou le compartiment d'addons.
+-- N'est plus appelee automatiquement par Echap (voir plus haut) ; reste
+-- utilisee ailleurs (bouton fermer de la barre, etc.).
 HideBarUI = function()
   if not barFrame then return end
   if barFrame:IsShown() or (barFrame._pill and barFrame._pill:IsShown()) then
@@ -1620,30 +1834,15 @@ HideBarUI = function()
   end
 end
 
--- Cable la fermeture par Echap sur la fenetre d'un module (une seule fois).
--- OnKeyDown : sur ESCAPE, on consomme la touche (propagate false => le menu
--- Blizzard ne s'ouvre pas), on ferme proprement la fenetre du module (via sa
--- fonction Toggle si dispo, pour garder son etat) puis on masque la barre.
--- Les autres touches sont laissees passer (propagate true).
+-- Enregistre la fenetre d'un module dans UISpecialFrames (une seule fois) :
+-- Echap la ferme via le mecanisme natif de Blizzard, sans qu'aucun code de
+-- TibiSuite ne s'execute en reponse a la touche.
 WireEscapeFor = function(mod)
   if not mod or not mod.escClose then return end
   local f = _G[mod.frameGlobal]
   if not f or f.__tibiEscHooked then return end
   f.__tibiEscHooked = true
-  if f.EnableKeyboard then f:EnableKeyboard(true) end
-  if f.SetPropagateKeyboardInput then f:SetPropagateKeyboardInput(true) end
-  f:HookScript("OnKeyDown", function(self, key)
-    if key == "ESCAPE" then
-      if self.SetPropagateKeyboardInput then self:SetPropagateKeyboardInput(false) end
-      if self:IsShown() then
-        local fn = _G[mod.toggleFn]
-        if type(fn) == "function" then fn() else self:Hide() end
-      end
-      HideBarUI()
-    else
-      if self.SetPropagateKeyboardInput then self:SetPropagateKeyboardInput(true) end
-    end
-  end)
+  tinsert(UISpecialFrames, mod.frameGlobal)
 end
 
 -- Passe unique : cable la fermeture par Echap de toutes les fenetres deja
@@ -1752,7 +1951,7 @@ SlashCmdList["TIBISUITE"] = function(msg)
 
   elseif msg == "reset" then
     -- Recentre la barre (secours si elle a été perdue hors écran)
-    TibiSuiteCharDB.barPos = { point = "CENTER", x = 0, y = -300 }
+    TibiSuiteCharDB.barPos = CopyDefaultBarPos()
     if barFrame then
       RestoreBarPos()
       barFrame:Show()
@@ -1812,11 +2011,26 @@ SlashCmdList["TIBISUITE"] = function(msg)
     if TibiSuite.OpenModulePanel then TibiSuite.OpenModulePanel()
     else print("|cFFC41F3BTibiSuite|r : panneau des modules indisponible (faites |cFFFFD700/reload|r).") end
 
+  elseif msg == "stats" then
+    -- Ouvre directement l'onglet Stats, comme un clic sur sa vignette dans la barre
+    local statsMod
+    for _, mod in ipairs(MODULES) do
+      if mod.key == "Stats" then statsMod = mod; break end
+    end
+    if statsMod then
+      if barFrame and not barFrame:IsShown() then
+        barFrame:Show()
+        TibiSuiteCharDB.barOpen = true
+      end
+      OnTabClick(statsMod)
+    end
+
   elseif msg == "help" or msg == "?" then
     print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " - commandes :")
     print("  |cFFFFD700/ts|r : afficher / masquer la barre")
     print("  |cFFFFD700/ts config|r : panneau d'options")
     print("  |cFFFFD700/ts modules|r : activer / désactiver les modules (cases à cocher)")
+    print("  |cFFFFD700/ts stats|r : ouvrir directement l'onglet Stats")
     print("  |cFFFFD700/ts openall|r / |cFFFFD700closeall|r : tout ouvrir / fermer")
     print("  |cFFFFD700/ts lock|r : verrouiller / déverrouiller")
     print("  |cFFFFD700/ts vertical|r : basculer horizontale / verticale")
@@ -1896,6 +2110,59 @@ function TibiSuite.IsModuleEnabled(key)
   return (TibiSuiteDB.enabledModules and TibiSuiteDB.enabledModules[key]) and true or false
 end
 
+-- ============================================================================
+-- BADGE NUMERIQUE SUR UN ONGLET (ex: nombre de courriers PostBox en attente)
+-- API publique : n'importe quel module peut appeler TibiSuite.SetTabBadge
+-- (aucun effet si le module absent du catalogue ou barre pas encore construite -
+-- le module doit retenter apres son propre evenement de rafraichissement).
+-- ============================================================================
+function TibiSuite.SetTabBadge(key, count)
+  count = tonumber(count) or 0
+  for i, mod in ipairs(MODULES) do
+    if mod.key == key then
+      local btn = tabButtons[i]
+      if not btn then return end
+      if not btn.badge then
+        local b = CreateFrame("Frame", nil, btn, "BackdropTemplate")
+        b:SetSize(16, 14)
+        b:SetPoint("TOPRIGHT", btn, "TOPRIGHT", 5, 5)
+        b:SetFrameLevel(btn:GetFrameLevel() + 2)
+        b:SetBackdrop(MakeBackdrop(2))
+        b:SetBackdropColor(0.75, 0.15, 0.15, 0.95)
+        b:SetBackdropBorderColor(0, 0, 0, 0.8)
+        local t = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        t:SetPoint("CENTER")
+        t:SetTextColor(1, 1, 1)
+        b.text = t
+        btn.badge = b
+      end
+      if count > 0 then
+        btn.badge.text:SetText(count > 99 and "99+" or tostring(count))
+        btn.badge:Show()
+      else
+        btn.badge:Hide()
+      end
+      return
+    end
+  end
+end
+
+-- Badge sur l'icone minicarte PRINCIPALE de la suite (visible meme barre
+-- repliee/fermee - contrairement a SetTabBadge qui vit sur l'onglet, donc
+-- seulement visible barre ouverte). Un seul compteur partage pour l'instant
+-- (PostBox est le seul consommateur) ; a generaliser en agregat par cle si
+-- un second module en a besoin un jour.
+function TibiSuite.SetMinimapBadge(count)
+  if not minimapBtn or not minimapBtn.badge then return end
+  count = tonumber(count) or 0
+  if count > 0 then
+    minimapBtn.badge.text:SetText(count > 99 and "99+" or tostring(count))
+    minimapBtn.badge:Show()
+  else
+    minimapBtn.badge:Hide()
+  end
+end
+
 -- API appelee par chaque module a son chargement : il s'inscrit comme onglet de
 -- la barre unifiee et dans la recherche globale existante (RegisterSearch).
 --   spec = { key=, label=, accent={r,g,b}, onOpen=fn, onOptions=fn, searchProvider=fn }
@@ -1938,6 +2205,26 @@ local function LoadEnabledModules()
       end
     end
   end
+
+  -- Migration ponctuelle : PostBox a rejoint le catalogue APRES que la table
+  -- enabledModules existe deja pour les utilisateurs de longue date - sa cle
+  -- "Post" n'y a donc jamais ete ecrite, ce qui la rend indiscernable ici
+  -- d'un module explicitement decoche (SetModuleEnabled efface la cle plutot
+  -- que d'ecrire false ; il n'existe pas de troisieme etat "jamais configure"
+  -- dans ce modele de donnees). On l'active une seule fois, comme au tout
+  -- premier lancement de la suite (cf. commentaire ci-dessus) ; le flag
+  -- empeche de re-forcer "actif" si l'utilisateur decoche PostBox par la
+  -- suite. NE PAS generaliser ceci a une boucle sur tout le catalogue : cela
+  -- reactiverait a tort n'importe quel module deja decoche par un
+  -- utilisateur existant, faute de pouvoir distinguer "jamais configure" de
+  -- "explicitement desactive" avec les donnees actuelles.
+  if not TibiSuiteDB.postBoxEnableMigrated then
+    TibiSuiteDB.postBoxEnableMigrated = true
+    if TibiSuiteDB.enabledModules.Post == nil then
+      TibiSuiteDB.enabledModules.Post = true
+    end
+  end
+
   for _, mod in ipairs(MODULES) do
     if TibiSuiteDB.enabledModules[mod.key] then
       LoadModule(mod)   -- deja encapsule dans pcall
@@ -2027,6 +2314,10 @@ end
 local evFrame = CreateFrame("Frame")
 evFrame:RegisterEvent("ADDON_LOADED")
 evFrame:RegisterEvent("PLAYER_LOGIN")
+-- Meme evenement natif que l'icone de courrier de la minicarte Blizzard :
+-- se declenche exactement quand HasNewMail() change, sans avoir a sonder
+-- en boucle. Pilote la pastille "courrier non lu" sur la vignette PostBox.
+evFrame:RegisterEvent("UPDATE_PENDING_MAIL")
 
 evFrame:SetScript("OnEvent", function(_, event, arg1)
 
@@ -2109,5 +2400,17 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     print("  |cFFFFD700/ts|r afficher / masquer la barre    |cFFFFD700/ts modules|r activer / désactiver les modules")
     print("  |cFFFFD700/ts config|r options    |cFFFFD700/ts openall|r / |cFFFFD700closeall|r tout ouvrir / fermer")
     print("  |cFFFFD700/ts lock|r verrouiller    |cFFFFD700/ts vertical|r orientation    |cFFFFD700/ts help|r aide complète")
+
+    -- Rappel du site officiel, 10s apres le login. Affiche UNIQUEMENT ici
+    -- (le core) quand il est present : chaque module verifie HasCore() et se
+    -- tait dans ce cas, pour eviter que le meme message apparaisse jusqu'a
+    -- 12 fois (une par module) au lieu d'une seule.
+    C_Timer.After(10, function()
+      print("|cFFC41F3BTibiSuite|r : plus d'infos sur |cFFFFD700https://www.tibiscui.fr|r")
+    end)
+
+  -- ── UPDATE_PENDING_MAIL : courrier non lu apparu/disparu ──────
+  elseif event == "UPDATE_PENDING_MAIL" then
+    UpdateTabHighlights()
   end
 end)

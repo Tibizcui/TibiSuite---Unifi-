@@ -164,30 +164,6 @@ local function acquireNote(fontObj)
 end
 
 -- ================================================================
--- TOOLTIP ENRICHI : liste des persos possedant un metier donne
--- ================================================================
-local function AttachProfTooltip(row, profName, aggregateEntry)
-  row:SetScript("OnEnter", function(s)
-    GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
-    GameTooltip:AddLine(accHex() .. profName .. "|r")
-    if aggregateEntry then
-      local n = aggregateEntry.count
-      local label = (n == 1) and L.CHARS_ONE or L.CHARS_MANY
-      GameTooltip:AddLine(L.KNOWN_BY .. " " .. string.format(label, n), 0.8, 0.85, 0.9)
-      GameTooltip:AddLine(" ")
-      for _, c in ipairs(aggregateEntry.chars) do
-        local tag = c.imported and ("  |cFF888888(" .. L.IMPORTED_TAG .. ")|r") or ""
-        local nm  = c.char .. " |cFF666666-|r " .. c.realm
-        GameTooltip:AddDoubleLine(nm .. tag, c.pct .. "%",
-          0.9, 0.9, 0.9, ACC[1], ACC[2], ACC[3])
-      end
-    end
-    GameTooltip:Show()
-  end)
-  row:SetScript("OnLeave", function() GameTooltip:Hide() end)
-end
-
--- ================================================================
 -- CONSTRUCTION DU CONTENU (appelee a chaque refresh)
 -- ================================================================
 local yTop = -6
@@ -249,137 +225,271 @@ local function sortedLineIDs(prof)
   return ids
 end
 
--- Affiche un metier : entete + une barre par extension (ou barre globale
--- si le detail n'est pas encore charge).
-local function renderProfession(prof, aggregate)
-  local overall = ST.ProfessionOverallPercent(prof)
-  local head = placeHeader(accHex() .. (prof.name or "?") .. "|r   |cFFBBBBBB" .. overall .. "%|r", 6)
-  local aggEntry
-  if aggregate then aggEntry = aggregate[prof.name] end
-  AttachProfTooltip(head, prof.name or "?", aggEntry)
+-- ================================================================
+-- BASCULE DE VUE : Extension en cours / Toutes les extensions / Compte
+-- ================================================================
+local METIER_VIEWS = { "current", "all", "account" }
+local function metierViewLabel(v)
+  if v == "current" then return L.METIER_VIEW_CURRENT
+  elseif v == "all" then return L.METIER_VIEW_ALL
+  else return L.METIER_VIEW_ACCOUNT end
+end
 
-  local ids = sortedLineIDs(prof)
-  if #ids > 0 then
+-- Largeur auto (mesuree au texte, meme principe que placeTodoChips) : ces 3
+-- libelles sont trop longs pour un partage a largeur fixe sur les 300px du
+-- panneau ("Toutes les extensions" deborderait un bouton de largeur fixe et
+-- chevaucherait son voisin). Passe a la ligne si la largeur cumulee depasse
+-- le panneau.
+local function placeMetierViewSwitch()
+  local sel = ST.settings.metierView or "current"
+  local rowH, gap, maxW = 24, 4, 292
+  local x, rowY = 4, Y
+  for _, v in ipairs(METIER_VIEWS) do
+    local tab = acquireTab()
+    local text = metierViewLabel(v)
+    local selected = (v == sel)
+    tab._label:SetText(text)
+    local w = math.min(maxW, math.max(60, (tab._label:GetStringWidth() or 60) + 20))
+    if x + w > maxW + 4 and x > 4 then
+      rowY = rowY - (rowH + gap)
+      x = 4
+    end
+    tab:ClearAllPoints()
+    tab:SetPoint("TOPLEFT", content, "TOPLEFT", x, rowY)
+    tab:SetSize(w, rowH)
+    if selected then
+      tab:SetBackdropColor(ACC[1] * 0.30, ACC[2] * 0.30, ACC[3] * 0.30, 0.95)
+      tab:SetBackdropBorderColor(ACC[1], ACC[2], ACC[3], 1.0)
+      tab._acc:SetVertexColor(ACC[1], ACC[2], ACC[3], 1.0)
+      tab._label:SetText(accHex() .. text .. "|r")
+    else
+      tab:SetBackdropColor(0.05, 0.05, 0.06, 0.85)
+      tab:SetBackdropBorderColor(0.25, 0.25, 0.28, 0.5)
+      tab._acc:SetVertexColor(0.3, 0.3, 0.3, 0.4)
+      tab._label:SetText("|cFF999999" .. text .. "|r")
+    end
+    tab:SetScript("OnClick", function()
+      ST.settings.metierView = v
+      ST.RefreshUI()
+    end)
+    x = x + w + gap
+  end
+  Y = rowY - (rowH + gap)
+end
+
+-- Detail "X <extension>, Y <extension>..." quand le total de connaissances
+-- non depensees vient de PLUSIEURS extensions a la fois - evite de confondre
+-- ce total (une monnaie a depenser) avec le "X/40" d'un arbre de
+-- specialisation (qui est la progression DEJA allouee dans cet arbre, un
+-- nombre totalement different). Confirme via /skt kpdump : numAvailable est
+-- bien la bonne donnee, juste ambigue sans ce detail.
+local function KPBreakdown(prof)
+  local parts = {}
+  for id, ln in pairs(prof.lines or {}) do
+    if ln.kp and ln.kp > 0 then
+      local idx = ST.NameToIndex(ln.exp)
+      local label = ST.BucketMeta(idx or "other")
+      parts[#parts + 1] = { idx = idx or -1, text = ln.kp .. " " .. label }
+    end
+  end
+  if #parts <= 1 then return nil end
+  table.sort(parts, function(a, b) return a.idx > b.idx end)
+  local strs = {}
+  for _, p in ipairs(parts) do strs[#strs + 1] = p.text end
+  return table.concat(strs, ", ")
+end
+
+-- ================================================================
+-- VUE "EXTENSION EN COURS" (tache 4.2) : une barre cur/max par metier
+-- pour l'extension active du client (Midnight par defaut, calcule via
+-- GetExpansionLevel - jamais code en dur : suit automatiquement le client),
+-- points de connaissance non depenses, alerte visuelle si la concentration
+-- d'un metier principal est pleine.
+-- ================================================================
+local function renderCurrentExtension(rec)
+  local curIdx = (GetExpansionLevel and GetExpansionLevel()) or 11
+  local _, full, col = ST.BucketMeta(curIdx)
+  placeHeader(UI.Hex(col[1], col[2], col[3]) .. full .. "|r", 6)
+
+  local profs = {}
+  if rec and type(rec.professions) == "table" then
+    for _, p in pairs(rec.professions) do profs[#profs + 1] = p end
+  end
+  local hasArch = rec and rec.archaeology ~= nil
+  if #profs == 0 and not hasArch then
+    placeNote(L.NO_PROFESSIONS, 10)
+    return
+  end
+  table.sort(profs, function(a, b)
+    local ap, bp = a.isPrimary and true or false, b.isPrimary and true or false
+    if ap ~= bp then return ap end
+    return (a.name or "") < (b.name or "")
+  end)
+
+  for _, prof in ipairs(profs) do
+    local curLine
+    for _, ln in pairs(prof.lines or {}) do
+      if ST.NameToIndex(ln.exp) == curIdx then curLine = ln; break end
+    end
+    if curLine then
+      placeBar(curLine.cur, curLine.max, prof.name or "?", 12, function() ST.OpenProfession(prof) end)
+      -- Detail du palier courant, seulement s'il differe du total (evite de
+      -- repeter le meme nombre deux fois quand tout le kp vient de ce palier).
+      if curLine.kp and curLine.kp > 0 and curLine.kp ~= prof.kp then
+        placeNote("|cFFFFD700" .. string.format(L.KP_TIER, curLine.kp) .. "|r", 18)
+      end
+    elseif prof.base then
+      placeBar(prof.base.cur, prof.base.max, prof.name or "?", 12, function() ST.OpenProfession(prof) end)
+      placeNote(L.OPEN_HINT, 18)
+    else
+      placeNote((prof.name or "?") .. "  " .. L.NO_DATA, 12)
+    end
+    -- Points de connaissance non depenses (acquis), cumules sur TOUTES les
+    -- extensions du metier - pas seulement le palier courant. Detail par
+    -- extension affiche quand plusieurs y contribuent (evite la confusion
+    -- avec le "X/40" d'un arbre de specialisation, qui est un tout autre
+    -- nombre : la progression deja allouee, pas la reserve non depensee).
+    if prof.kp and prof.kp > 0 then
+      local txt = "|cFFFFD700" .. string.format(L.KP_UNSPENT, prof.kp) .. " " .. L.KP_LABEL .. "|r"
+      local breakdown = KPBreakdown(prof)
+      if breakdown then txt = txt .. "  |cFF888888(" .. breakdown .. ")|r" end
+      placeNote(txt, 18)
+    end
+    if prof.isPrimary and prof.conc and prof.conc.max and prof.conc.max > 0 then
+      local capped = prof.conc.cur >= prof.conc.max
+      local wc = capped and UI.C.WARN or UI.C.OK
+      placeNote(UI.Hex(wc[1], wc[2], wc[3]) .. L.CONCENTRATION .. " " .. prof.conc.cur .. "/" .. prof.conc.max
+        .. (capped and (" " .. L.CONC_FULL_TAG) or "") .. "|r", 18)
+    end
+  end
+
+  if hasArch then
+    local a = rec.archaeology
+    placeNote("|cFFAAAAAA" .. L.ARCHAEOLOGY .. "|r", 6)
+    placeBar(a.cur, a.max, a.name or L.ARCHAEOLOGY, 12)
+  end
+end
+
+-- ================================================================
+-- VUE "TOUTES LES EXTENSIONS" (tache 4.3) : une ligne compacte par metier
+-- (barre de completion globale + "X/N au max"), depliable au clic pour
+-- montrer le detail par extension (vert = maxe, or = en cours). Pas de
+-- frise de micro-barres : une barre par extension possedee, au pire une
+-- douzaine de lignes.
+-- ================================================================
+local EXT_TOTAL = 0
+for _ in pairs(ST.EXT_KEY) do EXT_TOTAL = EXT_TOTAL + 1 end
+
+local function professionMaxedCount(prof)
+  local n = 0
+  for _, ln in pairs(prof.lines or {}) do
+    if ST.Percent(ln.cur, ln.max) >= 100 then n = n + 1 end
+  end
+  return n
+end
+
+local expandedProfs = {}  -- etat d'UI local (non persiste) : nom de metier -> deplie ?
+
+local function renderProfessionAllExpansions(prof)
+  local overall = ST.ProfessionOverallPercent(prof)
+  local maxedN = professionMaxedCount(prof)
+  local name = prof.name or "?"
+  local isOpen = expandedProfs[name]
+  local bar = placeBar(overall, 100, nil, 12, function()
+    expandedProfs[name] = not isOpen
+    ST.RefreshUI()
+  end)
+  local glyph = isOpen and "-" or "+"
+  local kpTag = (prof.kp and prof.kp > 0)
+    and ("   |cFFFFD700" .. string.format(L.KP_UNSPENT, prof.kp) .. "|r") or ""
+  bar._txt:SetText(glyph .. " " .. accHex() .. name .. "|r   |cFFBBBBBB" .. overall .. "%|r   |cFF888888"
+    .. maxedN .. "/" .. EXT_TOTAL .. " " .. L.MAXED_SHORT .. "|r" .. kpTag)
+
+  if isOpen then
     local hideMaxed = ST.settings.hideMaxed
+    local ids = sortedLineIDs(prof)
+    local shownAny = false
     for i, id in ipairs(ids) do
       local ln = prof.lines[id]
       local pct = ST.Percent(ln.cur, ln.max)
       if not (hideMaxed and pct >= 100) then
+        shownAny = true
         local label = ST.ExpansionLabel(id, i, i == #ids)
-        placeBar(ln.cur, ln.max, label, 16)
+        local w = placeBar(ln.cur, ln.max, label, 24)
+        local c = (pct >= 100) and UI.C.OK or UI.C.GOLD
+        w._fill:SetColorTexture(c[1], c[2], c[3], (pct >= 100) and 1.0 or 0.85)
+        w:SetBackdropBorderColor(c[1] * 0.9, c[2] * 0.9, c[3] * 0.9, 0.9)
       end
     end
-  elseif prof.base then
-    -- Detail par extension pas encore charge : barre globale + indice.
-    placeBar(prof.base.cur, prof.base.max, L.OVERALL, 16)
-    placeNote(L.OPEN_HINT, 18)
+    if not shownAny then placeNote(L.NO_DATA, 24) end
   end
 end
 
--- Index d'agregat par nom de metier (pour les tooltips).
-local function aggregateIndex()
-  local out = {}
-  for _, entry in ipairs(ST.BuildAggregate()) do
-    out[entry.name] = entry
+local function renderAllExtensions(rec)
+  local profs = {}
+  if rec and type(rec.professions) == "table" then
+    for _, p in pairs(rec.professions) do profs[#profs + 1] = p end
   end
-  return out
-end
-
--- Selecteur d'extension : grille d'onglets colores (sigles), TOUTES les
--- extensions affichees en permanence. Celles sans donnee pour ce perso sont
--- grisees mais restent cliquables. Clic -> filtre l'affichage.
-local TAB_W, TAB_H, TAB_GAP = 66, 22, 4
-local function placeTabs(list, sel, hasData)
-  local perRow = math.max(1, math.floor((300 + TAB_GAP) / (TAB_W + TAB_GAP)))
-  local rowStartY = Y
-  local i = 0
-  for _, bucket in ipairs(list) do
-    local colIdx = i % perRow
-    local rowIdx = math.floor(i / perRow)
-    local x = 4 + colIdx * (TAB_W + TAB_GAP)
-    local y = rowStartY - rowIdx * (TAB_H + TAB_GAP)
-    local label, full, c = ST.BucketMeta(bucket)
-    local owned = hasData[bucket] and true or false
-    local tab = acquireTab()
-    tab:ClearAllPoints()
-    tab:SetPoint("TOPLEFT", content, "TOPLEFT", x, y)
-    tab:SetSize(TAB_W, TAB_H)
-
-    local selected = (bucket == sel)
-    if selected then
-      tab:SetBackdropColor(c[1] * 0.30, c[2] * 0.30, c[3] * 0.30, 0.95)
-      tab:SetBackdropBorderColor(c[1], c[2], c[3], 1.0)
-    elseif owned then
-      tab:SetBackdropColor(c[1] * 0.12, c[2] * 0.12, c[3] * 0.12, 0.92)
-      tab:SetBackdropBorderColor(c[1] * 0.5, c[2] * 0.5, c[3] * 0.5, 0.7)
-    else
-      -- extension sans donnee : grisee
-      tab:SetBackdropColor(0.05, 0.05, 0.06, 0.85)
-      tab:SetBackdropBorderColor(0.25, 0.25, 0.28, 0.5)
+  if #profs == 0 then
+    placeNote(L.NO_PROFESSIONS, 10)
+    return
+  end
+  table.sort(profs, function(a, b)
+    local ap, bp = a.isPrimary and true or false, b.isPrimary and true or false
+    if ap ~= bp then return ap end
+    return (a.name or "") < (b.name or "")
+  end)
+  local hideMaxProf = ST.settings.hideMaxProf
+  local shownAny = false
+  for _, prof in ipairs(profs) do
+    if not (hideMaxProf and professionMaxedCount(prof) == EXT_TOTAL) then
+      shownAny = true
+      renderProfessionAllExpansions(prof)
     end
-
-    local la = selected and 1.0 or (owned and 0.75 or 0.30)
-    tab._acc:SetVertexColor(c[1], c[2], c[3], la)
-    if owned or selected then
-      tab._label:SetText(UI.Hex(c[1], c[2], c[3]) .. label .. "|r")
-    else
-      tab._label:SetText("|cFF666666" .. label .. "|r")
-    end
-
-    local capturedBucket = bucket
-    tab:SetScript("OnClick", function()
-      ST.settings.selectedExt = capturedBucket
-      ST.RefreshUI()
-    end)
-    tab:SetScript("OnEnter", function(s)
-      GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
-      GameTooltip:AddLine(full, c[1], c[2], c[3])
-      if not owned then GameTooltip:AddLine(L.NO_DATA, 0.6, 0.6, 0.6) end
-      GameTooltip:Show()
-    end)
-    tab:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    i = i + 1
   end
-  local rows = math.max(1, math.ceil(i / perRow))
-  Y = rowStartY - rows * (TAB_H + TAB_GAP) - 6
+  if not shownAny then placeNote(L.NO_DATA, 10) end
 end
 
--- Puces de filtre par personnage pour la section "A finir". Multi-selection :
--- cliquer une puce l'ajoute/retire du filtre. Aucune puce active = tous affiches.
-local CHIP_H, CHIP_GAP = 20, 4
-local function placeTodoChips(chars, sel, anySel)
+-- Puces de filtre par EXTENSION pour la section "A finir" (multi-selection,
+-- meme convention que le filtre personnage : aucune puce active = tout
+-- affiche). N'affiche que les extensions qui ont reellement des paliers non
+-- finis - pas la liste complete des 12, pour rester utile plutot qu'un mur
+-- de puces. Largeur auto (meme principe que la bascule de vue plus haut).
+local CHIP_H, CHIP_GAP = 22, 4
+local function placeExtFilterChips(buckets, sel)
+  local anySel = next(sel) ~= nil
   local rowStartY = Y
   local x, rowIdx = 4, 0
-  for _, c in ipairs(chars) do
+  for _, bucket in ipairs(buckets) do
+    local label, full, c = ST.BucketMeta(bucket)
     local chip = acquireTab()
-    chip._label:SetText(c.char)
-    local w = math.min(140, (chip._label:GetStringWidth() or 40) + 18)
-    if x + w > 300 and x > 4 then rowIdx = rowIdx + 1; x = 4 end
+    chip._label:SetText(label)
+    local w = math.min(90, math.max(44, (chip._label:GetStringWidth() or 30) + 18))
+    if x + w > 296 and x > 4 then rowIdx = rowIdx + 1; x = 4 end
     chip:ClearAllPoints()
     chip:SetPoint("TOPLEFT", content, "TOPLEFT", x, rowStartY - rowIdx * (CHIP_H + CHIP_GAP))
     chip:SetSize(w, CHIP_H)
 
-    local active = (not anySel) or sel[c.key]
+    local active = (not anySel) or sel[bucket]
     if active then
-      chip:SetBackdropColor(ACC[1] * 0.18, ACC[2] * 0.18, ACC[3] * 0.18, 0.95)
-      chip:SetBackdropBorderColor(ACC[1], ACC[2], ACC[3], 0.9)
-      chip._acc:SetVertexColor(ACC[1], ACC[2], ACC[3], 0.9)
-      chip._label:SetText(accHex() .. c.char .. "|r")
+      chip:SetBackdropColor(c[1] * 0.30, c[2] * 0.30, c[3] * 0.30, 0.95)
+      chip:SetBackdropBorderColor(c[1], c[2], c[3], 1.0)
+      chip._acc:SetVertexColor(c[1], c[2], c[3], 1.0)
+      chip._label:SetText(UI.Hex(c[1], c[2], c[3]) .. label .. "|r")
     else
       chip:SetBackdropColor(0.05, 0.05, 0.06, 0.85)
       chip:SetBackdropBorderColor(0.25, 0.25, 0.28, 0.5)
       chip._acc:SetVertexColor(0.3, 0.3, 0.3, 0.4)
-      chip._label:SetText("|cFF777777" .. c.char .. "|r")
+      chip._label:SetText("|cFF777777" .. label .. "|r")
     end
 
-    local key = c.key
     chip:SetScript("OnClick", function()
-      sel[key] = (not sel[key]) or nil
+      sel[bucket] = (not sel[bucket]) or nil
       ST.RefreshUI()
     end)
     chip:SetScript("OnEnter", function(s)
       GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
-      GameTooltip:AddLine(c.char .. "  |cFF888888" .. c.realm .. "|r")
+      GameTooltip:AddLine(full, c[1], c[2], c[3])
       GameTooltip:Show()
     end)
     chip:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -605,117 +715,16 @@ function ST.RefreshUI()
   local name  = UnitName("player") or "?"
   local rec = ST.db.chars[realm] and ST.db.chars[realm][name]
 
-  -- ---- Section : personnage courant + selecteur d'extension ----
-  placeHeader(accHex() .. name .. "|r  |cFF888888" .. realm .. "|r", 4)
+  -- ---- Bandeau personnage commun (tache 2) + bascule de vue (tache 4.1) ----
+  placeHeader(UI.CharBannerText(), 4)
+  placeMetierViewSwitch()
 
-  local order, byBucket = ST.BuildExpansionGroups(rec)
-
-  -- Le perso possede-t-il au moins un metier ?
-  local hasProf = false
-  if rec and rec.professions then
-    for _ in pairs(rec.professions) do hasProf = true break end
-  end
-  local hasAny = hasProf or (rec and rec.archaeology ~= nil)
-
-  if #order > 0 then
-    -- On n'affiche QUE les extensions ou le perso a des donnees.
-    local hasData = {}
-    for _, b in ipairs(order) do hasData[b] = true end
-
-    -- Onglet selectionne : garde le choix s'il est valide, sinon le plus recent.
-    local sel = ST.settings.selectedExt
-    local valid = false
-    for _, b in ipairs(order) do if b == sel then valid = true break end end
-    if not valid then sel = order[1]; ST.settings.selectedExt = sel end
-
-    -- Selecteur d'extension : onglets colores des extensions possedees.
-    placeTabs(order, sel, hasData)
-
-    -- Contenu du palier selectionne : une barre par metier.
-    local _, full, col = ST.BucketMeta(sel)
-    placeHeader(UI.Hex(col[1], col[2], col[3]) .. full .. "|r", 6)
-
-    local entries = byBucket[sel] or {}
-    table.sort(entries, function(a, b) return (a.prof.name or "") < (b.prof.name or "") end)
-    if #entries == 0 then
-      placeNote(L.NO_DATA, 10)
-    else
-      -- Deux sous-groupes : principaux d'abord, secondaires ensuite.
-      local prim, sec = {}, {}
-      for _, e in ipairs(entries) do
-        if e.prof.isPrimary then prim[#prim + 1] = e else sec[#sec + 1] = e end
-      end
-      local hideMaxProf = ST.settings.hideMaxProf
-      local function renderList(list, headerText)
-        -- Filtre : masquer les metiers entierement au max si demande.
-        local shown = {}
-        for _, e in ipairs(list) do
-          if not (hideMaxProf and ST.ProfessionOverallPercent(e.prof) >= 100) then
-            shown[#shown + 1] = e
-          end
-        end
-        if #shown == 0 then return end
-        placeNote("|cFFAAAAAA" .. headerText .. "|r", 6)
-        for _, e in ipairs(shown) do
-          local prof = e.prof
-          placeBar(e.line.cur, e.line.max, prof.name or "?", 12,
-            function() ST.OpenProfession(prof) end)
-          -- Points de connaissance non depenses pour ce palier.
-          if e.line.kp and e.line.kp > 0 then
-            placeNote("|cFFFFD700" .. string.format(L.KP_TIER, e.line.kp) .. "|r", 16)
-          end
-          if e.isBase then placeNote(L.OPEN_HINT, 14) end
-        end
-      end
-      renderList(prim, L.PRIMARY)
-      renderList(sec, L.SECONDARY)
-    end
-  end
-
-  -- Archeologie : hors extension, affichee en permanence si apprise.
-  if rec and rec.archaeology then
-    placeNote("|cFFAAAAAA" .. L.ARCHAEOLOGY .. "|r", 6)
-    local a = rec.archaeology
-    placeBar(a.cur, a.max, a.name or L.ARCHAEOLOGY, 12)
-  end
-
-  -- Concentration & points de connaissance (metiers principaux).
-  if ST.settings.showMeta and rec and type(rec.professions) == "table" then
-    local metaRows = {}
-    for _, prof in pairs(rec.professions) do
-      if prof.isPrimary and (prof.conc or (prof.kp and prof.kp > 0)) then
-        metaRows[#metaRows + 1] = prof
-      end
-    end
-    table.sort(metaRows, function(a, b) return (a.name or "") < (b.name or "") end)
-    if #metaRows > 0 then
-      line(4)
-      placeHeader(accHex() .. L.META_TITLE .. "|r", 4)
-      for _, prof in ipairs(metaRows) do
-        local parts = {}
-        if prof.conc then
-          local capped = (prof.conc.max > 0) and (prof.conc.cur >= prof.conc.max)
-          local col = capped and "|cFFFF5555" or "|cFF00FF98"
-          parts[#parts + 1] = col .. L.CONCENTRATION .. " " .. prof.conc.cur .. "/" .. prof.conc.max
-            .. (capped and (" " .. L.CONC_FULL_TAG) or "") .. "|r"
-        end
-        if prof.kp and prof.kp > 0 then
-          parts[#parts + 1] = "|cFFFFD700" .. string.format(L.KP_UNSPENT, prof.kp) .. " " .. L.KP_LABEL .. "|r"
-        end
-        placeNote(accHex() .. (prof.name or "?") .. "|r   " .. table.concat(parts, "   |cFF555555/|r   "), 8)
-      end
-    end
-  end
-
-  if not hasAny then
-    placeNote(L.NO_PROFESSIONS, 8)
-  end
-
-  -- ---- Section : recapitulatif du compte ----
-  if ST.settings.showAllChars then
-    line(6)
-    placeHeader(accHex() .. L.SUMMARY_TITLE .. "|r", 4)
-
+  local metierView = ST.settings.metierView or "current"
+  if metierView == "current" then
+    renderCurrentExtension(rec)
+  elseif metierView == "all" then
+    renderAllExtensions(rec)
+  else -- "account"
     local chars = ST.BuildCharList()
     if #chars == 0 then
       placeNote(L.NO_DATA, 8)
@@ -776,10 +785,36 @@ function ST.RefreshUI()
     end
 
     -- Application du filtre : uniquement les paliers des persos coches.
-    local todo = {}
+    local todoByChar = {}
     for _, t in ipairs(todoAll) do
       local key = (t.realm or "") .. "\t" .. (t.char or "")
-      if sel[key] then todo[#todo + 1] = t end
+      if sel[key] then todoByChar[#todoByChar + 1] = t end
+    end
+
+    -- Filtre par extension (multi-selection, aucune case cochee = tout
+    -- affiche) : evite le mur de 18 paliers toutes extensions melangees.
+    -- Seules les extensions reellement presentes dans la liste sont
+    -- proposees, dans l'ordre le plus recent -> le plus ancien.
+    ST.settings.todoExtFilter = ST.settings.todoExtFilter or {}
+    local extSel = ST.settings.todoExtFilter
+    local bucketSeen, buckets = {}, {}
+    for _, t in ipairs(todoByChar) do
+      local b = t.idx or "other"
+      if not bucketSeen[b] then bucketSeen[b] = true; buckets[#buckets + 1] = b end
+    end
+    table.sort(buckets, function(a, b)
+      local na = (a == "other") and -1 or a
+      local nb = (b == "other") and -1 or b
+      return na > nb
+    end)
+    -- Purge des extensions qui ne sont plus proposees (donnees changees).
+    for b in pairs(extSel) do if not bucketSeen[b] then extSel[b] = nil end end
+
+    local todo = {}
+    local anyExtSel = next(extSel) ~= nil
+    for _, t in ipairs(todoByChar) do
+      local b = t.idx or "other"
+      if (not anyExtSel) or extSel[b] then todo[#todo + 1] = t end
     end
 
     placeHeader(accHex() .. L.TODO_TITLE .. "|r"
@@ -787,6 +822,11 @@ function ST.RefreshUI()
 
     -- Bouton-filtre (meme composant, avec recherche et tri par royaume).
     placeCharFilter(allChars, sel, "A finir : personnages", "Personnages suivis")
+
+    if #buckets > 1 then
+      placeNote("|cFFAAAAAA" .. L.TODO_EXT_FILTER .. "|r", 6)
+      placeExtFilterChips(buckets, extSel)
+    end
 
     if #todo == 0 then
       placeNote("|cFF66FF98" .. L.TODO_NONE .. "|r", 8)
@@ -836,11 +876,16 @@ local function BuildMainFrame()
   f:SetScript("OnDragStart", f.StartMoving)
   f:SetScript("OnDragStop", f.StopMovingOrSizing)
   f:SetClampedToScreen(true)
+
+  -- Fermeture par Echap via UISpecialFrames (mecanisme natif Blizzard) : voir
+  -- note detaillee dans TibiSuiteCore.lua (WireEscapeFor) - piege reel
+  -- confirme en jeu quand un autre addon intercepte lui aussi Echap.
+  tinsert(UISpecialFrames, "SkillTrackerMainFrame")
+
   f:Hide()
 
   -- Peau plate + liseré émeraude (#00FF98) : identite visuelle demandee.
   UI.SkinFrame(f, ACC, UI.C.BG)
-  UI.AddHeaderLogo(f, ST.LOGO)
 
   local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOP", 0, -14)
@@ -850,11 +895,12 @@ local function BuildMainFrame()
   sub:SetPoint("TOP", title, "BOTTOM", 0, -2)
   sub:SetText(L.PANEL_SUBTITLE)
 
-  -- Bouton options (roue) + fermer
-  local optBtn = UI.MakeButton(f, 66, 20, "")
-  optBtn._label:SetText(accHex() .. L.OPT_GENERAL .. "|r")
-  optBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", -26, -8)
-  optBtn:SetScript("OnClick", function() ST.OpenOptions() end)
+  -- Bouton Options : meme convention que le reste de la suite (bouton texte
+  -- flottant au-dessus de la fenetre, pose par le socle UI.AddHeaderControls).
+  UI.AddHeaderControls(f, {
+    accent = ACC,
+    onOptions = function() ST.OpenOptions() end,
+  })
 
   local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", 2, 2)
@@ -1105,7 +1151,7 @@ local optPanel
 local function BuildOptions()
   if optPanel then return end
   optPanel = UI.CreateOptionsPanel({
-    name = "SkillTrackerOptions", title = L.OPT_TITLE, accent = ACC, logo = ST.LOGO,
+    name = "SkillTrackerOptions", title = L.OPT_TITLE, accent = ACC,
   })
 
   optPanel:Section(L.OPT_GENERAL)
@@ -1126,15 +1172,9 @@ local function BuildOptions()
   optPanel:Check(L.OPT_HIDE_MAXPROF,
     function() return ST.settings.hideMaxProf end,
     function(v) ST.settings.hideMaxProf = v; ST.RefreshUI() end)
-  optPanel:Check(L.OPT_SHOW_ALLCHARS,
-    function() return ST.settings.showAllChars end,
-    function(v) ST.settings.showAllChars = v; ST.RefreshUI() end)
   optPanel:Check(L.OPT_SHOW_TODO,
     function() return ST.settings.showTodo end,
     function(v) ST.settings.showTodo = v; ST.RefreshUI() end)
-  optPanel:Check(L.OPT_SHOW_META,
-    function() return ST.settings.showMeta end,
-    function(v) ST.settings.showMeta = v; ST.RefreshUI() end)
   optPanel:Check(L.OPT_CONC_ALERT,
     function() return ST.settings.concAlert end,
     function(v) ST.settings.concAlert = v end)

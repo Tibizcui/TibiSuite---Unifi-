@@ -99,6 +99,44 @@ LegTrackerData.Extensions = {
     key = "Legion",
     label = "Legion",
     items = {
+      -- Pêcheur de Terradiance (Underlight Angler, itemID 133755) : canne à
+      -- pêche legendaire/artefact de Legion, ouverte a toutes les classes.
+      -- Chaine verifiee via Warcraft Wiki et Wowhead le 21/08/2026 (source
+      -- initiale du joueur : guide mamytwink.com) :
+      --   1. Haut fait prealable "Passons aux gros poissons" / "Bigger Fish
+      --      to Fry" (ID 10596) : pecher 18 poissons rares repartis sur
+      --      6 zones des Iles Brisees (Haut-Roc, Tornheim, Azsuna,
+      --      Val'sharah, Suramar, Grande Mer), chacun necessitant un appat
+      --      specifique prealable. Pas modelise en "trackers" ici (criteres
+      --      de haut fait, pas des objets qui restent dans les sacs).
+      --   2. Une fois le haut fait valide, pecher la "Perle lumineuse"
+      --      (itemID 133887) dans n'importe quel banc/eau libre des Iles
+      --      Brisees.
+      --   3. Quete "Perle lumineuse" (id 40960, demarree par l'objet) ->
+      --      remise a l'Archimage Khadgar a Dalaran (Cite violette).
+      --   4. Quete "La fontaine de Dalaran" (id 40961) -> Marcia Chase, pres
+      --      de la fontaine de Dalaran.
+      --   5. Quete "Frenesie de poisson" (id 41010) -> Nat Pagle, a la
+      --      fontaine de Dalaran ; scenario au Recif du Crepuscule, au large
+      --      de Val'sharah. Recompense finale : Pecheur de Terradiance.
+      -- /!\ Coordonnees precises (x/y) des PNJ a Dalaran non retrouvees de
+      --     facon fiable pour ce patch : laissees vides (pas de waypoint
+      --     TomTom propose) plutot que d'inventer des chiffres non verifies.
+      --     Le prerequis "competence de peche 800" cite par d'anciens guides
+      --     date du systeme de metiers de Legion ; sa pertinence exacte sur
+      --     le client actuel (apres plusieurs refontes des metiers) n'a pas
+      --     pu etre confirmee.
+      { itemID=133755, name="Pêcheur de Terradiance", classes=nil,
+        source="Canne a peche legendaire de Legion (toutes classes). Necessite le haut fait 'Passons aux gros poissons' (18 poissons rares des Iles Brisees), puis la peche d'une Perle lumineuse et la suite de quetes de Khadgar / Marcia Chase / Nat Pagle a Dalaran.",
+        quests = {
+          {id=40960, name="Perle lumineuse", npc="Archimage Khadgar", zone="Dalaran (Cite violette)"},
+          {id=40961, name="La fontaine de Dalaran", npc="Marcia Chase", zone="Dalaran (fontaine)"},
+          {id=41010, name="Frénésie de poisson", npc="Nat Pagle", zone="Dalaran (fontaine) -> Recif du Crepuscule, Val'sharah"},
+        },
+        trackers = {
+          {itemID=133887, name="Perle lumineuse", need=1},
+        },
+      },
       { itemID=132452, name="Secret de Sephuz", classes=nil, source="Objet légendaire Legion, obtenu via contenus Legion ou sources héritage selon disponibilité.", quests={}, trackers={} },
       { itemID=132443, name="Prydaz, chef-d'œuvre de Xavaric", classes=nil, source="Objet légendaire Legion, obtenu via contenus Legion ou sources héritage selon disponibilité.", quests={}, trackers={} },
       { itemID=132444, name="Foulée d'Aggramar", classes=nil, source="Objet légendaire Legion, obtenu via contenus Legion ou sources héritage selon disponibilité.", quests={}, trackers={} },

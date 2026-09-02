@@ -1,25 +1,20 @@
 ## Interface: 120100, 120007, 120005
-## Title: RepBar - |cFF9480FFMidnight|r
-## Title-frFR: RepBar - |cFF9480FFMidnight|r
+## Title: RepBar
+## Title-frFR: RepBar
 ## Notes: Barre de reputation avancee. Remplace la barre native, suit la faction par zone (via RenTracker) et bascule a la validation d'une quete.
 ## Notes-frFR: Barre de reputation avancee. Remplace la barre native, suit la faction par zone (delegue a RenTracker) et bascule a la validation d'une quete. Renom, amitie, paragon, systeme classique.
 ## Author: Tibiscui - Kirin Tor
-## Version: 5.0
+## Version: 6.0
 
 # ----------------------------------------------------------------
-# MODULE DE LA SUITE TibiSuite
+# MODULE DE LA SUITE TibiSuite - MODE DOUBLE (standalone ou integre)
 # ----------------------------------------------------------------
-# LoadOnDemand : charge uniquement si coche dans le panneau des modules.
-## LoadOnDemand: 1
-
-# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight) et
-# l'API TibiSuite.RegisterModule existent avant que ce module tourne.
-## Dependencies: TibiSuite
-
-# Lien SOUPLE vers RenTracker : s'il est present et charge AVANT nous, RepBar
-# reutilise ses donnees (zone des factions) et lui delegue le suivi par zone.
-# S'il est absent, RepBar fonctionne quand meme (affichage via API natives).
-## OptionalDeps: RenTracker
+# Pas de LoadOnDemand : ce module doit pouvoir se charger seul, sans le core.
+# Dependance SOUPLE sur TibiSuite (fusionnee avec l'OptionalDeps RenTracker
+# existant : une seule directive OptionalDeps par .toc). Voir
+# RepBar_Module.lua pour la detection a l'execution (HasCore()).
+## OptionalDeps: TibiSuite
+## Group: TibiSuite, RenTracker
 
 # SavedVariables propre au module : position, taille, options d'affichage.
 # Aucune donnee de progression ici (la reputation vit cote jeu).
@@ -28,7 +23,13 @@
 ## Category: TibiSuite - Tracker
 ## Category-frFR: TibiSuite - Tracker
 
-## IconTexture: Interface\AddOns\RepBar\medias\Logo
+## X-Website: https://www.tibiscui.fr
+
+## IconTexture: Interface\AddOns\RepBar\medias\TibiSuiteIcon
+
+# Copie embarquee du socle (no-op si le core en charge deja une version
+# egale ou superieure)
+Core\TibiSuiteUI.lua
 
 RepBar.lua
 RepBar_Module.lua

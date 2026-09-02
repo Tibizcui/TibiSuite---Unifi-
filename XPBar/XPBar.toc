@@ -1,14 +1,24 @@
 ## Interface: 120007, 120005
 ## Title: XPBar
+## Title-frFR: XPBar
 ## Notes: Barre XP avancée - Niveau, XP, Repos, Quêtes, Stats de session
 ## Author: Tibiscui - Kirin Tor
-## Version: 5.0
-## LoadOnDemand: 1
-## Dependencies: TibiSuite
+## Version: 6.0
+# MODE DOUBLE (standalone ou integre) : pas de LoadOnDemand (ce module doit
+# pouvoir se charger seul, sans le core) ; dependance SOUPLE sur TibiSuite.
+# Voir XPBar_Module.lua pour la detection a l'execution (HasCore()).
+## OptionalDeps: TibiSuite
+## Group: TibiSuite
 ## Category: TibiSuite - Tracker
 ## Category-frFR: TibiSuite - Tracker
+
+## X-Website: https://www.tibiscui.fr
 ## SavedVariables: XPBarDB
-## IconTexture: Interface\AddOns\XPBar\medias\Logo
+## IconTexture: Interface\AddOns\XPBar\medias\TibiSuiteIcon
+
+# Copie embarquee du socle (no-op si le core en charge deja une version
+# egale ou superieure)
+Core\TibiSuiteUI.lua
 
 XPBar.lua
 XPBar_Module.lua

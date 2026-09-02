@@ -50,5 +50,5 @@ ns:AddLocale("enUS", {
     UI_HEADER_CHAR        = "Character",
     UI_EMPTY              = "No character data yet. Log in on your alts to populate the account view.",
     UI_STALE              = "Data predates the last reset",
-    SLASH_HINT            = "Commands: /wc | /wc dump | /wc minimap | /wc debug",
+    SLASH_HINT            = "Commands: /wc | /wc options | /wc dump | /wc minimap | /wc debug",
 })

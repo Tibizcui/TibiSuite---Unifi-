@@ -23,7 +23,7 @@ local function BuildOptions()
   if panel then return panel end
   panel = ui.CreateOptionsPanel({
     name = "LegTrackerOptionsMidnight",
-    title = "|cFF9480FFLegTracker|r  Options", accent = ACCENT })
+    title = "LegTracker - Options", accent = ACCENT })
 
   panel:Section("Fenêtre")
   panel:Button("Ouvrir / fermer", function()
@@ -32,9 +32,15 @@ local function BuildOptions()
   panel:Slider("Échelle (%)", 70, 150, 5,
     function() return math.floor(((_G.LegTrackerDB and _G.LegTrackerDB.scale) or 1) * 100 + 0.5) end,
     function(v) if _G.LegTrackerDB then _G.LegTrackerDB.scale = v / 100 end; ApplyOpts() end)
+  panel:Slider("Opacité (%)", 40, 100, 5,
+    function() return math.floor(((_G.LegTrackerDB and _G.LegTrackerDB.alpha) or 0.97) * 100 + 0.5) end,
+    function(v) if _G.LegTrackerDB then _G.LegTrackerDB.alpha = v / 100 end; ApplyOpts() end)
   panel:Check("Verrouiller la fenêtre",
     function() return _G.LegTrackerDB and _G.LegTrackerDB.locked end,
     function(v) if _G.LegTrackerDB then _G.LegTrackerDB.locked = v end; ApplyOpts() end)
+  panel:Check("Afficher le bouton minimap",
+    function() return _G.LegTrackerDB and _G.LegTrackerDB.showMinimap ~= false end,
+    function(v) if _G.LegTrackerDB then _G.LegTrackerDB.showMinimap = v end; ApplyOpts() end)
   panel:Check("Ouvrir automatiquement au login",
     function() return _G.LegTrackerDB and _G.LegTrackerDB.autoOpen end,
     function(v) if _G.LegTrackerDB then _G.LegTrackerDB.autoOpen = v end end)
@@ -44,8 +50,49 @@ local function BuildOptions()
     function() return _G.LegTrackerDB and _G.LegTrackerDB.filters and _G.LegTrackerDB.filters.hideObtained end,
     function(v)
       if _G.LegTrackerDB then _G.LegTrackerDB.filters = _G.LegTrackerDB.filters or {}; _G.LegTrackerDB.filters.hideObtained = v end
+      local f = _G[FRAME]
+      if f and f.hideObtainedCheck then f.hideObtainedCheck:SetChecked(v) end
       Refresh()
     end)
+  panel:Check("Masquer les non-équipables",
+    function() return _G.LegTrackerDB and _G.LegTrackerDB.filters and _G.LegTrackerDB.filters.hideUnavailable end,
+    function(v)
+      if _G.LegTrackerDB then _G.LegTrackerDB.filters = _G.LegTrackerDB.filters or {}; _G.LegTrackerDB.filters.hideUnavailable = v end
+      Refresh()
+    end)
+  panel:Check("Masquer les objets legacy",
+    function() return _G.LegTrackerDB and _G.LegTrackerDB.filters and _G.LegTrackerDB.filters.hideLegacy end,
+    function(v)
+      if _G.LegTrackerDB then _G.LegTrackerDB.filters = _G.LegTrackerDB.filters or {}; _G.LegTrackerDB.filters.hideLegacy = v end
+      Refresh()
+    end)
+
+  panel:Section("Boutons flottants")
+  panel:Check("Masquer le bouton Options",
+    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "options") end,
+    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "options", v) end end,
+    "Masque le bouton Options qui deborde au-dessus de la fenetre. Meme masque, Maj+clic droit sur la fenetre l'ouvre.")
+  panel:Check("Masquer le champ Recherche",
+    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "search") end,
+    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "search", v) end end,
+    "Masque le champ Recherche qui deborde au-dessus de la fenetre.")
+
+  panel:Section("Réinitialisation")
+  panel:Button("Recentrer la fenêtre", function()
+    local f = _G[FRAME]
+    if not f then return end
+    LegTrackerDB.pos = {x = 0, y = 0}
+    f:ClearAllPoints()
+    f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+  end)
+  panel:Button("Taille par défaut", function()
+    local f = _G[FRAME]
+    if not f then return end
+    LegTrackerDB.width  = f.defaultW
+    LegTrackerDB.height = f.defaultH
+    f:SetSize(f.defaultW, f.defaultH)
+    Refresh()
+  end)
 
   panel:Note("Astuce : clic droit sur la vignette LegTracker dans la barre TibiSuite ouvre aussi ces options.")
   return panel

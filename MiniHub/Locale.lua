@@ -18,6 +18,8 @@ MiniHub = MiniHub or {}
 local enUS = {
     ADDON_SUBTITLE   = "Gathers your addon minimap icons into a single, tidy, collapsible container.",
     EMPTY            = "No button collected",
+    EMPTY_CONFLICT   = "%s already manages minimap buttons on its own - MiniHub steps aside.",
+    MSG_CONFLICT_LOGIN = "%s already manages minimap buttons - MiniHub stays out of the way (container hidden). Type /minihub to open it manually if you still want to use it.",
 
     -- Tooltips
     TT_LEFT_TOGGLE   = "Left-click: open / close",
@@ -111,6 +113,8 @@ local enUS = {
 local frFR = {
     ADDON_SUBTITLE   = "Regroupe les icones d'addon de la minicarte dans un conteneur unique, propre et retractable.",
     EMPTY            = "Aucun bouton collecte",
+    EMPTY_CONFLICT   = "%s gere deja les boutons de la minicarte - MiniHub s'efface.",
+    MSG_CONFLICT_LOGIN = "%s gere deja les boutons de la minicarte - MiniHub reste en retrait (conteneur masque). Tape /minihub pour l'ouvrir manuellement si tu veux quand meme l'utiliser.",
 
     TT_LEFT_TOGGLE   = "Clic gauche : ouvrir / fermer",
     TT_RIGHT_OPTIONS = "Clic droit : options",

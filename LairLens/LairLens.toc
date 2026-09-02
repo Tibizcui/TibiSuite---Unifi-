@@ -1,23 +1,24 @@
 ## Interface: 120100
 ## Title: LairLens
+## Title-frFR: LairLens
 ## Notes: Audit de groupe et pertinence des recompenses pour les Repaires (12.1).
 ## Notes-frFR: Audit de groupe et pertinence des recompenses pour les Repaires (12.1).
-## Author: Tibiscui
-## Version: 5.0
+## Author: Tibiscui - Kirin Tor
+## Version: 6.0
 
 # ----------------------------------------------------------------
-# MODULE DE LA SUITE TibiSuite
+# MODULE DE LA SUITE TibiSuite - MODE DOUBLE (standalone ou integre)
 # ----------------------------------------------------------------
-# LoadOnDemand : ce module n'est PLUS charge automatiquement. C'est le
-# core TibiSuite qui l'active (C_AddOns.LoadAddOn) uniquement s'il est
-# coche dans le panneau des modules. Decoche = jamais lu (zero memoire,
-# fichiers data et locales compris).
-## LoadOnDemand: 1
-# Dependance ferme sur le core : garantit que le socle (_G.TibiMidnight)
-# et l'API TibiSuite.RegisterModule existent avant que ce module tourne.
-## Dependencies: TibiSuite
+# Pas de LoadOnDemand : ce module doit pouvoir se charger seul, sans le
+# core, pour fonctionner en addon independant. Dependance SOUPLE sur
+# TibiSuite (OptionalDeps) : voir LairLens_Module.lua pour la detection
+# a l'execution (HasCore()).
+## OptionalDeps: TibiSuite
+## Group: TibiSuite
 ## Category: TibiSuite - Tracker
 ## Category-frFR: TibiSuite - Tracker
+
+## X-Website: https://www.tibiscui.fr
 
 # INTOUCHABLE : le nom de dossier reste "LairLens", donc WoW continue de
 # lire WTF\...\SavedVariables\LairLens.lua et de recharger LairLensDB et
@@ -27,7 +28,7 @@
 
 ## X-Category: Raid
 ## X-Curse-Project-ID: 000000
-## IconTexture: Interface\AddOns\LairLens\Media\Logo
+## IconTexture: Interface\AddOns\LairLens\Media\TibiSuiteIcon
 
 # -----------------------------------------------------------------------------
 # Interface 120100 = patch 12.1.0 (convention derivee de 12.0.1 = 120001).
@@ -35,6 +36,10 @@
 # confirmee au build de sortie. Le workflow interface-version.yml auto-bumpe la
 # valeur, donc pas de "AddOn out of date" au moindre nouveau build PTR/live.
 # -----------------------------------------------------------------------------
+
+# 0. Copie embarquee du socle (no-op si le core en charge deja une version
+#    egale ou superieure)
+Core\TibiSuiteUI.lua
 
 # 1. Noyau : namespace, constantes, evenements, etat persistant.
 Core\Init.lua
@@ -70,6 +75,5 @@ Modules\RunHistory\RunTracker.lua
 Modules\RunHistory\DashboardFrame.lua
 
 # 7. Integration TibiSuite : inscription comme onglet + recherche globale.
-#    Le socle (TibiMidnightUI) n'est PLUS liste ici : il est fourni une seule
-#    fois par le core. Ce glue remplace l'ancien Modules\Suite\LairLens_Suite.lua.
+#    Ce glue remplace l'ancien Modules\Suite\LairLens_Suite.lua.
 LairLens_Module.lua

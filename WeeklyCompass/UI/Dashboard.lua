@@ -136,6 +136,12 @@ local function buildFrame()
     frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
     frame:SetClampedToScreen(true)
     frame:SetFrameStrata("HIGH")
+
+    -- Fermeture par Echap via UISpecialFrames (mecanisme natif Blizzard) :
+    -- voir note detaillee dans TibiSuiteCore.lua (WireEscapeFor) - piege reel
+    -- confirme en jeu quand un autre addon intercepte lui aussi Echap.
+    tinsert(UISpecialFrames, "WeeklyCompassFrame")
+
     frame:Hide()
 
     if frame.SetBackdrop then
@@ -477,6 +483,9 @@ SlashCmdList["WEEKLYCOMPASS"] = function(msg)
     elseif msg == "minimap" then
         local shown = ns.ToggleMinimap and ns:ToggleMinimap()
         print(("|cff8db4e2WeeklyCompass|r minimap = %s"):format(shown and "on" or "off"))
+
+    elseif msg == "options" or msg == "config" then
+        if WeeklyCompass_OpenOptions then WeeklyCompass_OpenOptions() end
 
     elseif msg == "" or msg == "show" then
         UI:Toggle()

@@ -1,5 +1,5 @@
 -- ================================================================
--- DgnTracker v3.0
+-- DgnTracker v6.0
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
 
@@ -185,16 +185,10 @@ local function BuildUI()
     local point,_,_,x,y = s:GetPoint()
     DgnTrackerDB.pos = {point=point,x=x,y=y}
   end)
-  mainFrame:SetScript("OnKeyDown", function(self,key)
-    if key=="ESCAPE" then
-      self:SetPropagateKeyboardInput(false)  -- ESC ne ferme QUE notre fenêtre
-      self:Hide(); DgnTrackerDB.open=false
-    else
-      self:SetPropagateKeyboardInput(true)   -- laisse passer les autres touches
-    end
-  end)
-  mainFrame:EnableKeyboard(true)
-  mainFrame:SetPropagateKeyboardInput(true)
+  -- Fermeture par Echap via UISpecialFrames (mecanisme natif Blizzard) : voir
+  -- note detaillee dans TibiSuiteCore.lua (WireEscapeFor) - piege reel
+  -- confirme en jeu quand un autre addon intercepte lui aussi Echap.
+  tinsert(UISpecialFrames, "DGNMainFrame")
   mainFrame:SetBackdrop({
     bgFile="Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
     edgeFile="Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -1005,12 +999,17 @@ SlashCmdList["DGNTRACKER"] = function(msg)
   if msg=="help" or msg=="aide" then
     print("|cFF4D99FFDgnTracker|r commandes :")
     print("  |cFFFFD700/dg|r           - Ouvrir/fermer la fenêtre")
+    print("  |cFFFFD700/dg options|r   - Ouvrir les options")
     print("  |cFFFFD700/dg map on|r    - Waypoint auto à l'ouverture d'une instance")
     print("  |cFFFFD700/dg map off|r   - Désactiver le waypoint auto")
     print("  |cFFFFD700/dg <extension>|r - Aller à une extension (ex : tww, df, sl, van)")
     print("  |cFFFFD700/dg expand|r    - Tout déplier (extension active)")
     print("  |cFFFFD700/dg reset|r     - Tout replier (accordéon)")
     print("  |cFF888888Astuce : clic droit sur une instance = poser un waypoint.|r")
+    return
+
+  elseif msg=="options" or msg=="config" then
+    if DgnTracker_OpenOptions then DgnTracker_OpenOptions() end
     return
 
   elseif msg=="reset" then
@@ -1095,7 +1094,7 @@ evFrame:SetScript("OnEvent",function(_,event,arg1)
     if minimapBtn then minimapBtn:Hide() end
 
   elseif event=="PLAYER_LOGIN" then
-    print("|cFF4D99FFDgnTracker|r v3.0 chargé -- |cFFFFD700/dg|r pour ouvrir.")
+    print("|cFF4D99FFDgnTracker|r v6.0 chargé -- |cFFFFD700/dg|r pour ouvrir.")
   end
 end)
 

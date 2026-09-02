@@ -1,0 +1,27 @@
+## Interface: 120100, 120007, 120005
+## Title: PostBox
+## Title-frFR: PostBox
+## Notes: Gestion avancee de la boite aux lettres : ouverture en masse, carnet de contacts, statistiques de courrier. Fonctionne seul (bouton minimap propre) ou integre a TibiSuite (onglet de la barre unifiee).
+## Title-enUS: PostBox
+## Notes-enUS: Advanced mailbox management: mass opening, contact book, mail statistics. Works standalone (own minimap button) or integrated into TibiSuite (tab in the unified bar).
+## Title-deDE: PostBox
+## Notes-deDE: Erweiterte Briefkastenverwaltung: Massenoffnung, Adressbuch, Poststatistik. Funktioniert eigenstandig (eigener Minimap-Button) oder in TibiSuite integriert (Reiter in der vereinten Leiste).
+## Title-esES: PostBox
+## Notes-esES: Gestion avanzada del buzon: apertura masiva, agenda de contactos, estadisticas de correo. Funciona solo (boton de minimapa propio) o integrado en TibiSuite (pestana en la barra unificada).
+## Author: Tibiscui - Kirin Tor
+## Version: 6.0
+## IconTexture: Interface\AddOns\PostBox\medias\TibiSuiteIcon
+## SavedVariables: PostBoxDB
+## OptionalDeps: TibiSuite
+## Group: TibiSuite
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+## X-Website: https://www.tibiscui.fr
+
+Core\TibiSuiteUI.lua
+PostBox_Locale.lua
+PostBox.lua
+PostBox_BlackBook.lua
+PostBox_Stats.lua
+PostBox_Module.lua

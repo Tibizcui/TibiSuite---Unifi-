@@ -621,6 +621,8 @@ end
 
 local zoneList
 local s2 = {}   -- stats row widgets
+local zonesExpanded = false
+local ZONES_LIMIT = 12
 
 local function BuildTabZones(ca)
     local f = CreateFrame("Frame", nil, ca)
@@ -687,14 +689,17 @@ function UI.RefreshTab2()
     end
     table.sort(sorted, function(a, b) return a.dur > b.dur end)
 
-    local rowH  = 24
-    local listW = FW - PAD * 2 - 22
-    local zoneH = math.max(#sorted * rowH, 10)
+    local rowH      = 24
+    local listW     = FW - PAD * 2 - 22
+    local hasToggle = #sorted > ZONES_LIMIT
+    local showCount = (hasToggle and not zonesExpanded) and ZONES_LIMIT or #sorted
+    local zoneH     = math.max(showCount * rowH + (hasToggle and rowH or 0), 10)
     zoneList:SetHeight(zoneH)
     listContentH[2] = zoneH
     ResizeToActive()
 
-    for i, e in ipairs(sorted) do
+    for i = 1, showCount do
+        local e = sorted[i]
         local row = CreateFrame("Frame", nil, zoneList)
         row:SetPoint("TOPLEFT", zoneList, "TOPLEFT", 0, -(i - 1) * rowH)
         row:SetSize(listW, rowH)
@@ -729,7 +734,32 @@ function UI.RefreshTab2()
                              i == 1 and C.GOLD[3] or C.GOLD_DIM[3])
         timeLbl:SetText(LvlHistory.Utils.FormatTime(e.dur, true))
 
-        if i < #sorted then HLine(row, -rowH + 1, 0, 0, C.SEP2) end
+        if i < showCount or hasToggle then HLine(row, -rowH + 1, 0, 0, C.SEP2) end
+    end
+
+    -- Bouton depli/repli si la liste depasse la limite affichee
+    if hasToggle then
+        local btnRow = CreateFrame("Button", nil, zoneList)
+        btnRow:SetPoint("TOPLEFT", zoneList, "TOPLEFT", 0, -showCount * rowH)
+        btnRow:SetSize(listW, rowH)
+
+        local btnLbl = btnRow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        btnLbl:SetPoint("CENTER", btnRow, "CENTER", 0, 0)
+        btnLbl:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
+        if zonesExpanded then
+            btnLbl:SetText("- Reduire")
+        else
+            btnLbl:SetText(string.format("+ Voir plus (%d zones)", #sorted - ZONES_LIMIT))
+        end
+
+        btnRow:SetScript("OnEnter", function() btnLbl:SetTextColor(C.GOLD[1], C.GOLD[2], C.GOLD[3]) end)
+        btnRow:SetScript("OnLeave", function()
+            btnLbl:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
+        end)
+        btnRow:SetScript("OnClick", function()
+            zonesExpanded = not zonesExpanded
+            UI.RefreshTab2()
+        end)
     end
 end
 
@@ -1754,6 +1784,12 @@ local function Build()
     mainFrame:SetScript("OnDragStart", mainFrame.StartMoving)
     mainFrame:SetScript("OnDragStop",  mainFrame.StopMovingOrSizing)
     mainFrame:SetFrameStrata("DIALOG")
+
+    -- Fermeture par Echap via UISpecialFrames (mecanisme natif Blizzard) :
+    -- voir note detaillee dans TibiSuiteCore.lua (WireEscapeFor) - piege reel
+    -- confirme en jeu quand un autre addon intercepte lui aussi Echap.
+    tinsert(UISpecialFrames, "LvlHistoryMainFrame")
+
     mainFrame:Hide()
 
     -- Fond + bordure principale

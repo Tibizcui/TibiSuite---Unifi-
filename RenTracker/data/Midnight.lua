@@ -199,8 +199,17 @@ RenTrackerData["Midnight"] = {
     -- Quartier-maitre : Jan'sari the Watchful (PNJ 268228), au nord de
     -- Tokka's Landing ; achats en "Voidlight Marl". Titre au Renom 20 :
     -- "Hash'ura of Zul'jarra".
-    -- /!\ Les questID exacts et certains montants de rep restent a confirmer
-    --     en jeu ; les valeurs suivent le schema des autres factions Midnight.
+    -- Quetes/montants verifies via Warcraft Wiki (questID) et le guide
+    -- Zul'jarra's Forces de Method.gg (montants de rep) le 21/08/2026 :
+    --   - Purging the Vaults (questID 95520) : 500 rep, meta hebdo.
+    --   - Turn Back the Surge (questID 96995) : 1000 rep, meta hebdo
+    --     (vaincre 3 Curse Surges ; ~40% d'un rang de Renom a elle seule).
+    --   - Curse Surges (repetable) et rares tues sont DEUX sources
+    --     distinctes de 50 rep chacune (l'ancienne entree unique "150"
+    --     les melangeait a tort).
+    -- /!\ Montant exact des coffres de Delve Bountiful non confirme
+    --     precisement (sources concordantes : "quantite importante, une
+    --     fois par semaine et par faction") ; valeur laissee en estimation.
     -- ----------------------------------------------------------------
     {
       id       = 2772,
@@ -212,11 +221,16 @@ RenTrackerData["Midnight"] = {
       qm_zone  = "Tokka's Landing (nord), Ile lovee",
       color    = {r=0.42, g=0.32, b=0.75},
       quests   = {
-        { name="Quetes hebdomadaires de l'Ile lovee (Hebdo)",
-          npc="Emissaires de Zul'jarra", coords="Tokka's Landing",
+        { name="Purging the Vaults (Hebdo, meta)",
+          npc="Warleader Abdumati / Talon Commander Zela", coords="Tokka's Landing",
           zone="Ile lovee",
-          rep=1500, type="weekly", questID=nil, mapID=2512,
-          tip="Plus gros bloc de rep de la semaine. Activez le Contrat : Forces de Zul'jarra AVANT de les faire." },
+          rep=500, type="weekly", questID=95520, mapID=2512,
+          tip="Quete meta hebdomadaire des Vaults of Atal'Utek." },
+        { name="Turn Back the Surge (Hebdo, meta)",
+          npc="Talon Commander Zela", coords="Ile lovee",
+          zone="Ile lovee",
+          rep=1000, type="weekly", questID=96995, mapID=2512,
+          tip="Vaincre 3 Curse Surges dans la semaine. Environ 40% d'un rang de Renom a elle seule." },
         { name="Quete de donjon hebdomadaire (Hebdo)",
           npc="Halduron Luisaile", coords="Lune-d'Argent (50.4, 38.2)",
           zone="Lune-d'Argent",
@@ -227,39 +241,62 @@ RenTrackerData["Midnight"] = {
           zone="Ile lovee",
           rep=5000, type="onetime", questID=nil, mapID=2512,
           tip="Campagne principale du patch 12.1. Gros bonus de rep, ne se repete pas." },
-        { name="Quetes mondiales & Missions speciales (Quotidien)",
+        { name="Quetes mondiales quotidiennes",
           npc="Diverses zones", coords="Ile lovee",
           zone="Ile lovee",
           rep=75, type="daily", questID=nil, mapID=2512,
-          tip="Quetes du monde de l'Ile lovee. Boostees par le Contrat : Forces de Zul'jarra (partage Warband)." },
-        { name="Curse Surges - elites rares (Hebdo)",
-          npc="Elites rares", coords="5 zones tournantes",
+          tip="Quetes du monde quotidiennes de l'Ile lovee. Boostees par le Contrat : Forces de Zul'jarra (partage Warband)." },
+        { name="Quotidiennes des Vaults of Atal'Utek",
+          npc="PNJ des Vaults", coords="Sous l'Ile lovee",
           zone="Ile lovee",
-          rep=150, type="weekly", questID=nil, mapID=2512,
-          tip="Chaque rare donne de la rep une fois par semaine par personnage. Les Curse Surges debloquent aussi la Peche maudite." },
-        { name="Vaults of Atal'Utek - evenements publics (Quotidien)",
-          npc="Evenements souterrains", coords="Sous l'Ile lovee",
+          rep=50, type="daily", questID=nil, mapID=2512,
+          tip="Chaque quotidienne des Vaults of Atal'Utek donne 50 rep." },
+        { name="Curse Surges (repetable)",
+          npc="Curse Surges", coords="5 zones tournantes",
           zone="Ile lovee",
-          rep=100, type="daily", questID=nil, mapID=2512,
-          tip="Zone d'evenements publics souterraine culminant sur un boss selon la participation." },
+          rep=50, type="weekly", questID=nil, mapID=2512,
+          tip="Chaque Curse Surge complete donne 50 rep. Se produit environ toutes les 45 min, tourne sur 5 sites." },
+        { name="Rares tues (Unique, jusqu'a 12)",
+          npc="Elites rares", coords="Ile lovee",
+          zone="Ile lovee",
+          rep=50, type="onetime", questID=nil, mapID=2512,
+          tip="12 elites rares distincts sur l'Ile lovee, chacun donnant 50 rep la premiere fois (source distincte des Curse Surges)." },
+        { name="Tresors de l'Ile lovee (Unique, jusqu'a 22)",
+          npc="Tresors", coords="Ile lovee",
+          zone="Ile lovee",
+          rep=50, type="onetime", questID=nil, mapID=2512,
+          tip="22 tresors disperses sur l'Ile lovee, chacun donnant 50 rep." },
+        { name="Etudiant de l'Histoire maudite - objets de lore (Unique, jusqu'a 10)",
+          npc="Objets interactifs", coords="Ile lovee",
+          zone="Ile lovee",
+          rep=250, type="onetime", questID=nil, mapID=2512,
+          tip="10 objets de lore 'Student of Hissstory', chacun donnant 250 rep." },
+        { name="Repaire : Nymrissa Wavecaller (Hebdo)",
+          npc="Nymrissa Wavecaller", coords="Ile lovee",
+          zone="Ile lovee",
+          rep=200, type="weekly", questID=nil, mapID=2512,
+          tip="Vaincre le Repaire de Nymrissa Wavecaller une fois par semaine." },
         { name="Coffres de Delve Bountiful (Hebdo)",
           npc="Coffres de Delve", coords="Delves de l'Ile lovee",
           zone="Ile lovee",
           rep=500, type="weekly", questID=nil, mapID=nil,
-          tip="Ouvrir les coffres Bountiful (Ring of Glory, Gnarldor Isle...) alimente aussi la barre." },
+          tip="Montant estime, non confirme precisement. Ouvrir les coffres Bountiful (Ring of Glory, Gnarldor Isle...) alimente aussi la barre." },
       },
     },
     -- ----------------------------------------------------------------
     -- Capitaine Tokka (Captain Tokka) - Ile lovee (Coiled Isle)
     -- Nouvelle reputation "amitie" axee PECHE, ajoutee par le patch 12.1.
     -- ID de faction 2773 confirme (Wowhead). uiMapID de l'Ile lovee : 2512.
-    -- /!\ PARTICULARITE : ce n'est PAS une faction de Renom. Elle suit 5 rangs
-    --     personnalises (Stranger -> Doomed Sailor -> Cursed Angler ->
-    --     Venom Trawler -> Bloodsworn Crew), pas Neutre->Exalte ni Renom 1-20.
-    --     Le moteur actuel de RenTracker gere le systeme "renown" au niveau de
-    --     l'extension : cette barre s'affichera donc via le fallback renown
-    --     tant que le moteur ne gere pas les reputations d'amitie. Champs
-    --     "friendship" et "ranks" ajoutes pour une prise en charge future.
+    -- Confirme via Warcraft Wiki / Overgear (21/08/2026) : 5 rangs personnalises
+    -- (Stranger -> Doomed Sailor -> Cursed Angler -> Venom Trawler ->
+    -- Bloodsworn Crew, 8400 rep cumulee au total), systeme "friendship"
+    -- officiel (PAS Neutre->Exalte, PAS Renom 1-20).
+    -- PRISE EN CHARGE MOTEUR : RenTracker.lua lit desormais ce systeme via
+    -- l'API native C_GossipInfo.GetFriendshipReputation(factionId) des que
+    -- fac.friendship=true (voir GetFriendshipData dans RenTracker.lua) : rang,
+    -- progression et plafond viennent directement du jeu, aucun palier n'est
+    -- code en dur ici (les seuils exacts par rang n'ont pas pu etre verifies
+    -- via les guides consultes, l'API les fournit donc directement).
     -- Quartier-maitre : Second Mate Sluggs, a Tokka's Folly (ile a l'ouest de
     -- Tokka's Landing) ; achats en Voidlight Marl et Coiled Filament.
     -- ----------------------------------------------------------------

@@ -1,4 +1,4 @@
--- RepBar.lua v5.0
+-- RepBar.lua v6.0
 -- Barre de reputation avancee - Tibiscui
 -- Remplace la barre de reputation native, suit la faction par zone (via
 -- RenTracker) et bascule a la validation d'une quete.
@@ -23,7 +23,7 @@ local L = {
     POS_RESET     = "Position reinitialisee.",
     SWITCH_QUEST  = "Faction suivie : ",
     -- Options
-    OPT_TITLE     = "|cffddbbffRepBar|r - Options",
+    OPT_TITLE     = "RepBar - Options",
     OPT_TAB       = "Options",
     OPT_HINT      = "|cffFFD700Maj+Drag|r pour deplacer   |cffFFD700Maj+Clic droit|r pour ouvrir/fermer",
     OPT_WIDTH     = "Largeur :",
@@ -65,6 +65,7 @@ local DEFAULTS = {
     hideWhenNoFaction= true,    -- se cacher si aucune faction suivie
     hideInCombat     = false,
     mouseoverOnly    = false,
+    manuallyHidden   = false,   -- retient un clic gauche (RepBar_Toggle) d'une session a l'autre
     bgA      = 0.85,
     fontSize = 0,
     -- couleur fixe (utilisee si useStandingColor est faux) : azur d'identite RepBar
@@ -334,12 +335,33 @@ ApplyAppearance = function()
     ApplyFont()
 end
 
+-- Le module a-t-il ete decoche dans le panneau Modules du core ? (meme
+-- convention que RepBar_Module.lua : table absente = jamais configure =
+-- actif par defaut ; table presente = seule la cle explicite [KEY]=true
+-- active). BUG CORRIGE ICI : avant ce correctif, rien dans ce fichier ne
+-- consultait ce flag - la barre s'affichait donc toujours, meme decochee,
+-- a chaque /reload ou demarrage de session.
+local function IsEnabledByCore()
+    if not (TibiSuiteDB and type(TibiSuiteDB.enabledModules) == "table") then return true end
+    return TibiSuiteDB.enabledModules.RepBar == true
+end
+
 -- ══════════════════════════════════════════════════
 -- VISIBILITE CONTEXTUELLE
 -- Retourne true si la barre reste visible, false si masquee.
 -- ══════════════════════════════════════════════════
 ApplyVisibility = function()
     if not containerFrame or not db then return false end
+
+    if not IsEnabledByCore() then
+        containerFrame:Hide() ; return false
+    end
+
+    -- Fermeture manuelle (clic gauche, RepBar_Toggle) : persiste jusqu'au
+    -- prochain clic gauche, y compris a travers /reload et redemarrage.
+    if db.manuallyHidden then
+        containerFrame:Hide() ; return false
+    end
 
     if db.hideInCombat and InCombatLockdown() then
         containerFrame:Hide() ; return false
@@ -364,23 +386,27 @@ end
 -- le StatusTrackingBarManager (XP + reputation) -> RepBar n'y touche JAMAIS
 -- (evite deux hooks concurrents sur le meme frame). Sans XPBar, RepBar masque
 -- lui-meme le gestionnaire (option desactivable).
+--
+-- IMPORTANT (piege connu, corrige) : NE JAMAIS hooker OnShow sur ce frame pour
+-- forcer un Hide(). StatusTrackingBarManager peut etre affiche par du code
+-- Blizzard (gain de reputation, etc.) dont on ne maitrise pas le contexte ;
+-- si ce Hide() s'execute a l'interieur de cet appel Blizzard, ca peut
+-- contaminer la suite ("action reservee a l'IU de Blizzard"). On se contente
+-- donc de jouer sur l'opacite (SetAlpha), jamais sur Show/Hide ni sur un hook
+-- de script : la frame reste techniquement "affichee" du point de vue de
+-- Blizzard, on la rend juste invisible. On reaffirme l'opacite sur les memes
+-- evenements insecures qui font deja re-render la barre RepBar (reputation,
+-- entree dans le monde), au lieu d'un hook qui s'executerait dans un contexte
+-- imprevisible.
 -- ══════════════════════════════════════════════════
 EnforceNativeRepBar = function()
     if XPBarLoaded() then return end          -- XPBar est proprietaire du manager
     local mgr = StatusTrackingBarManager
     if not mgr then return end
     if db.hideNativeRepBar then
-        mgr:Hide() ; mgr:SetAlpha(0)
-        if not mgr.__repbarHooked then
-            mgr.__repbarHooked = true
-            mgr:HookScript("OnShow", function(self)
-                if db and db.hideNativeRepBar and not XPBarLoaded() then
-                    self:Hide() ; self:SetAlpha(0)
-                end
-            end)
-        end
+        mgr:SetAlpha(0)
     else
-        mgr:SetAlpha(1) ; mgr:Show()
+        mgr:SetAlpha(1)
     end
 end
 
@@ -981,8 +1007,10 @@ SlashCmdList["REPBAR"] = function(msg)
         CreateOptionsPanel()
     elseif msg == "hide" then
         containerFrame:Hide()
+        if db then db.manuallyHidden = true end
         print("|cffFFD700[RepBar]|r Masque. /repbar show pour re-afficher.")
     elseif msg == "show" then
+        if db then db.manuallyHidden = false end
         containerFrame:Show() ; UpdateBar()
     elseif msg == "reset" then
         RepBarDB = nil ; ReloadUI()
@@ -1022,6 +1050,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
         if not db then InitDB() end
         EnforceNativeRepBar()
         C_Timer.After(0.5, UpdateBar)
+        print("|cFF5CADF5RepBar|r v6.0 chargé -- tapez |cFFFFD700/repbar|r pour les options.")
 
     elseif event == "PLAYER_ENTERING_WORLD" then
         EnforceNativeRepBar()
@@ -1036,6 +1065,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     elseif event == "QUEST_TURNED_IN" then
         questArmed = GetTime()   -- arme la fenetre de bascule par quete
         UpdateBar()
+        EnforceNativeRepBar()   -- reaffirme l'opacite : Blizzard peut re-afficher sa barre ici
 
     elseif event == "CHAT_MSG_COMBAT_FACTION_CHANGE" then
         TrySwitchFromGain(arg1)
@@ -1043,6 +1073,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     elseif event == "UPDATE_FACTION"
         or event == "MAJOR_FACTION_RENOWN_LEVEL_CHANGED" then
         UpdateBar()
+        EnforceNativeRepBar()   -- idem : un gain de reputation peut re-afficher la barre native
 
     elseif event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
         ApplyVisibility()
@@ -1057,8 +1088,13 @@ local function TibiUI() return _G.TibiMidnight end
 
 function RepBar_Toggle()
     if not containerFrame then return end
-    if containerFrame:IsShown() then containerFrame:Hide()
-    else containerFrame:Show() ; UpdateBar() end
+    if containerFrame:IsShown() then
+        containerFrame:Hide()
+        if db then db.manuallyHidden = true end
+    else
+        if db then db.manuallyHidden = false end
+        containerFrame:Show() ; UpdateBar()
+    end
 end
 
 local midnightPanel
@@ -1067,7 +1103,7 @@ local function BuildMidnightOptions()
     if midnightPanel then return midnightPanel end
     midnightPanel = ui.CreateOptionsPanel({
         name = "RepBarOptionsMidnight",
-        title = "|cFF9480FFRepBar|r  Options", accent = ACCENT_REP })
+        title = "RepBar - Options", accent = ACCENT_REP })
 
     midnightPanel:Section("Dimensions")
     midnightPanel:Slider("Largeur", 200, 1200, 10,
@@ -1136,7 +1172,7 @@ function RepBar_OpenOptions()
     local p = BuildMidnightOptions() ; if p then p:Toggle() end
 end
 
--- Rattrapage cosmetique : roue crantee sur la barre (le handler ci-dessus
+-- Rattrapage cosmetique : bouton texte "Options" sur la barre (le handler ci-dessus
 -- s'execute aussi en LoadOnDemand via le module glue).
 local tibiEv = CreateFrame("Frame")
 tibiEv:RegisterEvent("PLAYER_LOGIN")

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tibiscui-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8842", "--directory", "C:\\Users\\zenel\\Documents\\GitHub\\Tibiscui.fr"],
+      "port": 8842
+    }
+  ]
+}

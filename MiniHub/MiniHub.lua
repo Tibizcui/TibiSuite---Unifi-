@@ -294,17 +294,49 @@ local function SortCollected()
     end)
 end
 
+-- Addons connus qui font DEJA leur propre balayage generique de
+-- Minimap:GetChildren() pour regrouper les boutons tiers (comme MiniHub) :
+-- ElvUI et Tukui ont tous les deux un module "bouton minicarte" integre qui
+-- reparente/masque les icones d'autres addons exactement comme MiniHub le
+-- ferait. Faire tourner les deux en meme temps ne casse rien de grave
+-- (reparentage en boucle, scintillement au pire), mais MiniHub se retrouve
+-- avec 0 bouton a collecter (l'autre UI les a deja pris) et affiche un
+-- conteneur vide et inutile - confirme en jeu par l'utilisateur (testeur
+-- ElvUI + EllesmereUI). On laisse donc la priorite a l'autre addon plutot
+-- que de rentrer en conflit ou d'afficher un panneau vide.
+local CONFLICTING_COLLECTORS = { "EllesmereUIMinimap", "ElvUI", "Tukui" }
+local function HasConflictingCollector()
+    for _, name in ipairs(CONFLICTING_COLLECTORS) do
+        if C_AddOns.IsAddOnLoaded(name) then return name end
+    end
+    return nil
+end
+
 -- Point d'entree : collecte toutes les sources puis met a jour la grille.
+-- CORRECTIF : sous ElvUI/EllesmereUI, ces addons reparentent/skinnent deja
+-- les boutons de la minicarte avant que MiniHub ne passe - une frame
+-- inhabituelle qu'ils y laissent peut faire echouer un GetWidth/GetHeight
+-- au milieu de Layout() (aucun pcall avant ce correctif), laissant le
+-- conteneur fige a sa taille par defaut (60x60, titre tronque, croix qui
+-- deborde) plutot que dans son etat "vide" propre - confirme en jeu. On
+-- protege desormais tout le cycle collecte+disposition par un pcall.
 function MiniHub.Collect()
     if not container then return end
-    local before = #MiniHub.order
-    CollectLibDBIconButtons()
-    CollectWhitelisted()
-    ScanMinimapChildren()
-    if #MiniHub.order ~= before then
-        SortCollected()
+    local ok, err = pcall(function()
+        local before = #MiniHub.order
+        CollectLibDBIconButtons()
+        CollectWhitelisted()
+        if not HasConflictingCollector() then
+            ScanMinimapChildren()
+        end
+        if #MiniHub.order ~= before then
+            SortCollected()
+        end
+        MiniHub.Layout()
+    end)
+    if not ok then
+        print("|cffffd200MiniHub|r : " .. tostring(err))
     end
-    MiniHub.Layout()
 end
 
 -- Alias historique utilise par les options / slash.
@@ -413,6 +445,12 @@ function MiniHub.Layout()
     container.title:SetShown(db.showTitle)
     if container.header then container.header:SetShown(db.showTitle) end
     if container.sep then container.sep:SetShown(db.showTitle) end
+    local conflict = HasConflictingCollector()
+    if n == 0 and conflict then
+        container.empty:SetText(string.format(L["EMPTY_CONFLICT"], conflict))
+    else
+        container.empty:SetText(L["EMPTY"])
+    end
     container.empty:SetShown(n == 0)
 
     if MiniHub.ApplySkin then MiniHub.ApplySkin() end
@@ -809,12 +847,24 @@ local function CollectZoomFrames()
     return zoomFrames
 end
 
+-- PIEGE POTENTIEL (voir ADDON_ACTION_FORBIDDEN "SpellStopCasting"/
+-- "SpellStopTargeting" trace via /etrace, table partagee entre
+-- GameMenuFrame.Shown et PlunderstormQueueTutorial.Update) : MinimapCluster
+-- fait partie du meme groupe de gestion de fenetres que la zone de file
+-- d'attente. Appeler self:Hide() DIRECTEMENT depuis le hook OnShow execute
+-- notre code de facon synchrone dans la pile d'appels de Blizzard, ce qui
+-- peut contaminer ce que Blizzard fait ensuite dans ce meme tick. On differe
+-- donc l'appel via C_Timer.After(0, ...) pour sortir de cette pile et agir
+-- dans un tick propre, exactement comme UISpecialFrames evite le meme piege
+-- sur Echap (voir TibiSuiteCore.lua).
 function MiniHub.ApplyBlizzardHiding()
     local hide = MiniHubDB.hideZoomButtons
     for _, f in ipairs(CollectZoomFrames()) do
         if not f._minihubHooked and f.HookScript then
             f:HookScript("OnShow", function(self)
-                if MiniHubDB.hideZoomButtons then self:Hide() end
+                if MiniHubDB.hideZoomButtons then
+                    C_Timer.After(0, function() self:Hide() end)
+                end
             end)
             f._minihubHooked = true
         end
@@ -1106,10 +1156,24 @@ local function Initialize()
     SetupContextRules()
 
     MiniHub.Collect()
-    if MiniHubDB.isOpen then container:Show() else container:Hide() end
+    -- ElvUI / Tukui / EllesmereUI gerent deja eux-memes les boutons de la
+    -- minicarte : on ne rouvre pas automatiquement un conteneur qui n'aura
+    -- rien a montrer (demande explicite - "autant ne pas l'installer" tant
+    -- qu'il s'affichait vide/casse). Reste ouvrable manuellement via /minihub
+    -- si l'utilisateur veut quand meme s'en servir (whitelist, etc.).
+    local conflict = HasConflictingCollector()
+    if conflict then
+        container:Hide()
+        print("|cFFFCD748MiniHub|r : " .. string.format(L["MSG_CONFLICT_LOGIN"], conflict))
+    elseif MiniHubDB.isOpen then
+        container:Show()
+    else
+        container:Hide()
+    end
     MiniHub.UpdateContextVisibility()
 
     ScheduleDeferredScans()
+    print("|cFFFCD748MiniHub|r v6.0 chargé -- tapez |cFFFFD700/minihub|r pour ouvrir.")
 end
 
 local loader = CreateFrame("Frame")

@@ -30,10 +30,10 @@ local DB_DEFAULTS = {
   hideMaxProf = false,   -- masquer les metiers entierement au max
   showAllChars = true,
   showTodo    = true,    -- afficher la liste "a finir"
-  showMeta    = true,    -- afficher concentration & connaissances
   concAlert   = true,    -- alerter quand la concentration est pleine
   mmAngle     = 210,
   accountTag  = nil,     -- libelle libre pour distinguer ses comptes a l'import
+  metierView  = "current", -- bascule du panneau : "current" / "all" / "account"
 }
 
 -- Prepare SkillTrackerDB et comble les champs manquants.
@@ -441,103 +441,6 @@ local function ProfessionOverallPercent(prof)
   return 0
 end
 ST.ProfessionOverallPercent = ProfessionOverallPercent
-
--- ================================================================
--- REGROUPEMENT PAR EXTENSION (pour le selecteur d'onglets du panneau)
--- ----------------------------------------------------------------
--- Repartit les paliers de metier du perso par "bucket" d'extension.
---   Renvoie (order, byBucket) :
---     order    = liste des buckets presents, du plus recent au plus ancien,
---                puis "other" (paliers non identifies) en dernier.
---     byBucket = { [bucket] = { { prof=, id=, line=, isBase= }, ... } }
--- Un metier sans detail par extension (fenetre pas encore ouverte) est
--- rattache a l'extension courante avec sa valeur globale (repli d'affichage).
--- ================================================================
-function ST.BuildExpansionGroups(rec)
-  local byBucket, present = {}, {}
-
-  local function push(bucket, entry)
-    byBucket[bucket] = byBucket[bucket] or {}
-    byBucket[bucket][#byBucket[bucket] + 1] = entry
-    present[bucket] = true
-  end
-
-  if rec and rec.professions then
-    for _, prof in pairs(rec.professions) do
-      local hasLine = false
-      for id, ln in pairs(prof.lines or {}) do
-        hasLine = true
-        -- Regroupement par NOM d'extension fourni par le jeu (fiable).
-        local idx = ST.NameToIndex(ln.exp)
-        push(idx or "other", { prof = prof, id = id, line = ln })
-      end
-      if not hasLine and prof.base then
-        -- Pas encore de detail : rattache a l'extension courante (repli).
-        local cur = (GetExpansionLevel and GetExpansionLevel()) or 11
-        push(cur, { prof = prof, id = nil, line = prof.base, isBase = true })
-      end
-    end
-  end
-
-  -- Ordre : indices numeriques decroissants, puis "other".
-  local nums, hasOther = {}, present["other"]
-  for b in pairs(present) do
-    if b ~= "other" then nums[#nums + 1] = b end
-  end
-  table.sort(nums, function(a, b) return a > b end)
-  if hasOther then nums[#nums + 1] = "other" end
-  return nums, byBucket
-end
-
--- Construit l'agregat. Renvoie une table triee par nom de metier :
---   { { name=, count=, chars={ {char, realm, pct, imported}, ... } }, ... }
-function ST.BuildAggregate()
-  local byName = {}
-
-  local function addChar(realm, name, rec, imported, accountTag)
-    if type(rec) ~= "table" or type(rec.professions) ~= "table" then return end
-    for _, prof in pairs(rec.professions) do
-      local pname = prof.name or "?"
-      local entry = byName[pname]
-      if not entry then
-        entry = { name = pname, chars = {} }
-        byName[pname] = entry
-      end
-      entry.chars[#entry.chars + 1] = {
-        char = name, realm = realm,
-        pct = ProfessionOverallPercent(prof),
-        imported = imported and true or false,
-        accountTag = accountTag,
-      }
-    end
-  end
-
-  -- Persos locaux
-  for realm, list in pairs(ST.db.chars) do
-    for name, rec in pairs(list) do
-      addChar(realm, name, rec, false, nil)
-    end
-  end
-
-  -- Persos importes
-  for tag, realms in pairs(ST.db.imported) do
-    for realm, list in pairs(realms) do
-      for name, rec in pairs(list) do
-        addChar(realm, name, rec, true, tag)
-      end
-    end
-  end
-
-  -- Tri : par nom de metier, puis chars par pourcentage decroissant.
-  local out = {}
-  for _, entry in pairs(byName) do
-    entry.count = #entry.chars
-    table.sort(entry.chars, function(a, b) return a.pct > b.pct end)
-    out[#out + 1] = entry
-  end
-  table.sort(out, function(a, b) return a.name < b.name end)
-  return out
-end
 
 -- ================================================================
 -- LISTE DES PERSONNAGES (locaux + importes) pour la vue multi-perso.
@@ -1018,6 +921,8 @@ ev:SetScript("OnEvent", function(_, event, arg1)
         ST.RequestScan(1.0)
         if ST.OnPlayerLogin then ST.OnPlayerLogin() end
         ST.SetupLDB()
+        print("|cFF00FF98SkillTracker|r v6.0 " .. L.LOADED_MSG
+          .. "  -  |cFFFFD700/skt|r, |cFFFFD700/skt config|r.")
       end
     end
 
@@ -1027,7 +932,7 @@ ev:SetScript("OnEvent", function(_, event, arg1)
     ST.RequestScan(1.0)
     if ST.OnPlayerLogin then ST.OnPlayerLogin() end
     ST.SetupLDB()
-    print("|cFF00FF98SkillTracker|r v1.4.0 " .. L.LOADED_MSG
+    print("|cFF00FF98SkillTracker|r v6.0 " .. L.LOADED_MSG
       .. "  -  |cFFFFD700/skt|r, |cFFFFD700/skt config|r.")
 
   elseif event == "PLAYER_ENTERING_WORLD" then

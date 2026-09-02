@@ -1,5 +1,5 @@
 -- ================================================================
--- DailyTracker v3.1
+-- DailyTracker v6.0
 -- Auteur : Tibiscui - Kirin Tor
 -- Pool de frames (anti-fuite) + refresh throttlé
 -- Scroll réel, i18n FR/EN, suivi manuel, timers de reset,
@@ -28,7 +28,7 @@ DailyTrackerDB = DailyTrackerDB or {
 -- PNJ, zones) restent celles du jeu.
 -- ================================================================
 local FRFR = {
-  DRAG_HINT       = "Glisser pour deplacer  -  /tdt",
+  DRAG_HINT       = "Glisser pour deplacer  -  /dt",
   BY              = "by Tibiscui",
   F_ALL           = "Tout",
   F_WEEKLY        = "Hebdo",
@@ -68,16 +68,16 @@ local FRFR = {
   MM_LEFT         = "Clic gauche : ouvrir / fermer",
   MM_DRAG         = "Glisser : repositionner l'icone",
   COMPART_SUB     = "Activites quotidiennes & hebdomadaires",
-  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v3.1 - |cFFFFD700/tdt|r pour ouvrir.",
+  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v6.0 - |cFFFFD700/dt|r pour ouvrir.",
   CHECK_HEADER    = "Diagnostic questID (les IDs non resolus sont a verifier) :",
   CHECK_OK        = "OK",
   CHECK_MISSING   = "NON RESOLU",
   CHECK_MANUAL    = "manuel (pas de questID)",
   CHECK_DONE      = "Diagnostic termine. Utilise ces resultats pour corriger les IDs douteux.",
-  HELP            = "Commandes : /tdt (ouvrir), /tdt check (verifier les questID), /tdt help",
+  HELP            = "Commandes : /dt (ouvrir), /dt options (options), /dt check (verifier les questID), /dt help",
 }
 local ENUS = {
-  DRAG_HINT       = "Drag to move  -  /tdt",
+  DRAG_HINT       = "Drag to move  -  /dt",
   BY              = "by Tibiscui",
   F_ALL           = "All",
   F_WEEKLY        = "Weekly",
@@ -117,13 +117,13 @@ local ENUS = {
   MM_LEFT         = "Left click: open / close",
   MM_DRAG         = "Drag: reposition icon",
   COMPART_SUB     = "Daily & weekly activities",
-  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v3.1 - |cFFFFD700/tdt|r to open.",
+  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v6.0 - |cFFFFD700/dt|r to open.",
   CHECK_HEADER    = "questID diagnostic (unresolved IDs need review):",
   CHECK_OK        = "OK",
   CHECK_MISSING   = "UNRESOLVED",
   CHECK_MANUAL    = "manual (no questID)",
   CHECK_DONE      = "Diagnostic done. Use these results to fix doubtful IDs.",
-  HELP            = "Commands: /tdt (open), /tdt check (verify questIDs), /tdt help",
+  HELP            = "Commands: /dt (open), /dt options (options), /dt check (verify questIDs), /dt help",
 }
 local L = FRFR
 do
@@ -333,8 +333,6 @@ local function BuildUI()
   mainFrame:SetFrameStrata("HIGH")
   mainFrame:SetMovable(true)
   mainFrame:EnableMouse(true)
-  mainFrame:EnableKeyboard(true)
-  mainFrame:SetPropagateKeyboardInput(true)
   mainFrame:RegisterForDrag("LeftButton")
   mainFrame:SetScript("OnDragStart", mainFrame.StartMoving)
   mainFrame:SetScript("OnDragStop", function(s)
@@ -342,9 +340,15 @@ local function BuildUI()
     local point,_,_,x,y = s:GetPoint()
     DailyTrackerDB.pos = {point=point,x=x,y=y}
   end)
-  mainFrame:SetScript("OnKeyDown", function(self,key)
-    if key=="ESCAPE" then self:Hide(); DailyTrackerDB.open=false end
-  end)
+  -- Fermeture par Echap via UISpecialFrames (mecanisme natif Blizzard) :
+  -- aucun code a nous ne s'execute en reaction a la touche, donc aucune
+  -- interference possible avec un autre addon qui reagit lui aussi a Echap
+  -- (piege reel confirme en jeu : ADDON_ACTION_FORBIDDEN sur SpellStopCasting
+  -- / SpellStopTargeting quand deux addons interceptent Echap eux-memes).
+  -- Necessaire ici pour le mode standalone (sans le core, qui fait deja ce
+  -- meme enregistrement via WireEscapeFor en mode integre - doublon sans
+  -- risque, UISpecialFrames tolere les entrees redondantes).
+  tinsert(UISpecialFrames, "DTMainFrame")
   mainFrame:SetBackdrop({
     bgFile="Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
     edgeFile="Interface\\DialogFrame\\UI-DialogBox-Border",
@@ -1415,13 +1419,15 @@ end
 -- ================================================================
 -- SLASH
 -- ================================================================
-SLASH_DAILYTRACKER1="/tdt" ; SLASH_DAILYTRACKER2="/tibidaily"
+SLASH_DAILYTRACKER1="/dt" ; SLASH_DAILYTRACKER2="/daily"
 SlashCmdList["DAILYTRACKER"]=function(msg)
   msg = (msg or ""):lower():gsub("^%s+",""):gsub("%s+$","")
   if msg=="check" or msg=="verify" then
     RunQuestIDCheck() ; return
   elseif msg=="help" then
     print("|cFFFFD700DailyTracker|r "..L.HELP) ; return
+  elseif msg=="options" or msg=="config" then
+    if DailyTracker_OpenOptions then DailyTracker_OpenOptions() end ; return
   end
   if not mainFrame then return end
   if mainFrame:IsShown() then mainFrame:Hide(); DailyTrackerDB.open=false

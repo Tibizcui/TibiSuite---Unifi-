@@ -18,7 +18,7 @@ local function BuildOptions()
   if panel then return panel end
   panel = ui.CreateOptionsPanel({
     name = "DgnTrackerOptionsMidnight",
-    title = "|cFF9480FFDgnTracker|r  Options", accent = ACCENT })
+    title = "DgnTracker - Options", accent = ACCENT })
 
   panel:Section("Fenêtre")
   panel:Button("Ouvrir / fermer", function()

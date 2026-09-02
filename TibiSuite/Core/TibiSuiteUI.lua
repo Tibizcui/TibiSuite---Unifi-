@@ -21,7 +21,7 @@
   Auteur : Tibiscui - Kirin Tor
 ============================================================================]]
 
-local NS_VERSION = 8
+local NS_VERSION = 11
 
 if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
   return
@@ -47,6 +47,7 @@ UI.C = {
   MUTED   = { 0.420, 0.450, 0.510, 1.00 },  -- sous-texte
   OK      = { 0.400, 0.851, 0.541, 1.00 },  -- vert "oui"
   NO      = { 0.898, 0.420, 0.420, 1.00 },  -- rouge "non"
+  WARN    = { 1.000, 0.549, 0.000, 1.00 },  -- orange d'alerte (ex: concentration pleine)
 }
 
 function UI.Hex(r, g, b)
@@ -84,6 +85,29 @@ function UI.Match(haystack, needle)
       if h:find(needle:sub(1, -2), 1, true) then return true end
     end
   end
+  return false
+end
+
+-- ============================================================================
+-- ECHAP EN SECURITE : le joueur est-il en train de lancer un sort, de
+-- canaliser, ou en mode de ciblage (reticule) ?
+-- ----------------------------------------------------------------
+-- PIEGE REEL, CONFIRME EN JEU (/etrace -> ADDON_ACTION_FORBIDDEN "TibiSuite",
+-- "SpellStopCasting()" / "SpellStopTargeting()") : si une fenetre de la
+-- suite intercepte Echap (SetPropagateKeyboardInput(false)) PENDANT que le
+-- joueur lance un sort ou est en mode de ciblage, Echap doit normalement
+-- annuler ce sort/ciblage via le systeme natif de Blizzard. En consommant la
+-- touche nous-memes a ce moment-la, on contamine cette annulation native et
+-- Blizzard bloque l'action ("reservee a l'IU de Blizzard"). Solution : ne
+-- JAMAIS consommer Echap dans ce cas precis, on laisse simplement propager
+-- pour que Blizzard annule normalement, sans qu'on y touche.
+-- A appeler AVANT tout SetPropagateKeyboardInput(false) sur Echap, partout
+-- dans la suite (socle et modules).
+-- ============================================================================
+function UI.IsCastingOrTargeting()
+  if SpellIsTargeting and SpellIsTargeting() then return true end
+  if UnitCastingInfo and UnitCastingInfo("player") then return true end
+  if UnitChannelInfo and UnitChannelInfo("player") then return true end
   return false
 end
 
@@ -553,6 +577,37 @@ function UI.CreateOptionsPanel(cfg)
     advance((fs:GetStringHeight() or 12) + 10); fit(); return self
   end
 
+  -- Champ texte en lecture seule mais SELECTIONNABLE (Ctrl+C) : un EditBox
+  -- qui réécrit son propre texte si l'utilisateur tente de le modifier.
+  -- Utile pour une URL ou un code a copier depuis un panneau d'options.
+  function panel:SelectableText(label, text)
+    if label then
+      local cap = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+      cap:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
+      cap:SetText(label)
+      advance(16)
+    end
+    local box = CreateFrame("EditBox", nil, content, "BackdropTemplate")
+    box:SetSize(258, 20)
+    box:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
+    box:SetBackdrop(UI.FlatBackdrop())
+    box:SetBackdropColor(0.02, 0.02, 0.03, 0.9)
+    box:SetBackdropBorderColor(1, 1, 1, 0.15)
+    box:SetAutoFocus(false)
+    box:SetFontObject("GameFontHighlightSmall")
+    box:SetTextInsets(6, 6, 0, 0)
+    box:SetText(text or "")
+    box:SetCursorPosition(0)
+    box:SetScript("OnEditFocusGained", function(s) s:HighlightText() end)
+    box:SetScript("OnEscapePressed", function(s) s:ClearFocus() end)
+    box:SetScript("OnEnterPressed", function(s) s:ClearFocus() end)
+    box:SetScript("OnTextChanged", function(s)
+      if s:GetText() ~= (text or "") then s:SetText(text or ""); s:HighlightText() end
+    end)
+    advance(28); fit()
+    return box
+  end
+
   function panel:Check(label, getFn, setFn, tooltip)
     local cb = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
     cb:SetSize(24, 24)
@@ -703,6 +758,69 @@ function UI.CreateSearchPopup(cfg)
   handle.Hide = function() f:Hide() end
   handle.Toggle = function() if f:IsShown() then f:Hide() else f:Show() end end
   return handle
+end
+
+-- ============================================================================
+-- BANDEAU PERSONNAGE COMMUN
+--   Format : [niveau] Nom (couleur de classe) [ilvl] - Spécialisation - Royaume
+--   UI.CharBannerText(data) -> chaîne coloree prête pour un FontString
+--   UI.CharBanner(parent, data) -> FontString déjà créée et remplie
+--   data = { name=, realm=, class=, level=, ilvl=, spec= } pour un personnage
+--   hors-ligne (ex: liste Stats). data=nil ou omis -> lit le joueur connecté.
+-- ============================================================================
+function UI.ClassColor(classToken)
+  local c = classToken and (
+    (C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(classToken)) or
+    (RAID_CLASS_COLORS and RAID_CLASS_COLORS[classToken])
+  )
+  if c then return { c.r, c.g, c.b } end
+  return { 0.85, 0.85, 0.90 }
+end
+
+local function liveCharData()
+  local name  = UnitName("player")
+  local realm = GetRealmName()
+  local class = select(2, UnitClass("player"))
+  local level = UnitLevel("player")
+  local spec
+  local specIndex = GetSpecialization and GetSpecialization()
+  if specIndex then
+    local _, specName = GetSpecializationInfo(specIndex)
+    spec = specName
+  end
+  local ilvl
+  if GetAverageItemLevel then
+    local _, avgEquipped = GetAverageItemLevel()
+    if avgEquipped then ilvl = math.floor(avgEquipped + 0.5) end
+  end
+  return { name = name, realm = realm, class = class, level = level, ilvl = ilvl, spec = spec }
+end
+
+function UI.CharBannerText(data)
+  data = data or liveCharData()
+  local cc = UI.ClassColor(data.class)
+  local parts = {}
+  parts[#parts + 1] = UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. "[" .. tostring(data.level or "?") .. "]|r"
+  parts[#parts + 1] = UI.Hex(cc[1], cc[2], cc[3]) .. (data.name or "?") .. "|r"
+  if data.ilvl then
+    parts[#parts + 1] = UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. "[" .. tostring(data.ilvl) .. "]|r"
+  end
+  local tail = {}
+  if data.spec and data.spec ~= "" then tail[#tail + 1] = data.spec end
+  if data.realm and data.realm ~= "" then tail[#tail + 1] = data.realm end
+  local line = table.concat(parts, " ")
+  if #tail > 0 then
+    local sep = "  " .. UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. "-|r  "
+    line = line .. sep .. table.concat(tail, sep)
+  end
+  return line
+end
+
+function UI.CharBanner(parent, data)
+  local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  fs:SetJustifyH("LEFT")
+  fs:SetText(UI.CharBannerText(data))
+  return fs
 end
 
 -- Alias tourne vers l'avenir : le meme socle est aussi accessible via

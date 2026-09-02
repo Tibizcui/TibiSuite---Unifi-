@@ -97,6 +97,11 @@ local function build()
     frame:SetBackdropColor(0.05, 0.06, 0.08, 0.86)
     frame:SetBackdropBorderColor(0, 0, 0, 1)
 
+    -- Fermeture par Echap via UISpecialFrames (mecanisme natif Blizzard) :
+    -- voir note detaillee dans TibiSuiteCore.lua (WireEscapeFor) - piege reel
+    -- confirme en jeu quand un autre addon intercepte lui aussi Echap.
+    tinsert(UISpecialFrames, "LairLensAuditFrame")
+
     -- Deplacement.
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -113,15 +118,23 @@ local function build()
     -- On reserve la place a droite (-34) pour le bouton d'acces au dashboard.
     titleFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     titleFS:SetPoint("TOPLEFT", 12, -11)
-    titleFS:SetPoint("RIGHT", -34, 0)
+    titleFS:SetPoint("RIGHT", -58, 0)
     titleFS:SetJustifyH("LEFT")
     U.SetTextColor(titleFS, C.COLOR.ACCENT)
+
+    -- Croix de fermeture : jusqu'ici seul Echap (UISpecialFrames) fermait ce
+    -- panneau - pas de croix visible, contrairement a toutes les autres
+    -- fenetres de la suite. Decalee du coin pour laisser sa place a dashBtn
+    -- (raccourci tableau de bord), juste en dessous/a gauche.
+    local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+    closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6)
+    closeBtn:SetScript("OnClick", function() frame:Hide() end)
 
     -- Bouton d'acces direct au tableau de bord (historique des runs), en haut a
     -- droite du panneau. Fonctionne meme sans TibiSuite.
     local dashBtn = CreateFrame("Button", nil, frame)
     dashBtn:SetSize(18, 18)
-    dashBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -10, -9)
+    dashBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -34, -9)
     local dashIcon = dashBtn:CreateTexture(nil, "ARTWORK")
     dashIcon:SetAllPoints()
     dashIcon:SetTexture("Interface\\Icons\\INV_Misc_Book_09")

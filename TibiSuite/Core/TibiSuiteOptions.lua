@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v4.0
+-- TibiSuiteOptions v6.0
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Panneau « Modules » de la suite. Une case a cocher par
 --          module connu (meme non charge). Cocher = charge le module
@@ -29,6 +29,7 @@ local DESC = {
   Lair    = "Audit de groupe et pertinence des recompenses pour les Repaires.",
   Skill   = "Progression des metiers par extension (actuel / max + %), pour tous tes personnages.",
   RepBar  = "Barre de reputation : remplace la barre native, suit la faction par zone et par quete.",
+  Post    = "Gestion avancee de la boite aux lettres : ouverture en masse, carnet de contacts, statistiques de courrier.",
 }
 
 -- Categorie pour l'installateur : "hud" = barre / conteneur ambiant, sinon
@@ -41,51 +42,179 @@ local URL_CURSE = "https://www.curseforge.com/members/tibiscui/projects"
 
 local panel   -- construit une seule fois (paresseux)
 
--- Confirmation avant de reinstaller un module (efface reglages + progression,
--- puis recharge l'interface). %s = nom de l'addon, data = cle du module.
-StaticPopupDialogs = StaticPopupDialogs or {}
-StaticPopupDialogs["TIBISUITE_REINSTALL"] = {
-  text = "Reinstaller %s ?\n\nCela efface definitivement ses reglages et sa progression, puis recharge l'interface.",
-  button1 = YES or "Oui",
-  button2 = NO or "Non",
-  OnAccept = function(_, data)
-    if data and TibiSuite.ReinstallModule then TibiSuite.ReinstallModule(data) end
-  end,
-  timeout = 0, whileDead = true, hideOnEscape = true, showAlert = true, preferredIndex = 3,
-}
+-- ================================================================
+-- FENETRES MAISON (confirmation + copie de lien)
+-- ----------------------------------------------------------------
+-- PIEGE REEL, CONFIRME EN JEU (ADDON_ACTION_FORBIDDEN "SpellStopCasting" sur
+-- ToggleGameMenu/Echap, meme sans jamais afficher le moindre popup) : ecrire
+-- des entrees dans StaticPopupDialogs - une table PARTAGEE avec Blizzard -
+-- suffit a contaminer l'execution que Blizzard utilise ensuite pour gerer
+-- Echap. Isole par bisection complete du code (tout desactive sauf ces 3
+-- entrees -> erreur ; ces 3 entrees seules desactivees -> plus d'erreur).
+-- SOLUTION : ne plus jamais ecrire dans StaticPopupDialogs. Fenetres 100%
+-- maison ci-dessous (meme principe que BuildPlaceholder/TibiSuiteCore.lua),
+-- fermables par UISpecialFrames (Echap natif, aucun risque).
+-- ================================================================
 
--- Confirmation avant de reinstaller TibiSuite (le core) : reglages de la suite
--- remis a zero, progression des modules conservee, puis reload.
-StaticPopupDialogs["TIBISUITE_REINSTALL_CORE"] = {
-  text = "Reinstaller TibiSuite ?\n\nCela remet a zero les reglages de la suite (barre, modules actives, installation) puis recharge l'interface. La progression de chaque module est conservee.",
-  button1 = YES or "Oui",
-  button2 = NO or "Non",
-  OnAccept = function()
-    if TibiSuite.ReinstallCore then TibiSuite.ReinstallCore() end
-  end,
-  timeout = 0, whileDead = true, hideOnEscape = true, showAlert = true, preferredIndex = 3,
-}
+-- Bouton plat local, meme rendu que UI.MakeButton mais sans en dependre
+-- directement (au cas ou TibiMidnight ne serait pas encore charge).
+local function MakeThemedButton(parent, w, h, text)
+  local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
+  b:SetSize(w, h)
+  b:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+  b:SetBackdropColor(1, 1, 1, 0.05)
+  b:SetBackdropBorderColor(1, 1, 1, 0.12)
+  local fs = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  fs:SetAllPoints()
+  fs:SetText(text or "")
+  b:SetScript("OnEnter", function(s) s:SetBackdropColor(1, 1, 1, 0.10); s:SetBackdropBorderColor(1, 1, 1, 0.25) end)
+  b:SetScript("OnLeave", function(s) s:SetBackdropColor(1, 1, 1, 0.05); s:SetBackdropBorderColor(1, 1, 1, 0.12) end)
+  return b
+end
 
--- Fenetre "copier un lien" : WoW n'ouvre pas de navigateur, on presente donc
--- l'URL dans une EditBox pre-selectionnee (Ctrl+C pour copier).
-StaticPopupDialogs["TIBISUITE_URL"] = {
-  text = "%s",
-  button1 = CLOSE or "Fermer",
-  hasEditBox = true, editBoxWidth = 340,
-  OnShow = function(self, data)
-    local eb = self.editBox or (self.GetEditBox and self:GetEditBox())
-    if eb then
-      eb:SetText(data or "")
-      eb:HighlightText()
-      eb:SetFocus()
-      eb:SetScript("OnEscapePressed", function(s) s:GetParent():Hide() end)
-      eb:SetScript("OnEnterPressed",  function(s) s:GetParent():Hide() end)
-    end
-  end,
-  timeout = 0, whileDead = true, hideOnEscape = true, preferredIndex = 3,
-}
+-- Meme theme graphique que le reste de la suite (fond plat sombre, bordure
+-- fine, liseré d'accent) via UI.SkinFrame ; repli local si TibiMidnight
+-- n'est pas encore charge (ne devrait pas arriver, mais pas de crash).
+local function SkinLikeSuite(f, accent)
+  local UI = _G.TibiMidnight
+  if UI and UI.SkinFrame then
+    UI.SkinFrame(f, accent, UI.C.PANEL)
+  else
+    f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    f:SetBackdropColor(0.055, 0.063, 0.082, 0.98)
+    f:SetBackdropBorderColor(0, 0, 0, 1)
+  end
+end
+
+local confirmFrame
+local function ShowConfirm(text, onAccept)
+  if not confirmFrame then
+    confirmFrame = CreateFrame("Frame", "TibiSuiteConfirmFrame", UIParent, "BackdropTemplate")
+    confirmFrame:SetSize(380, 150)
+    confirmFrame:SetPoint("CENTER")
+    -- FULLSCREEN_DIALOG (au-dessus de DIALOG) : garantit que la confirmation
+    -- s'affiche devant le panneau d'options / le panneau des modules qui
+    -- l'a ouverte (tous deux en DIALOG), au lieu de se lancer derriere.
+    confirmFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+    SkinLikeSuite(confirmFrame, ACCENT_SUITE)
+    confirmFrame:EnableMouse(true)
+    confirmFrame:SetMovable(true)
+    confirmFrame:RegisterForDrag("LeftButton")
+    confirmFrame:SetScript("OnDragStart", confirmFrame.StartMoving)
+    confirmFrame:SetScript("OnDragStop",  confirmFrame.StopMovingOrSizing)
+    confirmFrame:Hide()
+    tinsert(UISpecialFrames, "TibiSuiteConfirmFrame")
+
+    local closeB = CreateFrame("Button", nil, confirmFrame, "UIPanelCloseButton")
+    closeB:SetPoint("TOPRIGHT", confirmFrame, "TOPRIGHT", 2, 2)
+    closeB:SetScript("OnClick", function() confirmFrame:Hide() end)
+
+    local msg = confirmFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    msg:SetPoint("TOP", 0, -30)
+    msg:SetWidth(320)
+    msg:SetJustifyH("CENTER")
+    confirmFrame._msg = msg
+
+    local yesBtn = MakeThemedButton(confirmFrame, 90, 24, "|cFF66FF66" .. (YES or "Oui") .. "|r")
+    yesBtn:SetPoint("BOTTOMRIGHT", confirmFrame, "BOTTOM", -10, 16)
+    yesBtn:SetScript("OnClick", function()
+      confirmFrame:Hide()
+      if confirmFrame._onAccept then confirmFrame._onAccept() end
+    end)
+
+    local noBtn = MakeThemedButton(confirmFrame, 90, 24, "|cFFFF7777" .. (NO or "Non") .. "|r")
+    noBtn:SetPoint("BOTTOMLEFT", confirmFrame, "BOTTOM", 10, 16)
+    noBtn:SetScript("OnClick", function() confirmFrame:Hide() end)
+  end
+
+  confirmFrame._msg:SetText(text)
+  confirmFrame._onAccept = onAccept
+  confirmFrame:Show()
+end
+TibiSuite.ShowConfirm = ShowConfirm
+
+local urlFrame
 local function ShowURL(url)
-  StaticPopup_Show("TIBISUITE_URL", url, nil, url)
+  if not urlFrame then
+    urlFrame = CreateFrame("Frame", "TibiSuiteURLFrame", UIParent, "BackdropTemplate")
+    urlFrame:SetSize(420, 100)
+    urlFrame:SetPoint("CENTER")
+    urlFrame:SetFrameStrata("FULLSCREEN_DIALOG")
+    SkinLikeSuite(urlFrame, ACCENT_SUITE)
+    urlFrame:EnableMouse(true)
+    urlFrame:SetMovable(true)
+    urlFrame:RegisterForDrag("LeftButton")
+    urlFrame:SetScript("OnDragStart", urlFrame.StartMoving)
+    urlFrame:SetScript("OnDragStop",  urlFrame.StopMovingOrSizing)
+    urlFrame:Hide()
+    tinsert(UISpecialFrames, "TibiSuiteURLFrame")
+
+    local hint = urlFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    hint:SetPoint("TOP", 0, -22)
+    hint:SetText("Ctrl+C pour copier")
+
+    local eb = CreateFrame("EditBox", "TibiSuiteURLBox", urlFrame, "InputBoxTemplate")
+    eb:SetSize(370, 30)
+    eb:SetPoint("TOP", hint, "BOTTOM", 0, -10)
+    eb:SetAutoFocus(true)
+    eb:SetScript("OnEscapePressed", function(s) s:GetParent():Hide() end)
+    eb:SetScript("OnEnterPressed",  function(s) s:GetParent():Hide() end)
+    urlFrame._box = eb
+
+    local closeBtn = CreateFrame("Button", nil, urlFrame, "UIPanelCloseButton")
+    closeBtn:SetPoint("TOPRIGHT", urlFrame, "TOPRIGHT", 2, 2)
+    closeBtn:SetScript("OnClick", function() urlFrame:Hide() end)
+  end
+
+  urlFrame._box:SetText(url or "")
+  urlFrame._box:HighlightText()
+  urlFrame:Show()
+  urlFrame._box:SetFocus()
+end
+
+-- ================================================================
+-- TOAST (confirmation courte, auto-disparait) - inspire du "toast" d'ElvUI
+-- apres une action appliquee (installation terminee, module bascule...).
+-- Pure UI, aucun element partage avec Blizzard.
+-- ================================================================
+local toastFrame
+function TibiSuite.ShowToast(text)
+  if not toastFrame then
+    toastFrame = CreateFrame("Frame", "TibiSuiteToastFrame", UIParent, "BackdropTemplate")
+    toastFrame:SetSize(360, 40)
+    toastFrame:SetPoint("TOP", UIParent, "TOP", 0, -140)
+    toastFrame:SetFrameStrata("TOOLTIP")
+    toastFrame:SetBackdrop({
+      bgFile = "Interface\\Buttons\\WHITE8X8",
+      edgeFile = "Interface\\Buttons\\WHITE8X8",
+      edgeSize = 1,
+    })
+    toastFrame:SetBackdropColor(0.06, 0.07, 0.09, 0.95)
+    toastFrame:SetBackdropBorderColor(0.769, 0.122, 0.231, 1)
+    toastFrame:Hide()
+
+    local msg = toastFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    msg:SetPoint("CENTER")
+    msg:SetWidth(340)
+    msg:SetJustifyH("CENTER")
+    toastFrame._msg = msg
+
+    local ag = toastFrame:CreateAnimationGroup()
+    local fadeIn = ag:CreateAnimation("Alpha")
+    fadeIn:SetFromAlpha(0); fadeIn:SetToAlpha(1); fadeIn:SetDuration(0.2); fadeIn:SetOrder(1)
+    local hold = ag:CreateAnimation("Alpha")
+    hold:SetFromAlpha(1); hold:SetToAlpha(1); hold:SetDuration(2.0); hold:SetOrder(2)
+    local fadeOut = ag:CreateAnimation("Alpha")
+    fadeOut:SetFromAlpha(1); fadeOut:SetToAlpha(0); fadeOut:SetDuration(0.6); fadeOut:SetOrder(3)
+    ag:SetScript("OnFinished", function() toastFrame:Hide() end)
+    toastFrame._anim = ag
+  end
+
+  toastFrame._msg:SetText(text or "")
+  toastFrame:SetAlpha(0)
+  toastFrame:Show()
+  toastFrame._anim:Stop()
+  toastFrame._anim:Play()
 end
 
 -- Convertit r,g,b [0-1] en code couleur WoW pour teinter le libelle.
@@ -120,7 +249,17 @@ local function Build()
     panel:Check(
       label,
       function() return TibiSuite.IsModuleEnabled and TibiSuite.IsModuleEnabled(key) end,
-      function(v) if TibiSuite.SetModuleEnabled then TibiSuite.SetModuleEnabled(key, v) end end,
+      function(v)
+        if TibiSuite.SetModuleEnabled then TibiSuite.SetModuleEnabled(key, v) end
+        -- Charger prend effet tout de suite ; decharger necessite un /reload
+        -- (WoW ne permet pas de decharger un addon a chaud) - le toast reflete
+        -- lequel des deux vient de se produire.
+        if v then
+          TibiSuite.ShowToast(Hex(mod.col) .. mod.addonName .. "|r active")
+        else
+          TibiSuite.ShowToast(Hex(mod.col) .. mod.addonName .. "|r desactive - effectif au prochain |cFFFFD700/reload|r")
+        end
+      end,
       present and ("Charger / decharger " .. mod.addonName)
               or (mod.addonName .. " n'est pas installe (dossier absent).")
     )
@@ -139,7 +278,12 @@ local function Build()
       local key   = mod.key
       panel:Button(
         "|cFFFF6666Reinstaller|r  " .. Hex(mod.col) .. addon .. "|r",
-        function() StaticPopup_Show("TIBISUITE_REINSTALL", addon, nil, key) end
+        function()
+          ShowConfirm(
+            "Reinstaller " .. addon .. " ?\n\nCela efface definitivement ses reglages et sa progression, puis recharge l'interface.",
+            function() if TibiSuite.ReinstallModule then TibiSuite.ReinstallModule(key) end end
+          )
+        end
       )
     end
   end
@@ -149,8 +293,30 @@ local function Build()
   panel:Note("Remet a zero les reglages de la suite (barre, modules actives, installation) et recharge l'interface. La progression de chaque module est conservee.")
   panel:Button(
     "|cFFC41F3BReinstaller TibiSuite|r  |cFF808080(la suite)|r",
-    function() StaticPopup_Show("TIBISUITE_REINSTALL_CORE") end
+    function()
+      ShowConfirm(
+        "Reinstaller TibiSuite ?\n\nCela remet a zero les reglages de la suite (barre, modules actives, installation) puis recharge l'interface. La progression de chaque module est conservee.",
+        function() if TibiSuite.ReinstallCore then TibiSuite.ReinstallCore() end end
+      )
+    end
   )
+
+  -- ── Dashboard web (module Stats) ─────────────────────────────────
+  panel:Section("Dashboard web")
+  panel:Note("Colle tes statistiques sur le site pour les consulter hors du jeu. Rien n'est envoye a un serveur : le code est lu localement par ton navigateur.")
+  if panel.SelectableText then
+    panel:SelectableText("URL du dashboard (Ctrl+C pour copier) :", "https://www.tibiscui.fr/Dashboard.html")
+  else
+    panel:Note("https://www.tibiscui.fr/Dashboard.html")
+  end
+  panel:Button("Generer mon code d'export", function()
+    if _G.Stats and _G.Stats.ShowExportPopup then
+      _G.Stats.ShowExportPopup()
+    else
+      TibiSuite.ShowToast("Active le module |cFFFFD700Stats|r pour generer un export.")
+    end
+  end)
+  panel:Note("Confidentialite : aucune donnee n'est envoyee a un serveur. Le code d'export est genere et lu entierement en local (jeu et navigateur).")
 
   return panel
 end
@@ -198,7 +364,7 @@ local function BuildWizard()
   logo:SetSize(40, 40); logo:SetPoint("TOPLEFT", 18, -16); logo:SetTexture(LOGO)
   local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", logo, "TOPRIGHT", 12, -2)
-  title:SetText(hexLav("TibiSuite") .. "  |cFF7C7790- Midnight|r")
+  title:SetText(hexLav("TibiSuite"))
   local sub = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 1, -4)
   sub:SetText("Assistant de premiere installation")
@@ -226,9 +392,34 @@ local function BuildWizard()
     steps[i] = { frame = seg, num = num, numT = numT, lbl = lbl }
   end
 
+  -- Barre de progression : degrade rouge -> jaune -> vert selon l'etape
+  -- (inspire d'ElvUI Install.lua). Remplissage direct, sans animation image
+  -- par image : suffisant pour un assistant a 3 etapes.
+  local progressBG = CreateFrame("Frame", nil, f, "BackdropTemplate")
+  progressBG:SetSize(660 - 40, 4)
+  progressBG:SetPoint("TOPLEFT", 20, -100)
+  progressBG:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8" })
+  progressBG:SetBackdropColor(0.16, 0.15, 0.20, 1)
+  local progressBar = CreateFrame("StatusBar", nil, progressBG)
+  progressBar:SetAllPoints()
+  progressBar:SetStatusBarTexture("Interface\\Buttons\\WHITE8X8")
+  progressBar:SetMinMaxValues(0, 2)
+  progressBar:SetValue(0)
+
+  local function GradientColor(t)
+    t = math.max(0, math.min(1, t))
+    if t < 0.5 then return 1, t / 0.5, 0 end
+    return 1 - (t - 0.5) / 0.5, 1, 0
+  end
+  local function UpdateProgressBar(step)
+    progressBar:SetValue(step)
+    local r, g, b = GradientColor(step / 2)
+    progressBar:SetStatusBarColor(r, g, b, 1)
+  end
+
   local sep = f:CreateTexture(nil, "ARTWORK")
   sep:SetColorTexture(1, 1, 1, 0.10)
-  sep:SetPoint("TOPLEFT", 16, -104); sep:SetPoint("TOPRIGHT", -16, -104); sep:SetHeight(1)
+  sep:SetPoint("TOPLEFT", 16, -108); sep:SetPoint("TOPRIGHT", -16, -108); sep:SetHeight(1)
 
   -- ================= PANE : BIENVENUE =================
   local pW = CreateFrame("Frame", nil, f)
@@ -372,6 +563,22 @@ local function BuildWizard()
       if #list == 0 then return end
       local h = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
       h:SetPoint("TOPLEFT", 4, y); h:SetText("|cFF6A6676" .. label .. "|r")
+
+      -- Tout / Aucun propres a cette categorie (par opposition aux boutons
+      -- globaux allOn/allOff qui touchent toutes les categories a la fois).
+      local catAll = UI.MakeButton(content, 40, 16, "|cFFB8ADFFTout|r")
+      catAll:SetPoint("LEFT", h, "RIGHT", 10, 0)
+      catAll:SetScript("OnClick", function()
+        for _, m in ipairs(list) do wizard.choice[m.key] = true end
+        wizard.refreshCards()
+      end)
+      local catNone = UI.MakeButton(content, 48, 16, "|cFF9A96A8Aucun|r")
+      catNone:SetPoint("LEFT", catAll, "RIGHT", 4, 0)
+      catNone:SetScript("OnClick", function()
+        for _, m in ipairs(list) do wizard.choice[m.key] = nil end
+        wizard.refreshCards()
+      end)
+
       y = y - 22
       for j, m in ipairs(list) do
         local col = colOf(m)
@@ -484,6 +691,7 @@ local function BuildWizard()
     wizard.step = s
     for i = 0, 2 do wizard.panes[i]:SetShown(i == s) end
     styleSteps()
+    UpdateProgressBar(s)
     prevB:SetShown(s > 0)
     if s == 0 then nextB._label:SetText(hexLav("Commencer"))
     elseif s == 1 then nextB._label:SetText(hexLav("Continuer")); wizard.refreshCards()
@@ -499,6 +707,7 @@ local function BuildWizard()
     TibiSuiteDB.setupDone = true
     f:Hide()
     print("|cFFC41F3BTibiSuite|r : installation terminee. |cFFFFD700/ts modules|r pour ajuster plus tard.")
+    TibiSuite.ShowToast("|cFFC41F3BTibiSuite|r installe avec succes !")
   end
 
   prevB:SetScript("OnClick", function() if wizard.step > 0 then wizard.goStep(wizard.step - 1) end end)

@@ -1,4 +1,4 @@
--- XPBar.lua v2.6
+-- XPBar.lua v6.0
 -- Barre XP avancée — Tibiscui
 -- Maj+Drag pour déplacer | Maj+Clic droit pour les options
 
@@ -27,7 +27,7 @@ local L = {
     POS_RESET       = "Position réinitialisée.",
     SESSION_RESET   = "Session réinitialisée.",
     -- Options
-    OPT_TITLE       = "|cffddbbffXPBar|r — Options",
+    OPT_TITLE       = "XPBar - Options",
     OPT_TAB         = "Options",
     OPT_HINT        = "|cffFFD700Maj+Drag|r pour déplacer   |cffFFD700Maj+Clic droit|r pour ouvrir/fermer",
     OPT_WIDTH       = "Largeur :",
@@ -309,12 +309,25 @@ ApplyAppearance = function()
     ApplyFont()
 end
 
+-- Le module a-t-il ete decoche dans le panneau Modules du core ? Meme
+-- convention que XPBar_Module.lua. BUG CORRIGE ICI : rien dans ce fichier ne
+-- consultait ce flag auparavant - la barre s'affichait toujours, meme
+-- decochee, a chaque /reload ou demarrage de session (meme bug que RepBar).
+local function IsEnabledByCore()
+    if not (TibiSuiteDB and type(TibiSuiteDB.enabledModules) == "table") then return true end
+    return TibiSuiteDB.enabledModules.XPBar == true
+end
+
 -- ══════════════════════════════════════════════════
 -- VISIBILITÉ CONTEXTUELLE (combat / véhicule / survol / niveau max)
 -- Retourne true si la barre reste visible, false si masquée.
 -- ══════════════════════════════════════════════════
 ApplyVisibility = function()
     if not containerFrame or not db then return false end
+
+    if not IsEnabledByCore() then
+        containerFrame:Hide() ; return false
+    end
 
     local lvl    = UnitLevel("player")
     local maxLvl = (GetMaxPlayerLevel and GetMaxPlayerLevel()) or 999
@@ -339,33 +352,25 @@ end
 
 -- ══════════════════════════════════════════════════
 -- BARRE XP NATIVE (Retail 12.x = StatusTrackingBarManager)
+--
+-- IMPORTANT (piege reel, corrige) : NE JAMAIS faire SetScript("OnShow", ...)
+-- sur ce frame (ni sur ses enfants). SetScript REMPLACE le gestionnaire
+-- existant au lieu de s'y ajouter (contrairement a HookScript) : si Blizzard
+-- affiche ce frame depuis un contexte qu'on ne maitrise pas (gain de
+-- reputation/XP, etc.) et que notre propre gestionnaire ecrase le sien,
+-- c'est exactement le genre d'action qui declenche "action reservee a l'IU
+-- de Blizzard". On ne touche donc plus JAMAIS a Show/Hide/SetScript sur ce
+-- frame : seule l'opacite (SetAlpha) est modifiee, reaffirmee a chaque appel
+-- de UpdateBar() (deja declenche sur tous les evenements XP/quete/repos
+-- pertinents), jamais via un hook.
 -- ══════════════════════════════════════════════════
 EnforceNativeBar = function()
     if not StatusTrackingBarManager then return end
-    if db.hideDefaultXPBar then
-        StatusTrackingBarManager:Hide()
-        StatusTrackingBarManager:SetAlpha(0)
-        StatusTrackingBarManager:SetScript("OnShow", function(self)
-            self:Hide() ; self:SetAlpha(0)
-        end)
-        for i = 1, StatusTrackingBarManager:GetNumChildren() do
-            local child = select(i, StatusTrackingBarManager:GetChildren())
-            if child then
-                child:Hide()
-                child:SetScript("OnShow", function(self) self:Hide() end)
-            end
-        end
-    else
-        StatusTrackingBarManager:SetScript("OnShow", nil)
-        StatusTrackingBarManager:SetAlpha(1)
-        StatusTrackingBarManager:Show()
-        for i = 1, StatusTrackingBarManager:GetNumChildren() do
-            local child = select(i, StatusTrackingBarManager:GetChildren())
-            if child then
-                child:SetScript("OnShow", nil)
-                child:Show()
-            end
-        end
+    local alpha = db.hideDefaultXPBar and 0 or 1
+    StatusTrackingBarManager:SetAlpha(alpha)
+    for i = 1, StatusTrackingBarManager:GetNumChildren() do
+        local child = select(i, StatusTrackingBarManager:GetChildren())
+        if child then child:SetAlpha(alpha) end
     end
 end
 
@@ -1098,6 +1103,7 @@ evFrame:SetScript("OnEvent", function(self, event, arg1, arg2)
         PushXPSample()   -- point de départ pour l'XP/h glissant
         if RequestTimePlayed then RequestTimePlayed() end
         UpdateBar()
+        print("|cFFBC38FAXPBar|r v6.0 chargé -- tapez |cFFFFD700/xpbar|r pour les options.")
 
     elseif event == "PLAYER_LOGOUT" then
         -- Déclenché aussi par /reload : horodate la déconnexion pour permettre,
@@ -1178,7 +1184,7 @@ local function BuildMidnightOptions()
     if midnightPanel then return midnightPanel end
     midnightPanel = ui.CreateOptionsPanel({
         name = "XPBarOptionsMidnight",
-        title = "|cFF9480FFXPBar|r  Options", accent = ACCENT_XP })
+        title = "XPBar - Options", accent = ACCENT_XP })
 
     midnightPanel:Section("Dimensions")
     midnightPanel:Slider("Largeur", 200, 1200, 10,
@@ -1244,7 +1250,7 @@ function XPBar_OpenOptions()
     local p = BuildMidnightOptions(); if p then p:Toggle() end
 end
 
--- Roue crantée sur la barre + harmonisation (pas de recherche pour XPBar)
+-- Bouton texte "Options" sur la barre + harmonisation (pas de recherche pour XPBar)
 local tibiEv = CreateFrame("Frame")
 tibiEv:RegisterEvent("PLAYER_LOGIN")
 tibiEv:SetScript("OnEvent", function()
