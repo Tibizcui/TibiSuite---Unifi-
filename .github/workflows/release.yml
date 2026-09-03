@@ -9,8 +9,13 @@ name: Release to CurseForge
 # passe a "-t" (1 repo = 1 addon dans son usage normal). Ce repo contient 14
 # addons dans un seul depot Git, donc chaque job copie d'abord le dossier du
 # module dans un repertoire temporaire du runner et y cree un mini-checkout
-# Git jetable (git init + commit + tag), uniquement pour satisfaire cette
-# verification. Rien n'est jamais pousse depuis ce mini-checkout.
+# Git jetable (git init + commit + tag + remote "origin" pointant vers ce
+# depot), uniquement pour satisfaire ces verifications. Rien n'est jamais
+# pousse depuis ce mini-checkout. Le remote "origin" est necessaire : sans
+# lui, le packager detecte l'upload CurseForge comme non disponible et
+# saute l'envoi SANS AUCUNE erreur ni log (a decouvert lors du premier test
+# reel du 2026-09-03 : le zip s'etait bien construit mais rien n'avait ete
+# envoye sur CurseForge).
 on:
   push:
     tags:
@@ -73,6 +78,7 @@ jobs:
           cp -r "${{ matrix.module }}/." "$pkgdir/"
           cd "$pkgdir"
           git init -q
+          git remote add origin "https://github.com/${{ github.repository }}.git"
           git config user.email "ci@tibiscui.local"
           git config user.name "TibiSuite CI"
           git add -A
