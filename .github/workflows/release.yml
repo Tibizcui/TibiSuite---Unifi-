@@ -39,22 +39,24 @@ jobs:
           - WeeklyCompass
           - XPBar
           - TibiSuite
-    if: >-
-      (github.event_name == 'push' && startsWith(github.ref, format('refs/tags/{0}-v', matrix.module)))
-      || (github.event_name == 'workflow_dispatch' && github.event.inputs.module == matrix.module)
+    # NB: le contexte "matrix" n'est disponible que dans les steps, pas dans
+    # le "if" du job lui-meme -> le filtrage par module se fait step par step.
     steps:
       - uses: actions/checkout@v4
 
       - name: Package ${{ matrix.module }} (dry run, aucun envoi)
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.module == matrix.module &&
+          github.event.inputs.dry_run == 'true'
         uses: BigWigsMods/packager@v2
         with:
           args: -d -t ${{ matrix.module }}
 
       - name: Package et publie ${{ matrix.module }} sur CurseForge
-        if: >-
-          github.event_name == 'push'
-          || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true')
+        if: |
+          (github.event_name == 'push' && startsWith(github.ref, format('refs/tags/{0}-v', matrix.module))) ||
+          (github.event_name == 'workflow_dispatch' && github.event.inputs.module == matrix.module && github.event.inputs.dry_run != 'true')
         uses: BigWigsMods/packager@v2
         with:
           args: -t ${{ matrix.module }}
