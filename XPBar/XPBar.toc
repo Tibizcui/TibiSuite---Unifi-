@@ -4,6 +4,7 @@
 ## Notes: Barre XP avancée - Niveau, XP, Repos, Quêtes, Stats de session
 ## Author: Tibiscui - Kirin Tor
 ## Version: 6.0
+## X-Curse-Project-ID: 1585015
 # MODE DOUBLE (standalone ou integre) : pas de LoadOnDemand (ce module doit
 # pouvoir se charger seul, sans le core) ; dependance SOUPLE sur TibiSuite.
 # Voir XPBar_Module.lua pour la detection a l'execution (HasCore()).

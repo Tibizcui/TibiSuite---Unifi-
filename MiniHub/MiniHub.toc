@@ -5,6 +5,7 @@
 ## Notes-frFR: Regroupe les boutons et icones de la minicarte dans un conteneur unique et retractable.
 ## Author: Tibiscui - Kirin Tor
 ## Version: 6.0
+## X-Curse-Project-ID: 1633313
 
 # ----------------------------------------------------------------
 # MODULE DE LA SUITE TibiSuite - MODE DOUBLE (standalone ou integre)

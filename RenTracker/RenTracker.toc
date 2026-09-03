@@ -5,6 +5,7 @@
 ## Notes-frFR: Suivi des reputations multi-extensions (Vanilla -> Midnight). 13 extensions, groupes pliables Principales/Secondaires/PvP, mini-barres de progression, quetes hebdo/uniques/quotidiennes, suivi auto par zone.
 ## Author: Tibiscui - Kirin Tor
 ## Version: 6.0
+## X-Curse-Project-ID: 1527429
 ## IconTexture: Interface\AddOns\RenTracker\medias\TibiSuiteIcon
 
 # ----------------------------------------------------------------

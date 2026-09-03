@@ -5,6 +5,7 @@
 ## Notes-frFR: Coeur de la suite Tibiscui. Socle charge une seule fois, un seul bouton minimap, barre d'onglets unifiee, chargement a la demande (LoadOnDemand) des modules coches.
 ## Author: Tibiscui - Kirin Tor
 ## Version: 6.0
+## X-Curse-Project-ID: 1550823
 
 ## IconTexture: Interface\AddOns\TibiSuite\medias\TibiSuite
 

@@ -5,6 +5,7 @@
 ## Notes-frFR: Tracker des entrees d'instances (Donjons, Raids, Gouffres, Torghast) pour toutes les extensions. Vanilla -> Midnight.
 ## Author: Tibiscui - Kirin Tor
 ## Version: 6.0
+## X-Curse-Project-ID: 1533504
 ## IconTexture: Interface\AddOns\DgnTracker\medias\TibiSuiteIcon
 
 # ----------------------------------------------------------------

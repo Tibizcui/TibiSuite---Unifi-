@@ -5,6 +5,7 @@
 ## Notes-frFR: Suivi des objets legendaires par extension, statut, quetes et composants. Suivi de compte complet.
 ## Author: Tibiscui - Kirin Tor
 ## Version: 6.0
+## X-Curse-Project-ID: 1533482
 ## IconTexture: Interface\AddOns\LegTracker\medias\TibiSuiteIcon
 
 # ----------------------------------------------------------------

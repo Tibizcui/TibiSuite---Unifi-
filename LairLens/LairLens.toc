@@ -5,6 +5,7 @@
 ## Notes-frFR: Audit de groupe et pertinence des recompenses pour les Repaires (12.1).
 ## Author: Tibiscui - Kirin Tor
 ## Version: 6.0
+## X-Curse-Project-ID: 1651462
 
 # ----------------------------------------------------------------
 # MODULE DE LA SUITE TibiSuite - MODE DOUBLE (standalone ou integre)

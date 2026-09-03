@@ -5,6 +5,7 @@
 ## Notes-frFR: Tableau de bord hebdomadaire unifie pour la Saison 1 et 2 : ce qu'il reste a faire pour maximiser vos recompenses.
 ## Author: Tibiscui - Kirin Tor
 ## Version: 6.0
+## X-Curse-Project-ID: 1629524
 ## IconTexture: Interface\AddOns\WeeklyCompass\medias\TibiSuiteIcon
 
 # ----------------------------------------------------------------

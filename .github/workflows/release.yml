@@ -1,0 +1,62 @@
+name: Release to CurseForge
+
+# Declencheurs :
+# 1) push d'un tag "<Module>-v<version>" (ex: DailyTracker-v6.1) -> publie CE module.
+# 2) declenchement manuel (onglet Actions -> Run workflow) avec dry_run=true
+#    pour valider qu'un module se zippe correctement SANS rien pousser sur CurseForge.
+on:
+  push:
+    tags:
+      - '*-v*'
+  workflow_dispatch:
+    inputs:
+      module:
+        description: 'Nom du dossier addon a tester (ex: DailyTracker)'
+        required: true
+      dry_run:
+        description: 'Dry run (ne pousse rien sur CurseForge)'
+        type: boolean
+        default: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - DailyTracker
+          - DgnTracker
+          - LairLens
+          - LegTracker
+          - LvlHistory
+          - MiniHub
+          - PostBox
+          - RenTracker
+          - RepBar
+          - SkillTracker
+          - Stats
+          - WeeklyCompass
+          - XPBar
+          - TibiSuite
+    if: >-
+      (github.event_name == 'push' && startsWith(github.ref, format('refs/tags/{0}-v', matrix.module)))
+      || (github.event_name == 'workflow_dispatch' && github.event.inputs.module == matrix.module)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package ${{ matrix.module }} (dry run, aucun envoi)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run == 'true'
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -d -t ${{ matrix.module }}
+
+      - name: Package et publie ${{ matrix.module }} sur CurseForge
+        if: >-
+          github.event_name == 'push'
+          || (github.event_name == 'workflow_dispatch' && github.event.inputs.dry_run != 'true')
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -t ${{ matrix.module }}
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}

@@ -6,6 +6,7 @@
 ## Notes-enUS: Advanced mailbox management: mass opening, contact book, mail statistics. Works standalone (own minimap button) or integrated into TibiSuite (tab in the unified bar).
 ## Title-deDE: PostBox
 ## Notes-deDE: Erweiterte Briefkastenverwaltung: Massenoffnung, Adressbuch, Poststatistik. Funktioniert eigenstandig (eigener Minimap-Button) oder in TibiSuite integriert (Reiter in der vereinten Leiste).
+## X-Curse-Project-ID: 1680332
 ## Title-esES: PostBox
 ## Notes-esES: Gestion avanzada del buzon: apertura masiva, agenda de contactos, estadisticas de correo. Funciona solo (boton de minimapa propio) o integrado en TibiSuite (pestana en la barra unificada).
 ## Author: Tibiscui - Kirin Tor
