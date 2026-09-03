@@ -123,9 +123,18 @@ function SX.PurgeOldDays(rec)
   for i = 1, #keys - SX.HISTORY_MAX_DAYS do rec.days[keys[i]] = nil end
 end
 
+-- CORRECTIF confirme en jeu : StatsDB.export (chaine) et StatsDB.exportedAt
+-- (nombre), ecrits a PLAYER_LOGOUT pour le companion Dashboard-Tibi (cf.
+-- Core.lua plus bas), sont des cles de PREMIER NIVEAU au meme titre que les
+-- "Nom-Royaume" - un simple `pairs(StatsDB)` les confondait avec des
+-- personnages. Un personnage est TOUJOURS une table ; on ne garde donc que
+-- ca, ce qui ecarte ces deux cles (et toute future cle non-personnage) sans
+-- avoir a les nommer en dur.
 function SX.GetCharKeys()
   local keys = {}
-  for k in pairs(StatsDB) do keys[#keys + 1] = k end
+  for k, v in pairs(StatsDB) do
+    if type(v) == "table" then keys[#keys + 1] = k end
+  end
   table.sort(keys)
   return keys
 end
@@ -191,7 +200,10 @@ end
 
 function SX.AggregateAccount(from, to)
   local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {} }
-  for key in pairs(StatsDB) do
+  -- SX.GetCharKeys() plutot que pairs(StatsDB) direct : ecarte StatsDB.export
+  -- / StatsDB.exportedAt (cf. son commentaire) qui feraient planter
+  -- SX.Aggregate en tentant de lire ".days" sur une chaine ou un nombre.
+  for _, key in ipairs(SX.GetCharKeys()) do
     local a = SX.Aggregate(key, from, to)
     agg.quests    = agg.quests + a.quests
     agg.goldGain  = agg.goldGain + a.goldGain
@@ -260,12 +272,21 @@ function SX.MinMaxAvg(series)
 end
 
 -- La periode "annee" ne se debloque qu'avec un an de donnees accumulees.
+-- CORRECTIF confirme en jeu : sans le filtre type(rec)=="table", cette
+-- fonction plantait des qu'elle atteignait StatsDB.exportedAt (un nombre,
+-- cf. GetCharKeys plus haut) - "attempt to index a number value" sur
+-- rec.days. Comme HasFullYearOfData() est appelee a CHAQUE ouverture du
+-- tableau de bord (boutons de periode), l'erreur interrompait
+-- RefreshDashboard() avant meme d'atteindre BuildOverview() : la fenetre
+-- Stats s'ouvrait avec l'entete correct mais AUCUNE carte affichee.
 function SX.HasFullYearOfData()
   local earliest = nil
   for _, rec in pairs(StatsDB) do
-    for dayKey in pairs(rec.days or {}) do
-      local t = SX.ParseDayKey(dayKey)
-      if t and (not earliest or t < earliest) then earliest = t end
+    if type(rec) == "table" then
+      for dayKey in pairs(rec.days or {}) do
+        local t = SX.ParseDayKey(dayKey)
+        if t and (not earliest or t < earliest) then earliest = t end
+      end
     end
   end
   if not earliest then return false end
