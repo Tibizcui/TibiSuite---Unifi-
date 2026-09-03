@@ -103,3 +103,20 @@ jobs:
           args: -t ${{ runner.temp }}/pkg-${{ matrix.module }}
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+
+      # Diagnostic temporaire : les 2 premiers tests reels (DailyTracker-v6.0
+      # et v6.0.1) ont construit le zip avec succes mais n'ont jamais tente
+      # l'upload CurseForge (aucune ligne "Uploading..." dans les logs). On
+      # verifie ici si le zip existe bien juste apres l'etape ci-dessus, pour
+      # savoir si la condition interne du packager porte sur le fichier
+      # archive ou sur autre chose. A retirer une fois le vrai probleme trouve.
+      - name: Diagnostic post-packaging ${{ matrix.module }}
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          pkgdir="${{ runner.temp }}/pkg-${{ matrix.module }}"
+          echo "--- contenu de $pkgdir/.release ---"
+          ls -la "$pkgdir/.release" 2>&1 || echo "(pas de .release)"
+          echo "--- taille des zips ---"
+          find "$pkgdir/.release" -name "*.zip" -exec ls -la {} \; 2>&1
+          echo "--- git tag/describe dans le mini-repo ---"
+          cd "$pkgdir" && git tag && git describe --tags --always --abbrev=0
