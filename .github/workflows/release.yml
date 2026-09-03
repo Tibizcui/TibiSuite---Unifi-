@@ -4,6 +4,13 @@ name: Release to CurseForge
 # 1) push d'un tag "<Module>-v<version>" (ex: DailyTracker-v6.1) -> publie CE module.
 # 2) declenchement manuel (onglet Actions -> Run workflow) avec dry_run=true
 #    pour valider qu'un module se zippe correctement SANS rien pousser sur CurseForge.
+#
+# NB monorepo : BigWigsMods/packager exige un ".git" a la racine du dossier
+# passe a "-t" (1 repo = 1 addon dans son usage normal). Ce repo contient 14
+# addons dans un seul depot Git, donc chaque job copie d'abord le dossier du
+# module dans un repertoire temporaire du runner et y cree un mini-checkout
+# Git jetable (git init + commit + tag), uniquement pour satisfaire cette
+# verification. Rien n'est jamais pousse depuis ce mini-checkout.
 on:
   push:
     tags:
@@ -44,21 +51,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Determine si ce job publie ${{ matrix.module }}
+        id: gate
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] && [[ "${GITHUB_REF#refs/tags/}" == "${{ matrix.module }}-v"* ]]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "version=${GITHUB_REF#refs/tags/${{ matrix.module }}-}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.module }}" = "${{ matrix.module }}" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "version=dev-$(date +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Construit un mini-checkout Git isole pour ${{ matrix.module }}
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          pkgdir="${{ runner.temp }}/pkg-${{ matrix.module }}"
+          rm -rf "$pkgdir"
+          mkdir -p "$pkgdir"
+          cp -r "${{ matrix.module }}/." "$pkgdir/"
+          cd "$pkgdir"
+          git init -q
+          git config user.email "ci@tibiscui.local"
+          git config user.name "TibiSuite CI"
+          git add -A
+          git commit -q -m "release ${{ steps.gate.outputs.version }}"
+          git tag "${{ steps.gate.outputs.version }}"
+
       - name: Package ${{ matrix.module }} (dry run, aucun envoi)
         if: |
+          steps.gate.outputs.run == 'true' &&
           github.event_name == 'workflow_dispatch' &&
-          github.event.inputs.module == matrix.module &&
           github.event.inputs.dry_run == 'true'
         uses: BigWigsMods/packager@v2
         with:
-          args: -d -t ${{ matrix.module }}
+          args: -d -t ${{ runner.temp }}/pkg-${{ matrix.module }}
 
       - name: Package et publie ${{ matrix.module }} sur CurseForge
         if: |
-          (github.event_name == 'push' && startsWith(github.ref, format('refs/tags/{0}-v', matrix.module))) ||
-          (github.event_name == 'workflow_dispatch' && github.event.inputs.module == matrix.module && github.event.inputs.dry_run != 'true')
+          steps.gate.outputs.run == 'true' &&
+          (github.event_name == 'push' || github.event.inputs.dry_run != 'true')
         uses: BigWigsMods/packager@v2
         with:
-          args: -t ${{ matrix.module }}
+          args: -t ${{ runner.temp }}/pkg-${{ matrix.module }}
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
