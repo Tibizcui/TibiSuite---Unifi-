@@ -94,29 +94,37 @@ jobs:
         with:
           args: -d -t ${{ runner.temp }}/pkg-${{ matrix.module }}
 
-      - name: Package et publie ${{ matrix.module }} sur CurseForge
+      # DEBUG TEMPORAIRE (a retirer une fois le probleme trouve) : les 3 tests
+      # reels precedents (v6.0, v6.0.1, v6.0.2) construisent le zip avec succes
+      # mais n'appellent jamais l'upload CurseForge, sans la moindre ligne de
+      # log ("Uploading..." absent, "Skipping upload to CurseForge." absent,
+      # "jq not found" absent) alors que le zip existe bien sur le disque a cet
+      # instant (verifie). Donc la garde interne du script
+      #   if [[ -z $skip_upload && -n $archive && -s $archive ]]; then
+      # est fausse pour une raison qui echappe a la lecture statique du script.
+      # On execute ici release.sh directement sous "bash -x" (au lieu de
+      # passer par l'action BigWigsMods/packager@v2) pour voir la substitution
+      # reelle de $skip_upload/$archive au moment du test.
+      - name: "[DEBUG] Trace complete de release.sh pour ${{ matrix.module }}"
         if: |
           steps.gate.outputs.run == 'true' &&
           (github.event_name == 'push' || github.event.inputs.dry_run != 'true')
-        uses: BigWigsMods/packager@v2
-        with:
-          args: -t ${{ runner.temp }}/pkg-${{ matrix.module }}
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-
-      # Diagnostic temporaire : les 2 premiers tests reels (DailyTracker-v6.0
-      # et v6.0.1) ont construit le zip avec succes mais n'ont jamais tente
-      # l'upload CurseForge (aucune ligne "Uploading..." dans les logs). On
-      # verifie ici si le zip existe bien juste apres l'etape ci-dessus, pour
-      # savoir si la condition interne du packager porte sur le fichier
-      # archive ou sur autre chose. A retirer une fois le vrai probleme trouve.
-      - name: Diagnostic post-packaging ${{ matrix.module }}
-        if: steps.gate.outputs.run == 'true'
         run: |
           pkgdir="${{ runner.temp }}/pkg-${{ matrix.module }}"
-          echo "--- contenu de $pkgdir/.release ---"
-          ls -la "$pkgdir/.release" 2>&1 || echo "(pas de .release)"
-          echo "--- taille des zips ---"
-          find "$pkgdir/.release" -name "*.zip" -exec ls -la {} \; 2>&1
-          echo "--- git tag/describe dans le mini-repo ---"
-          cd "$pkgdir" && git tag && git describe --tags --always --abbrev=0
+          curl -sL https://raw.githubusercontent.com/BigWigsMods/packager/master/release.sh -o "${{ runner.temp }}/release.sh"
+          set +e
+          bash -x "${{ runner.temp }}/release.sh" -t "$pkgdir" \
+            > "${{ runner.temp }}/out.log" 2> "${{ runner.temp }}/trace.log"
+          echo "exit code: $?"
+          set -e
+          echo "::group::stdout complet"
+          cat "${{ runner.temp }}/out.log"
+          echo "::endgroup::"
+          echo "::group::trace autour de skip_upload / archive"
+          grep -n "skip_upload\|^+ \[\[ -z\|^+ archive=\|command -v jq\|upload_curseforge" "${{ runner.temp }}/trace.log" || echo "(rien trouve)"
+          echo "::endgroup::"
+          echo "::group::200 dernieres lignes de la trace complete"
+          tail -200 "${{ runner.temp }}/trace.log"
+          echo "::endgroup::"
