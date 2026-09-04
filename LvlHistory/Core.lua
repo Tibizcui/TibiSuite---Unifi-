@@ -8,7 +8,7 @@ local T = LvlHistory
 -- ─────────────────────────────────────────────
 -- Constantes
 -- ─────────────────────────────────────────────
-local ADDON_VERSION = "6.0"
+local ADDON_VERSION = "7.0"
 local SAVE_INTERVAL = 300  -- sauvegarde incrémentale toutes les 5 minutes
 
 -- Structure par défaut d'un personnage

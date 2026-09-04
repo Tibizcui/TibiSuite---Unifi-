@@ -1,4 +1,4 @@
--- XPBar.lua v6.0
+-- XPBar.lua v7.0
 -- Barre XP avancée — Tibiscui
 -- Maj+Drag pour déplacer | Maj+Clic droit pour les options
 
@@ -1103,7 +1103,7 @@ evFrame:SetScript("OnEvent", function(self, event, arg1, arg2)
         PushXPSample()   -- point de départ pour l'XP/h glissant
         if RequestTimePlayed then RequestTimePlayed() end
         UpdateBar()
-        print("|cFFBC38FAXPBar|r v6.0 chargé -- tapez |cFFFFD700/xpbar|r pour les options.")
+        print("|cFFBC38FAXPBar|r v7.0 chargé -- tapez |cFFFFD700/xpbar|r pour les options.")
 
     elseif event == "PLAYER_LOGOUT" then
         -- Déclenché aussi par /reload : horodate la déconnexion pour permettre,

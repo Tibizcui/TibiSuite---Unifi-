@@ -1173,7 +1173,7 @@ local function Initialize()
     MiniHub.UpdateContextVisibility()
 
     ScheduleDeferredScans()
-    print("|cFFFCD748MiniHub|r v6.0 chargé -- tapez |cFFFFD700/minihub|r pour ouvrir.")
+    print("|cFFFCD748MiniHub|r v7.0 chargé -- tapez |cFFFFD700/minihub|r pour ouvrir.")
 end
 
 local loader = CreateFrame("Frame")

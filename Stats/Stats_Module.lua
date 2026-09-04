@@ -16,8 +16,9 @@ local function HasCore()
 end
 
 if not HasCore() then
-  C_Timer.After(10, function()
+  C_Timer.After(45, function()
     print("|cFFC41F3BTibiSuite|r : plus d'infos sur |cFFFFD700https://www.tibiscui.fr|r")
+    print("|cFFC41F3BTibiSuite|r : télécharge Tibi-Companion sur |cFFFFD700https://tibiscui.fr/tibi-companion.html|r")
   end)
 end
 

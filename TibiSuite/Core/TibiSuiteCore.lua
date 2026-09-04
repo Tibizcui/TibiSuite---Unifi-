@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v6.0
+-- TibiSuiteCore v7.0
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "6.0"
+local VERSION = "7.0"
 
 -- Table globale minimale exposée pour les modules récents (ex. MiniHub).
 -- Elle leur permet de détecter TibiSuite comme parent, de s'y enregistrer,
@@ -2401,12 +2401,13 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     print("  |cFFFFD700/ts config|r options    |cFFFFD700/ts openall|r / |cFFFFD700closeall|r tout ouvrir / fermer")
     print("  |cFFFFD700/ts lock|r verrouiller    |cFFFFD700/ts vertical|r orientation    |cFFFFD700/ts help|r aide complète")
 
-    -- Rappel du site officiel, 10s apres le login. Affiche UNIQUEMENT ici
+    -- Rappel du site officiel, 45s apres le login. Affiche UNIQUEMENT ici
     -- (le core) quand il est present : chaque module verifie HasCore() et se
     -- tait dans ce cas, pour eviter que le meme message apparaisse jusqu'a
     -- 12 fois (une par module) au lieu d'une seule.
-    C_Timer.After(10, function()
+    C_Timer.After(45, function()
       print("|cFFC41F3BTibiSuite|r : plus d'infos sur |cFFFFD700https://www.tibiscui.fr|r")
+      print("|cFFC41F3BTibiSuite|r : télécharge Tibi-Companion sur |cFFFFD700https://tibiscui.fr/tibi-companion.html|r")
     end)
 
   -- ── UPDATE_PENDING_MAIL : courrier non lu apparu/disparu ──────

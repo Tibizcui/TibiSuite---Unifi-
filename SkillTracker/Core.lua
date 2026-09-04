@@ -921,7 +921,7 @@ ev:SetScript("OnEvent", function(_, event, arg1)
         ST.RequestScan(1.0)
         if ST.OnPlayerLogin then ST.OnPlayerLogin() end
         ST.SetupLDB()
-        print("|cFF00FF98SkillTracker|r v6.0 " .. L.LOADED_MSG
+        print("|cFF00FF98SkillTracker|r v7.0 " .. L.LOADED_MSG
           .. "  -  |cFFFFD700/skt|r, |cFFFFD700/skt config|r.")
       end
     end
@@ -932,7 +932,7 @@ ev:SetScript("OnEvent", function(_, event, arg1)
     ST.RequestScan(1.0)
     if ST.OnPlayerLogin then ST.OnPlayerLogin() end
     ST.SetupLDB()
-    print("|cFF00FF98SkillTracker|r v6.0 " .. L.LOADED_MSG
+    print("|cFF00FF98SkillTracker|r v7.0 " .. L.LOADED_MSG
       .. "  -  |cFFFFD700/skt|r, |cFFFFD700/skt config|r.")
 
   elseif event == "PLAYER_ENTERING_WORLD" then

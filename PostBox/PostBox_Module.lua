@@ -39,8 +39,9 @@ end
 -- une seule fois (voir TibiSuiteCore.lua) - sinon il apparaitrait jusqu'a
 -- 12 fois, une par module.
 if not HasCore() then
-  C_Timer.After(10, function()
+  C_Timer.After(45, function()
     print("|cFFC41F3BTibiSuite|r : plus d'infos sur |cFFFFD700https://www.tibiscui.fr|r")
+    print("|cFFC41F3BTibiSuite|r : télécharge Tibi-Companion sur |cFFFFD700https://tibiscui.fr/tibi-companion.html|r")
   end)
 end
 
@@ -240,7 +241,7 @@ local function Init()
     else PostBox_Toggle() end
   end
 
-  print("|cFFB87838PostBox|r v6.0 chargé -- tapez |cFFFFD700/pb|r pour ouvrir.")
+  print("|cFFB87838PostBox|r v7.0 chargé -- tapez |cFFFFD700/pb|r pour ouvrir.")
 
   -- Le courrier ouvert par le systeme au login (frere du perso) reste geree
   -- par Blizzard ; on rafraichit juste notre cache si la fenetre est deja

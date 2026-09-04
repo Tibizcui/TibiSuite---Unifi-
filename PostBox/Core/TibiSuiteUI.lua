@@ -29,7 +29,7 @@
   socle du core evolue (bump NS_VERSION cote core -> reporter ici).
 ============================================================================]]
 
-local NS_VERSION = 12
+local NS_VERSION = 9
 
 if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
   return
@@ -740,26 +740,5 @@ end
 -- _G.TibiSuiteUI. Le global historique _G.TibiMidnight reste la reference
 -- utilisee par les modules existants (ne pas le retirer).
 _G.TibiSuiteUI = UI
-
--- ============================================================================
--- MESSAGE D'INFORMATION SUITE - affiche 45s apres la connexion, une seule
--- fois par session meme si plusieurs modules TibiSuite sont charges en meme
--- temps (garde partagee via _G.TibiSuiteInfoMessageShown).
--- ============================================================================
-function UI.ShowSuiteInfoMessage()
-  if _G.TibiSuiteInfoMessageShown then return end
-  _G.TibiSuiteInfoMessageShown = true
-  local c = "|cFFC41F3B"
-  print(c.."TibiSuite|r Plus d'informations sur https://www.tibiscui.fr")
-  print(c.."TibiSuite|r Télécharge Tibi-Companion : https://tibiscui.fr/tibi-companion.html")
-end
-
-do
-  local infoFrame = CreateFrame("Frame")
-  infoFrame:RegisterEvent("PLAYER_LOGIN")
-  infoFrame:SetScript("OnEvent", function()
-    C_Timer.After(45, UI.ShowSuiteInfoMessage)
-  end)
-end
 
 -- Fin de TibiSuiteUI (ex TibiMidnightUI)

@@ -1,5 +1,5 @@
 -- ================================================================
--- LegTracker v6.0
+-- LegTracker v7.0
 -- Suivi des objets legendaires de toutes les extensions WoW
 -- Auteur : Tibiscui - Kirin Tor
 -- Design & architecture propre a LegTracker
@@ -1819,8 +1819,8 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
     end
 
-    print(COL_BLUE .. "LegTracker v6.0" .. COL_RESET
-          .. " charge -- tapez " .. COL_GOLD .. "/lt" .. COL_RESET .. " pour ouvrir."
+    print(COL_BLUE .. "LegTracker v7.0" .. COL_RESET
+          .. " chargé -- tapez " .. COL_GOLD .. "/lt" .. COL_RESET .. " pour ouvrir."
           .. " |cFF888888(/lt scan = forcer scan, /lt reset = reinit donnees compte)|r")
 
   elseif event == "BANKFRAME_OPENED" or event == "BANKFRAME_CLOSED" then
