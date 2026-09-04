@@ -16,6 +16,16 @@ name: Release to CurseForge
 # saute l'envoi SANS AUCUNE erreur ni log (a decouvert lors du premier test
 # reel du 2026-09-03 : le zip s'etait bien construit mais rien n'avait ete
 # envoye sur CurseForge).
+#
+# NB variable d'environnement CurseForge : l'action "BigWigsMods/packager@v2"
+# pointe vers un commit fige de release.sh qui ne lit QUE $CF_API_KEY (nom
+# historique). Le README actuel sur la branche master documente $CF_API_TOKEN
+# (nom plus recent), mais ce n'est PAS ce que le tag @v2 execute reellement :
+# avec seulement CF_API_TOKEN defini, le script zippe tout correctement puis
+# saute l'upload en silence total (aucune erreur, aucun log), car cf_token
+# reste vide en interne. D'ou le nom "CF_API_KEY" utilise ci-dessous, alimente
+# depuis le secret GitHub "CF_API_TOKEN" deja cree (pas besoin de dupliquer le
+# secret, juste de le mapper vers le bon nom de variable).
 on:
   push:
     tags:
@@ -94,37 +104,12 @@ jobs:
         with:
           args: -d -t ${{ runner.temp }}/pkg-${{ matrix.module }}
 
-      # DEBUG TEMPORAIRE (a retirer une fois le probleme trouve) : les 3 tests
-      # reels precedents (v6.0, v6.0.1, v6.0.2) construisent le zip avec succes
-      # mais n'appellent jamais l'upload CurseForge, sans la moindre ligne de
-      # log ("Uploading..." absent, "Skipping upload to CurseForge." absent,
-      # "jq not found" absent) alors que le zip existe bien sur le disque a cet
-      # instant (verifie). Donc la garde interne du script
-      #   if [[ -z $skip_upload && -n $archive && -s $archive ]]; then
-      # est fausse pour une raison qui echappe a la lecture statique du script.
-      # On execute ici release.sh directement sous "bash -x" (au lieu de
-      # passer par l'action BigWigsMods/packager@v2) pour voir la substitution
-      # reelle de $skip_upload/$archive au moment du test.
-      - name: "[DEBUG] Trace complete de release.sh pour ${{ matrix.module }}"
+      - name: Package et publie ${{ matrix.module }} sur CurseForge
         if: |
           steps.gate.outputs.run == 'true' &&
           (github.event_name == 'push' || github.event.inputs.dry_run != 'true')
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -t ${{ runner.temp }}/pkg-${{ matrix.module }}
         env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-        run: |
-          pkgdir="${{ runner.temp }}/pkg-${{ matrix.module }}"
-          curl -sL https://raw.githubusercontent.com/BigWigsMods/packager/master/release.sh -o "${{ runner.temp }}/release.sh"
-          set +e
-          bash -x "${{ runner.temp }}/release.sh" -t "$pkgdir" \
-            > "${{ runner.temp }}/out.log" 2> "${{ runner.temp }}/trace.log"
-          echo "exit code: $?"
-          set -e
-          echo "::group::stdout complet"
-          cat "${{ runner.temp }}/out.log"
-          echo "::endgroup::"
-          echo "::group::trace autour de skip_upload / archive"
-          grep -n "skip_upload\|^+ \[\[ -z\|^+ archive=\|command -v jq\|upload_curseforge" "${{ runner.temp }}/trace.log" || echo "(rien trouve)"
-          echo "::endgroup::"
-          echo "::group::200 dernieres lignes de la trace complete"
-          tail -200 "${{ runner.temp }}/trace.log"
-          echo "::endgroup::"
+          CF_API_KEY: ${{ secrets.CF_API_TOKEN }}
