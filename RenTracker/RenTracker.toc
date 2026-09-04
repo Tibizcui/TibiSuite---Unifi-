@@ -3,8 +3,8 @@
 ## Title-frFR: RenTracker
 ## Notes: Reputation tracker multi-extensions. De Vanilla a Midnight, 13 extensions, groupes pliables avec mini-barres, suivi auto par zone.
 ## Notes-frFR: Suivi des reputations multi-extensions (Vanilla -> Midnight). 13 extensions, groupes pliables Principales/Secondaires/PvP, mini-barres de progression, quetes hebdo/uniques/quotidiennes, suivi auto par zone.
-## Author: Tibiscui - Kirin Tor
-## Version: 6.0
+## Author: Tibizcui - Kirin Tor
+## Version: 7.0
 ## X-Curse-Project-ID: 1527429
 ## IconTexture: Interface\AddOns\RenTracker\medias\TibiSuiteIcon
 

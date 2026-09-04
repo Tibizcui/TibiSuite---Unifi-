@@ -3,8 +3,8 @@
 ## Title-frFR: MiniHub
 ## Notes: Regroupe les boutons et icones de la minicarte dans un conteneur unique et retractable.
 ## Notes-frFR: Regroupe les boutons et icones de la minicarte dans un conteneur unique et retractable.
-## Author: Tibiscui - Kirin Tor
-## Version: 6.0
+## Author: Tibizcui - Kirin Tor
+## Version: 7.0
 ## X-Curse-Project-ID: 1633313
 
 # ----------------------------------------------------------------

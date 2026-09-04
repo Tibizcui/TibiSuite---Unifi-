@@ -9,8 +9,8 @@
 ## X-Curse-Project-ID: 1680332
 ## Title-esES: PostBox
 ## Notes-esES: Gestion avanzada del buzon: apertura masiva, agenda de contactos, estadisticas de correo. Funciona solo (boton de minimapa propio) o integrado en TibiSuite (pestana en la barra unificada).
-## Author: Tibiscui - Kirin Tor
-## Version: 6.0
+## Author: Tibizcui - Kirin Tor
+## Version: 7.0
 ## IconTexture: Interface\AddOns\PostBox\medias\TibiSuiteIcon
 ## SavedVariables: PostBoxDB
 ## OptionalDeps: TibiSuite
