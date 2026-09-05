@@ -195,3 +195,9 @@ L.WIZ_CONTINUE = "Continue"
 L.WIZ_INSTALL  = "Install and start"
 L.WIZ_FINISH_PRINT = "installation complete. |cFFFFD700/ts modules|r to adjust later."
 L.WIZ_FINISH_TOAST  = "|cFFC41F3BTibiSuite|r installed successfully!"
+
+-- Carte speciale Tibi-Companion
+L.COMPANION_TITLE = "Tibi-Companion"
+L.COMPANION_BADGE = "Free"
+L.COMPANION_DESC  = "The desktop companion app for TibiSuite: view and share your statistics outside the game, no browser or site connection needed."
+L.COMPANION_BTN   = "Download"

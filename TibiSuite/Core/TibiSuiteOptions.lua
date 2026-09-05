@@ -112,13 +112,21 @@ L.WIZ_INSTALL   = L.WIZ_INSTALL   or "Installer et demarrer"
 L.WIZ_FINISH_PRINT = L.WIZ_FINISH_PRINT or "installation terminee. |cFFFFD700/ts modules|r pour ajuster plus tard."
 L.WIZ_FINISH_TOAST  = L.WIZ_FINISH_TOAST  or "|cFFC41F3BTibiSuite|r installe avec succes !"
 
+-- Carte speciale Tibi-Companion (etape recapitulatif de l'installateur)
+L.COMPANION_TITLE = L.COMPANION_TITLE or "Tibi-Companion"
+L.COMPANION_BADGE = L.COMPANION_BADGE or "Gratuit"
+L.COMPANION_DESC  = L.COMPANION_DESC  or "L'application de bureau compagnon de TibiSuite : consulte et partage tes statistiques hors du jeu, sans navigateur ni connexion au site."
+L.COMPANION_BTN   = L.COMPANION_BTN   or "Telecharger"
+
 -- Categorie pour l'installateur : "hud" = barre / conteneur ambiant, sinon
 -- "tracker" (fenetre). Absent de la table => tracker.
 local GROUP = { XPBar = "hud", RepBar = "hud", MiniHub = "hud" }
 
--- Liens officiels (ouverts via une fenetre "copier le lien").
-local URL_SITE  = "https://www.tibiscui.fr"
-local URL_CURSE = "https://www.curseforge.com/members/tibiscui/projects"
+-- Liens officiels (ouverts via une fenetre "copier le lien" : WoW ne peut pas
+-- ouvrir un navigateur lui-meme, l'URL est donc presentee prete a copier).
+local URL_SITE      = "https://www.tibiscui.fr"
+local URL_CURSE     = "https://www.curseforge.com/members/tibiscui/projects"
+local URL_COMPANION = "https://tibiscui.fr/tibi-companion.html"
 
 local panel   -- construit une seule fois (paresseux)
 
@@ -601,8 +609,47 @@ local function BuildWizard()
   rSub:SetPoint("TOPLEFT", 2, -30)
   local chipsHost = CreateFrame("Frame", nil, pR)
   chipsHost:SetPoint("TOPLEFT", 2, -54); chipsHost:SetPoint("RIGHT", -2, 0); chipsHost:SetHeight(150)
+
+  -- ── Carte speciale Tibi-Companion : mise en avant premium, doree, avec un
+  -- lien "pret a copier" vers sa page de telechargement (WoW ne peut pas
+  -- ouvrir un navigateur directement depuis l'addon).
+  local GOLD = (UI.C and UI.C.GOLD) or { 1, 0.82, 0 }
+  local companionCard = CreateFrame("Frame", nil, pR, "BackdropTemplate")
+  companionCard:SetPoint("TOPLEFT", chipsHost, "BOTTOMLEFT", 0, -10)
+  companionCard:SetPoint("RIGHT", pR, "RIGHT", -2, 0)
+  companionCard:SetHeight(78)
+  companionCard:SetBackdrop(UI.FlatBackdrop())
+  companionCard:SetBackdropColor(0.10, 0.095, 0.125, 0.95)
+  companionCard:SetBackdropBorderColor(GOLD[1], GOLD[2], GOLD[3], 0.55)
+
+  local compBar = companionCard:CreateTexture(nil, "OVERLAY")
+  compBar:SetPoint("TOPLEFT", 0, 0); compBar:SetPoint("BOTTOMLEFT", 0, 0)
+  compBar:SetWidth(3); compBar:SetColorTexture(GOLD[1], GOLD[2], GOLD[3], 0.95)
+
+  local compIcon = companionCard:CreateTexture(nil, "ARTWORK")
+  compIcon:SetSize(36, 36); compIcon:SetPoint("LEFT", 14, 0); compIcon:SetTexture(LOGO)
+  local compMask = companionCard:CreateMaskTexture()
+  compMask:SetAllPoints(compIcon)
+  compMask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask",
+    "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+  compIcon:AddMaskTexture(compMask)
+
+  local compTitle = companionCard:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  compTitle:SetPoint("TOPLEFT", compIcon, "TOPRIGHT", 12, -2)
+  compTitle:SetText(UI.Hex(GOLD[1], GOLD[2], GOLD[3]) .. L.COMPANION_TITLE .. "|r   |cFF6EDC7A" .. L.COMPANION_BADGE .. "|r")
+
+  local compDesc = companionCard:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  compDesc:SetPoint("TOPLEFT", compTitle, "BOTTOMLEFT", 0, -5)
+  compDesc:SetPoint("RIGHT", companionCard, "RIGHT", -138, 0)
+  compDesc:SetJustifyH("LEFT")
+  compDesc:SetText(L.COMPANION_DESC)
+
+  local compBtn = UI.MakeButton(companionCard, 112, 26, L.COMPANION_BTN)
+  compBtn:SetPoint("RIGHT", -14, 0)
+  compBtn:SetScript("OnClick", function() ShowURL(URL_COMPANION) end)
+
   local reass = pR:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  reass:SetPoint("BOTTOMLEFT", 2, 6); reass:SetPoint("RIGHT", -2, 0); reass:SetJustifyH("LEFT")
+  reass:SetPoint("TOPLEFT", companionCard, "BOTTOMLEFT", 0, -12); reass:SetPoint("RIGHT", -2, 0); reass:SetJustifyH("LEFT")
   reass:SetText(L.WIZ_REASSURANCE)
 
   -- ----- Pied : liens + navigation -----
