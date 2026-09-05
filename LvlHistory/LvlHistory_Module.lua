@@ -20,7 +20,8 @@
 local FRAME  = "LvlHistoryMainFrame"
 local ACCENT = { 0.369, 0.886, 0.137 }   -- vert (logo #5EE223)
 local KEY    = "Lvl"
-local LABEL  = "Lvl Hist"
+local L      = LvlHistory and LvlHistory.L or {}
+local LABEL  = L["MODULE_LABEL"] or "Lvl Hist"
 
 local function GetUI() return _G.TibiMidnight end
 

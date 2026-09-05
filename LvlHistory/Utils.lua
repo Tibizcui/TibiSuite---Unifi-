@@ -6,6 +6,9 @@
 LvlHistory = LvlHistory or {}
 LvlHistory.Utils = LvlHistory.Utils or {}
 local U = LvlHistory.Utils
+LvlHistory.L = LvlHistory.L or {}
+local L = LvlHistory.L
+local function Loc(key, default) return L[key] or default end
 
 -- ─────────────────────────────────────────────
 -- Formatage des nombres
@@ -54,7 +57,9 @@ end
 --- @param copper number — montant en cuivres (GetMoney())
 --- @param compact boolean — si true, retourne "X.XX po"
 function U.FormatGold(copper, compact)
-    if not copper then return "0 po" end
+    local goldSuf, silverSuf, copperSuf =
+        Loc("CUR_GOLD", "po"), Loc("CUR_SILVER", "pa"), Loc("CUR_COPPER", "pc")
+    if not copper then return "0 " .. goldSuf end
 
     local isNeg = copper < 0
     copper = math.abs(math.floor(copper))
@@ -66,16 +71,16 @@ function U.FormatGold(copper, compact)
 
     if compact then
         local total = gold + silver / 100
-        return string.format("%s%.2f po", prefix, total)
+        return string.format("%s%.2f " .. goldSuf, prefix, total)
     end
 
     if gold > 0 then
-        return string.format("%s%s|cffFFD700po|r %d|cffc0c0c0pa|r %d|cffb87333pc|r",
+        return string.format("%s%s|cffFFD700" .. goldSuf .. "|r %d|cffc0c0c0" .. silverSuf .. "|r %d|cffb87333" .. copperSuf .. "|r",
             prefix, U.FormatNumber(gold), silver, bronze)
     elseif silver > 0 then
-        return string.format("%s%d|cffc0c0c0pa|r %d|cffb87333pc|r", prefix, silver, bronze)
+        return string.format("%s%d|cffc0c0c0" .. silverSuf .. "|r %d|cffb87333" .. copperSuf .. "|r", prefix, silver, bronze)
     else
-        return string.format("%s%d|cffb87333pc|r", prefix, bronze)
+        return string.format("%s%d|cffb87333" .. copperSuf .. "|r", prefix, bronze)
     end
 end
 
@@ -145,5 +150,5 @@ end
 --- Print d'erreur — toujours visible
 function U.LogError(fmt, ...)
     local msg = select("#", ...) > 0 and string.format(fmt, ...) or fmt
-    print(U.Colorize("[LvlHistory] ERREUR:", "FF4444") .. " " .. msg)
+    print(U.Colorize("[LvlHistory] " .. Loc("ERROR_PREFIX", "ERREUR:"), "FF4444") .. " " .. msg)
 end

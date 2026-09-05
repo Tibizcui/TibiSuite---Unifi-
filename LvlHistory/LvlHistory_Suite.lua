@@ -11,6 +11,8 @@ local FULLSKIN = true
 
 local function GetUI() return _G.TibiMidnight end
 local function Settings() local db = _G.LvlHistoryDB; return db and db.settings end
+local L = LvlHistory and LvlHistory.L or {}
+local function T(key, default) return L[key] or default end
 
 -- ---------------------------------------------------------------- Options
 local panel
@@ -21,30 +23,30 @@ local function BuildOptions()
     name = "LvlHistoryOptionsMidnight",
     title = "LvlHistory - Options", accent = ACCENT })
 
-  panel:Section("Fenêtre")
-  panel:Button("Ouvrir / fermer", function()
+  panel:Section(T("OPT_SEC_WINDOW", "Fenêtre"))
+  panel:Button(T("OPT_TOGGLE", "Ouvrir / fermer"), function()
     if _G.LvlHistory_Toggle then _G.LvlHistory_Toggle() end
   end)
-  panel:Button("Recentrer la fenêtre", function()
+  panel:Button(T("OPT_RECENTER", "Recentrer la fenêtre"), function()
     local f = _G[FRAME]; if f then f:ClearAllPoints(); f:SetPoint("CENTER") end
   end)
-  panel:Slider("Opacité (%)", 30, 100, 5,
+  panel:Slider(T("OPT_OPACITY", "Opacité (%)"), 30, 100, 5,
     function() local s = Settings(); return math.floor(((s and s.alpha) or 0.97) * 100 + 0.5) end,
     function(v)
       local s = Settings(); if s then s.alpha = v / 100 end
       local f = _G[FRAME]; if f then f:SetAlpha(v / 100) end
     end)
 
-  panel:Section("Boutons flottants (barre TibiSuite)")
-  panel:Check("Masquer le bouton Options",
+  panel:Section(T("OPT_SEC_FLOATING", "Boutons flottants (barre TibiSuite)"))
+  panel:Check(T("OPT_HIDE_OPTIONS_BTN", "Masquer le bouton Options"),
     function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("LvlHistoryMainFrame", "options") end,
     function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("LvlHistoryMainFrame", "options", v) end end)
-  panel:Check("Masquer le champ Recherche",
+  panel:Check(T("OPT_HIDE_SEARCH_BTN", "Masquer le champ Recherche"),
     function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("LvlHistoryMainFrame", "search") end,
     function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("LvlHistoryMainFrame", "search", v) end end)
-  panel:Note("Le bouton Options et le champ Recherche debordent au-dessus de la fenetre. Meme masques, Maj+clic droit sur la fenetre ouvre ces options.")
+  panel:Note(T("OPT_FLOATING_NOTE", "Le bouton Options et le champ Recherche debordent au-dessus de la fenetre. Meme masques, Maj+clic droit sur la fenetre ouvre ces options."))
 
-  panel:Note("Astuce : clic droit sur la vignette Lvl Hist dans la barre TibiSuite ouvre aussi ces options.")
+  panel:Note(T("OPT_NOTE", "Astuce : clic droit sur la vignette Lvl Hist dans la barre TibiSuite ouvre aussi ces options."))
   return panel
 end
 
@@ -89,7 +91,7 @@ local function OpenSearch()
   if not searchPopup then
     searchPopup = ui.CreateSearchPopup({
       name = "LvlHistorySearchPopup",
-      title = "|cFF9480FFLvlHistory|r  Recherche", accent = ACCENT, logo = LOGO, provider = provider })
+      title = "|cFF9480FFLvlHistory|r  " .. T("SEARCH_TITLE", "Recherche"), accent = ACCENT, logo = LOGO, provider = provider })
   end
   searchPopup.Toggle()
 end
@@ -112,13 +114,13 @@ end
 
 -- Inscription immediate au registre de recherche globale
 -- (le provider lit les donnees a la volee ; plus fiable que PLAYER_LOGIN seul)
-do local _u = GetUI(); if _u and _u.RegisterSearch then _u.RegisterSearch(KEY, "Lvl Hist", provider) end end
+do local _u = GetUI(); if _u and _u.RegisterSearch then _u.RegisterSearch(KEY, T("MODULE_LABEL", "Lvl Hist"), provider) end end
 
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("PLAYER_LOGIN")
 ev:SetScript("OnEvent", function()
   local ui = GetUI()
-  if ui and ui.RegisterSearch then ui.RegisterSearch(KEY, "Lvl Hist", provider) end
+  if ui and ui.RegisterSearch then ui.RegisterSearch(KEY, T("MODULE_LABEL", "Lvl Hist"), provider) end
   C_Timer.After(1.0, Decorate)
   C_Timer.After(3.0, Decorate)
 end)

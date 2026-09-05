@@ -35,6 +35,11 @@
 # egale ou superieure)
 Core\TibiSuiteUI.lua
 
+## Localisation FR (par defaut, en dur dans le code) / EN. Doit charger avant
+## tous les autres fichiers : certaines chaines (ex: TAB_LABELS) sont
+## construites une seule fois au chargement du fichier qui les utilise.
+Locale\enUS.lua
+
 Utils.lua
 Bridge.lua
 Core.lua
@@ -42,7 +47,6 @@ Leveling.lua
 Farming.lua
 Minimap.lua
 UI.lua
-Locale\frFR.lua
 ## Glue TibiSuite historique : recherche globale, options, habillage fenetre
 LvlHistory_Suite.lua
 ## Glue TibiSuite : inscription comme onglet de la barre unifiee

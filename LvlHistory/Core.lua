@@ -4,6 +4,9 @@
 
 LvlHistory = LvlHistory or {}
 local T = LvlHistory
+LvlHistory.L = LvlHistory.L or {}
+local L = LvlHistory.L
+local function Loc(key, default) return L[key] or default end
 
 -- ─────────────────────────────────────────────
 -- Constantes
@@ -282,7 +285,7 @@ coreFrame:SetScript("OnEvent", function(self, event, ...)
         -- T.Utils.Log() ci-dessus est reduit au mode debug (voir Utils.lua) - le
         -- message de connexion uniforme de la suite doit rester visible pour
         -- tout le monde, d'ou ce print() simple en plus.
-        print("|cFFF0B429LvlHistory|r v" .. ADDON_VERSION .. " chargé -- tapez |cFFFFD700/lvlh|r pour ouvrir.")
+        print("|cFFF0B429LvlHistory|r v" .. ADDON_VERSION .. " " .. Loc("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/lvlh|r " .. Loc("LOGIN_TO_OPEN", "pour ouvrir."))
 
     elseif event == "PLAYER_LOGOUT" then
         SaveCurrentSession()
@@ -305,7 +308,7 @@ coreFrame:SetScript("OnEvent", function(self, event, ...)
 
             if LvlHistoryDB.settings.sessionAlert then
                 print(T.Utils.Colorize("[LvlHistory]", "F0B429")
-                    .. " Niveau maximum atteint — passage en mode FARMING")
+                    .. " " .. Loc("MAX_LEVEL_REACHED", "Niveau maximum atteint — passage en mode FARMING"))
             end
         end
     end
@@ -494,17 +497,17 @@ SlashCmdList["LVLHISTORY"] = function(msg)
 
     elseif cmd == "reset" then
         print(T.Utils.Colorize("[LvlHistory]", "F0B429")
-            .. " Tapez |cffFFFFFF/lvlh reset confirm|r pour confirmer.")
+            .. " " .. Loc("RESET_CONFIRM_HINT", "Tapez |cffFFFFFF/lvlh reset confirm|r pour confirmer."))
 
     elseif cmd == "reset confirm" then
         local key = T.charKey
         if key and LvlHistoryDB and LvlHistoryDB.chars and LvlHistoryDB.chars[key] then
             LvlHistoryDB.chars[key] = nil
-            print(T.Utils.Colorize("[LvlHistory]", "F0B429") .. " Données réinitialisées. Rechargez (/reload).")
+            print(T.Utils.Colorize("[LvlHistory]", "F0B429") .. " " .. Loc("DATA_RESET_DONE", "Données réinitialisées. Rechargez (/reload)."))
         end
 
     else
         print(T.Utils.Colorize("[LvlHistory]", "F0B429")
-            .. " Commandes : /lvlh | /lvlh options | /lvlh minimap | /lvlh debug | /lvlh reset")
+            .. " " .. Loc("SLASH_HELP", "Commandes : /lvlh | /lvlh options | /lvlh minimap | /lvlh debug | /lvlh reset"))
     end
 end

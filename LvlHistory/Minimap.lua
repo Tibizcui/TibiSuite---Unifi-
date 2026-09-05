@@ -7,6 +7,9 @@
 
 LvlHistory.Minimap = LvlHistory.Minimap or {}
 local MM = LvlHistory.Minimap
+LvlHistory.L = LvlHistory.L or {}
+local L = LvlHistory.L
+local function Loc(key, default) return L[key] or default end
 
 -- ─────────────────────────────────────────────
 -- Constantes
@@ -99,29 +102,29 @@ local function BuildButton()
 
         local db = LvlHistory.db
         if db then
-            GameTooltip:AddDoubleLine("Mode",
+            GameTooltip:AddDoubleLine(Loc("TT_MODE", "Mode"),
                 LvlHistory.Utils.ModeLabel(db.mode), 0.7, 0.7, 0.7, 1, 1, 1)
-            GameTooltip:AddDoubleLine("Niveau",
+            GameTooltip:AddDoubleLine(Loc("TT_LEVEL", "Niveau"),
                 tostring(db.level or UnitLevel("player")), 0.7, 0.7, 0.7, 1, 1, 1)
 
             if db.mode == "leveling" then
                 GameTooltip:AddDoubleLine("XP/h",
                     LvlHistory.Utils.FormatXPH(db.session.xph), 0.7, 0.7, 0.7, 1, 1, 1)
             else
-                GameTooltip:AddDoubleLine("Or/h",
+                GameTooltip:AddDoubleLine(Loc("TT_GOLDH", "Or/h"),
                     LvlHistory.Utils.FormatGold(db.farming.goldPerHour, true),
                     0.7, 0.7, 0.7, 1, 1, 1)
             end
 
             local elapsed = time() - (db.session.startTime or time())
-            GameTooltip:AddDoubleLine("Session",
+            GameTooltip:AddDoubleLine(Loc("TT_SESSION", "Session"),
                 LvlHistory.Utils.FormatTime(elapsed, true), 0.7, 0.7, 0.7, 1, 1, 1)
         end
 
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("|cFFFFD700Clic gauche|r : Ouvrir/Fermer", 0.7, 0.7, 0.7)
-        GameTooltip:AddLine("|cFFFFD700Clic droit|r  : Options",       0.7, 0.7, 0.7)
-        GameTooltip:AddLine("|cFFFFD700Glisser|r     : Repositionner", 0.7, 0.7, 0.7)
+        GameTooltip:AddLine("|cFFFFD700" .. Loc("TT_LEFTCLICK", "Clic gauche") .. "|r : " .. Loc("TT_TOGGLE", "Ouvrir/Fermer"), 0.7, 0.7, 0.7)
+        GameTooltip:AddLine("|cFFFFD700" .. Loc("TT_RIGHTCLICK", "Clic droit") .. "|r  : " .. Loc("TT_OPTIONS", "Options"),       0.7, 0.7, 0.7)
+        GameTooltip:AddLine("|cFFFFD700" .. Loc("TT_DRAG", "Glisser") .. "|r     : " .. Loc("TT_REPOSITION", "Repositionner"), 0.7, 0.7, 0.7)
         GameTooltip:Show()
     end)
 
@@ -213,12 +216,12 @@ function MM.ShowContextMenu(anchor)
             notCheckable = true,
         },
         {
-            text         = "Ouvrir / Fermer",
+            text         = Loc("MENU_TOGGLE", "Ouvrir / Fermer"),
             notCheckable = true,
             func         = function() LvlHistory.UI.Toggle() end,
         },
         {
-            text         = "Debug : " .. (LvlHistory.debug and "|cff2ECC71ON|r" or "|cffFF4444OFF|r"),
+            text         = Loc("MENU_DEBUG", "Debug") .. " : " .. (LvlHistory.debug and "|cff2ECC71ON|r" or "|cffFF4444OFF|r"),
             notCheckable = true,
             func         = function()
                 LvlHistory.debug = not LvlHistory.debug
@@ -229,7 +232,7 @@ function MM.ShowContextMenu(anchor)
             end,
         },
         {
-            text         = "Masquer le bouton",
+            text         = Loc("MENU_HIDE_BUTTON", "Masquer le bouton"),
             notCheckable = true,
             func         = function()
                 MM.Hide()
@@ -237,17 +240,17 @@ function MM.ShowContextMenu(anchor)
                     LvlHistoryDB.settings.minimapButton = false
                 end
                 CloseDropDownMenus()
-                LvlHistory.Utils.Log("Bouton masqué — /lvlh minimap pour réafficher")
+                LvlHistory.Utils.Log(Loc("BUTTON_HIDDEN_LOG", "Bouton masqué — /lvlh minimap pour réafficher"))
             end,
         },
         { text = " ", notCheckable = true, disabled = true },
         {
-            text         = "|cffFF4444Réinitialiser ce perso|r",
+            text         = "|cffFF4444" .. Loc("MENU_RESET_CHAR", "Réinitialiser ce perso") .. "|r",
             notCheckable = true,
             func         = function()
                 CloseDropDownMenus()
                 print(LvlHistory.Utils.Colorize("[LvlHistory]", "F0B429")
-                    .. " Tapez |cffFFFFFF/lvlh reset confirm|r pour confirmer.")
+                    .. " " .. Loc("RESET_CONFIRM_HINT", "Tapez |cffFFFFFF/lvlh reset confirm|r pour confirmer."))
             end,
         },
     }

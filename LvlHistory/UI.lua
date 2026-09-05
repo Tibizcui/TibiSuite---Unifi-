@@ -5,6 +5,9 @@
 
 LvlHistory.UI = LvlHistory.UI or {}
 local UI = LvlHistory.UI
+LvlHistory.L = LvlHistory.L or {}
+local L = LvlHistory.L
+local function Loc(key, default) return L[key] or default end
 
 -- ─────────────────────────────────────────────
 -- Constantes de mise en page
@@ -53,7 +56,10 @@ local C = {
 }
 
 -- Noms des onglets
-local TAB_LABELS = { "Session", "Zones", "Alts", "Donjons", "Stats" }
+local TAB_LABELS = {
+  Loc("TAB_SESSION", "Session"), Loc("TAB_ZONES", "Zones"), Loc("TAB_ALTS", "Alts"),
+  Loc("TAB_DUNGEONS", "Donjons"), Loc("TAB_STATS", "Stats"),
+}
 
 -- ─────────────────────────────────────────────
 -- Etat interne
@@ -227,7 +233,7 @@ local function BuildHeader(parent)
     colBtn:SetScript("OnEnter", function()
         w.colBtnLbl:SetTextColor(C.GOLD[1], C.GOLD[2], C.GOLD[3])
         GameTooltip:SetOwner(colBtn, "ANCHOR_BOTTOM")
-        GameTooltip:SetText(isCollapsed and "Agrandir" or "Reduire", 1, 1, 1)
+        GameTooltip:SetText(isCollapsed and Loc("TT_EXPAND", "Agrandir") or Loc("TT_COLLAPSE", "Reduire"), 1, 1, 1)
         GameTooltip:Show()
     end)
     colBtn:SetScript("OnLeave", function()
@@ -333,7 +339,7 @@ local function BuildFooter(parent)
     w.opacBtnLbl = opBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     w.opacBtnLbl:SetAllPoints(opBtn)
     w.opacBtnLbl:SetJustifyH("CENTER")
-    w.opacBtnLbl:SetText("Opacite")
+    w.opacBtnLbl:SetText(Loc("OPACITY_LABEL", "Opacite"))
     w.opacBtnLbl:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
     opBtn:SetScript("OnEnter", function()
         if not (opacPopup and opacPopup:IsShown()) then
@@ -443,9 +449,9 @@ local function BuildTabSession(ca)
 
     -- 3 lignes d'info (zone / quetes / or)
     local infoRows = {
-        { lbl = "Zone actuelle", key = "zone"   },
-        { lbl = "Quetes",        key = "quests" },
-        { lbl = "Or gagne",      key = "gold"   },
+        { lbl = Loc("LBL_CURRENT_ZONE", "Zone actuelle"), key = "zone"   },
+        { lbl = Loc("LBL_QUESTS", "Quetes"),               key = "quests" },
+        { lbl = Loc("LBL_GOLD_GAINED", "Or gagne"),        key = "gold"   },
     }
     s1.info = {}
     for i, row in ipairs(infoRows) do
@@ -470,7 +476,7 @@ local function BuildTabSession(ca)
 
     s1.repName = FS(f, "GameFontNormalSmall", "TOPLEFT", PAD, repY - 8)
     s1.repName:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
-    s1.repName:SetText("Reputation")
+    s1.repName:SetText(Loc("LBL_REPUTATION", "Reputation"))
 
     s1.repStanding = FS(f, "GameFontNormalSmall", "TOPRIGHT", -PAD, repY - 8)
     s1.repStanding:SetTextColor(C.GREEN[1], C.GREEN[2], C.GREEN[3])
@@ -494,7 +500,7 @@ function UI.RefreshTab1()
     if isLev then
         s1.blk.main.num:SetText(U.FormatXPH(xph))
         NumColor(s1.blk.main.num, xph, xph > 0 and "good" or nil)
-        s1.blk.main.lbl:SetText("XP / heure")
+        s1.blk.main.lbl:SetText(Loc("LBL_XPH", "XP / heure"))
         s1.blk.main.sub:SetText("")
     else
         local gph = db.farming.goldPerHour or 0
@@ -506,7 +512,7 @@ function UI.RefreshTab1()
             s1.blk.main.num:SetText("--")
             NumColor(s1.blk.main.num, 0, nil)
         end
-        s1.blk.main.lbl:SetText("Or / heure")
+        s1.blk.main.lbl:SetText(Loc("LBL_GOLDH", "Or / heure"))
         s1.blk.main.sub:SetText("")
     end
 
@@ -518,34 +524,34 @@ function UI.RefreshTab1()
             and math.floor(UnitXP("player") / UnitXPMax("player") * 100) or 0
         s1.blk.eta.num:SetText(eta > 0 and U.FormatTime(eta, true) or "--")
         NumColor(s1.blk.eta.num, eta, "progress")
-        s1.blk.eta.lbl:SetText("ETA nv " .. tostring(UnitLevel("player") + 1))
-        s1.blk.eta.sub:SetText(pct .. "% accompli")
+        s1.blk.eta.lbl:SetText(Loc("LBL_ETA_PREFIX", "ETA nv ") .. tostring(UnitLevel("player") + 1))
+        s1.blk.eta.sub:SetText(pct .. Loc("LBL_PCT_DONE", "% accompli"))
     else
         local qc = db.session.questCount or 0
         s1.blk.eta.num:SetText(tostring(qc))
         NumColor(s1.blk.eta.num, qc, "info")
-        s1.blk.eta.lbl:SetText("Quetes")
-        s1.blk.eta.sub:SetText("cette session")
+        s1.blk.eta.lbl:SetText(Loc("LBL_QUESTS", "Quetes"))
+        s1.blk.eta.sub:SetText(Loc("LBL_THIS_SESSION", "cette session"))
     end
 
     -- Bloc 3 : duree session (or) + cumul en sub (gold vif)
     s1.blk.dur.num:SetText(U.FormatTime(elapsed, true))
     NumColor(s1.blk.dur.num, elapsed, "neutral")
-    s1.blk.dur.lbl:SetText("Duree session")
+    s1.blk.dur.lbl:SetText(Loc("LBL_SESSION_DURATION", "Duree session"))
     local grandTotal = (db.totalPlayTime or 0) + elapsed
-    s1.blk.dur.sub:SetText(U.FormatTime(grandTotal, true) .. " au total")
+    s1.blk.dur.sub:SetText(U.FormatTime(grandTotal, true) .. Loc("LBL_TOTAL_SUFFIX", " au total"))
 
     -- Barre
     if isLev then
         local pct = UnitXPMax("player") > 0
             and (UnitXP("player") / UnitXPMax("player")) or 0
-        s1.barLabel:SetText("Niveau " .. tostring(UnitLevel("player")))
+        s1.barLabel:SetText(Loc("LBL_LEVEL_PREFIX", "Niveau ") .. tostring(UnitLevel("player")))
         s1.barPct:SetText(string.format("%d%%", math.floor(pct * 100)))
         s1.barFill:SetSize(math.max(1, math.floor(s1.barMaxW * pct)), 6)
         s1.barFill:SetColorTexture(C.BAR_XP[1], C.BAR_XP[2], C.BAR_XP[3], 1)
     else
         local goldGained = GetMoney() - (db.session.goldAtStart or GetMoney())
-        s1.barLabel:SetText("Or gagne cette session")
+        s1.barLabel:SetText(Loc("LBL_GOLD_THIS_SESSION", "Or gagne cette session"))
         s1.barPct:SetText(U.FormatGold(goldGained, true))
         s1.barFill:SetSize(1, 6)
     end
@@ -575,8 +581,8 @@ function UI.RefreshTab1()
             end
         end
     end
-    s1.repName:SetText(repName == "--" and "Reputation" or repName)
-    s1.repStanding:SetText(repName == "--" and "--" or "Gagnee")
+    s1.repName:SetText(repName == "--" and Loc("LBL_REPUTATION", "Reputation") or repName)
+    s1.repStanding:SetText(repName == "--" and "--" or Loc("LBL_GAINED", "Gagnee"))
     s1.repFill:SetSize(math.max(1, math.floor(s1.repBarW * repPct)), 4)
 end
 
@@ -661,19 +667,19 @@ function UI.RefreshTab2()
         -- Bloc 1 : zones visitees (bleu = info)
         s2.blks[1].num:SetText(tostring(zoneCount))
         NumColor(s2.blks[1].num, zoneCount, "info")
-        s2.blks[1].lbl:SetText("Zones visitees")
+        s2.blks[1].lbl:SetText(Loc("LBL_ZONES_VISITED", "Zones visitees"))
         s2.blks[1].sub:SetText("")
 
         -- Bloc 2 : temps total (or)
         s2.blks[2].num:SetText(totalDur > 0 and U.FormatTime(totalDur, true) or "--")
         NumColor(s2.blks[2].num, totalDur, "neutral")
-        s2.blks[2].lbl:SetText("Temps total")
+        s2.blks[2].lbl:SetText(Loc("LBL_TOTAL_TIME", "Temps total"))
         s2.blks[2].sub:SetText("")
 
         -- Bloc 3 : record zone (temps + nom en sub)
         s2.blks[3].num:SetText(topDur > 0 and U.FormatTime(topDur, true) or "--")
         NumColor(s2.blks[3].num, topDur, "neutral")
-        s2.blks[3].lbl:SetText("Record zone")
+        s2.blks[3].lbl:SetText(Loc("LBL_ZONE_RECORD", "Record zone"))
         s2.blks[3].sub:SetText(topZone ~= "--" and topZone or "")
     end
 
@@ -747,9 +753,9 @@ function UI.RefreshTab2()
         btnLbl:SetPoint("CENTER", btnRow, "CENTER", 0, 0)
         btnLbl:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
         if zonesExpanded then
-            btnLbl:SetText("- Reduire")
+            btnLbl:SetText(Loc("BTN_COLLAPSE_LIST", "- Reduire"))
         else
-            btnLbl:SetText(string.format("+ Voir plus (%d zones)", #sorted - ZONES_LIMIT))
+            btnLbl:SetText(string.format(Loc("BTN_SHOW_MORE_FMT", "+ Voir plus (%d zones)"), #sorted - ZONES_LIMIT))
         end
 
         btnRow:SetScript("OnEnter", function() btnLbl:SetTextColor(C.GOLD[1], C.GOLD[2], C.GOLD[3]) end)
@@ -819,20 +825,20 @@ function UI.RefreshTab3()
         -- Bloc 1 : alts suivis (bleu)
         s3.blks[1].num:SetText(tostring(altCount))
         NumColor(s3.blks[1].num, altCount, "info")
-        s3.blks[1].lbl:SetText("Alts suivis")
+        s3.blks[1].lbl:SetText(Loc("LBL_ALTS_TRACKED", "Alts suivis"))
         s3.blks[1].sub:SetText("")
 
         -- Bloc 2 : niveau max (vert si max level, violet sinon)
         s3.blks[2].num:SetText(topLvl > 0 and tostring(topLvl) or "--")
         NumColor(s3.blks[2].num, topLvl, topLvl >= maxLvl and "good" or "progress")
-        s3.blks[2].lbl:SetText("Niveau max")
+        s3.blks[2].lbl:SetText(Loc("LBL_MAX_LEVEL", "Niveau max"))
         s3.blks[2].sub:SetText(topName ~= "--" and topName or "")
 
         -- Bloc 3 : temps cumule tous persos (or)
         s3.blks[3].num:SetText(totalTime > 0 and U.FormatTime(totalTime, true) or "--")
         NumColor(s3.blks[3].num, totalTime, "neutral")
-        s3.blks[3].lbl:SetText("Temps cumule")
-        s3.blks[3].sub:SetText("tous persos")
+        s3.blks[3].lbl:SetText(Loc("LBL_TOTAL_TIME_CUMUL", "Temps cumule"))
+        s3.blks[3].sub:SetText(Loc("LBL_ALL_CHARS", "tous persos"))
     end
 
     -- ── Liste ───────────────────────────────────
@@ -893,7 +899,7 @@ function UI.RefreshTab3()
         infoLbl:SetPoint("TOPLEFT", row, "TOPLEFT", 44, -22)
         infoLbl:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
         infoLbl:SetText(string.format("%s  —  %s",
-            mode == "farming" and "Farming" or "Leveling",
+            mode == "farming" and Loc("MODE_FARMING", "Farming") or Loc("MODE_LEVELING", "Leveling"),
             totalT > 0 and LvlHistory.Utils.FormatTime(totalT, true) or "--"))
 
         -- Barre de niveau
@@ -1103,7 +1109,7 @@ local function BuildTabDungeons(ca)
     local secTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     secTitle:SetPoint("TOPLEFT", content, "TOPLEFT", 8, -10)
     secTitle:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
-    secTitle:SetText("Donjons les plus joues")
+    secTitle:SetText(Loc("LBL_TOP_DUNGEONS", "Donjons les plus joues"))
     local titleLine = content:CreateTexture(nil, "ARTWORK")
     titleLine:SetTexture(WHITE_TEX)
     titleLine:SetVertexColor(C.GOLD[1], C.GOLD[2], C.GOLD[3], 0.35)
@@ -1118,14 +1124,14 @@ local function BuildTabDungeons(ca)
     hdrDiff:SetWidth(DGN_DIFF_W)
     hdrDiff:SetJustifyH("CENTER")
     hdrDiff:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
-    hdrDiff:SetText("Diff.")
+    hdrDiff:SetText(Loc("COL_DIFF", "Diff."))
 
     local hdrTime = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     hdrTime:SetPoint("TOPLEFT", hdrDiff, "TOPRIGHT", 8, 0)
     hdrTime:SetWidth(DGN_TIME_W)
     hdrTime:SetJustifyH("CENTER")
     hdrTime:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
-    hdrTime:SetText("Tps")
+    hdrTime:SetText(Loc("COL_TIME", "Tps"))
 
     -- Pre-construire MAX_DGN_ROWS lignes (cachees, comme SkyMythicHistory)
     dgnRows = {}
@@ -1180,15 +1186,15 @@ function UI.RefreshTab4()
         local sess = db.session.dungeons or 0
         s4.blks[1].num:SetText(tostring(totalRuns))
         NumColor(s4.blks[1].num, totalRuns, "info")
-        s4.blks[1].lbl:SetText("Total completes")
+        s4.blks[1].lbl:SetText(Loc("LBL_TOTAL_COMPLETED", "Total completes"))
         s4.blks[1].sub:SetText("")
         s4.blks[2].num:SetText(tostring(sess))
         NumColor(s4.blks[2].num, sess, "good")
-        s4.blks[2].lbl:SetText("Cette session")
+        s4.blks[2].lbl:SetText(Loc("LBL_THIS_SESSION_CAP", "Cette session"))
         s4.blks[2].sub:SetText("")
         s4.blks[3].num:SetText(topCount > 0 and ("x"..topCount) or "--")
         NumColor(s4.blks[3].num, topCount, "neutral")
-        s4.blks[3].lbl:SetText("Donjon favori")
+        s4.blks[3].lbl:SetText(Loc("LBL_FAVORITE_DUNGEON", "Donjon favori"))
         s4.blks[3].sub:SetText(topName ~= "--" and topName or "")
     end
 
@@ -1385,17 +1391,17 @@ local function BuildTabStats(ca)
 
     local recTitle = FS(f, "GameFontNormalSmall", "TOPLEFT", PAD, recY - 8)
     recTitle:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
-    recTitle:SetText("Records")
+    recTitle:SetText(Loc("LBL_RECORDS", "Records"))
 
     local recDefs = {
-        { lbl = "Meilleur XP/h",       key = "bestXPH"   },
-        { lbl = "XP/h moyen",          key = "avgXPH"    },
-        { lbl = "Sessions totales",    key = "sessions"  },
-        { lbl = "Meilleure session",   key = "bestSess"  },
-        { lbl = "Zone favorite",       key = "topZone"   },
-        { lbl = "Or total gagne",      key = "totalGold" },
-        { lbl = "Record or / session", key = "bestGold"  },
-        { lbl = "Record donjons / session", key = "bestDgn" },
+        { lbl = Loc("LBL_BEST_XPH", "Meilleur XP/h"),                    key = "bestXPH"   },
+        { lbl = Loc("LBL_AVG_XPH", "XP/h moyen"),                        key = "avgXPH"    },
+        { lbl = Loc("LBL_TOTAL_SESSIONS", "Sessions totales"),           key = "sessions"  },
+        { lbl = Loc("LBL_BEST_SESSION", "Meilleure session"),            key = "bestSess"  },
+        { lbl = Loc("LBL_FAVORITE_ZONE", "Zone favorite"),               key = "topZone"   },
+        { lbl = Loc("LBL_TOTAL_GOLD", "Or total gagne"),                 key = "totalGold" },
+        { lbl = Loc("LBL_BEST_GOLD_SESSION", "Record or / session"),     key = "bestGold"  },
+        { lbl = Loc("LBL_BEST_DGN_SESSION", "Record donjons / session"), key = "bestDgn" },
     }
     s5.rec = {}
     for i, row in ipairs(recDefs) do
@@ -1458,24 +1464,24 @@ function UI.RefreshTab5()
 
     s5.blk.time.num:SetText(U.FormatTime(grandTotal, true))
     NumColor(s5.blk.time.num, grandTotal, "neutral")
-    s5.blk.time.lbl:SetText("Temps total")
-    s5.blk.time.sub:SetText(#sessions .. " sessions")
+    s5.blk.time.lbl:SetText(Loc("LBL_TOTAL_TIME", "Temps total"))
+    s5.blk.time.sub:SetText(#sessions .. " " .. Loc("LBL_SESSIONS_SUFFIX", "sessions"))
 
     local qt = db.quests.total or 0
     s5.blk.quests.num:SetText(tostring(qt))
     NumColor(s5.blk.quests.num, qt, "info")
-    s5.blk.quests.lbl:SetText("Quetes totales")
+    s5.blk.quests.lbl:SetText(Loc("LBL_TOTAL_QUESTS", "Quetes totales"))
 
     s5.blk.dgn.num:SetText(tostring(dgnTotal))
     NumColor(s5.blk.dgn.num, dgnTotal, dgnTotal > 0 and "good" or nil)
-    s5.blk.dgn.lbl:SetText("Donjons totaux")
+    s5.blk.dgn.lbl:SetText(Loc("LBL_TOTAL_DUNGEONS", "Donjons totaux"))
 
     if s5.rec then
         s5.rec.bestXPH:SetText(bestXPH > 0 and U.FormatXPH(bestXPH) or "--")
         s5.rec.avgXPH:SetText(cntXPH > 0
             and U.FormatXPH(math.floor(totalXPH / cntXPH)) or "--")
         s5.rec.sessions:SetText(#sessions > 0
-            and string.format("%d  —  moy. %s", #sessions,
+            and string.format("%d  —  " .. Loc("AVG_PREFIX_FMT", "moy. %s"), #sessions,
                 U.FormatTime(math.floor(totalT / #sessions), true))
             or "--")
         s5.rec.bestSess:SetText(bestDur > 0 and U.FormatTime(bestDur, true) or "--")
@@ -1503,7 +1509,7 @@ local function RefreshGlobal()
 
     -- Char meta
     if w.charMeta then
-        w.charMeta:SetText(string.format("%s   Lv %d",
+        w.charMeta:SetText(string.format("%s   " .. Loc("LV_PREFIX_FMT", "Lv %d"),
             UnitName("player") or "--",
             UnitLevel("player")))
     end
@@ -1512,8 +1518,8 @@ local function RefreshGlobal()
     local elapsed = time() - (db.session.startTime or time())
     if w.ftrSession then
         local grandTotal = (db.totalPlayTime or 0) + elapsed
-        w.ftrSession:SetText("Session  " .. U.FormatTime(elapsed, true))
-        w.ftrTotal:SetText("Total  " .. U.FormatTime(grandTotal, true))
+        w.ftrSession:SetText(Loc("FOOTER_SESSION_PREFIX", "Session  ") .. U.FormatTime(elapsed, true))
+        w.ftrTotal:SetText(Loc("FOOTER_TOTAL_PREFIX", "Total  ") .. U.FormatTime(grandTotal, true))
         w.ftrZone:SetText(db.session.zone or GetRealZoneText() or "--")
     end
 
@@ -1569,10 +1575,10 @@ local function BuildCompactBody(parent)
 
         w.cCells[i] = { num = num, lbl = lbl }
     end
-    w.cCells[1].lbl:SetText("XP / heure")
-    w.cCells[2].lbl:SetText("Duree")
-    w.cCells[3].lbl:SetText("Quetes")
-    w.cCells[4].lbl:SetText("Zone")
+    w.cCells[1].lbl:SetText(Loc("LBL_XPH", "XP / heure"))
+    w.cCells[2].lbl:SetText(Loc("LBL_DURATION", "Duree"))
+    w.cCells[3].lbl:SetText(Loc("LBL_QUESTS", "Quetes"))
+    w.cCells[4].lbl:SetText(Loc("LBL_ZONE_SHORT", "Zone"))
 
     f:Hide()
     compactBody = f
@@ -1610,14 +1616,14 @@ RefreshCompactBody = function()
     if activeTab == 1 then
         -- SESSION : XP/h | Duree | Quetes | Zone
         if isLev then
-            Cell(1, U.FormatXPH(db.session.xph or 0), "XP / heure", C.GREEN)
+            Cell(1, U.FormatXPH(db.session.xph or 0), Loc("LBL_XPH", "XP / heure"), C.GREEN)
         else
-            Cell(1, U.FormatGold(db.farming.goldPerHour or 0, true), "Or / heure", C.GOLD)
+            Cell(1, U.FormatGold(db.farming.goldPerHour or 0, true), Loc("LBL_GOLDH", "Or / heure"), C.GOLD)
         end
-        Cell(2, U.FormatTime(elapsed, true), "Duree", C.GOLD_DIM)
+        Cell(2, U.FormatTime(elapsed, true), Loc("LBL_DURATION", "Duree"), C.GOLD_DIM)
         local qc = db.session.questCount or 0
-        Cell(3, tostring(qc), "Quetes", qc > 0 and C.BLUE or C.MUTED)
-        Cell(4, Trunc(db.session.zone or GetRealZoneText(), 16), "Zone", C.BLUE)
+        Cell(3, tostring(qc), Loc("LBL_QUESTS", "Quetes"), qc > 0 and C.BLUE or C.MUTED)
+        Cell(4, Trunc(db.session.zone or GetRealZoneText(), 16), Loc("LBL_ZONE_SHORT", "Zone"), C.BLUE)
 
     elseif activeTab == 2 then
         -- ZONES : Zones visitees | Temps total | Zone favorite | Duree record
@@ -1628,10 +1634,10 @@ RefreshCompactBody = function()
             totalDur  = totalDur + dur
             if dur > topDur then topZone = z; topDur = dur end
         end
-        Cell(1, tostring(zoneCount), "Zones visitees", zoneCount > 0 and C.BLUE or C.MUTED)
-        Cell(2, totalDur > 0 and U.FormatTime(totalDur, true) or "--", "Temps total", C.GOLD_DIM)
-        Cell(3, Trunc(topZone, 14), "Zone favorite", C.GOLD)
-        Cell(4, topDur > 0 and U.FormatTime(topDur, true) or "--", "Duree record", C.GOLD_DIM)
+        Cell(1, tostring(zoneCount), Loc("LBL_ZONES_VISITED", "Zones visitees"), zoneCount > 0 and C.BLUE or C.MUTED)
+        Cell(2, totalDur > 0 and U.FormatTime(totalDur, true) or "--", Loc("LBL_TOTAL_TIME", "Temps total"), C.GOLD_DIM)
+        Cell(3, Trunc(topZone, 14), Loc("LBL_FAVORITE_ZONE", "Zone favorite"), C.GOLD)
+        Cell(4, topDur > 0 and U.FormatTime(topDur, true) or "--", Loc("LBL_DURATION_RECORD", "Duree record"), C.GOLD_DIM)
 
     elseif activeTab == 3 then
         -- ALTS : Alts suivis | Niveau max | Temps cumule | Top perso
@@ -1646,11 +1652,11 @@ RefreshCompactBody = function()
             end
         end
         local maxLvl = GetMaxPlayerLevel()
-        Cell(1, tostring(altCount), "Alts suivis", altCount > 0 and C.BLUE or C.MUTED)
-        Cell(2, topLvl > 0 and tostring(topLvl) or "--", "Niveau max",
+        Cell(1, tostring(altCount), Loc("LBL_ALTS_TRACKED", "Alts suivis"), altCount > 0 and C.BLUE or C.MUTED)
+        Cell(2, topLvl > 0 and tostring(topLvl) or "--", Loc("LBL_MAX_LEVEL", "Niveau max"),
             topLvl >= maxLvl and C.GREEN or C.PURP_LT)
-        Cell(3, totalTime > 0 and U.FormatTime(totalTime, true) or "--", "Temps cumule", C.GOLD_DIM)
-        Cell(4, Trunc(topName, 14), "Top perso", C.GOLD)
+        Cell(3, totalTime > 0 and U.FormatTime(totalTime, true) or "--", Loc("LBL_TOTAL_TIME_CUMUL", "Temps cumule"), C.GOLD_DIM)
+        Cell(4, Trunc(topName, 14), Loc("LBL_TOP_CHAR", "Top perso"), C.GOLD)
 
     elseif activeTab == 4 then
         -- DONJONS : Cette session | Total | Donjon favori | Fois
@@ -1660,10 +1666,10 @@ RefreshCompactBody = function()
         for name, cnt in pairs(db.dgnRuns or {}) do
             if cnt > topCount then topName = name; topCount = cnt end
         end
-        Cell(1, tostring(sessCount), "Cette session", sessCount > 0 and C.GREEN or C.MUTED)
-        Cell(2, tostring(totalCount), "Total", totalCount > 0 and C.BLUE or C.MUTED)
-        Cell(3, Trunc(topName, 14), "Favori", C.GOLD)
-        Cell(4, topCount > 0 and ("x" .. topCount) or "--", "Fois joue", C.GOLD_DIM)
+        Cell(1, tostring(sessCount), Loc("LBL_THIS_SESSION_CAP", "Cette session"), sessCount > 0 and C.GREEN or C.MUTED)
+        Cell(2, tostring(totalCount), Loc("LBL_TOTAL_SHORT", "Total"), totalCount > 0 and C.BLUE or C.MUTED)
+        Cell(3, Trunc(topName, 14), Loc("LBL_FAVORITE_SHORT", "Favori"), C.GOLD)
+        Cell(4, topCount > 0 and ("x" .. topCount) or "--", Loc("LBL_TIMES_PLAYED", "Fois joue"), C.GOLD_DIM)
 
     elseif activeTab == 5 then
         -- STATS : Temps total | Quetes | Donjons | Sessions
@@ -1672,10 +1678,10 @@ RefreshCompactBody = function()
         local dgnTotal   = 0
         for _, cnt in pairs(db.dgnRuns or {}) do dgnTotal = dgnTotal + cnt end
         local sessCount  = #(db.sessions or {})
-        Cell(1, U.FormatTime(grandTotal, true), "Temps total", C.GOLD_DIM)
-        Cell(2, tostring(qt), "Quetes totales", qt > 0 and C.BLUE or C.MUTED)
-        Cell(3, tostring(dgnTotal), "Donjons totaux", dgnTotal > 0 and C.GREEN or C.MUTED)
-        Cell(4, tostring(sessCount), "Sessions", sessCount > 0 and C.GOLD_DIM or C.MUTED)
+        Cell(1, U.FormatTime(grandTotal, true), Loc("LBL_TOTAL_TIME", "Temps total"), C.GOLD_DIM)
+        Cell(2, tostring(qt), Loc("LBL_TOTAL_QUESTS", "Quetes totales"), qt > 0 and C.BLUE or C.MUTED)
+        Cell(3, tostring(dgnTotal), Loc("LBL_TOTAL_DUNGEONS", "Donjons totaux"), dgnTotal > 0 and C.GREEN or C.MUTED)
+        Cell(4, tostring(sessCount), Loc("LBL_SESSIONS_SHORT", "Sessions"), sessCount > 0 and C.GOLD_DIM or C.MUTED)
     end
 end
 
@@ -1732,7 +1738,7 @@ local function BuildOpacityPopup(parent)
     local lbl = pop:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     lbl:SetPoint("TOPLEFT", pop, "TOPLEFT", 10, -8)
     lbl:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
-    lbl:SetText("Opacite")
+    lbl:SetText(Loc("OPACITY_LABEL", "Opacite"))
 
     local valLbl = pop:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     valLbl:SetPoint("TOPRIGHT", pop, "TOPRIGHT", -10, -8)
