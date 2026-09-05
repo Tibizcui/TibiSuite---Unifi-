@@ -14,6 +14,116 @@
 local ADDON   = "TibiSuite"
 local VERSION = "7.0"
 
+-- ================================================================
+-- LOCALISATION
+-- Le francais reste le defaut embarque directement ici (via l'operateur
+-- "or") : Locale\enUS.lua ecrase ensuite ces cles si le client est en
+-- anglais. IMPORTANT : contrairement aux autres modules de la suite,
+-- Locale\enUS.lua doit charger AVANT ce fichier (voir TibiSuite.toc) car
+-- la table MODULES ci-dessous construit certains libelles d'onglet une
+-- seule fois, de facon synchrone, a l'execution de ce fichier.
+-- ================================================================
+TibiSuiteL = TibiSuiteL or {}
+local L = TibiSuiteL
+-- Libelles d'onglets traduits (mots generiques). Les autres modules
+-- (Daily, LegTracker, Weekly, MiniHub, XPBar, RepBar, PostBox, Stats,
+-- Lvl Hist) sont des noms de marque ou deja en anglais : inchanges.
+L.LBL_DGN   = L.LBL_DGN   or "Donjons"
+L.LBL_REP   = L.LBL_REP   or "Reput."
+L.LBL_LAIR  = L.LBL_LAIR  or "Repaire"
+L.LBL_SKILL = L.LBL_SKILL or "Metiers"
+-- Tooltip du logo (barre). Gold sur le mot-cle d'action seulement (pas la
+-- ligne entiere), embarque directement dans la cle pour preserver ce rendu.
+L.TT_LOGO_LEFT      = L.TT_LOGO_LEFT      or "|cFFFFD700Clic gauche|r : ouvrir / fermer"
+L.TT_LOGO_SHIFTLEFT = L.TT_LOGO_SHIFTLEFT or "|cFFFFD700Maj + clic gauche|r : masquer la barre"
+L.TT_LOGO_RIGHT     = L.TT_LOGO_RIGHT     or "|cFFFFD700Clic droit|r : options"
+L.TT_LOGO_DRAG      = L.TT_LOGO_DRAG      or "|cFFFFD700Maintien + glisser|r : déplacer"
+L.TT_LOGO_LOCKED    = L.TT_LOGO_LOCKED    or "Barre verrouillée"
+-- Boutons du cluster droit
+L.TT_OPENALL       = L.TT_OPENALL       or "Tout ouvrir"
+L.TT_CLOSEALL      = L.TT_CLOSEALL      or "Tout fermer"
+L.TT_CLOSEBAR      = L.TT_CLOSEBAR      or "Tout fermer et replier la barre"
+L.TT_CLOSEBAR_SUB  = L.TT_CLOSEBAR_SUB  or "(pastille rouge ou icône minimap pour rouvrir)"
+L.SEARCH_PLACEHOLDER        = L.SEARCH_PLACEHOLDER        or "Rechercher..."
+L.SEARCH_PLACEHOLDER_GLOBAL = L.SEARCH_PLACEHOLDER_GLOBAL or "Recherche globale..."
+-- Vignettes de module
+L.TT_TAB_OPEN         = L.TT_TAB_OPEN         or "Clic gauche : ouvrir / fermer"
+L.TT_TAB_OPTIONS      = L.TT_TAB_OPTIONS      or "Clic droit : options du module"
+L.TT_TAB_NOTINSTALLED = L.TT_TAB_NOTINSTALLED or "Non installé"
+L.TT_TAB_DOWNLOAD     = L.TT_TAB_DOWNLOAD     or "Clic : voir le lien de téléchargement"
+-- Placeholder (module absent)
+L.PH_MSG      = L.PH_MSG      or "Cet addon n'est pas installé."
+L.PH_URLLABEL = L.PH_URLLABEL or "Téléchargez-le gratuitement sur CurseForge :"
+L.PH_COPYBTN  = L.PH_COPYBTN  or "Copier le lien"
+L.MSG_NOOPTIONS = L.MSG_NOOPTIONS or "n'expose pas encore de menu d'options."
+-- Panneau d'options (/ts config)
+L.STATE_YES     = L.STATE_YES     or "Oui"
+L.STATE_NO      = L.STATE_NO      or "Non"
+L.STATE_VISIBLE = L.STATE_VISIBLE or "affiché"
+L.STATE_HIDDEN  = L.STATE_HIDDEN  or "masqué"
+L.OPT_LOCKED_LABEL   = L.OPT_LOCKED_LABEL   or "Barre verrouillée : "
+L.OPT_VERTICAL_LABEL = L.OPT_VERTICAL_LABEL or "Barre verticale : "
+L.OPT_SCALE_LABEL    = L.OPT_SCALE_LABEL    or "Échelle"
+L.OPT_LOGOSIZE_LABEL = L.OPT_LOGOSIZE_LABEL or "Taille du logo"
+L.OPT_REINSTALL_BTN  = L.OPT_REINSTALL_BTN  or "Réinstaller TibiSuite"
+L.CONFIRM_REINSTALL_CORE = L.CONFIRM_REINSTALL_CORE or
+  "Reinstaller TibiSuite ?\n\nCela remet a zero les reglages de la suite (barre, modules actives, installation) puis recharge l'interface. La progression de chaque module est conservee."
+L.OPT_GRID_LABEL     = L.OPT_GRID_LABEL     or "Disposition des toggles"
+L.OPT_COLS_LABEL     = L.OPT_COLS_LABEL     or "Colonnes"
+L.OPT_ROWS_LABEL     = L.OPT_ROWS_LABEL     or "Lignes"
+L.OPT_OPENALL_BTN    = L.OPT_OPENALL_BTN    or "Tout ouvrir"
+L.OPT_CLOSEALL_BTN   = L.OPT_CLOSEALL_BTN   or "Tout fermer"
+L.OPT_RECENTER_BTN   = L.OPT_RECENTER_BTN   or "Recentrer"
+L.OPT_TABS_SECTION   = L.OPT_TABS_SECTION   or "Onglets affichés dans la barre"
+L.OPT_HIDE_MISSING_BTN = L.OPT_HIDE_MISSING_BTN or "Masquer les non-installés"
+L.OPT_MODULES_BTN    = L.OPT_MODULES_BTN    or "Modules : Chargés / Non chargés"
+-- Recherche globale (popup)
+L.GS_TITLE           = L.GS_TITLE           or "Recherche"
+L.GS_EMPTY_DEFAULT    = L.GS_EMPTY_DEFAULT    or "Tapez pour chercher dans les modules chargés."
+L.GS_EMPTY_NORESULT   = L.GS_EMPTY_NORESULT   or "Aucun résultat."
+L.MSG_NOLIB   = L.MSG_NOLIB   or "bibliothèque d'interface absente (TibiMidnightUI)."
+L.MSG_OLDLIB  = L.MSG_OLDLIB  or "bibliothèque obsolète, faites |cFFFFD700/reload|r."
+-- Pastille repliée
+L.PILL_CLICK = L.PILL_CLICK or "Clic : réafficher la barre et les modules"
+-- Bouton minimap
+L.MM_TT_LEFT = L.MM_TT_LEFT or "Clic gauche : afficher / masquer la barre"
+L.MM_TT_RIGHT = L.MM_TT_RIGHT or "Clic droit : options"
+L.MM_TT_DRAG = L.MM_TT_DRAG or "|cFFFFD700Glisser|r pour repositionner"
+-- Commande slash /ts
+L.SLASH_BAR        = L.SLASH_BAR        or "barre"
+L.SLASH_RECENTERED = L.SLASH_RECENTERED or "recentrée."
+L.LOCK_ON          = L.LOCK_ON          or "verrouillée"
+L.LOCK_OFF         = L.LOCK_OFF         or "déverrouillée"
+L.DIAG_NOLIB          = L.DIAG_NOLIB          or "bibliothèque de recherche absente."
+L.DIAG_REGISTERED_FMT = L.DIAG_REGISTERED_FMT or "modules de recherche inscrits ("
+L.DIAG_NONE           = L.DIAG_NONE           or "aucun"
+L.SEARCH_BY_MODULE   = L.SEARCH_BY_MODULE   or "par module :"
+L.SEARCH_RESULT_SUFFIX = L.SEARCH_RESULT_SUFFIX or "resultat(s)"
+L.SEARCH_ERROR        = L.SEARCH_ERROR        or "ERREUR"
+L.VERT_ON  = L.VERT_ON  or "verticale"
+L.VERT_OFF = L.VERT_OFF or "horizontale"
+L.MSG_MODULES_UNAVAIL = L.MSG_MODULES_UNAVAIL or "panneau des modules indisponible (faites |cFFFFD700/reload|r)."
+L.HELP_HEADER  = L.HELP_HEADER  or "commandes :"
+L.HELP_TOGGLE  = L.HELP_TOGGLE  or "afficher / masquer la barre"
+L.HELP_CONFIG  = L.HELP_CONFIG  or "panneau d'options"
+L.HELP_MODULES = L.HELP_MODULES or "activer / désactiver les modules (cases à cocher)"
+L.HELP_STATS   = L.HELP_STATS   or "ouvrir directement l'onglet Stats"
+L.HELP_OPENCLOSEALL = L.HELP_OPENCLOSEALL or "tout ouvrir / fermer"
+L.HELP_LOCK    = L.HELP_LOCK    or "verrouiller / déverrouiller"
+L.HELP_VERTICAL = L.HELP_VERTICAL or "basculer horizontale / verticale"
+L.HELP_RESET   = L.HELP_RESET   or "recentrer la barre"
+L.MSG_LOADFAIL = L.MSG_LOADFAIL or "echec de chargement"
+L.MSG_LOADFAIL_OF = L.MSG_LOADFAIL_OF or "de"
+L.MSG_NOTINSTALLED    = L.MSG_NOTINSTALLED    or "n'est pas installe."
+L.MSG_REINSTALLED_FMT = L.MSG_REINSTALLED_FMT or "reinitialise (reglages et progression effaces). Rechargement de l'interface..."
+L.MSG_CORE_REINSTALLED = L.MSG_CORE_REINSTALLED or
+  "suite reinitialisee (reglages de la barre et des modules remis a zero, progression de chaque module conservee). Rechargement de l'interface..."
+L.WELCOME_HEADER  = L.WELCOME_HEADER  or "chargé.  Commandes :"
+L.WELCOME_MODULES = L.WELCOME_MODULES or "activer / désactiver les modules"
+L.WELCOME_LOCK    = L.WELCOME_LOCK    or "verrouiller"
+L.WELCOME_HELP    = L.WELCOME_HELP    or "aide complète"
+L.ADDONCOMPT_SUBTITLE = L.ADDONCOMPT_SUBTITLE or "Suite de trackers, par Tibiscui"
+
 -- Table globale minimale exposée pour les modules récents (ex. MiniHub).
 -- Elle leur permet de détecter TibiSuite comme parent, de s'y enregistrer,
 -- et de masquer leur bouton flottant quand ils tournent comme module.
@@ -109,7 +219,7 @@ local MODULES = {
   {
     key         = "Dgn",
     addonName   = "DgnTracker",
-    label       = "Donjons",
+    label       = L.LBL_DGN,
     frameGlobal = "DGNMainFrame",
     mmBtnGlobal = "DGNMinimapBtn",
     toggleFn    = "DgnTracker_Toggle",
@@ -135,7 +245,7 @@ local MODULES = {
   {
     key         = "Rep",
     addonName   = "RenTracker",
-    label       = "Reput.",
+    label       = L.LBL_REP,
     frameGlobal = "RNTMainFrame",
     mmBtnGlobal = "RNTMinimapBtn",
     toggleFn    = "RenTracker_Toggle",
@@ -217,7 +327,7 @@ local MODULES = {
   {
     key         = "Lair",
     addonName   = "LairLens",
-    label       = "Repaire",
+    label       = L.LBL_LAIR,
     frameGlobal = "LairLensAuditFrame",
     mmBtnGlobal = "LairLensMinimapBtn",  -- LairLens n'a pas de bouton minimap (champ informatif, non requis)
     toggleFn    = "LairLens_Toggle",
@@ -230,7 +340,7 @@ local MODULES = {
   {
     key         = "Skill",
     addonName   = "SkillTracker",
-    label       = "Metiers",
+    label       = L.LBL_SKILL,
     frameGlobal = "SkillTrackerMainFrame",
     mmBtnGlobal = "SkillTrackerMinimapBtn",
     toggleFn    = "SkillTracker_Toggle",
@@ -395,13 +505,13 @@ local function BuildPlaceholder()
   -- ── Message principal ─────────────────────────────────────────
   local msg = placeholderFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   msg:SetPoint("TOP", title, "BOTTOM", 0, -10)
-  msg:SetText("Cet addon n'est pas installé.")
+  msg:SetText(L.PH_MSG)
   msg:SetTextColor(0.90, 0.90, 0.90)
 
   -- ── Label URL ─────────────────────────────────────────────────
   local urlLabel = placeholderFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   urlLabel:SetPoint("TOP", msg, "BOTTOM", 0, -10)
-  urlLabel:SetText("Téléchargez-le gratuitement sur CurseForge :")
+  urlLabel:SetText(L.PH_URLLABEL)
   urlLabel:SetTextColor(0.70, 0.70, 0.70)
 
   -- ── URL affichée (non cliquable dans WoW, mais copiable) ──────
@@ -421,7 +531,7 @@ local function BuildPlaceholder()
 
   local copyLabel = copyBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   copyLabel:SetAllPoints()
-  copyLabel:SetText("|cFFFFD700Copier le lien|r")
+  copyLabel:SetText("|cFFFFD700" .. L.PH_COPYBTN .. "|r")
 
   copyBtn:SetScript("OnEnter", function(s)
     s:SetBackdropBorderColor(0.85, 0.72, 0.30, 1.0)
@@ -538,7 +648,7 @@ local function OpenModuleOptions(mod)
     fn()
   else
     print("|cFFC41F3BTibiSuite|r : |cFFFFD700" .. mod.addonName
-      .. "|r n'expose pas encore de menu d'options.")
+      .. "|r " .. L.MSG_NOOPTIONS)
   end
 end
 
@@ -623,13 +733,13 @@ local function BuildBar()
     GameTooltip:SetOwner(logoBtn, "ANCHOR_NONE")
     GameTooltip:SetPoint("TOPLEFT", logoBtn, "BOTTOMLEFT", 0, -6)
     GameTooltip:AddLine("|cFFC41F3BTibiSuite|r v" .. VERSION)
-    GameTooltip:AddLine("|cFFFFD700Clic gauche|r : ouvrir / fermer", 0.80, 0.80, 0.85)
-    GameTooltip:AddLine("|cFFFFD700Maj + clic gauche|r : masquer la barre", 0.80, 0.80, 0.85)
-    GameTooltip:AddLine("|cFFFFD700Clic droit|r : options", 0.80, 0.80, 0.85)
+    GameTooltip:AddLine(L.TT_LOGO_LEFT, 0.80, 0.80, 0.85)
+    GameTooltip:AddLine(L.TT_LOGO_SHIFTLEFT, 0.80, 0.80, 0.85)
+    GameTooltip:AddLine(L.TT_LOGO_RIGHT, 0.80, 0.80, 0.85)
     if not TibiSuiteDB.locked then
-      GameTooltip:AddLine("|cFFFFD700Maintien + glisser|r : déplacer", 0.70, 0.70, 0.75)
+      GameTooltip:AddLine(L.TT_LOGO_DRAG, 0.70, 0.70, 0.75)
     else
-      GameTooltip:AddLine("Barre verrouillée", 0.60, 0.60, 0.65)
+      GameTooltip:AddLine(L.TT_LOGO_LOCKED, 0.60, 0.60, 0.65)
     end
     GameTooltip:Show()
   end)
@@ -684,7 +794,7 @@ local function BuildBar()
     s:SetBackdropBorderColor(0.45, 0.95, 0.45, 1.0)
     GameTooltip:SetOwner(s, "ANCHOR_NONE")
     GameTooltip:SetPoint("TOPLEFT", s, "BOTTOMLEFT", 0, -6)
-    GameTooltip:AddLine("Tout ouvrir", 0.6, 1.0, 0.6)
+    GameTooltip:AddLine(L.TT_OPENALL, 0.6, 1.0, 0.6)
     GameTooltip:Show()
   end)
   openAll:SetScript("OnClick", function() SetAllModules(true) end)
@@ -696,7 +806,7 @@ local function BuildBar()
     s:SetBackdropBorderColor(0.95, 0.65, 0.30, 1.0)
     GameTooltip:SetOwner(s, "ANCHOR_NONE")
     GameTooltip:SetPoint("TOPLEFT", s, "BOTTOMLEFT", 0, -6)
-    GameTooltip:AddLine("Tout fermer", 1.0, 0.75, 0.4)
+    GameTooltip:AddLine(L.TT_CLOSEALL, 1.0, 0.75, 0.4)
     GameTooltip:Show()
   end)
   closeAll:SetScript("OnClick", function() SetAllModules(false) end)
@@ -708,7 +818,7 @@ local function BuildBar()
     if UIlib and UIlib.MakeSearchField then
       barFrame._searchField = UIlib.MakeSearchField(barFrame, {
         accent = { 0.769, 0.118, 0.137 }, provider = GlobalProvider,
-        width = 120, placeholder = "Rechercher..." })
+        width = 120, placeholder = L.SEARCH_PLACEHOLDER })
       barFrame._search = barFrame._searchField.box  -- placé par LayoutBar
     end
   end
@@ -729,8 +839,8 @@ local function BuildBar()
     s:SetBackdropBorderColor(1.0, 0.30, 0.30, 1.0)
     GameTooltip:SetOwner(s, "ANCHOR_NONE")
     GameTooltip:SetPoint("TOPLEFT", s, "BOTTOMLEFT", 0, -6)
-    GameTooltip:AddLine("Tout fermer et replier la barre", 0.8, 0.8, 0.8)
-    GameTooltip:AddLine("(pastille rouge ou icône minimap pour rouvrir)", 0.5, 0.5, 0.5)
+    GameTooltip:AddLine(L.TT_CLOSEBAR, 0.8, 0.8, 0.8)
+    GameTooltip:AddLine(L.TT_CLOSEBAR_SUB, 0.5, 0.5, 0.5)
     GameTooltip:Show()
   end)
   closeBtn:SetScript("OnLeave", function(s)
@@ -782,12 +892,12 @@ local function BuildBar()
       GameTooltip:SetPoint("TOPLEFT", s, "BOTTOMLEFT", 0, -6)
       if C_AddOns.IsAddOnLoaded(capturedMod.addonName) then
         GameTooltip:AddLine("|cFFFFD700" .. capturedMod.addonName .. "|r")
-        GameTooltip:AddLine("Clic gauche : ouvrir / fermer", 0.80, 0.80, 0.90)
-        GameTooltip:AddLine("Clic droit : options du module", 0.80, 0.80, 0.90)
+        GameTooltip:AddLine(L.TT_TAB_OPEN, 0.80, 0.80, 0.90)
+        GameTooltip:AddLine(L.TT_TAB_OPTIONS, 0.80, 0.80, 0.90)
       else
         GameTooltip:AddLine("|cFFFF5555" .. capturedMod.addonName .. "|r")
-        GameTooltip:AddLine("Non installé", 0.90, 0.40, 0.40)
-        GameTooltip:AddLine("Clic : voir le lien de téléchargement", 0.65, 0.65, 0.65)
+        GameTooltip:AddLine(L.TT_TAB_NOTINSTALLED, 0.90, 0.40, 0.40)
+        GameTooltip:AddLine(L.TT_TAB_DOWNLOAD, 0.65, 0.65, 0.65)
       end
       GameTooltip:Show()
     end)
@@ -1021,10 +1131,10 @@ function RefreshOptions()
   f._scaleVal:SetText(string.format("%d%%",
     math.floor((TibiSuiteDB.scale or 1) * 100 + 0.5)))
   f._logoSizeVal:SetText(tostring(TibiSuiteDB.logoSize or 22) .. "px")
-  f._lockBtn._label:SetText("Barre verrouillée : " ..
-    (TibiSuiteDB.locked and "|cFF66FF66Oui|r" or "|cFFFF7777Non|r"))
-  f._vertBtn._label:SetText("Barre verticale : " ..
-    (TibiSuiteDB.vertical and "|cFF66FF66Oui|r" or "|cFFFF7777Non|r"))
+  f._lockBtn._label:SetText(L.OPT_LOCKED_LABEL ..
+    (TibiSuiteDB.locked and ("|cFF66FF66" .. L.STATE_YES .. "|r") or ("|cFFFF7777" .. L.STATE_NO .. "|r")))
+  f._vertBtn._label:SetText(L.OPT_VERTICAL_LABEL ..
+    (TibiSuiteDB.vertical and ("|cFF66FF66" .. L.STATE_YES .. "|r") or ("|cFFFF7777" .. L.STATE_NO .. "|r")))
 
   -- Position (X / Y) : synchronise les curseurs avec la position courante.
   if f._xSlider and f._ySlider then
@@ -1052,7 +1162,7 @@ function RefreshOptions()
       local loaded  = C_AddOns.IsAddOnLoaded(mod.addonName)
       local dot     = loaded and (ICON_OK .. " ") or (ICON_MISS .. " ")
       local visible = not TibiSuiteDB.hidden[mod.key]
-      local state   = visible and "|cFF66FF66affiché|r" or "|cFFFF7777masqué|r"
+      local state   = visible and ("|cFF66FF66" .. L.STATE_VISIBLE .. "|r") or ("|cFFFF7777" .. L.STATE_HIDDEN .. "|r")
       row.btn._label:SetText(dot ..
         ColorCode(mod.col.r, mod.col.g, mod.col.b) .. mod.label .. "|r   " .. state)
       row.btn._label:SetJustifyH("CENTER")
@@ -1095,7 +1205,7 @@ local function BuildOptions()
 
   local scaleLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   scaleLbl:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -50)
-  scaleLbl:SetText("Échelle")
+  scaleLbl:SetText(L.OPT_SCALE_LABEL)
 
   local minus = MakeTextButton(f, 26, 22, "|cFFFFD700-|r")
   minus:SetPoint("LEFT", scaleLbl, "LEFT", CTRL_COL_X, 0)
@@ -1122,7 +1232,7 @@ local function BuildOptions()
   -- agrandit par interpolation et l'icone se met a flouter.
   local logoSizeLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   logoSizeLbl:SetPoint("TOPLEFT", scaleLbl, "BOTTOMLEFT", 0, -16)
-  logoSizeLbl:SetText("Taille du logo")
+  logoSizeLbl:SetText(L.OPT_LOGOSIZE_LABEL)
 
   local logoMinus = MakeTextButton(f, 26, 22, "|cFFFFD700-|r")
   logoMinus:SetPoint("LEFT", logoSizeLbl, "LEFT", CTRL_COL_X, 0)
@@ -1165,14 +1275,13 @@ local function BuildOptions()
   end)
 
   -- ── Réinstaller TibiSuite (placé entre l'orientation et la disposition) ──
-  local reinstallBtn = MakeTextButton(f, 260, 24, "|cFFC41F3BRéinstaller TibiSuite|r")
+  local reinstallBtn = MakeTextButton(f, 260, 24, "|cFFC41F3B" .. L.OPT_REINSTALL_BTN .. "|r")
   reinstallBtn:SetPoint("TOPLEFT", vertBtn, "BOTTOMLEFT", 0, -8)
   reinstallBtn:SetScript("OnClick", function()
     -- Fenetre maison (pas StaticPopupDialogs) : voir piege ADDON_ACTION_FORBIDDEN
     -- documente dans TibiSuiteOptions.lua.
     if TibiSuite.ShowConfirm then
-      TibiSuite.ShowConfirm(
-        "Reinstaller TibiSuite ?\n\nCela remet a zero les reglages de la suite (barre, modules actives, installation) puis recharge l'interface. La progression de chaque module est conservee.",
+      TibiSuite.ShowConfirm(L.CONFIRM_REINSTALL_CORE,
         function() if TibiSuite.ReinstallCore then TibiSuite.ReinstallCore() end end
       )
     end
@@ -1181,12 +1290,12 @@ local function BuildOptions()
   -- ── Disposition : grille de toggles (colonnes × lignes, liées) ──
   local gridLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   gridLbl:SetPoint("TOPLEFT", reinstallBtn, "BOTTOMLEFT", 0, -14)
-  gridLbl:SetText("Disposition des toggles")
+  gridLbl:SetText(L.OPT_GRID_LABEL)
 
   -- Colonnes : label + [-] valeur [+]
   local colsLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   colsLbl:SetPoint("TOPLEFT", gridLbl, "BOTTOMLEFT", 4, -8)
-  colsLbl:SetText("Colonnes")
+  colsLbl:SetText(L.OPT_COLS_LABEL)
   local colMinus = MakeTextButton(f, 26, 22, "|cFFFFD700-|r")
   colMinus:SetPoint("LEFT", colsLbl, "RIGHT", 24, 0)
   local colsVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -1199,7 +1308,7 @@ local function BuildOptions()
   -- Lignes : label + [-] valeur [+]
   local rowsLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   rowsLbl:SetPoint("TOPLEFT", colsLbl, "BOTTOMLEFT", 0, -10)
-  rowsLbl:SetText("Lignes")
+  rowsLbl:SetText(L.OPT_ROWS_LABEL)
   local rowMinus = MakeTextButton(f, 26, 22, "|cFFFFD700-|r")
   rowMinus:SetPoint("LEFT", rowsLbl, "RIGHT", 40, 0)
   local rowsVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -1228,15 +1337,15 @@ local function BuildOptions()
   rowPlus:SetScript("OnClick",  function() local _, r = ComputeGrid(VisibleCount()); setRows(r + 1) end)
 
   -- ── Actions : Tout ouvrir / Tout fermer / Recentrer ──
-  local openA = MakeTextButton(f, 80, 24, "|cFF66FF66Tout ouvrir|r")
+  local openA = MakeTextButton(f, 80, 24, "|cFF66FF66" .. L.OPT_OPENALL_BTN .. "|r")
   openA:SetPoint("TOPLEFT", rowsLbl, "BOTTOMLEFT", -4, -14)
   openA:SetScript("OnClick", function() SetAllModules(true) end)
 
-  local closeA = MakeTextButton(f, 80, 24, "|cFFFFAA55Tout fermer|r")
+  local closeA = MakeTextButton(f, 80, 24, "|cFFFFAA55" .. L.OPT_CLOSEALL_BTN .. "|r")
   closeA:SetPoint("LEFT", openA, "RIGHT", 8, 0)
   closeA:SetScript("OnClick", function() SetAllModules(false) end)
 
-  local recenter = MakeTextButton(f, 80, 24, "|cFFAAD4FFRecentrer|r")
+  local recenter = MakeTextButton(f, 80, 24, "|cFFAAD4FF" .. L.OPT_RECENTER_BTN .. "|r")
   recenter:SetPoint("LEFT", closeA, "RIGHT", 8, 0)
   recenter:SetScript("OnClick", function()
     TibiSuiteCharDB.barPos = CopyDefaultBarPos()
@@ -1320,7 +1429,7 @@ local function BuildOptions()
 
   local secLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   secLbl:SetPoint("TOPLEFT", div, "BOTTOMLEFT", 0, -8)
-  secLbl:SetText("Onglets affichés dans la barre")
+  secLbl:SetText(L.OPT_TABS_SECTION)
 
   -- Une bascule par module (masque / affiche l'onglet)
   f._moduleRows = {}
@@ -1344,7 +1453,7 @@ local function BuildOptions()
   end
 
   -- Raccourci : masquer tous les modules non installés
-  local hideMissing = MakeTextButton(f, 260, 24, "|cFFAAD4FFMasquer les non-installés|r")
+  local hideMissing = MakeTextButton(f, 260, 24, "|cFFAAD4FF" .. L.OPT_HIDE_MISSING_BTN .. "|r")
   hideMissing:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -10)
   hideMissing:SetScript("OnClick", function()
     TibiSuiteDB.hidden = TibiSuiteDB.hidden or {}
@@ -1359,7 +1468,7 @@ local function BuildOptions()
 
   -- Accès au panneau « Modules » : cases à cocher pour charger / décharger
   -- (chargement conditionnel LoadOnDemand). Différent de « masquer l'onglet ».
-  local modulesBtn = MakeTextButton(f, 260, 24, "|cFFC41F3BModules : Chargés / Non chargés|r")
+  local modulesBtn = MakeTextButton(f, 260, 24, "|cFFC41F3B" .. L.OPT_MODULES_BTN .. "|r")
   modulesBtn:SetPoint("TOPLEFT", hideMissing, "BOTTOMLEFT", 0, -8)
   modulesBtn:SetScript("OnClick", function()
     if TibiSuite.OpenModulePanel then TibiSuite.OpenModulePanel() end
@@ -1397,7 +1506,7 @@ local function BuildGlobalSearch()
 
   local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOP", 0, -14)
-  title:SetText("|cFFC41F3BTibiSuite|r  Recherche")
+  title:SetText("|cFFC41F3BTibiSuite|r  " .. L.GS_TITLE)
 
   local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", 2, 2)
@@ -1424,7 +1533,7 @@ local function BuildGlobalSearch()
   local rows = {}
   local empty = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   empty:SetPoint("TOPLEFT", 4, -6)
-  empty:SetText("Tapez pour chercher dans les modules chargés.")
+  empty:SetText(L.GS_EMPTY_DEFAULT)
 
   local function render(query)
     for _, r in ipairs(rows) do r:Hide() end
@@ -1432,7 +1541,7 @@ local function BuildGlobalSearch()
     empty:SetShown(#results == 0)
     if #results == 0 then
       empty:SetText((query == nil or query == "")
-        and "Tapez pour chercher dans les modules chargés." or "Aucun résultat.")
+        and L.GS_EMPTY_DEFAULT or L.GS_EMPTY_NORESULT)
     end
     local y = -6
     for i, item in ipairs(results) do
@@ -1481,17 +1590,17 @@ end
 ToggleGlobalSearch = function()
   local UI = _G.TibiMidnight
   if not UI then
-    print("|cFFC41F3BTibiSuite|r : bibliothèque d'interface absente (TibiMidnightUI).")
+    print("|cFFC41F3BTibiSuite|r : " .. L.MSG_NOLIB)
     return
   end
   if not UI.MakeSearchField then
-    print("|cFFC41F3BTibiSuite|r : bibliothèque obsolète, faites |cFFFFD700/reload|r.")
+    print("|cFFC41F3BTibiSuite|r : " .. L.MSG_OLDLIB)
     return
   end
   if not barSearchField then
     barSearchField = UI.MakeSearchField(UIParent, {
       accent = { 0.769, 0.118, 0.137 }, provider = GlobalProvider,
-      width = 240, placeholder = "Recherche globale..." })
+      width = 240, placeholder = L.SEARCH_PLACEHOLDER_GLOBAL })
     barSearchField.box:SetFrameStrata("DIALOG")
     barSearchField.box:Hide()
   end
@@ -1561,7 +1670,7 @@ BuildPill = function()
   pill:SetScript("OnEnter", function(s)
     GameTooltip:SetOwner(s, "ANCHOR_BOTTOM")
     GameTooltip:AddLine("|cFFC41F3BTibiSuite|r")
-    GameTooltip:AddLine("Clic : réafficher la barre et les modules", 0.8, 0.8, 0.9)
+    GameTooltip:AddLine(L.PILL_CLICK, 0.8, 0.8, 0.9)
     GameTooltip:Show()
   end)
   pill:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1716,9 +1825,9 @@ local function BuildMinimapButton()
   minimapBtn:SetScript("OnEnter", function(s)
     GameTooltip:SetOwner(s, "ANCHOR_LEFT")
     GameTooltip:AddLine("|cFFC41F3BTibiSuite|r")
-    GameTooltip:AddLine("Clic gauche : afficher / masquer la barre", 0.80, 0.80, 0.90)
-    GameTooltip:AddLine("Clic droit : options", 0.80, 0.80, 0.90)
-    GameTooltip:AddLine("|cFFFFD700Glisser|r pour repositionner",  0.65, 0.65, 0.65)
+    GameTooltip:AddLine(L.MM_TT_LEFT, 0.80, 0.80, 0.90)
+    GameTooltip:AddLine(L.MM_TT_RIGHT, 0.80, 0.80, 0.90)
+    GameTooltip:AddLine(L.MM_TT_DRAG,  0.65, 0.65, 0.65)
     GameTooltip:AddLine(" ")
     -- Statut de chaque module
     for _, mod in ipairs(MODULES) do
@@ -1924,7 +2033,7 @@ end
 function TibiSuite_OnAddonCompartmentEnter(btn)
   GameTooltip:SetOwner(btn, "ANCHOR_LEFT")
   GameTooltip:AddLine("|cFFC41F3BTibiSuite|r")
-  GameTooltip:AddLine("Suite de trackers, par Tibiscui", 0.90, 0.90, 0.90)
+  GameTooltip:AddLine(L.ADDONCOMPT_SUBTITLE, 0.90, 0.90, 0.90)
   GameTooltip:AddLine(" ")
   for _, mod in ipairs(MODULES) do
     local ok     = C_AddOns.IsAddOnLoaded(mod.addonName)
@@ -1958,7 +2067,7 @@ SlashCmdList["TIBISUITE"] = function(msg)
       TibiSuiteCharDB.barOpen = true
       UpdateTabHighlights()
     end
-    print("|cFFC41F3BTibiSuite|r barre recentrée.")
+    print("|cFFC41F3BTibiSuite|r " .. L.SLASH_BAR .. " " .. L.SLASH_RECENTERED)
 
   elseif msg == "openall" then
     SetAllModules(true)
@@ -1969,20 +2078,20 @@ SlashCmdList["TIBISUITE"] = function(msg)
   elseif msg == "lock" then
     TibiSuiteDB.locked = not TibiSuiteDB.locked
     RefreshOptions()
-    print("|cFFC41F3BTibiSuite|r barre " ..
-      (TibiSuiteDB.locked and "|cFF66FF66verrouillée|r" or "|cFFFF7777déverrouillée|r") .. ".")
+    print("|cFFC41F3BTibiSuite|r " .. L.SLASH_BAR .. " " ..
+      (TibiSuiteDB.locked and ("|cFF66FF66" .. L.LOCK_ON .. "|r") or ("|cFFFF7777" .. L.LOCK_OFF .. "|r")) .. ".")
 
   elseif msg == "diag" then
     -- Diagnostic : liste les modules inscrits au registre de recherche globale
     local UI = _G.TibiMidnight
     if not UI or not UI.searchProviders then
-      print("|cFFC41F3BTibiSuite|r diag : bibliothèque de recherche absente.")
+      print("|cFFC41F3BTibiSuite|r diag : " .. L.DIAG_NOLIB)
     else
       local names, n = {}, 0
       for k, prov in pairs(UI.searchProviders) do n = n + 1; names[#names + 1] = (prov.label or k) end
       table.sort(names)
-      print("|cFFC41F3BTibiSuite|r modules de recherche inscrits (" .. n .. ") : "
-        .. (n > 0 and table.concat(names, ", ") or "|cFFFF7777aucun|r"))
+      print("|cFFC41F3BTibiSuite|r " .. L.DIAG_REGISTERED_FMT .. n .. ") : "
+        .. (n > 0 and table.concat(names, ", ") or ("|cFFFF7777" .. L.DIAG_NONE .. "|r")))
     end
 
   elseif msg:match("^search%s+") then
@@ -1990,12 +2099,12 @@ SlashCmdList["TIBISUITE"] = function(msg)
     local word = msg:match("^search%s+(.+)")
     local UI = _G.TibiMidnight
     if UI and UI.searchProviders and word then
-      print("|cFFC41F3BTibiSuite|r « " .. word .. " » par module :")
+      print("|cFFC41F3BTibiSuite|r « " .. word .. " » " .. L.SEARCH_BY_MODULE)
       for k, prov in pairs(UI.searchProviders) do
         local ok, res = pcall(prov.fn, UI.Normalize(word))
         local c = (ok and type(res) == "table") and #res or -1
         print("  " .. (prov.label or k) .. " : "
-          .. (c >= 0 and (c .. " resultat(s)") or "|cFFFF7777ERREUR|r"))
+          .. (c >= 0 and (c .. " " .. L.SEARCH_RESULT_SUFFIX) or ("|cFFFF7777" .. L.SEARCH_ERROR .. "|r")))
       end
     end
 
@@ -2005,11 +2114,11 @@ SlashCmdList["TIBISUITE"] = function(msg)
     LayoutBar()
     RefreshOptions()
     print("|cFFC41F3BTibiSuite|r orientation " ..
-      (TibiSuiteDB.vertical and "verticale" or "horizontale") .. ".")
+      (TibiSuiteDB.vertical and L.VERT_ON or L.VERT_OFF) .. ".")
 
   elseif msg == "modules" then
     if TibiSuite.OpenModulePanel then TibiSuite.OpenModulePanel()
-    else print("|cFFC41F3BTibiSuite|r : panneau des modules indisponible (faites |cFFFFD700/reload|r).") end
+    else print("|cFFC41F3BTibiSuite|r : " .. L.MSG_MODULES_UNAVAIL) end
 
   elseif msg == "stats" then
     -- Ouvre directement l'onglet Stats, comme un clic sur sa vignette dans la barre
@@ -2026,15 +2135,15 @@ SlashCmdList["TIBISUITE"] = function(msg)
     end
 
   elseif msg == "help" or msg == "?" then
-    print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " - commandes :")
-    print("  |cFFFFD700/ts|r : afficher / masquer la barre")
-    print("  |cFFFFD700/ts config|r : panneau d'options")
-    print("  |cFFFFD700/ts modules|r : activer / désactiver les modules (cases à cocher)")
-    print("  |cFFFFD700/ts stats|r : ouvrir directement l'onglet Stats")
-    print("  |cFFFFD700/ts openall|r / |cFFFFD700closeall|r : tout ouvrir / fermer")
-    print("  |cFFFFD700/ts lock|r : verrouiller / déverrouiller")
-    print("  |cFFFFD700/ts vertical|r : basculer horizontale / verticale")
-    print("  |cFFFFD700/ts reset|r : recentrer la barre")
+    print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " - " .. L.HELP_HEADER)
+    print("  |cFFFFD700/ts|r : " .. L.HELP_TOGGLE)
+    print("  |cFFFFD700/ts config|r : " .. L.HELP_CONFIG)
+    print("  |cFFFFD700/ts modules|r : " .. L.HELP_MODULES)
+    print("  |cFFFFD700/ts stats|r : " .. L.HELP_STATS)
+    print("  |cFFFFD700/ts openall|r / |cFFFFD700closeall|r : " .. L.HELP_OPENCLOSEALL)
+    print("  |cFFFFD700/ts lock|r : " .. L.HELP_LOCK)
+    print("  |cFFFFD700/ts vertical|r : " .. L.HELP_VERTICAL)
+    print("  |cFFFFD700/ts reset|r : " .. L.HELP_RESET)
 
   else
     ToggleBar()
@@ -2067,8 +2176,8 @@ local function SetupLDB()
     end,
     OnTooltipShow = function(tt)
       tt:AddLine("|cFFC41F3BTibiSuite|r v" .. VERSION)
-      tt:AddLine("Clic gauche : afficher / masquer la barre", 0.80, 0.80, 0.90)
-      tt:AddLine("Clic droit : options", 0.80, 0.80, 0.90)
+      tt:AddLine(L.MM_TT_LEFT, 0.80, 0.80, 0.90)
+      tt:AddLine(L.MM_TT_RIGHT, 0.80, 0.80, 0.90)
       tt:AddLine(" ")
       for _, mod in ipairs(MODULES) do
         local ok = C_AddOns.IsAddOnLoaded(mod.addonName)
@@ -2183,7 +2292,7 @@ local function LoadModule(mod)
   if C_AddOns.IsAddOnLoaded(mod.addonName) then return true end
   local ok, loaded, reason = pcall(C_AddOns.LoadAddOn, mod.addonName)
   if not ok or not loaded then
-    print("|cFFC41F3BTibiSuite|r : |cFFFF7777echec de chargement|r de "
+    print("|cFFC41F3BTibiSuite|r : |cFFFF7777" .. L.MSG_LOADFAIL .. "|r " .. L.MSG_LOADFAIL_OF .. " "
       .. ColorCode(mod.col.r, mod.col.g, mod.col.b) .. mod.addonName .. "|r"
       .. (reason and ("  (" .. tostring(reason) .. ")") or ""))
     return false
@@ -2269,7 +2378,7 @@ function TibiSuite.ReinstallModule(key)
   local mod = CatalogByKey(key)
   if not mod then return false end
   if not ModuleExists(mod.addonName) then
-    print("|cFFC41F3BTibiSuite|r : |cFFFFD700" .. mod.addonName .. "|r n'est pas installe.")
+    print("|cFFC41F3BTibiSuite|r : |cFFFFD700" .. mod.addonName .. "|r " .. L.MSG_NOTINSTALLED)
     return false
   end
   -- Charger le module si besoin : sa SavedVariables doit etre en memoire
@@ -2283,7 +2392,7 @@ function TibiSuite.ReinstallModule(key)
     _G[name] = nil
   end
   print("|cFFC41F3BTibiSuite|r : " .. ColorCode(mod.col.r, mod.col.g, mod.col.b)
-    .. mod.addonName .. "|r reinitialise (reglages et progression effaces). Rechargement de l'interface...")
+    .. mod.addonName .. "|r " .. L.MSG_REINSTALLED_FMT)
   if C_UI and C_UI.Reload then C_UI.Reload() else ReloadUI() end
   return true
 end
@@ -2302,8 +2411,7 @@ end
 function TibiSuite.ReinstallCore()
   if type(TibiSuiteDB) == "table" then wipe(TibiSuiteDB) end
   if type(TibiSuiteCharDB) == "table" then wipe(TibiSuiteCharDB) end
-  print("|cFFC41F3BTibiSuite|r : suite reinitialisee (reglages de la barre et des modules remis a zero, "
-    .. "progression de chaque module conservee). Rechargement de l'interface...")
+  print("|cFFC41F3BTibiSuite|r : " .. L.MSG_CORE_REINSTALLED)
   if C_UI and C_UI.Reload then C_UI.Reload() else ReloadUI() end
   return true
 end
@@ -2396,10 +2504,10 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     end
 
     -- Message de bienvenue : rappel des commandes de la suite.
-    print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " chargé.  Commandes :")
-    print("  |cFFFFD700/ts|r afficher / masquer la barre    |cFFFFD700/ts modules|r activer / désactiver les modules")
-    print("  |cFFFFD700/ts config|r options    |cFFFFD700/ts openall|r / |cFFFFD700closeall|r tout ouvrir / fermer")
-    print("  |cFFFFD700/ts lock|r verrouiller    |cFFFFD700/ts vertical|r orientation    |cFFFFD700/ts help|r aide complète")
+    print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " " .. L.WELCOME_HEADER)
+    print("  |cFFFFD700/ts|r " .. L.HELP_TOGGLE .. "    |cFFFFD700/ts modules|r " .. L.WELCOME_MODULES)
+    print("  |cFFFFD700/ts config|r options    |cFFFFD700/ts openall|r / |cFFFFD700closeall|r " .. L.HELP_OPENCLOSEALL)
+    print("  |cFFFFD700/ts lock|r " .. L.WELCOME_LOCK .. "    |cFFFFD700/ts vertical|r orientation    |cFFFFD700/ts help|r " .. L.WELCOME_HELP)
 
     -- Rappel du site officiel, 45s apres le login. Affiche UNIQUEMENT ici
     -- (le core) quand il est present : chaque module verifie HasCore() et se

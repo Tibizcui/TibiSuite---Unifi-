@@ -26,9 +26,13 @@
 ## X-Curse: https://www.curseforge.com/wow/addons/tibisuite
 ## X-Discord: https://discord.gg/tibiscui
 
-# Ordre de chargement : le socle d'abord (il expose _G.TibiMidnight),
-# puis le coeur (barre + minimap + chargement conditionnel), puis le
-# panneau des cases a cocher.
+# Ordre de chargement : le socle d'abord (il expose _G.TibiMidnight), PUIS
+# la localisation FR (par defaut, en dur dans le code) / EN - AVANT le coeur,
+# car TibiSuiteCore.lua construit certains libelles d'onglet (table MODULES)
+# une seule fois, de facon synchrone, des son execution - puis le coeur
+# (barre + minimap + chargement conditionnel), puis le panneau des cases a
+# cocher.
 Core\TibiSuiteUI.lua
+Locale\enUS.lua
 Core\TibiSuiteCore.lua
 Core\TibiSuiteOptions.lua

@@ -13,24 +13,104 @@
 local ACCENT_SUITE = { 0.769, 0.122, 0.231 }   -- rouge TibiSuite (#C41F3B) : accent des panneaux (liseré + en-tetes) et de l'installateur
 local LOGO         = "Interface\\AddOns\\TibiSuite\\medias\\TibiSuite"
 
+-- ================================================================
+-- LOCALISATION
+-- Le francais reste le defaut embarque directement ici (via l'operateur
+-- "or") : Locale\enUS.lua ecrase ensuite ces cles si le client est en
+-- anglais. Meme table partagee que TibiSuiteCore.lua (TibiSuiteL).
+-- ================================================================
+TibiSuiteL = TibiSuiteL or {}
+local L = TibiSuiteL
+
 -- Presentation de la suite (installateur + panneau des modules).
-local INTRO = "TibiSuite reunit tous tes trackers Tibiscui sous un seul bouton de minicarte et une barre d'onglets. Tu actives seulement les modules voulus : les autres ne sont pas charges et ne consomment aucune memoire."
+L.INTRO = L.INTRO or "TibiSuite reunit tous tes trackers Tibiscui sous un seul bouton de minicarte et une barre d'onglets. Tu actives seulement les modules voulus : les autres ne sont pas charges et ne consomment aucune memoire."
 
 -- Resume court par module (repris des descriptions officielles de chaque toc).
+L.DESC_Daily   = L.DESC_Daily   or "Quetes quotidiennes et hebdomadaires (Midnight, TWW), cochees automatiquement selon ton historique."
+L.DESC_Dgn     = L.DESC_Dgn     or "Compteur d'entrees d'instances : donjons, raids, gouffres, Torghast, toutes extensions."
+L.DESC_Leg     = L.DESC_Leg     or "Suivi des objets legendaires par extension : statut, quetes et composants, sur tout le compte."
+L.DESC_Rep     = L.DESC_Rep     or "Reputations et Renom de Vanilla a Midnight : groupes pliables, quetes, suivi auto par zone."
+L.DESC_Lvl     = L.DESC_Lvl     or "Historique des sessions de leveling et de farm, avec statistiques."
+L.DESC_Weekly  = L.DESC_Weekly  or "Tableau de bord hebdomadaire : ce qu'il reste a faire pour maximiser tes recompenses."
+L.DESC_MiniHub = L.DESC_MiniHub or "Regroupe les boutons de la minicarte dans un conteneur unique et retractable."
+L.DESC_XPBar   = L.DESC_XPBar   or "Barre d'XP avancee : niveau, XP, repos, quetes et statistiques de session."
+L.DESC_Lair    = L.DESC_Lair    or "Audit de groupe et pertinence des recompenses pour les Repaires."
+L.DESC_Skill   = L.DESC_Skill   or "Progression des metiers par extension (actuel / max + %), pour tous tes personnages."
+L.DESC_RepBar  = L.DESC_RepBar  or "Barre de reputation : remplace la barre native, suit la faction par zone et par quete."
+L.DESC_Post    = L.DESC_Post    or "Gestion avancee de la boite aux lettres : ouverture en masse, carnet de contacts, statistiques de courrier."
+
 local DESC = {
-  Daily   = "Quetes quotidiennes et hebdomadaires (Midnight, TWW), cochees automatiquement selon ton historique.",
-  Dgn     = "Compteur d'entrees d'instances : donjons, raids, gouffres, Torghast, toutes extensions.",
-  Leg     = "Suivi des objets legendaires par extension : statut, quetes et composants, sur tout le compte.",
-  Rep     = "Reputations et Renom de Vanilla a Midnight : groupes pliables, quetes, suivi auto par zone.",
-  Lvl     = "Historique des sessions de leveling et de farm, avec statistiques.",
-  Weekly  = "Tableau de bord hebdomadaire : ce qu'il reste a faire pour maximiser tes recompenses.",
-  MiniHub = "Regroupe les boutons de la minicarte dans un conteneur unique et retractable.",
-  XPBar   = "Barre d'XP avancee : niveau, XP, repos, quetes et statistiques de session.",
-  Lair    = "Audit de groupe et pertinence des recompenses pour les Repaires.",
-  Skill   = "Progression des metiers par extension (actuel / max + %), pour tous tes personnages.",
-  RepBar  = "Barre de reputation : remplace la barre native, suit la faction par zone et par quete.",
-  Post    = "Gestion avancee de la boite aux lettres : ouverture en masse, carnet de contacts, statistiques de courrier.",
+  Daily   = L.DESC_Daily,   Dgn  = L.DESC_Dgn,   Leg  = L.DESC_Leg,   Rep = L.DESC_Rep,
+  Lvl     = L.DESC_Lvl,     Weekly = L.DESC_Weekly, MiniHub = L.DESC_MiniHub,
+  XPBar   = L.DESC_XPBar,   Lair = L.DESC_Lair,  Skill = L.DESC_Skill,
+  RepBar  = L.DESC_RepBar,  Post = L.DESC_Post,
 }
+
+L.URL_HINT = L.URL_HINT or "Ctrl+C pour copier"
+
+-- Panneau "Modules"
+L.PANEL_TITLE      = L.PANEL_TITLE      or "|cFFC41F3BTibiSuite|r  Modules"
+L.SEC_MODULES       = L.SEC_MODULES       or "Modules : Chargés / Non chargés"
+L.NOTE_MODULES      = L.NOTE_MODULES      or "Cochez les modules que vous voulez. Cocher un module le charge tout de suite. Decocher prend effet au prochain /reload (un module ne peut pas etre decharge a chaud)."
+L.LBL_ABSENT         = L.LBL_ABSENT         or "  |cFF808080(absent)|r"
+L.TOAST_ENABLED_FMT  = L.TOAST_ENABLED_FMT  or "activé"
+L.TOAST_DISABLED_FMT = L.TOAST_DISABLED_FMT or "désactivé - effectif au prochain |cFFFFD700/reload|r"
+L.CHECK_TOOLTIP_ON   = L.CHECK_TOOLTIP_ON   or "Charger / decharger "
+L.CHECK_TOOLTIP_OFF  = L.CHECK_TOOLTIP_OFF  or " n'est pas installe (dossier absent)."
+L.SEC_TIP            = L.SEC_TIP            or "Astuce"
+L.NOTE_TIP           = L.NOTE_TIP           or "Un module decoche ne consomme aucune memoire : ses fichiers de donnees ne sont meme pas lus. Seul le core reste toujours charge."
+L.SEC_REINSTALL_MOD  = L.SEC_REINSTALL_MOD  or "Reinstaller un module"
+L.NOTE_REINSTALL_MOD = L.NOTE_REINSTALL_MOD or "Remet un module a zero : efface ses reglages et sa progression, puis recharge l'interface. Action irreversible. La barre TibiSuite et les autres modules ne sont pas touches."
+L.BTN_REINSTALL       = L.BTN_REINSTALL       or "|cFFFF6666Reinstaller|r  "
+L.CONFIRM_REINSTALL_MOD_FMT1 = L.CONFIRM_REINSTALL_MOD_FMT1 or "Reinstaller "
+L.CONFIRM_REINSTALL_MOD_FMT2 = L.CONFIRM_REINSTALL_MOD_FMT2 or " ?\n\nCela efface definitivement ses reglages et sa progression, puis recharge l'interface."
+L.SEC_REINSTALL_SUITE  = L.SEC_REINSTALL_SUITE  or "Reinstaller TibiSuite"
+L.NOTE_REINSTALL_SUITE = L.NOTE_REINSTALL_SUITE or "Remet a zero les reglages de la suite (barre, modules actives, installation) et recharge l'interface. La progression de chaque module est conservee."
+L.BTN_REINSTALL_SUITE  = L.BTN_REINSTALL_SUITE  or "|cFFC41F3BReinstaller TibiSuite|r  |cFF808080(la suite)|r"
+L.CONFIRM_REINSTALL_CORE = L.CONFIRM_REINSTALL_CORE or
+  "Reinstaller TibiSuite ?\n\nCela remet a zero les reglages de la suite (barre, modules actives, installation) puis recharge l'interface. La progression de chaque module est conservee."
+L.SEC_DASHBOARD        = L.SEC_DASHBOARD        or "Dashboard web"
+L.NOTE_DASHBOARD       = L.NOTE_DASHBOARD       or "Colle tes statistiques sur le site pour les consulter hors du jeu. Rien n'est envoye a un serveur : le code est lu localement par ton navigateur."
+L.DASHBOARD_URL_LABEL  = L.DASHBOARD_URL_LABEL  or "URL du dashboard (Ctrl+C pour copier) :"
+L.BTN_GENERATE_EXPORT  = L.BTN_GENERATE_EXPORT  or "Generer mon code d'export"
+L.TOAST_NEED_STATS     = L.TOAST_NEED_STATS     or "Active le module |cFFFFD700Stats|r pour generer un export."
+L.NOTE_DASHBOARD_PRIVACY = L.NOTE_DASHBOARD_PRIVACY or "Confidentialite : aucune donnee n'est envoyee a un serveur. Le code d'export est genere et lu entierement en local (jeu et navigateur)."
+
+-- Assistant de premiere installation
+L.WIZ_SUBTITLE = L.WIZ_SUBTITLE or "Assistant de premiere installation"
+L.WIZ_STEP1 = L.WIZ_STEP1 or "Bienvenue"
+L.WIZ_STEP2 = L.WIZ_STEP2 or "Modules"
+L.WIZ_STEP3 = L.WIZ_STEP3 or "Terminer"
+L.WIZ_PILL1 = L.WIZ_PILL1 or "modules detectes"
+L.WIZ_PILL2 = L.WIZ_PILL2 or "Un seul bouton de minicarte"
+L.WIZ_PILL3 = L.WIZ_PILL3 or "perte de progression"
+L.WIZ_PILL4 = L.WIZ_PILL4 or "Reglable a tout moment"
+L.WIZ_EXPRESS_TITLE = L.WIZ_EXPRESS_TITLE or "Installation express  -  recommande"
+L.WIZ_EXPRESS_DESC  = L.WIZ_EXPRESS_DESC  or "Active tous les modules et demarre tout de suite. Ajuste plus tard avec /ts modules."
+L.WIZ_CHOOSE_TITLE   = L.WIZ_CHOOSE_TITLE   or "Je choisis mes modules"
+L.WIZ_CHOOSE_DESC    = L.WIZ_CHOOSE_DESC    or "Selectionne un par un ce que tu veux charger, par categorie."
+L.WIZ_ALL_ON   = L.WIZ_ALL_ON   or "Tout activer"
+L.WIZ_ALL_OFF  = L.WIZ_ALL_OFF  or "Tout desactiver"
+L.WIZ_CAT_ALL  = L.WIZ_CAT_ALL  or "|cFFB8ADFFTout|r"
+L.WIZ_CAT_NONE = L.WIZ_CAT_NONE or "|cFF9A96A8Aucun|r"
+L.WIZ_CAT_TRACKERS = L.WIZ_CAT_TRACKERS or "Trackers (fenetres)"
+L.WIZ_CAT_HUD      = L.WIZ_CAT_HUD      or "HUD ambiant (barres et conteneurs)"
+L.WIZ_DETECTED_FMT = L.WIZ_DETECTED_FMT or "modules detectes"
+L.WIZ_COUNTER_FMT   = L.WIZ_COUNTER_FMT   or "modules actives"
+L.WIZ_RECAP_COUNT_FMT = L.WIZ_RECAP_COUNT_FMT or "modules seront actives au demarrage."
+L.WIZ_RECAP_TITLE = L.WIZ_RECAP_TITLE or "Pret a installer"
+L.WIZ_REASSURANCE = L.WIZ_REASSURANCE or
+  "|cFFB8ADFF+|r Aucune progression deplacee : chaque module garde sa sauvegarde.\n"
+  .. "|cFFB8ADFF+|r Cocher charge tout de suite ; decocher prend effet au /reload.\n"
+  .. "|cFFB8ADFF+|r Reglable a tout moment avec |cFFFFD700/ts modules|r."
+L.WIZ_SITE   = L.WIZ_SITE   or "Site web"
+L.WIZ_CURSE  = L.WIZ_CURSE  or "CurseForge"
+L.WIZ_PREV   = L.WIZ_PREV   or "Precedent"
+L.WIZ_START     = L.WIZ_START     or "Commencer"
+L.WIZ_CONTINUE  = L.WIZ_CONTINUE  or "Continuer"
+L.WIZ_INSTALL   = L.WIZ_INSTALL   or "Installer et demarrer"
+L.WIZ_FINISH_PRINT = L.WIZ_FINISH_PRINT or "installation terminee. |cFFFFD700/ts modules|r pour ajuster plus tard."
+L.WIZ_FINISH_TOAST  = L.WIZ_FINISH_TOAST  or "|cFFC41F3BTibiSuite|r installe avec succes !"
 
 -- Categorie pour l'installateur : "hud" = barre / conteneur ambiant, sinon
 -- "tracker" (fenetre). Absent de la table => tracker.
@@ -151,7 +231,7 @@ local function ShowURL(url)
 
     local hint = urlFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     hint:SetPoint("TOP", 0, -22)
-    hint:SetText("Ctrl+C pour copier")
+    hint:SetText(L.URL_HINT)
 
     local eb = CreateFrame("EditBox", "TibiSuiteURLBox", urlFrame, "InputBoxTemplate")
     eb:SetSize(370, 30)
@@ -230,13 +310,13 @@ local function Build()
 
   panel = UI.CreateOptionsPanel({
     name  = "TibiSuiteModulesPanel",
-    title = "|cFFC41F3BTibiSuite|r  Modules",
+    title = L.PANEL_TITLE,
     accent = ACCENT_SUITE,
     logo  = LOGO,
   })
 
-  panel:Section("Modules : Chargés / Non chargés")
-  panel:Note("Cochez les modules que vous voulez. Cocher un module le charge tout de suite. Decocher prend effet au prochain /reload (un module ne peut pas etre decharge a chaud).")
+  panel:Section(L.SEC_MODULES)
+  panel:Note(L.NOTE_MODULES)
 
   local catalog = (TibiSuite.GetCatalog and TibiSuite.GetCatalog()) or {}
   for _, mod in ipairs(catalog) do
@@ -244,7 +324,7 @@ local function Build()
     local present = TibiSuite.ModuleExists and TibiSuite.ModuleExists(mod.addonName)
     local label   = Hex(mod.col) .. (mod.addonName or mod.label) .. "|r"
     if not present then
-      label = label .. "  |cFF808080(absent)|r"
+      label = label .. L.LBL_ABSENT
     end
     panel:Check(
       label,
@@ -255,32 +335,32 @@ local function Build()
         -- (WoW ne permet pas de decharger un addon a chaud) - le toast reflete
         -- lequel des deux vient de se produire.
         if v then
-          TibiSuite.ShowToast(Hex(mod.col) .. mod.addonName .. "|r active")
+          TibiSuite.ShowToast(Hex(mod.col) .. mod.addonName .. "|r " .. L.TOAST_ENABLED_FMT)
         else
-          TibiSuite.ShowToast(Hex(mod.col) .. mod.addonName .. "|r desactive - effectif au prochain |cFFFFD700/reload|r")
+          TibiSuite.ShowToast(Hex(mod.col) .. mod.addonName .. "|r " .. L.TOAST_DISABLED_FMT)
         end
       end,
-      present and ("Charger / decharger " .. mod.addonName)
-              or (mod.addonName .. " n'est pas installe (dossier absent).")
+      present and (L.CHECK_TOOLTIP_ON .. mod.addonName)
+              or (mod.addonName .. L.CHECK_TOOLTIP_OFF)
     )
   end
 
-  panel:Section("Astuce")
-  panel:Note("Un module decoche ne consomme aucune memoire : ses fichiers de donnees ne sont meme pas lus. Seul le core reste toujours charge.")
+  panel:Section(L.SEC_TIP)
+  panel:Note(L.NOTE_TIP)
 
   -- ── Reinstallation : un bouton par module present ──────────────
-  panel:Section("Reinstaller un module")
-  panel:Note("Remet un module a zero : efface ses reglages et sa progression, puis recharge l'interface. Action irreversible. La barre TibiSuite et les autres modules ne sont pas touches.")
+  panel:Section(L.SEC_REINSTALL_MOD)
+  panel:Note(L.NOTE_REINSTALL_MOD)
   for _, mod in ipairs(catalog) do
     local present = TibiSuite.ModuleExists and TibiSuite.ModuleExists(mod.addonName)
     if present then
       local addon = mod.addonName
       local key   = mod.key
       panel:Button(
-        "|cFFFF6666Reinstaller|r  " .. Hex(mod.col) .. addon .. "|r",
+        L.BTN_REINSTALL .. Hex(mod.col) .. addon .. "|r",
         function()
           ShowConfirm(
-            "Reinstaller " .. addon .. " ?\n\nCela efface definitivement ses reglages et sa progression, puis recharge l'interface.",
+            L.CONFIRM_REINSTALL_MOD_FMT1 .. addon .. L.CONFIRM_REINSTALL_MOD_FMT2,
             function() if TibiSuite.ReinstallModule then TibiSuite.ReinstallModule(key) end end
           )
         end
@@ -289,34 +369,33 @@ local function Build()
   end
 
   -- Reinstallation de la suite elle-meme (reglages du core), progression conservee.
-  panel:Section("Reinstaller TibiSuite")
-  panel:Note("Remet a zero les reglages de la suite (barre, modules actives, installation) et recharge l'interface. La progression de chaque module est conservee.")
+  panel:Section(L.SEC_REINSTALL_SUITE)
+  panel:Note(L.NOTE_REINSTALL_SUITE)
   panel:Button(
-    "|cFFC41F3BReinstaller TibiSuite|r  |cFF808080(la suite)|r",
+    L.BTN_REINSTALL_SUITE,
     function()
-      ShowConfirm(
-        "Reinstaller TibiSuite ?\n\nCela remet a zero les reglages de la suite (barre, modules actives, installation) puis recharge l'interface. La progression de chaque module est conservee.",
+      ShowConfirm(L.CONFIRM_REINSTALL_CORE,
         function() if TibiSuite.ReinstallCore then TibiSuite.ReinstallCore() end end
       )
     end
   )
 
   -- ── Dashboard web (module Stats) ─────────────────────────────────
-  panel:Section("Dashboard web")
-  panel:Note("Colle tes statistiques sur le site pour les consulter hors du jeu. Rien n'est envoye a un serveur : le code est lu localement par ton navigateur.")
+  panel:Section(L.SEC_DASHBOARD)
+  panel:Note(L.NOTE_DASHBOARD)
   if panel.SelectableText then
-    panel:SelectableText("URL du dashboard (Ctrl+C pour copier) :", "https://www.tibiscui.fr/Dashboard.html")
+    panel:SelectableText(L.DASHBOARD_URL_LABEL, "https://www.tibiscui.fr/Dashboard.html")
   else
     panel:Note("https://www.tibiscui.fr/Dashboard.html")
   end
-  panel:Button("Generer mon code d'export", function()
+  panel:Button(L.BTN_GENERATE_EXPORT, function()
     if _G.Stats and _G.Stats.ShowExportPopup then
       _G.Stats.ShowExportPopup()
     else
-      TibiSuite.ShowToast("Active le module |cFFFFD700Stats|r pour generer un export.")
+      TibiSuite.ShowToast(L.TOAST_NEED_STATS)
     end
   end)
-  panel:Note("Confidentialite : aucune donnee n'est envoyee a un serveur. Le code d'export est genere et lu entierement en local (jeu et navigateur).")
+  panel:Note(L.NOTE_DASHBOARD_PRIVACY)
 
   return panel
 end
@@ -367,13 +446,13 @@ local function BuildWizard()
   title:SetText(hexLav("TibiSuite"))
   local sub = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 1, -4)
-  sub:SetText("Assistant de premiere installation")
+  sub:SetText(L.WIZ_SUBTITLE)
 
   local closeB = CreateFrame("Button", nil, f, "UIPanelCloseButton")
   closeB:SetPoint("TOPRIGHT", 2, 2)
 
   -- ----- Etapes -----
-  local STEP_NAMES = { "Bienvenue", "Modules", "Terminer" }
+  local STEP_NAMES = { L.WIZ_STEP1, L.WIZ_STEP2, L.WIZ_STEP3 }
   local steps = {}
   local segW = (660 - 40 - 16) / 3
   for i = 1, 3 do
@@ -426,10 +505,10 @@ local function BuildWizard()
   pW:SetPoint("TOPLEFT", 20, -116); pW:SetPoint("BOTTOMRIGHT", -20, 60)
   local intro = pW:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   intro:SetPoint("TOPLEFT", 2, -4); intro:SetPoint("RIGHT", -2, 0)
-  intro:SetJustifyH("LEFT"); intro:SetText(INTRO)
+  intro:SetJustifyH("LEFT"); intro:SetText(L.INTRO)
 
-  local PILLS = { "|cFFE9E7F011|r modules detectes", "Un seul bouton de minicarte",
-                  "|cFFE9E7F00|r perte de progression", "Reglable a tout moment" }
+  local PILLS = { "|cFFE9E7F011|r " .. L.WIZ_PILL1, L.WIZ_PILL2,
+                  "|cFFE9E7F00|r " .. L.WIZ_PILL3, L.WIZ_PILL4 }
   local detectFS
   do
     local px, pillY = 2, -64
@@ -459,24 +538,24 @@ local function BuildWizard()
     c:SetScript("OnClick", onClick)
     return c
   end
-  choiceCard(2, true, "Installation express  -  recommande",
-    "Active tous les modules et demarre tout de suite. Ajuste plus tard avec /ts modules.",
+  choiceCard(2, true, L.WIZ_EXPRESS_TITLE,
+    L.WIZ_EXPRESS_DESC,
     function()
       for _, m in ipairs(wizard.present) do wizard.choice[m.key] = true end
       if wizard.refreshCards then wizard.refreshCards() end
       wizard.goStep(2)
     end)
-  choiceCard(300, false, "Je choisis mes modules",
-    "Selectionne un par un ce que tu veux charger, par categorie.",
+  choiceCard(300, false, L.WIZ_CHOOSE_TITLE,
+    L.WIZ_CHOOSE_DESC,
     function() wizard.goStep(1) end)
 
   -- ================= PANE : MODULES =================
   local pM = CreateFrame("Frame", nil, f)
   pM:SetPoint("TOPLEFT", 20, -116); pM:SetPoint("BOTTOMRIGHT", -20, 60)
   pM:Hide()
-  local allOn = UI.MakeButton(pM, 96, 22, "Tout activer")
+  local allOn = UI.MakeButton(pM, 96, 22, L.WIZ_ALL_ON)
   allOn:SetPoint("TOPLEFT", 2, -2)
-  local allOff = UI.MakeButton(pM, 108, 22, "Tout desactiver")
+  local allOff = UI.MakeButton(pM, 108, 22, L.WIZ_ALL_OFF)
   allOff:SetPoint("LEFT", allOn, "RIGHT", 8, 0)
   local counter = pM:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   counter:SetPoint("RIGHT", -4, 0); counter:SetPoint("TOP", allOn, "TOP", 0, -4)
@@ -517,28 +596,26 @@ local function BuildWizard()
   pR:SetPoint("TOPLEFT", 20, -116); pR:SetPoint("BOTTOMRIGHT", -20, 60)
   pR:Hide()
   local rTitle = pR:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  rTitle:SetPoint("TOPLEFT", 2, -4); rTitle:SetText(hexLav("Pret a installer"))
+  rTitle:SetPoint("TOPLEFT", 2, -4); rTitle:SetText(hexLav(L.WIZ_RECAP_TITLE))
   local rSub = pR:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
   rSub:SetPoint("TOPLEFT", 2, -30)
   local chipsHost = CreateFrame("Frame", nil, pR)
   chipsHost:SetPoint("TOPLEFT", 2, -54); chipsHost:SetPoint("RIGHT", -2, 0); chipsHost:SetHeight(150)
   local reass = pR:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   reass:SetPoint("BOTTOMLEFT", 2, 6); reass:SetPoint("RIGHT", -2, 0); reass:SetJustifyH("LEFT")
-  reass:SetText("|cFFB8ADFF+|r Aucune progression deplacee : chaque module garde sa sauvegarde.\n"
-    .. "|cFFB8ADFF+|r Cocher charge tout de suite ; decocher prend effet au /reload.\n"
-    .. "|cFFB8ADFF+|r Reglable a tout moment avec |cFFFFD700/ts modules|r.")
+  reass:SetText(L.WIZ_REASSURANCE)
 
   -- ----- Pied : liens + navigation -----
   local sep2 = f:CreateTexture(nil, "ARTWORK")
   sep2:SetColorTexture(1, 1, 1, 0.10)
   sep2:SetPoint("BOTTOMLEFT", 16, 50); sep2:SetPoint("BOTTOMRIGHT", -16, 50); sep2:SetHeight(1)
-  local siteB = UI.MakeButton(f, 92, 24, "Site web")
+  local siteB = UI.MakeButton(f, 92, 24, L.WIZ_SITE)
   siteB:SetPoint("BOTTOMLEFT", 16, 14)
   siteB:SetScript("OnClick", function() ShowURL(URL_SITE) end)
-  local curseB = UI.MakeButton(f, 110, 24, "CurseForge")
+  local curseB = UI.MakeButton(f, 110, 24, L.WIZ_CURSE)
   curseB:SetPoint("LEFT", siteB, "RIGHT", 8, 0)
   curseB:SetScript("OnClick", function() ShowURL(URL_CURSE) end)
-  local prevB = UI.MakeButton(f, 96, 24, "Precedent")
+  local prevB = UI.MakeButton(f, 96, 24, L.WIZ_PREV)
   prevB:SetPoint("BOTTOMRIGHT", -148, 14)
   local nextB = UI.MakeButton(f, 132, 24, "")
   nextB:SetPoint("BOTTOMRIGHT", -16, 14)
@@ -566,13 +643,13 @@ local function BuildWizard()
 
       -- Tout / Aucun propres a cette categorie (par opposition aux boutons
       -- globaux allOn/allOff qui touchent toutes les categories a la fois).
-      local catAll = UI.MakeButton(content, 40, 16, "|cFFB8ADFFTout|r")
+      local catAll = UI.MakeButton(content, 40, 16, L.WIZ_CAT_ALL)
       catAll:SetPoint("LEFT", h, "RIGHT", 10, 0)
       catAll:SetScript("OnClick", function()
         for _, m in ipairs(list) do wizard.choice[m.key] = true end
         wizard.refreshCards()
       end)
-      local catNone = UI.MakeButton(content, 48, 16, "|cFF9A96A8Aucun|r")
+      local catNone = UI.MakeButton(content, 48, 16, L.WIZ_CAT_NONE)
       catNone:SetPoint("LEFT", catAll, "RIGHT", 4, 0)
       catNone:SetScript("OnClick", function()
         for _, m in ipairs(list) do wizard.choice[m.key] = nil end
@@ -627,11 +704,11 @@ local function BuildWizard()
     for _, m in ipairs(wizard.present) do
       if GROUP[m.key] == "hud" then hud[#hud + 1] = m else trackers[#trackers + 1] = m end
     end
-    addCat("Trackers (fenetres)", trackers)
-    addCat("HUD ambiant (barres et conteneurs)", hud)
+    addCat(L.WIZ_CAT_TRACKERS, trackers)
+    addCat(L.WIZ_CAT_HUD, hud)
     content:SetHeight(math.max(-y + 10, 10))
     if wizard.detectFS then
-      wizard.detectFS:SetText("|cFFE9E7F0" .. #wizard.present .. "|r modules detectes")
+      wizard.detectFS:SetText("|cFFE9E7F0" .. #wizard.present .. "|r " .. L.WIZ_DETECTED_FMT)
     end
   end
   wizard.buildCards = buildCards
@@ -644,8 +721,8 @@ local function BuildWizard()
   function wizard.updateCount()
     local c = 0
     for _, m in ipairs(wizard.present) do if wizard.choice[m.key] then c = c + 1 end end
-    counter:SetText(hexLav(tostring(c)) .. " / " .. #wizard.present .. " modules actives")
-    rSub:SetText(hexLav(tostring(c)) .. " modules seront actives au demarrage.")
+    counter:SetText(hexLav(tostring(c)) .. " / " .. #wizard.present .. " " .. L.WIZ_COUNTER_FMT)
+    rSub:SetText(hexLav(tostring(c)) .. " " .. L.WIZ_RECAP_COUNT_FMT)
   end
 
   function wizard.refreshRecap()
@@ -693,9 +770,9 @@ local function BuildWizard()
     styleSteps()
     UpdateProgressBar(s)
     prevB:SetShown(s > 0)
-    if s == 0 then nextB._label:SetText(hexLav("Commencer"))
-    elseif s == 1 then nextB._label:SetText(hexLav("Continuer")); wizard.refreshCards()
-    else nextB._label:SetText(hexLav("Installer et demarrer")); wizard.refreshRecap(); wizard.updateCount() end
+    if s == 0 then nextB._label:SetText(hexLav(L.WIZ_START))
+    elseif s == 1 then nextB._label:SetText(hexLav(L.WIZ_CONTINUE)); wizard.refreshCards()
+    else nextB._label:SetText(hexLav(L.WIZ_INSTALL)); wizard.refreshRecap(); wizard.updateCount() end
   end
 
   local function finish()
@@ -706,8 +783,8 @@ local function BuildWizard()
     end
     TibiSuiteDB.setupDone = true
     f:Hide()
-    print("|cFFC41F3BTibiSuite|r : installation terminee. |cFFFFD700/ts modules|r pour ajuster plus tard.")
-    TibiSuite.ShowToast("|cFFC41F3BTibiSuite|r installe avec succes !")
+    print("|cFFC41F3BTibiSuite|r : " .. L.WIZ_FINISH_PRINT)
+    TibiSuite.ShowToast(L.WIZ_FINISH_TOAST)
   end
 
   prevB:SetScript("OnClick", function() if wizard.step > 0 then wizard.goStep(wizard.step - 1) end end)
