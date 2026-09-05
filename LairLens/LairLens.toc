@@ -49,6 +49,8 @@ Core\Util.lua
 # 2. Localisation (enUS d'abord comme base, puis surcharges de langue).
 Locales\enUS.lua
 Locales\frFR.lua
+Locales\deDE.lua
+Locales\esES.lua
 
 # 3. Donnees : taxonomie du contenu et heuristiques de capacites.
 Data\Data.lua

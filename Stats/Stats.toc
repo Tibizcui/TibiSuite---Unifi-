@@ -37,6 +37,8 @@ Libs\LZW.lua
 # Localisation (enUS = base, frFR = surcharge si le client est en francais)
 Locales\enUS.lua
 Locales\frFR.lua
+Locales\deDE.lua
+Locales\esES.lua
 
 Constants.lua
 Core.lua

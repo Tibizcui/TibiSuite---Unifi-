@@ -35,6 +35,8 @@ Core\TibiSuiteUI.lua
 Locales\Locales.lua
 Locales\enUS.lua
 Locales\frFR.lua
+Locales\deDE.lua
+Locales\esES.lua
 
 # --- Coeur : donnees / logique, aucune connaissance des activites specifiques ---
 Core\Constants.lua

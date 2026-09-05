@@ -189,14 +189,182 @@ local frFR = {
 }
 
 -- ---------------------------------------------------------------
--- Construction de la table finale L : copie enUS, puis superpose FR.
--- Acces via metatable : une cle absente renvoie la cle elle-meme
--- (jamais nil), ce qui evite toute erreur d'affichage.
+-- Allemand : uniquement les cles traduites (le reste retombe sur enUS).
+-- ---------------------------------------------------------------
+local deDE = {
+  PANEL_SUBTITLE    = "Berufsfortschritt nach Erweiterung",
+  SUMMARY_TITLE     = "Kontouebersicht",
+
+  PRIMARY           = "Hauptberufe",
+  SECONDARY         = "Sekundaerberufe",
+  ARCHAEOLOGY       = "Archaeologie",
+  OVERALL           = "Gesamt",
+  EXPANSION         = "Erweiterung",
+
+  NO_PROFESSIONS    = "Kein Beruf auf diesem Charakter bekannt.",
+  OPEN_HINT         = "Oeffne einmal ein Berufsfenster, um die Details je Erweiterung zu laden.",
+  NO_DATA           = "Noch keine Daten.",
+  CURRENT_CHAR      = "Dieser Charakter",
+  MAXED             = "Maximiert",
+  MAXED_SHORT       = "maximiert",
+
+  METIER_VIEW_CURRENT = "Aktuelle Erweiterung",
+  METIER_VIEW_ALL      = "Alle Erweiterungen",
+  METIER_VIEW_ACCOUNT  = "Account",
+
+  CHARS_ONE         = "%d Charakter",
+  CHARS_MANY        = "%d Charaktere",
+  KNOWN_BY          = "Bekannt von",
+  IMPORTED_TAG      = "importiert",
+  AVG_PROGRESS      = "durchschn. %d%%",
+  PICK_CHARS        = "Waehle die anzuzeigenden Charaktere (klicken zum Umschalten):",
+
+  OPT_TITLE         = "SkillTracker - Optionen",
+  OPT_GENERAL       = "Allgemein",
+  OPT_ENABLED       = "Modul aktiv",
+  OPT_ENABLED_TT    = "Deaktivieren, um Scans zu stoppen und das Fenster auszublenden.",
+  OPT_HIDE_MAXED    = "Maximierte Erweiterungen ausblenden",
+  OPT_HIDE_MAXED_TT = "Zeigt nur Berufe/Erweiterungen, die nicht bei 100% sind.",
+  OPT_MINIMAP       = "Minikarten-Button anzeigen",
+  OPT_DATA          = "Datenaustausch (mehrere Accounts)",
+  OPT_EXPORT        = "Meine Daten exportieren",
+  OPT_IMPORT        = "Daten importieren",
+  OPT_RESCAN        = "Jetzt neu scannen",
+  OPT_WIPE_CHAR     = "Daten dieses Charakters loeschen",
+
+  EXPORT_HINT       = "Kopiere diese Zeichenkette (Strg+C) und fuege sie auf deiner anderen Installation ein.",
+  IMPORT_HINT       = "Fuege hier eine exportierte Zeichenkette ein und druecke dann Enter.",
+  IMPORT_OK         = "Import erfolgreich: %d Charakter(e) hinzugefuegt oder aktualisiert.",
+  IMPORT_FAIL       = "Import fehlgeschlagen: die Zeichenkette ist ungueltig oder beschaedigt.",
+  EXPORT_EMPTY      = "Noch nichts zu exportieren.",
+
+  TT_LEFT           = "Linksklick: Fenster oeffnen / schliessen",
+  TT_RIGHT          = "Rechtsklick: Optionen",
+  SLASH_HELP        = "Befehle:",
+  SLASH_TOGGLE      = "Fenster anzeigen / ausblenden",
+  SLASH_CONFIG      = "Optionsfenster",
+  SLASH_SCAN        = "einen Neuscan erzwingen",
+
+  TODO_TITLE        = "Noch zu erledigen",
+  TODO_NONE         = "Alles ist maximiert. Gute Arbeit!",
+  TODO_MORE         = "... und %d weitere",
+  TODO_COUNT_ONE    = "%d Stufe zu erledigen",
+  TODO_COUNT_MANY   = "%d Stufen zu erledigen",
+  TODO_EXT_FILTER   = "Nach Erweiterung filtern (klicken zum Umschalten):",
+
+  META_TITLE        = "Konzentration & Kenntnisse",
+  CONCENTRATION     = "Konzentration",
+  KP_UNSPENT        = "%d ungenutzt",
+  KP_LABEL          = "Kenntnisse",
+  CONC_FULL_ALERT   = "%s: Konzentration ist voll (%d/%d), gib sie aus!",
+  CONC_FULL_TAG     = "VOLL",
+  OPEN_PROF_HINT    = "Klick: Berufsfenster oeffnen",
+  KP_TIER           = "%d Kenntnisse",
+
+  OPT_HIDE_MAXPROF  = "Vollstaendig maximierte Berufe ausblenden",
+  OPT_SHOW_TODO     = "Liste \"noch zu erledigen\" anzeigen",
+  OPT_CONC_ALERT    = "Warnen, wenn die Konzentration voll ist",
+  OPT_VIEW          = "Anzeige",
+
+  LOADED_MSG        = "geladen",
+  MULTIACC_NOTE     = "Der Mehrkonten-Abgleich funktioniert nur automatisch auf derselben WoW-Installation. Fuer getrennte Installationen nutze Export / Import.",
+}
+
+-- ---------------------------------------------------------------
+-- Espagnol : uniquement les cles traduites (le reste retombe sur enUS).
+-- ---------------------------------------------------------------
+local esES = {
+  PANEL_SUBTITLE    = "Progreso de profesiones por expansion",
+  SUMMARY_TITLE     = "Resumen de la cuenta",
+
+  PRIMARY           = "Profesiones principales",
+  SECONDARY         = "Profesiones secundarias",
+  ARCHAEOLOGY       = "Arqueologia",
+  OVERALL           = "General",
+  EXPANSION         = "Expansion",
+
+  NO_PROFESSIONS    = "Ninguna profesion conocida en este personaje.",
+  OPEN_HINT         = "Abre una ventana de profesion una vez para cargar el detalle por expansion.",
+  NO_DATA           = "Todavia no hay datos.",
+  CURRENT_CHAR      = "Este personaje",
+  MAXED             = "Al maximo",
+  MAXED_SHORT       = "al maximo",
+
+  METIER_VIEW_CURRENT = "Expansion actual",
+  METIER_VIEW_ALL      = "Todas las expansiones",
+  METIER_VIEW_ACCOUNT  = "Cuenta",
+
+  CHARS_ONE         = "%d personaje",
+  CHARS_MANY        = "%d personajes",
+  KNOWN_BY          = "Conocido por",
+  IMPORTED_TAG      = "importado",
+  AVG_PROGRESS      = "prom %d%%",
+  PICK_CHARS        = "Elige los personajes a mostrar (clic para marcar):",
+
+  OPT_TITLE         = "SkillTracker - Opciones",
+  OPT_GENERAL       = "General",
+  OPT_ENABLED       = "Modulo activo",
+  OPT_ENABLED_TT    = "Desactiva para detener los escaneos y ocultar el panel.",
+  OPT_HIDE_MAXED    = "Ocultar expansiones al maximo",
+  OPT_HIDE_MAXED_TT = "Solo muestra profesiones/expansiones que no esten al 100%.",
+  OPT_MINIMAP       = "Mostrar boton de minimapa",
+  OPT_DATA          = "Compartir datos (multi-cuenta)",
+  OPT_EXPORT        = "Exportar mis datos",
+  OPT_IMPORT        = "Importar datos",
+  OPT_RESCAN        = "Reescanear ahora",
+  OPT_WIPE_CHAR     = "Borrar los datos de este personaje",
+
+  EXPORT_HINT       = "Copia esta cadena (Ctrl+C) y pegala en tu otra instalacion.",
+  IMPORT_HINT       = "Pega aqui una cadena exportada y luego pulsa Intro.",
+  IMPORT_OK         = "Importacion exitosa: %d personaje(s) anadido(s) o actualizado(s).",
+  IMPORT_FAIL       = "Fallo la importacion: la cadena no es valida o esta corrupta.",
+  EXPORT_EMPTY      = "Nada que exportar todavia.",
+
+  TT_LEFT           = "Clic izquierdo: abrir / cerrar el panel",
+  TT_RIGHT          = "Clic derecho: opciones",
+  SLASH_HELP        = "comandos:",
+  SLASH_TOGGLE      = "mostrar / ocultar el panel",
+  SLASH_CONFIG      = "panel de opciones",
+  SLASH_SCAN        = "forzar un reescaneo",
+
+  TODO_TITLE        = "Por terminar",
+  TODO_NONE         = "Todo esta al maximo. Buen trabajo!",
+  TODO_MORE         = "... y %d mas",
+  TODO_COUNT_ONE    = "%d nivel por terminar",
+  TODO_COUNT_MANY   = "%d niveles por terminar",
+  TODO_EXT_FILTER   = "Filtrar por expansion (clic para marcar):",
+
+  META_TITLE        = "Concentracion y conocimientos",
+  CONCENTRATION     = "Concentracion",
+  KP_UNSPENT        = "%d sin gastar",
+  KP_LABEL          = "conocimientos",
+  CONC_FULL_ALERT   = "%s: la concentracion esta llena (%d/%d), usala!",
+  CONC_FULL_TAG     = "LLENA",
+  OPEN_PROF_HINT    = "Clic: abrir la ventana de la profesion",
+  KP_TIER           = "%d conocimientos",
+
+  OPT_HIDE_MAXPROF  = "Ocultar profesiones totalmente al maximo",
+  OPT_SHOW_TODO     = "Mostrar la lista \"por terminar\"",
+  OPT_CONC_ALERT    = "Avisar cuando la concentracion este llena",
+  OPT_VIEW          = "Visualizacion",
+
+  LOADED_MSG        = "cargado",
+  MULTIACC_NOTE     = "El multi-cuenta solo se sincroniza automaticamente en la misma instalacion de WoW. Para instalaciones separadas, usa Exportar / Importar.",
+}
+
+-- ---------------------------------------------------------------
+-- Construction de la table finale L : copie enUS, puis superpose la
+-- langue active. Acces via metatable : une cle absente renvoie la cle
+-- elle-meme (jamais nil), ce qui evite toute erreur d'affichage.
 -- ---------------------------------------------------------------
 local L = {}
 for k, v in pairs(enUS) do L[k] = v end
 if GetLocale() == "frFR" then
   for k, v in pairs(frFR) do L[k] = v end
+elseif GetLocale() == "deDE" then
+  for k, v in pairs(deDE) do L[k] = v end
+elseif GetLocale() == "esES" or GetLocale() == "esMX" then
+  for k, v in pairs(esES) do L[k] = v end
 end
 setmetatable(L, { __index = function(_, k) return tostring(k) end })
 

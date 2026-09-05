@@ -195,12 +195,190 @@ local frFR = {
 }
 
 --------------------------------------------------------------------------------
+-- Deutsch
+--------------------------------------------------------------------------------
+local deDE = {
+    ADDON_SUBTITLE   = "Sammelt deine Addon-Minikarten-Symbole in einem einzigen, aufgeraeumten, einklappbaren Behaelter.",
+    EMPTY            = "Kein Button gesammelt",
+    EMPTY_CONFLICT   = "%s verwaltet die Minikarten-Buttons bereits selbst - MiniHub tritt zurueck.",
+    MSG_CONFLICT_LOGIN = "%s verwaltet die Minikarten-Buttons bereits - MiniHub bleibt im Hintergrund (Behaelter ausgeblendet). Tippe /minihub, um ihn manuell zu oeffnen, falls du ihn trotzdem nutzen willst.",
+
+    TT_LEFT_TOGGLE   = "Linksklick: oeffnen / schliessen",
+    TT_RIGHT_OPTIONS = "Rechtsklick: Optionen",
+    TT_MIDDLE_RESCAN = "Mittelklick: neu scannen",
+    TT_DRAG_MOVE     = "Ziehen: Button verschieben",
+
+    MSG_COMBAT_OPTIONS = "kann die Optionen im Kampf nicht oeffnen. Versuche es nach dem Kampf erneut.",
+    MSG_RESCAN       = "Neuscan abgeschlossen (%d Buttons gesammelt).",
+    MSG_RESET        = "Positionen von Behaelter und Hauptbutton zurueckgesetzt.",
+    MSG_BLOCK        = "\"%s\" wird jetzt ignoriert (/reload ausfuehren).",
+    MSG_UNBLOCK      = "\"%s\" wird nicht mehr ignoriert.",
+    MSG_ADD          = "\"%s\" manuell hinzugefuegt.",
+    MSG_IMPORT_OK    = "Profil importiert. /reload ausfuehren, um es anzuwenden.",
+    MSG_IMPORT_FAIL  = "Import fehlgeschlagen: ungueltige Zeichenkette.",
+
+    SLASH_HELP       = "Befehle:",
+    SLASH_TOGGLE     = "Behaelter oeffnen / schliessen",
+    SLASH_SCAN       = "Minikarten-Buttons neu scannen",
+    SLASH_RESET      = "Behaelter und Hauptbutton zentrieren",
+    SLASH_CONFIG     = "Optionen oeffnen",
+    SLASH_DEBUG      = "Minikarten-Elemente auflisten (Diagnose)",
+    SLASH_BLOCK      = "einen Button ignorieren",
+    SLASH_ADD        = "einen Button per Name erzwingen",
+
+    OPT_GENERAL      = "Allgemein",
+    OPT_LAYOUT       = "Layout",
+    OPT_APPEARANCE   = "Erscheinungsbild",
+    OPT_BEHAVIOR     = "Verhalten",
+    OPT_ORIENTATION  = "Ausrichtung: %s",
+    OPT_VERTICAL     = "Vertikal",
+    OPT_HORIZONTAL   = "Horizontal",
+    OPT_COLUMNS      = "Anzahl Spalten",
+    OPT_ROWS         = "Anzahl Reihen",
+    OPT_BUTTON_SIZE  = "Zellengroesse",
+    OPT_SPACING      = "Abstand",
+    OPT_BG_OPACITY   = "Hintergrund-Deckkraft (%)",
+    OPT_MAIN_SIZE    = "Groesse des Hauptbuttons",
+    OPT_MAIN_OPACITY = "Deckkraft des Hauptbuttons (%)",
+    OPT_SHOW_TITLE   = "Titelleiste anzeigen",
+    OPT_LOCK         = "Position des Behaelters sperren",
+    OPT_SHOW_MINIMAP = "Minikarten-Button anzeigen",
+    OPT_HIDE_ZOOM    = "Blizzard-Zoombuttons ausblenden (+/-)",
+    OPT_HIDE_ZOOM_TT = "Zoom bleibt ueber das Mausrad verfuegbar.",
+    OPT_SHOW_MAIN    = "Beweglichen Hauptbutton anzeigen (Logo)",
+    OPT_SHOW_MAIN_TT = "Ein Logo-Button, der frei in der Oberflaeche platziert werden kann und den Behaelter oeffnet/schliesst.",
+    OPT_RESCAN       = "Neu scannen",
+    OPT_RECENTER     = "Zentrieren",
+    OPT_EXCL_TITLE   = "Auf der Minikarte belassen",
+    OPT_EXCL_HINT    = "Haken setzen, um einen Button vom Behaelter auszuschliessen.",
+
+    OPT_THEME        = "Motiv: %s",
+    THEME_DARK       = "WeeklyCompass dunkel",
+    THEME_GOLD       = "TibiSuite gold",
+    THEME_GLASS      = "Milchglas",
+    THEME_MINIMAL    = "Minimal",
+    OPT_BG_COLOR     = "Hintergrundfarbe",
+    OPT_BORDER_COLOR = "Rahmenfarbe",
+
+    OPT_HOVER_OPEN   = "Beim Ueberfahren oeffnen",
+    OPT_HOVER_OPEN_TT= "Oeffnet den Behaelter, wenn der Hauptbutton ueberfahren wird.",
+    OPT_AUTO_CLOSE   = "Automatisch schliessen, wenn die Maus den Bereich verlaesst",
+    OPT_ANIMATE      = "Einblendanimation beim Oeffnen",
+    OPT_HIDE_COMBAT  = "Im Kampf ausblenden",
+    OPT_HIDE_INSTANCE= "In Dungeons/Schlachtzuegen ausblenden",
+    OPT_HIDE_PETBATTLE = "Waehrend Gefaehrtenkaempfen ausblenden",
+
+    OPT_UNKNOWN_TITLE = "Nicht erkannte Buttons",
+    OPT_UNKNOWN_HINT  = "Auf der Minikarte gefundene, aber nicht gesammelte Buttons. Ankreuzen, um sie zu sammeln.",
+    OPT_NONE_UNKNOWN  = "Keine erkannt.",
+    OPT_PROFILE_TITLE = "Profil teilen",
+    OPT_EXPORT        = "Exportieren",
+    OPT_IMPORT        = "Importieren",
+    OPT_EXPORT_HINT   = "Kopiere diese Zeichenkette, um deine Konfiguration zu teilen.",
+    OPT_IMPORT_HINT   = "Zeichenkette einfuegen, dann auf Importieren klicken.",
+
+    BINDING_HEADER    = "MiniHub",
+    BINDING_TOGGLE    = "Behaelter oeffnen / schliessen",
+}
+
+--------------------------------------------------------------------------------
+-- Espanol
+--------------------------------------------------------------------------------
+local esES = {
+    ADDON_SUBTITLE   = "Agrupa los iconos de minimapa de tus addons en un unico contenedor ordenado y plegable.",
+    EMPTY            = "Ningun boton recogido",
+    EMPTY_CONFLICT   = "%s ya gestiona los botones del minimapa por su cuenta - MiniHub se aparta.",
+    MSG_CONFLICT_LOGIN = "%s ya gestiona los botones del minimapa - MiniHub se mantiene al margen (contenedor oculto). Escribe /minihub para abrirlo manualmente si aun quieres usarlo.",
+
+    TT_LEFT_TOGGLE   = "Clic izquierdo: abrir / cerrar",
+    TT_RIGHT_OPTIONS = "Clic derecho: opciones",
+    TT_MIDDLE_RESCAN = "Clic central: volver a escanear",
+    TT_DRAG_MOVE     = "Arrastrar: mover el boton",
+
+    MSG_COMBAT_OPTIONS = "no se pueden abrir las opciones en combate. Intentalo de nuevo despues del combate.",
+    MSG_RESCAN       = "reescaneo completado (%d botones recogidos).",
+    MSG_RESET        = "posiciones del contenedor y del boton principal reiniciadas.",
+    MSG_BLOCK        = "\"%s\" ahora se ignora (usa /reload).",
+    MSG_UNBLOCK      = "\"%s\" ya no se ignora.",
+    MSG_ADD          = "\"%s\" anadido manualmente.",
+    MSG_IMPORT_OK    = "perfil importado. Usa /reload para aplicarlo.",
+    MSG_IMPORT_FAIL  = "error de importacion: cadena invalida.",
+
+    SLASH_HELP       = "comandos:",
+    SLASH_TOGGLE     = "abrir / cerrar el contenedor",
+    SLASH_SCAN       = "volver a escanear los botones del minimapa",
+    SLASH_RESET      = "recentrar el contenedor y el boton principal",
+    SLASH_CONFIG     = "abrir las opciones",
+    SLASH_DEBUG      = "listar los elementos del minimapa (diagnostico)",
+    SLASH_BLOCK      = "ignorar un boton",
+    SLASH_ADD        = "forzar la recogida de un boton por nombre",
+
+    OPT_GENERAL      = "General",
+    OPT_LAYOUT       = "Disposicion",
+    OPT_APPEARANCE   = "Apariencia",
+    OPT_BEHAVIOR     = "Comportamiento",
+    OPT_ORIENTATION  = "Orientacion: %s",
+    OPT_VERTICAL     = "Vertical",
+    OPT_HORIZONTAL   = "Horizontal",
+    OPT_COLUMNS      = "Numero de columnas",
+    OPT_ROWS         = "Numero de filas",
+    OPT_BUTTON_SIZE  = "Tamano de celda",
+    OPT_SPACING      = "Espaciado",
+    OPT_BG_OPACITY   = "Opacidad del fondo (%)",
+    OPT_MAIN_SIZE    = "Tamano del boton principal",
+    OPT_MAIN_OPACITY = "Opacidad del boton principal (%)",
+    OPT_SHOW_TITLE   = "Mostrar la barra de titulo",
+    OPT_LOCK         = "Bloquear la posicion del contenedor",
+    OPT_SHOW_MINIMAP = "Mostrar el boton del minimapa",
+    OPT_HIDE_ZOOM    = "Ocultar los botones de zoom de Blizzard (+/-)",
+    OPT_HIDE_ZOOM_TT = "El zoom sigue disponible con la rueda del raton.",
+    OPT_SHOW_MAIN    = "Mostrar el boton principal movible (logo)",
+    OPT_SHOW_MAIN_TT = "Un boton con logo, que se puede mover por toda la interfaz, para abrir/cerrar el contenedor.",
+    OPT_RESCAN       = "Reescanear",
+    OPT_RECENTER     = "Recentrar",
+    OPT_EXCL_TITLE   = "Dejar en el minimapa",
+    OPT_EXCL_HINT    = "Marca un boton para excluirlo del contenedor.",
+
+    OPT_THEME        = "Tema: %s",
+    THEME_DARK       = "WeeklyCompass oscuro",
+    THEME_GOLD       = "TibiSuite dorado",
+    THEME_GLASS      = "Cristal esmerilado",
+    THEME_MINIMAL    = "Minimal",
+    OPT_BG_COLOR     = "Color de fondo",
+    OPT_BORDER_COLOR = "Color del borde",
+
+    OPT_HOVER_OPEN   = "Abrir al pasar el raton",
+    OPT_HOVER_OPEN_TT= "Abre el contenedor al pasar el raton sobre el boton principal.",
+    OPT_AUTO_CLOSE   = "Cierre automatico cuando el raton sale",
+    OPT_ANIMATE      = "Animacion de fundido al abrir",
+    OPT_HIDE_COMBAT  = "Ocultar en combate",
+    OPT_HIDE_INSTANCE= "Ocultar en mazmorras/bandas",
+    OPT_HIDE_PETBATTLE = "Ocultar durante combates de mascotas",
+
+    OPT_UNKNOWN_TITLE = "Botones no reconocidos",
+    OPT_UNKNOWN_HINT  = "Botones encontrados en el minimapa que no fueron recogidos. Marcalos para recogerlos.",
+    OPT_NONE_UNKNOWN  = "Ninguno detectado.",
+    OPT_PROFILE_TITLE = "Compartir perfil",
+    OPT_EXPORT        = "Exportar",
+    OPT_IMPORT        = "Importar",
+    OPT_EXPORT_HINT   = "Copia esta cadena para compartir tu configuracion.",
+    OPT_IMPORT_HINT   = "Pega una cadena y luego haz clic en Importar.",
+
+    BINDING_HEADER    = "MiniHub",
+    BINDING_TOGGLE    = "Abrir / cerrar el contenedor",
+}
+
+--------------------------------------------------------------------------------
 -- Construction de la table L
 --------------------------------------------------------------------------------
 local L = {}
 for k, v in pairs(enUS) do L[k] = v end
 if GetLocale() == "frFR" then
     for k, v in pairs(frFR) do L[k] = v end
+elseif GetLocale() == "deDE" then
+    for k, v in pairs(deDE) do L[k] = v end
+elseif GetLocale() == "esES" or GetLocale() == "esMX" then
+    for k, v in pairs(esES) do L[k] = v end
 end
 -- Chaine manquante -> on renvoie la cle (jamais nil).
 setmetatable(L, { __index = function(_, k) return k end })
