@@ -8,43 +8,69 @@ local ADDON = "RepBar"
 
 -- ══════════════════════════════════════════════════
 -- LOCALISATION
+-- Le francais reste le defaut embarque directement ici (via l'operateur
+-- "or") : Locale\enUS.lua ecrase ensuite ces cles si le client est en
+-- anglais. Aucun risque de regression du comportement francais existant.
 -- ══════════════════════════════════════════════════
-local L = {
-    FACTION       = "Faction",
-    STANDING      = "Attitude",
-    PROGRESS      = "Progression",
-    REMAINING     = "Restant",
-    ZONE          = "Zone",
-    RENOWN        = "Renom",
-    PARAGON       = "Paragon",
-    NO_FACTION    = "Aucune faction suivie",
-    HINT          = "|cffFFD700Maj+Drag|r deplacer  ·  |cffFFD700Maj+Clic droit|r options",
-    POS_SAVED     = "Position sauvegardee.",
-    POS_RESET     = "Position reinitialisee.",
-    SWITCH_QUEST  = "Faction suivie : ",
-    -- Options
-    OPT_TITLE     = "RepBar - Options",
-    OPT_TAB       = "Options",
-    OPT_HINT      = "|cffFFD700Maj+Drag|r pour deplacer   |cffFFD700Maj+Clic droit|r pour ouvrir/fermer",
-    OPT_WIDTH     = "Largeur :",
-    OPT_HEIGHT    = "Hauteur :",
-    OPT_COLORS    = "Couleurs",
-    OPT_COL_BAR   = "Barre (couleur fixe)",
-    OPT_OPACITY   = "Opacite fond :",
-    OPT_FONTSIZE  = "Taille texte :",
-    OPT_DISPLAY   = "Affichage",
-    OPT_STANDCOL  = "Couleur selon l'attitude",
-    OPT_SHOWZONE  = "Afficher la zone de la faction",
-    OPT_SHOWNUM   = "Afficher les valeurs (x / y)",
-    OPT_SHOWPCT   = "Afficher le pourcentage",
-    OPT_HIDENOFAC = "Masquer si aucune faction suivie",
-    OPT_SWITCHQ   = "Basculer a la validation d'une quete",
-    OPT_HIDENATIVE= "Masquer la barre de reputation native",
-    OPT_HIDECOMBAT= "Masquer en combat",
-    OPT_MOUSEOVER = "Afficher au survol seulement",
-    OPT_CLOSE     = "Fermer",
-    OPT_RESETPOS  = "Reinit. position",
-}
+RepBarL = RepBarL or {}
+local L = RepBarL
+L.FACTION       = L.FACTION       or "Faction"
+L.STANDING      = L.STANDING      or "Attitude"
+L.PROGRESS      = L.PROGRESS      or "Progression"
+L.REMAINING     = L.REMAINING     or "Restant"
+L.ZONE          = L.ZONE          or "Zone"
+L.RENOWN        = L.RENOWN        or "Renom"
+L.PARAGON       = L.PARAGON       or "Paragon"
+L.NO_FACTION    = L.NO_FACTION    or "Aucune faction suivie"
+L.HINT          = L.HINT          or "|cffFFD700Maj+Drag|r deplacer  ·  |cffFFD700Maj+Clic droit|r options"
+L.POS_SAVED     = L.POS_SAVED     or "Position sauvegardee."
+L.POS_RESET     = L.POS_RESET     or "Position reinitialisee."
+L.SWITCH_QUEST  = L.SWITCH_QUEST  or "Faction suivie : "
+-- Options (panneau standalone)
+L.OPT_TITLE     = L.OPT_TITLE     or "RepBar - Options"
+L.OPT_TAB       = L.OPT_TAB       or "Options"
+L.OPT_HINT      = L.OPT_HINT      or "|cffFFD700Maj+Drag|r pour deplacer   |cffFFD700Maj+Clic droit|r pour ouvrir/fermer"
+L.OPT_WIDTH     = L.OPT_WIDTH     or "Largeur :"
+L.OPT_HEIGHT    = L.OPT_HEIGHT    or "Hauteur :"
+L.OPT_COLORS    = L.OPT_COLORS    or "Couleurs"
+L.OPT_COL_BAR   = L.OPT_COL_BAR   or "Barre (couleur fixe)"
+L.OPT_OPACITY   = L.OPT_OPACITY   or "Opacite fond :"
+L.OPT_FONTSIZE  = L.OPT_FONTSIZE  or "Taille texte :"
+L.OPT_DISPLAY   = L.OPT_DISPLAY   or "Affichage"
+L.OPT_STANDCOL  = L.OPT_STANDCOL  or "Couleur selon l'attitude"
+L.OPT_SHOWZONE  = L.OPT_SHOWZONE  or "Afficher la zone de la faction"
+L.OPT_SHOWNUM   = L.OPT_SHOWNUM   or "Afficher les valeurs (x / y)"
+L.OPT_SHOWPCT   = L.OPT_SHOWPCT   or "Afficher le pourcentage"
+L.OPT_HIDENOFAC = L.OPT_HIDENOFAC or "Masquer si aucune faction suivie"
+L.OPT_SWITCHQ   = L.OPT_SWITCHQ   or "Basculer a la validation d'une quete"
+L.OPT_HIDENATIVE= L.OPT_HIDENATIVE or "Masquer la barre de reputation native"
+L.OPT_HIDECOMBAT= L.OPT_HIDECOMBAT or "Masquer en combat"
+L.OPT_MOUSEOVER = L.OPT_MOUSEOVER or "Afficher au survol seulement"
+L.OPT_CLOSE     = L.OPT_CLOSE     or "Fermer"
+L.OPT_RESETPOS  = L.OPT_RESETPOS  or "Reinit. position"
+L.OPT_VERTBAR   = L.OPT_VERTBAR   or "Barre verticale"
+L.OPT_VERTMODE_HEADER = L.OPT_VERTMODE_HEADER or "Mode vertical"
+L.OPT_VERTTEXT  = L.OPT_VERTTEXT  or "Texte a cote de la barre"
+L.OPT_VTHICK    = L.OPT_VTHICK    or "Epaisseur :"
+L.OPT_VLENGTH   = L.OPT_VLENGTH   or "Longueur :"
+-- Slash / login
+L.SLASH_HIDDEN  = L.SLASH_HIDDEN  or "Masque. /repbar show pour re-afficher."
+L.SLASH_HELP    = L.SLASH_HELP    or " /repbar - options  |  /repbar hide/show  |  /repbar reset"
+L.LOGIN_LOADED  = L.LOGIN_LOADED  or "chargé -- tapez"
+L.LOGIN_TO_OPEN = L.LOGIN_TO_OPEN or "pour les options."
+-- Options (panneau integre TibiSuite "Midnight") - wording parfois different
+-- du panneau standalone, d'ou les cles distinctes suffixees _2.
+L.OPT_SEC_DIMENSIONS  = L.OPT_SEC_DIMENSIONS  or "Dimensions"
+L.OPT_WIDTH_2         = L.OPT_WIDTH_2         or "Largeur"
+L.OPT_HEIGHT_2        = L.OPT_HEIGHT_2        or "Hauteur"
+L.OPT_SEC_BEHAVIOR    = L.OPT_SEC_BEHAVIOR    or "Comportement"
+L.OPT_HIDENATIVE_2    = L.OPT_HIDENATIVE_2    or "Masquer la barre native"
+L.OPT_SEC_ORIENTATION = L.OPT_SEC_ORIENTATION or "Orientation"
+L.OPT_VERTTEXT_2      = L.OPT_VERTTEXT_2      or "Texte a cote (mode vertical)"
+L.OPT_VTHICK_2        = L.OPT_VTHICK_2        or "Epaisseur (vertical)"
+L.OPT_VLENGTH_2       = L.OPT_VLENGTH_2       or "Longueur (vertical)"
+L.OPT_SEC_FLOATING    = L.OPT_SEC_FLOATING    or "Bouton flottant"
+L.OPT_HIDE_OPTIONS_BTN= L.OPT_HIDE_OPTIONS_BTN or "Masquer le bouton Options"
 
 -- ══════════════════════════════════════════════════
 -- DEFAULTS
@@ -950,7 +976,7 @@ CreateOptionsPanel = function()
     MakeCheckbox(optionsFrame, L.OPT_MOUSEOVER, C1, Y0+DY*4,
         function() return db.mouseoverOnly end,
         function(v) db.mouseoverOnly = v end)
-    MakeCheckbox(optionsFrame, "Barre verticale", C2, Y0+DY*4,
+    MakeCheckbox(optionsFrame, L.OPT_VERTBAR, C2, Y0+DY*4,
         function() return IsVertical() end,
         function(v)
             db.orientation = v and "VERTICAL" or "HORIZONTAL"
@@ -959,14 +985,14 @@ CreateOptionsPanel = function()
 
     -- Orientation verticale (dimensions dediees + texte a cote)
     Sep(-352)
-    Header("Mode vertical", C1, -360)
-    MakeCheckbox(optionsFrame, "Texte a cote de la barre", C1, -380,
+    Header(L.OPT_VERTMODE_HEADER, C1, -360)
+    MakeCheckbox(optionsFrame, L.OPT_VERTTEXT, C1, -380,
         function() return db.verticalText end,
         function(v) db.verticalText = v ; LayoutLabels() ; UpdateBar() end)
-    MakeSlider(optionsFrame, "Epaisseur :", C1, -414, 8, 60, 1,
+    MakeSlider(optionsFrame, L.OPT_VTHICK, C1, -414, 8, 60, 1,
         function() return db.vWidth end,
         function(v) db.vWidth = v ; if IsVertical() then ApplySize() end ; UpdateBar() end)
-    MakeSlider(optionsFrame, "Longueur :", C2, -414, 100, 900, 10,
+    MakeSlider(optionsFrame, L.OPT_VLENGTH, C2, -414, 100, 900, 10,
         function() return db.vHeight end,
         function(v) db.vHeight = v ; if IsVertical() then ApplySize() end ; UpdateBar() end)
 
@@ -1008,14 +1034,14 @@ SlashCmdList["REPBAR"] = function(msg)
     elseif msg == "hide" then
         containerFrame:Hide()
         if db then db.manuallyHidden = true end
-        print("|cffFFD700[RepBar]|r Masque. /repbar show pour re-afficher.")
+        print("|cffFFD700[RepBar]|r " .. L.SLASH_HIDDEN)
     elseif msg == "show" then
         if db then db.manuallyHidden = false end
         containerFrame:Show() ; UpdateBar()
     elseif msg == "reset" then
         RepBarDB = nil ; ReloadUI()
     else
-        print("|cffFFD700[RepBar]|r  /repbar - options  |  /repbar hide/show  |  /repbar reset")
+        print("|cffFFD700[RepBar]|r " .. L.SLASH_HELP)
     end
 end
 
@@ -1050,7 +1076,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
         if not db then InitDB() end
         EnforceNativeRepBar()
         C_Timer.After(0.5, UpdateBar)
-        print("|cFF5CADF5RepBar|r v7.0 chargé -- tapez |cFFFFD700/repbar|r pour les options.")
+        print("|cFF5CADF5RepBar|r v7.0 " .. L.LOGIN_LOADED .. " |cFFFFD700/repbar|r " .. L.LOGIN_TO_OPEN)
 
     elseif event == "PLAYER_ENTERING_WORLD" then
         EnforceNativeRepBar()
@@ -1105,15 +1131,15 @@ local function BuildMidnightOptions()
         name = "RepBarOptionsMidnight",
         title = "RepBar - Options", accent = ACCENT_REP })
 
-    midnightPanel:Section("Dimensions")
-    midnightPanel:Slider("Largeur", 200, 1200, 10,
+    midnightPanel:Section(L.OPT_SEC_DIMENSIONS)
+    midnightPanel:Slider(L.OPT_WIDTH_2, 200, 1200, 10,
         function() return db and db.width or 600 end,
         function(v) if db then db.width = v end ; ApplySize() ; UpdateBar() end)
-    midnightPanel:Slider("Hauteur", 10, 60, 1,
+    midnightPanel:Slider(L.OPT_HEIGHT_2, 10, 60, 1,
         function() return db and db.height or 22 end,
         function(v) if db then db.height = v end ; ApplySize() ; UpdateBar() end)
 
-    midnightPanel:Section("Affichage")
+    midnightPanel:Section(L.OPT_DISPLAY)
     local function disp(label, key, refreshNative)
         midnightPanel:Check(label,
             function() return db and db[key] end,
@@ -1123,45 +1149,45 @@ local function BuildMidnightOptions()
                 UpdateBar()
             end)
     end
-    disp("Couleur selon l'attitude", "useStandingColor")
-    disp("Afficher la zone de la faction", "showZone")
-    disp("Afficher les valeurs (x / y)", "showNumbers")
-    disp("Afficher le pourcentage", "showPercent")
-    disp("Masquer si aucune faction suivie", "hideWhenNoFaction")
-    disp("Masquer la barre native", "hideNativeRepBar", true)
+    disp(L.OPT_STANDCOL, "useStandingColor")
+    disp(L.OPT_SHOWZONE, "showZone")
+    disp(L.OPT_SHOWNUM, "showNumbers")
+    disp(L.OPT_SHOWPCT, "showPercent")
+    disp(L.OPT_HIDENOFAC, "hideWhenNoFaction")
+    disp(L.OPT_HIDENATIVE_2, "hideNativeRepBar", true)
 
-    midnightPanel:Section("Comportement")
-    midnightPanel:Check("Basculer a la validation d'une quete",
+    midnightPanel:Section(L.OPT_SEC_BEHAVIOR)
+    midnightPanel:Check(L.OPT_SWITCHQ,
         function() return db and db.switchOnQuest end,
         function(v) if db then db.switchOnQuest = v end end)
-    midnightPanel:Check("Masquer en combat",
+    midnightPanel:Check(L.OPT_HIDECOMBAT,
         function() return db and db.hideInCombat end,
         function(v) if db then db.hideInCombat = v end ; ApplyVisibility() end)
-    midnightPanel:Check("Afficher au survol seulement",
+    midnightPanel:Check(L.OPT_MOUSEOVER,
         function() return db and db.mouseoverOnly end,
         function(v) if db then db.mouseoverOnly = v end ; ApplyVisibility() end)
 
-    midnightPanel:Section("Orientation")
-    midnightPanel:Check("Barre verticale",
+    midnightPanel:Section(L.OPT_SEC_ORIENTATION)
+    midnightPanel:Check(L.OPT_VERTBAR,
         function() return db and db.orientation == "VERTICAL" end,
         function(v)
             if db then db.orientation = v and "VERTICAL" or "HORIZONTAL" end
             ApplyOrientation() ; UpdateBar()
         end)
-    midnightPanel:Check("Texte a cote (mode vertical)",
+    midnightPanel:Check(L.OPT_VERTTEXT_2,
         function() return db and db.verticalText end,
         function(v) if db then db.verticalText = v end ; LayoutLabels() ; UpdateBar() end)
-    midnightPanel:Slider("Epaisseur (vertical)", 8, 60, 1,
+    midnightPanel:Slider(L.OPT_VTHICK_2, 8, 60, 1,
         function() return db and db.vWidth or 24 end,
         function(v) if db then db.vWidth = v end
             if IsVertical() then ApplySize() end ; UpdateBar() end)
-    midnightPanel:Slider("Longueur (vertical)", 100, 900, 10,
+    midnightPanel:Slider(L.OPT_VLENGTH_2, 100, 900, 10,
         function() return db and db.vHeight or 300 end,
         function(v) if db then db.vHeight = v end
             if IsVertical() then ApplySize() end ; UpdateBar() end)
 
-    midnightPanel:Section("Bouton flottant")
-    midnightPanel:Check("Masquer le bouton Options",
+    midnightPanel:Section(L.OPT_SEC_FLOATING)
+    midnightPanel:Check(L.OPT_HIDE_OPTIONS_BTN,
         function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("RepBarContainer", "options") end,
         function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("RepBarContainer", "options", v) end end)
 

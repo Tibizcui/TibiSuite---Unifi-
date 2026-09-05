@@ -16,6 +16,8 @@ local KEY    = "RepBar"
 local LABEL  = "RepBar"
 local ACCENT = { 0.36, 0.68, 0.96 }   -- azur d'identite RepBar
 local FRAME  = "RepBarContainer"
+local L      = RepBarL or {}
+local function T(key, default) return L[key] or default end
 
 local function GetUI() return _G.TibiMidnight end
 
@@ -110,8 +112,8 @@ local function BuildStandaloneMinimapButton()
   btn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine("RepBar")
-    GameTooltip:AddLine("Clic gauche : afficher/masquer", 0.9, 0.9, 0.95)
-    GameTooltip:AddLine("Clic droit : options", 0.9, 0.9, 0.95)
+    GameTooltip:AddLine(T("MM_TT_LEFT", "Clic gauche : afficher/masquer"), 0.9, 0.9, 0.95)
+    GameTooltip:AddLine(T("MM_TT_RIGHT", "Clic droit : options"), 0.9, 0.9, 0.95)
     GameTooltip:Show()
   end)
   btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
