@@ -17,6 +17,8 @@ local FRAME  = "DGNMainFrame"
 local ACCENT = { 0.008, 0.404, 0.988 }   -- bleu (logo #0267FC)
 local LOGO   = "Interface\\AddOns\\DgnTracker\\medias\\DgnTracker"
 local KEY    = "Dgn"
+local L      = DgnTrackerL or {}
+local function T(key, default) return L[key] or default end
 
 local function GetUI() return _G.TibiMidnight end
 
@@ -109,7 +111,7 @@ end
 if HasCore() and IsEnabledByCore() then
   TibiSuite.RegisterModule({
     key       = KEY,
-    label     = "Donjons",
+    label     = T("MODULE_LABEL", "Donjons"),
     accent    = ACCENT,
     onOpen    = function() if _G.DgnTracker_Toggle then _G.DgnTracker_Toggle() end end,
     onOptions = function() if _G.DgnTracker_OpenOptions then _G.DgnTracker_OpenOptions() end end,
@@ -119,7 +121,7 @@ if HasCore() and IsEnabledByCore() then
 elseif GetUI() and GetUI().RegisterSearch then
   -- Repli : suite absente mais socle present. _Suite.lua a normalement deja
   -- inscrit la recherche ; on la re-poste par securite (meme cle -> ecrase).
-  GetUI().RegisterSearch(KEY, "Donjons", provider)
+  GetUI().RegisterSearch(KEY, T("MODULE_LABEL", "Donjons"), provider)
 end
 
 -- Rattrapage LoadOnDemand : DGNMainFrame est construit par DgnTracker.lua sur

@@ -4,6 +4,8 @@
 -- ================================================================
 
 local ADDON = "DgnTracker"
+local L = DgnTrackerL or {}
+local function T(key, default) return L[key] or default end
 DgnTrackerData = DgnTrackerData or {}
 
 DgnTrackerDB = DgnTrackerDB or {
@@ -87,7 +89,7 @@ local function DgnSetWaypoint(inst)
   local x = inst.tomtom and inst.tomtom.x or (inst.coords and inst.coords.x)
   local y = inst.tomtom and inst.tomtom.y or (inst.coords and inst.coords.y)
   if not (m and x and y) then
-    print("|cFF4D99FFDgnTracker|r : coordonnées indisponibles pour |cFFFFD700"..(inst.name or "?").."|r.")
+    print("|cFF4D99FFDgnTracker|r : " .. T("WP_NO_COORDS", "coordonnées indisponibles pour") .. " |cFFFFD700"..(inst.name or "?").."|r.")
     return
   end
   local fx, fy = x/100, y/100   -- données en % -> fraction 0..1
@@ -98,7 +100,7 @@ local function DgnSetWaypoint(inst)
       from  = "DgnTracker",
       persistent = false, minimap = true, world = true,
     })
-    print("|cFF4D99FFDgnTracker|r : waypoint |cFF88DD88TomTom|r -> |cFFFFD700"..inst.name.."|r")
+    print("|cFF4D99FFDgnTracker|r : " .. T("WP_TOMTOM_LABEL", "waypoint") .. " |cFF88DD88TomTom|r -> |cFFFFD700"..inst.name.."|r")
     return
   end
 
@@ -110,14 +112,14 @@ local function DgnSetWaypoint(inst)
       end
     end)
     if ok then
-      print("|cFF4D99FFDgnTracker|r : waypoint |cFF88DDFFcarte|r -> |cFFFFD700"..inst.name.."|r (ouvrez la carte pour le voir)")
+      print("|cFF4D99FFDgnTracker|r : " .. T("WP_MAP_LABEL", "waypoint") .. " |cFF88DDFF" .. T("WP_MAP_WORD", "carte") .. "|r -> |cFFFFD700"..inst.name.."|r " .. T("WP_OPEN_MAP_HINT", "(ouvrez la carte pour le voir)"))
     else
-      print("|cFF4D99FFDgnTracker|r : impossible de poser un waypoint natif sur cette zone. Installez |cFFFFD700TomTom|r pour un pointeur complet.")
+      print("|cFF4D99FFDgnTracker|r : " .. T("WP_NATIVE_FAIL", "impossible de poser un waypoint natif sur cette zone. Installez |cFFFFD700TomTom|r pour un pointeur complet."))
     end
     return
   end
 
-  print("|cFF4D99FFDgnTracker|r : aucun système de waypoint disponible. Installez |cFFFFD700TomTom|r.")
+  print("|cFF4D99FFDgnTracker|r : " .. T("WP_NONE_AVAILABLE", "aucun système de waypoint disponible. Installez |cFFFFD700TomTom|r."))
 end
 
 -- Torghast virtual tab : pioche les données type=torghast dans Shadowlands
@@ -249,7 +251,7 @@ local function BuildUI()
 
   local drag = mainFrame:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
   drag:SetPoint("TOP",0,-30)
-  drag:SetText("|cFF888888Glisser pour déplacer|r")
+  drag:SetText("|cFF888888" .. T("DRAG_HINT", "Glisser pour déplacer") .. "|r")
 
   local sepTop = mainFrame:CreateTexture(nil,"ARTWORK")
   sepTop:SetTexture("Interface\\BUTTONS\\WHITE8X8")
@@ -327,7 +329,7 @@ local function BuildUI()
       GameTooltip:AddLine(fullName,col.r,col.g,col.b)
       local ed = (extKey=="Torghast") and {instances=GetTorghastInstances()} or DgnTrackerData[extKey]
       if ed and ed.instances then
-        GameTooltip:AddLine(#ed.instances.." instance(s)",0.75,0.75,0.75)
+        GameTooltip:AddLine(#ed.instances .. " " .. T("INSTANCES_WORD", "instance(s)"),0.75,0.75,0.75)
       end
       GameTooltip:Show()
     end)
@@ -446,7 +448,7 @@ local function BuildUI()
   mainFrame.searchText = ""
   local searchHint = searchBox:CreateFontString(nil,"OVERLAY","GameFontDisableSmall")
   searchHint:SetPoint("LEFT", searchBox, "LEFT", 4, 0)
-  searchHint:SetText("Rechercher...")
+  searchHint:SetText(T("SEARCH_PLACEHOLDER", "Rechercher..."))
   searchBox.hint = searchHint
   searchBox:SetScript("OnTextChanged", function(s)
     local t = s:GetText() or ""
@@ -523,7 +525,7 @@ local function BuildUI()
 
     -- Label extension active
     self.extActiveLabel:SetText(string.format(
-      "|cFFFFD700Extension :|r  |cFF%02X%02X%02X%s|r",
+      "|cFFFFD700" .. T("EXTENSION_LABEL", "Extension :") .. "|r  |cFF%02X%02X%02X%s|r",
       hex(extCol.r),hex(extCol.g),hex(extCol.b),extFull))
 
     -- ── Onglets extension (highlight + compteurs) ──────────────
@@ -645,8 +647,8 @@ local function BuildUI()
         if not s.inst then return end
         GameTooltip:SetOwner(s,"ANCHOR_BOTTOMRIGHT")
         GameTooltip:AddLine(s.inst.name,1,0.84,0)
-        GameTooltip:AddLine("|cFFFFD700Clic gauche|r : "..(DgnTrackerDB.expandedInst[s.inst.name] and "fermer" or "afficher le chemin"),0.7,0.7,0.7)
-        GameTooltip:AddLine("|cFFFFD700Clic droit|r : poser un point de route (waypoint)",0.7,0.7,0.7)
+        GameTooltip:AddLine("|cFFFFD700" .. T("LEFT_CLICK_LABEL", "Clic gauche") .. "|r : "..(DgnTrackerDB.expandedInst[s.inst.name] and T("CLOSE_WORD", "fermer") or T("SHOW_PATH_WORD", "afficher le chemin")),0.7,0.7,0.7)
+        GameTooltip:AddLine("|cFFFFD700" .. T("RIGHT_CLICK_LABEL", "Clic droit") .. "|r : " .. T("SET_WAYPOINT_HINT", "poser un point de route (waypoint)"),0.7,0.7,0.7)
         GameTooltip:Show()
       end)
       h:SetScript("OnLeave",function(s)
@@ -719,9 +721,9 @@ local function BuildUI()
         self.emptyLbl:SetPoint("CENTER",self.scrollChild,"CENTER",0,-30)
       end
       if filter ~= "" then
-        self.emptyLbl:SetText("|cFF666666Aucun résultat pour|r |cFFFFD700"..filter.."|r|cFF666666.|r")
+        self.emptyLbl:SetText("|cFF666666" .. T("NO_RESULT_FOR", "Aucun résultat pour") .. "|r |cFFFFD700"..filter.."|r|cFF666666.|r")
       else
-        self.emptyLbl:SetText("|cFF666666Aucune instance disponible pour cette catégorie.|r")
+        self.emptyLbl:SetText("|cFF666666" .. T("NO_INSTANCE_CATEGORY", "Aucune instance disponible pour cette catégorie.") .. "|r")
       end
       self.emptyLbl:Show()
       self.scrollChild:SetHeight(100)
@@ -828,7 +830,7 @@ local function BuildUI()
         -- Accès
         det.lbA:ClearAllPoints()
         det.lbA:SetPoint("TOPLEFT",det,"TOPLEFT",iX,iY)
-        det.lbA:SetText(string.format("|cFF%02X%02X%02X-- Accès (chemin le plus court) :|r",
+        det.lbA:SetText(string.format("|cFF%02X%02X%02X" .. T("ACCESS_HEADER", "-- Accès (chemin le plus court) :") .. "|r",
           hex(tc.r),hex(tc.g),hex(tc.b)))
         iY = iY - 15
         det.fsA:ClearAllPoints()
@@ -841,7 +843,7 @@ local function BuildUI()
         -- Conseils
         det.lbP:ClearAllPoints()
         det.lbP:SetPoint("TOPLEFT",det,"TOPLEFT",iX,iY)
-        det.lbP:SetText(string.format("|cFF%02X%02X%02X-- Conseils :|r",
+        det.lbP:SetText(string.format("|cFF%02X%02X%02X" .. T("TIPS_HEADER", "-- Conseils :") .. "|r",
           hex(tc.r),hex(tc.g),hex(tc.b)))
         iY = iY - 15
         det.fsP:ClearAllPoints()
@@ -956,10 +958,10 @@ local function BuildMinimapButton()
     if s._hl then s._hl:SetAlpha(1) end
     GameTooltip:SetOwner(s,"ANCHOR_LEFT")
     GameTooltip:AddLine("|cFF0070DEDgnTracker|r",0.30,0.70,1.0)
-    GameTooltip:AddLine("Tracker des instances & raids",0.9,0.9,0.9)
+    GameTooltip:AddLine(T("MM_TT_SUBTITLE", "Tracker des instances & raids"),0.9,0.9,0.9)
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("|cFFFFD700Clic gauche|r : ouvrir / fermer",0.7,0.7,0.7)
-    GameTooltip:AddLine("|cFFFFD700Glisser|r : repositionner l'icône",0.7,0.7,0.7)
+    GameTooltip:AddLine("|cFFFFD700" .. T("LEFT_CLICK_LABEL", "Clic gauche") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"),0.7,0.7,0.7)
+    GameTooltip:AddLine("|cFFFFD700" .. T("DRAG_LABEL", "Glisser") .. "|r : " .. T("REPOSITION_HINT", "repositionner l'icône"),0.7,0.7,0.7)
     GameTooltip:Show()
   end)
   minimapBtn:SetScript("OnLeave",function(s)
@@ -981,9 +983,9 @@ end
 function DgnTracker_OnAddonCompartmentEnter(btn)
   GameTooltip:SetOwner(btn,"ANCHOR_LEFT")
   GameTooltip:AddLine("DgnTracker",0.30,0.70,1.0)
-  GameTooltip:AddLine("Tracker des instances & raids",0.9,0.9,0.9)
+  GameTooltip:AddLine(T("MM_TT_SUBTITLE", "Tracker des instances & raids"),0.9,0.9,0.9)
   GameTooltip:AddLine(" ")
-  GameTooltip:AddLine("|cFFFFD700Clic|r : ouvrir / fermer",0.7,0.7,0.7)
+  GameTooltip:AddLine("|cFFFFD700" .. T("CLICK_LABEL", "Clic") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"),0.7,0.7,0.7)
   GameTooltip:Show()
 end
 function DgnTracker_OnAddonCompartmentLeave() GameTooltip:Hide() end
@@ -997,15 +999,15 @@ SlashCmdList["DGNTRACKER"] = function(msg)
   msg = (msg or ""):lower():gsub("^%s*(.-)%s*$","%1")
 
   if msg=="help" or msg=="aide" then
-    print("|cFF4D99FFDgnTracker|r commandes :")
-    print("  |cFFFFD700/dg|r           - Ouvrir/fermer la fenêtre")
-    print("  |cFFFFD700/dg options|r   - Ouvrir les options")
-    print("  |cFFFFD700/dg map on|r    - Waypoint auto à l'ouverture d'une instance")
-    print("  |cFFFFD700/dg map off|r   - Désactiver le waypoint auto")
-    print("  |cFFFFD700/dg <extension>|r - Aller à une extension (ex : tww, df, sl, van)")
-    print("  |cFFFFD700/dg expand|r    - Tout déplier (extension active)")
-    print("  |cFFFFD700/dg reset|r     - Tout replier (accordéon)")
-    print("  |cFF888888Astuce : clic droit sur une instance = poser un waypoint.|r")
+    print("|cFF4D99FFDgnTracker|r " .. T("HELP_COMMANDS_LABEL", "commandes :"))
+    print("  |cFFFFD700/dg|r           - " .. T("HELP_TOGGLE", "Ouvrir/fermer la fenêtre"))
+    print("  |cFFFFD700/dg options|r   - " .. T("HELP_OPTIONS", "Ouvrir les options"))
+    print("  |cFFFFD700/dg map on|r    - " .. T("HELP_MAP_ON", "Waypoint auto à l'ouverture d'une instance"))
+    print("  |cFFFFD700/dg map off|r   - " .. T("HELP_MAP_OFF", "Désactiver le waypoint auto"))
+    print("  |cFFFFD700/dg <extension>|r - " .. T("HELP_EXTENSION", "Aller à une extension (ex : tww, df, sl, van)"))
+    print("  |cFFFFD700/dg expand|r    - " .. T("HELP_EXPAND", "Tout déplier (extension active)"))
+    print("  |cFFFFD700/dg reset|r     - " .. T("HELP_RESET", "Tout replier (accordéon)"))
+    print("  |cFF888888" .. T("HELP_TIP", "Astuce : clic droit sur une instance = poser un waypoint.") .. "|r")
     return
 
   elseif msg=="options" or msg=="config" then
@@ -1015,7 +1017,7 @@ SlashCmdList["DGNTRACKER"] = function(msg)
   elseif msg=="reset" then
     DgnTrackerDB.expandedInst = {}
     if mainFrame:IsShown() then mainFrame:RefreshContent() end
-    print("|cFF4D99FFDgnTracker|r : accordéon réinitialisé.")
+    print("|cFF4D99FFDgnTracker|r : " .. T("ACCORDION_RESET", "accordéon réinitialisé."))
     return
 
   elseif msg=="expand" or msg=="all" then
@@ -1028,16 +1030,16 @@ SlashCmdList["DGNTRACKER"] = function(msg)
     end
     if not mainFrame:IsShown() then mainFrame:Show(); DgnTrackerDB.open=true end
     mainFrame:RefreshContent()
-    print("|cFF4D99FFDgnTracker|r : tout déplié pour |cFFFFD700"..(EXT_FULLNAMES[ext] or ext).."|r.")
+    print("|cFF4D99FFDgnTracker|r : " .. T("EXPANDED_ALL_FOR", "tout déplié pour") .. " |cFFFFD700"..(EXT_FULLNAMES[ext] or ext).."|r.")
     return
 
   elseif msg=="map on" or msg=="mapon" then
     DgnTrackerDB.mapPins = true
-    print("|cFF4D99FFDgnTracker|r : waypoint auto |cFF88DD88activé|r (à l'ouverture d'une instance).")
+    print("|cFF4D99FFDgnTracker|r : " .. T("AUTO_WAYPOINT_LABEL", "waypoint auto") .. " |cFF88DD88" .. T("ENABLED_WORD", "activé") .. "|r " .. T("ON_INSTANCE_OPEN", "(à l'ouverture d'une instance)") .. ".")
     return
   elseif msg=="map off" or msg=="mapoff" then
     DgnTrackerDB.mapPins = false
-    print("|cFF4D99FFDgnTracker|r : waypoint auto |cFFFF8888désactivé|r.")
+    print("|cFF4D99FFDgnTracker|r : " .. T("AUTO_WAYPOINT_LABEL", "waypoint auto") .. " |cFFFF8888" .. T("DISABLED_WORD", "désactivé") .. "|r.")
     return
   end
 
@@ -1052,10 +1054,10 @@ SlashCmdList["DGNTRACKER"] = function(msg)
       DgnTrackerDB.activeTab = "dungeon"
       if not mainFrame:IsShown() then mainFrame:Show(); DgnTrackerDB.open=true end
       mainFrame:RefreshContent()
-      print("|cFF4D99FFDgnTracker|r : extension -> |cFFFFD700"..(EXT_FULLNAMES[target] or target).."|r")
+      print("|cFF4D99FFDgnTracker|r : " .. T("EXTENSION_ARROW", "extension ->") .. " |cFFFFD700"..(EXT_FULLNAMES[target] or target).."|r")
       return
     elseif not (msg=="map on" or msg=="map off") then
-      print("|cFF4D99FFDgnTracker|r : commande inconnue. Tapez |cFFFFD700/dg help|r.")
+      print("|cFF4D99FFDgnTracker|r : " .. T("UNKNOWN_COMMAND", "commande inconnue. Tapez |cFFFFD700/dg help|r."))
       return
     end
   end
@@ -1094,7 +1096,7 @@ evFrame:SetScript("OnEvent",function(_,event,arg1)
     if minimapBtn then minimapBtn:Hide() end
 
   elseif event=="PLAYER_LOGIN" then
-    print("|cFF4D99FFDgnTracker|r v7.0 chargé -- |cFFFFD700/dg|r pour ouvrir.")
+    print("|cFF4D99FFDgnTracker|r v7.0 " .. T("LOGIN_LOADED", "chargé --") .. " |cFFFFD700/dg|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
   end
 end)
 

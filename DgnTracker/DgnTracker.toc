@@ -42,6 +42,11 @@
 ## egale ou superieure)
 Core\TibiSuiteUI.lua
 
+## Localisation FR (par defaut, en dur dans DgnTracker.lua) / EN / DE / ES
+Locales\enUS.lua
+Locales\deDE.lua
+Locales\esES.lua
+
 ## Les fichiers data sont charges en premier
 data\Midnight.lua
 data\TheWarWithin.lua
