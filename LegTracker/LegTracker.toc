@@ -44,7 +44,9 @@
 ## egale ou superieure)
 Core\TibiSuiteUI.lua
 
-locales\frFR.lua
+Locales\enUS.lua
+Locales\deDE.lua
+Locales\esES.lua
 data\LegendaryItems.lua
 LegTracker.lua
 ## Ancien glue conserve : panneau d'options + recherche globale

@@ -19,6 +19,8 @@ local FRAME  = "LegTrackerMainFrame"
 local ACCENT = { 1.000, 0.427, 0.043 }   -- orange (logo #FF6D0B)
 local KEY    = "Leg"
 local LABEL  = "LegTracker"
+local L      = LegTrackerL or {}
+local function T(key, default) return L[key] or default end
 
 local function GetUI() return _G.TibiMidnight end
 
@@ -70,14 +72,14 @@ local function provider(q)
           for _, qu in ipairs(item.quests) do
             local qhay = (qu.name or "") .. " " .. (qu.npc or "") .. " " .. (qu.zone or "")
             if ui.Match(qhay, q) then
-              add((qu.name or "quête") .. "  |cff808080quête · " .. iname .. "|r")
+              add((qu.name or T("QUEST_SINGULAR", "quete")) .. "  |cff808080" .. T("SEARCH_QUEST_TAG", "quête ·") .. " " .. iname .. "|r")
             end
           end
         end
         if type(item.trackers) == "table" then
           for _, tr in ipairs(item.trackers) do
             if tr.name and ui.Match(tr.name, q) then
-              add(tr.name .. "  |cff808080composant · " .. iname .. "|r")
+              add(tr.name .. "  |cff808080" .. T("SEARCH_COMPONENT_TAG", "composant ·") .. " " .. iname .. "|r")
             end
           end
         end

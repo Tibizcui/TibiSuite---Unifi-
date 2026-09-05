@@ -116,7 +116,7 @@ local CLASS_NAMES_FR = {
 -- Retourne une chaîne colorée listant les classes requises
 local function GetClassesText(item)
   if not item.classes or #item.classes == 0 then
-    return "|cFFFFFFFFToutes classes|r"
+    return "|cFFFFFFFF" .. T("ALL_CLASSES", "Toutes classes") .. "|r"
   end
   local parts = {}
   for _, cls in ipairs(item.classes) do
@@ -433,7 +433,7 @@ end
 -- ================================================================
 local function AddTomTomWaypoint(q)
   if not q or not q.mapID or not q.x or not q.y then
-    print(COL_BLUE .. "LegTracker" .. COL_RESET .. " Aucune coordonnee disponible.")
+    print(COL_BLUE .. "LegTracker" .. COL_RESET .. " " .. T("NO_COORDS", "Aucune coordonnee disponible."))
     return
   end
   if not TomTom or not TomTom.AddWaypoint then
@@ -444,19 +444,19 @@ local function AddTomTomWaypoint(q)
         C_SuperTrack.SetSuperTrackedUserWaypoint(true)
       end
       print(COL_BLUE .. "LegTracker" .. COL_RESET
-            .. " Waypoint (carte) : " .. (q.name or "?") .. " (" .. (q.zone or "?") .. ")")
+            .. " " .. T("WP_MAP_ADDED", "Waypoint (carte) :") .. " " .. (q.name or "?") .. " (" .. (q.zone or "?") .. ")")
     else
       print(COL_BLUE .. "LegTracker" .. COL_RESET
-            .. " Impossible de poser un waypoint natif. Installez |cFFFFD700TomTom|r.")
+            .. " " .. T("WP_NATIVE_FAIL", "Impossible de poser un waypoint natif. Installez |cFFFFD700TomTom|r."))
     end
     return
   end
   TomTom:AddWaypoint(q.mapID, q.x / 100, q.y / 100, {
-    title      = (q.name or "Quete legendaire") .. (q.npc and (" - " .. q.npc) or ""),
+    title      = (q.name or T("LEGENDARY_QUEST", "Quete legendaire")) .. (q.npc and (" - " .. q.npc) or ""),
     persistent = false, minimap = true, world = true,
   })
   print(COL_BLUE .. "LegTracker" .. COL_RESET
-        .. " Waypoint ajoute : " .. (q.name or "?") .. " (" .. (q.zone or "?") .. ")")
+        .. " " .. T("WP_TOMTOM_ADDED", "Waypoint ajoute :") .. " " .. (q.name or "?") .. " (" .. (q.zone or "?") .. ")")
 end
 
 -- ================================================================
@@ -589,16 +589,16 @@ local function RefreshDetail(item)
   local status = item._status or "MISSING"
   local sLabel
   if status == "OBTAINED" then
-    sLabel = COL_GREEN .. "[Obtenu]" .. COL_RESET
+    sLabel = COL_GREEN .. T("TAG_OBTAINED", "[Obtenu]") .. COL_RESET
   elseif status == "IN_PROGRESS" then
-    sLabel = COL_YELLOW .. "[En cours]" .. COL_RESET
-             .. string.format(" |cFFAAAAAA(%d/%d quetes, %d/%d composants)|r",
+    sLabel = COL_YELLOW .. T("TAG_IN_PROGRESS", "[En cours]") .. COL_RESET
+             .. string.format(" |cFFAAAAAA" .. T("PROGRESS_DETAIL_FMT", "(%d/%d quetes, %d/%d composants)") .. "|r",
                 item._qDone or 0, item._qTotal or 0,
                 item._tDone or 0, item._tTotal or 0)
   elseif status == "UNAVAILABLE" then
-    sLabel = COL_GREY .. "Reservé : " .. COL_RESET .. GetClassesText(item)
+    sLabel = COL_GREY .. T("RESERVED_LABEL", "Reservé : ") .. COL_RESET .. GetClassesText(item)
   else
-    sLabel = COL_RED .. "[Non obtenu]" .. COL_RESET
+    sLabel = COL_RED .. T("TAG_NOT_OBTAINED", "[Non obtenu]") .. COL_RESET
   end
   statusFS:SetText(sLabel)
   y = y - 22
@@ -611,7 +611,7 @@ local function RefreshDetail(item)
       ownerFS:SetPoint("TOPLEFT", 10, y)
       ownerFS:SetWidth(W)
       ownerFS:SetWordWrap(true)
-      ownerFS:SetText(COL_GREEN .. "Detenu par : " .. COL_RESET .. ownerStr)
+      ownerFS:SetText(COL_GREEN .. T("OWNED_BY", "Detenu par : ") .. COL_RESET .. ownerStr)
       y = y - 20
     end
   end
@@ -629,7 +629,7 @@ local function RefreshDetail(item)
   -- Section source / comment obtenir
   local srcHdr = detailFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   srcHdr:SetPoint("TOPLEFT", 10, y)
-  srcHdr:SetText(COL_GOLD .. "Comment l'obtenir" .. COL_RESET)
+  srcHdr:SetText(COL_GOLD .. T("HOWTO_HEADER", "Comment l'obtenir") .. COL_RESET)
   y = y - 18
 
   local srcFS = detailFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -663,11 +663,11 @@ local function RefreshDetail(item)
 
   local qTitle = qHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   qTitle:SetPoint("LEFT", qHeader, "LEFT", 26, 0)
-  qTitle:SetText("|cFF4D99FFQuetes|r")
+  qTitle:SetText("|cFF4D99FF" .. T("QUESTS_HEADER", "Quetes") .. "|r")
 
   local qCountFS = qHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   qCountFS:SetPoint("RIGHT", qHeader, "RIGHT", -6, 0)
-  qCountFS:SetText("|cFFAAAAAA" .. qCount .. " quete" .. (qCount > 1 and "s" or "") .. "|r")
+  qCountFS:SetText("|cFFAAAAAA" .. qCount .. " " .. (qCount > 1 and T("QUESTS_PLURAL", "quetes") or T("QUEST_SINGULAR", "quete")) .. "|r")
   y = y - 28
 
   if qOpen then
@@ -689,14 +689,14 @@ local function RefreshDetail(item)
 
         local qStatus = qRow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         qStatus:SetPoint("TOPRIGHT", qRow, "TOPRIGHT", -5, -4)
-        qStatus:SetText(done and (COL_GREEN .. "[Fait]" .. COL_RESET) or "|cFF4D99FF[A faire]|r")
+        qStatus:SetText(done and (COL_GREEN .. T("TAG_DONE", "[Fait]") .. COL_RESET) or ("|cFF4D99FF" .. T("TAG_TODO", "[A faire]") .. "|r"))
 
         local qNameFS = qRow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         qNameFS:SetPoint("TOPLEFT", qRow, "TOPLEFT", 12, -4)
         qNameFS:SetWidth(W - 70)
         qNameFS:SetWordWrap(false)
         qNameFS:SetJustifyH("LEFT")
-        qNameFS:SetText((done and COL_GREY or COL_WHITE) .. (q.name or ("Quete #" .. tostring(q.id))) .. COL_RESET)
+        qNameFS:SetText((done and COL_GREY or COL_WHITE) .. (q.name or (T("QUEST_HASH", "Quete #") .. tostring(q.id))) .. COL_RESET)
 
         local qInfo = qRow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         qInfo:SetPoint("TOPLEFT", qRow, "TOPLEFT", 12, -20)
@@ -704,10 +704,10 @@ local function RefreshDetail(item)
         qInfo:SetWordWrap(false)
         qInfo:SetJustifyH("LEFT")
         if done then
-          qInfo:SetText("|cFF555555" .. (q.npc or "PNJ inconnu") .. "  " .. (q.zone or "Zone inconnue") .. "|r")
+          qInfo:SetText("|cFF555555" .. (q.npc or T("NPC_UNKNOWN", "PNJ inconnu")) .. "  " .. (q.zone or T("ZONE_UNKNOWN", "Zone inconnue")) .. "|r")
         else
-          qInfo:SetText("|cFF888888PNJ :|r |cFFCCBB88" .. (q.npc or "inconnu") .. "|r"
-                        .. "  |cFF888888Zone :|r |cFF99CCFF" .. (q.zone or "inconnue") .. "|r")
+          qInfo:SetText("|cFF888888" .. T("NPC_LABEL", "PNJ :") .. "|r |cFFCCBB88" .. (q.npc or T("UNKNOWN_LOWER", "inconnu")) .. "|r"
+                        .. "  |cFF888888" .. T("ZONE_LABEL", "Zone :") .. "|r |cFF99CCFF" .. (q.zone or T("UNKNOWN_FEM", "inconnue")) .. "|r")
         end
 
         local qHint = qRow:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -715,23 +715,23 @@ local function RefreshDetail(item)
         qHint:SetWidth(W - 14)
         qHint:SetJustifyH("LEFT")
         if q.x and q.y then
-          qHint:SetText(string.format("|cFF666666%.1f, %.1f - Clic: waypoint TomTom|r", q.x, q.y))
+          qHint:SetText(string.format("|cFF666666%.1f, %.1f - " .. T("WAYPOINT_HINT_SHORT", "Clic: waypoint TomTom") .. "|r", q.x, q.y))
         else
-          qHint:SetText("|cFF666666Clic : waypoint TomTom|r")
+          qHint:SetText("|cFF666666" .. T("WAYPOINT_HINT", "Clic : waypoint TomTom") .. "|r")
         end
 
         qRow:SetScript("OnClick", function() AddTomTomWaypoint(q) end)
         qRow:SetScript("OnEnter", function(s)
           GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
-          GameTooltip:AddLine(q.name or "Quete legendaire", 0.30, 0.60, 1.0)
+          GameTooltip:AddLine(q.name or T("LEGENDARY_QUEST", "Quete legendaire"), 0.30, 0.60, 1.0)
           GameTooltip:AddLine(" ")
-          GameTooltip:AddLine("PNJ : " .. (q.npc or "inconnu"), 0.9, 0.9, 0.7)
-          GameTooltip:AddLine("Zone : " .. (q.zone or "inconnue"), 0.8, 0.8, 0.8)
+          GameTooltip:AddLine(T("NPC_LABEL", "PNJ :") .. " " .. (q.npc or T("UNKNOWN_LOWER", "inconnu")), 0.9, 0.9, 0.7)
+          GameTooltip:AddLine(T("ZONE_LABEL", "Zone :") .. " " .. (q.zone or T("UNKNOWN_FEM", "inconnue")), 0.8, 0.8, 0.8)
           if q.x and q.y then
-            GameTooltip:AddLine(string.format("Coordonnees : %.1f, %.1f", q.x, q.y), 0.7, 0.9, 1.0)
+            GameTooltip:AddLine(string.format(T("COORDS_FMT", "Coordonnees : %.1f, %.1f"), q.x, q.y), 0.7, 0.9, 1.0)
           end
           GameTooltip:AddLine(" ")
-          GameTooltip:AddLine("Clic pour ajouter un waypoint TomTom.", 0.75, 0.75, 0.75, true)
+          GameTooltip:AddLine(T("CLICK_WAYPOINT_HINT", "Clic pour ajouter un waypoint TomTom."), 0.75, 0.75, 0.75, true)
           GameTooltip:Show()
         end)
         qRow:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -740,7 +740,7 @@ local function RefreshDetail(item)
     else
       local qNone = detailFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
       qNone:SetPoint("TOPLEFT", 14, y)
-      qNone:SetText(COL_GREY .. "Aucune quete specifique renseignee." .. COL_RESET)
+      qNone:SetText(COL_GREY .. T("NO_QUEST_LISTED", "Aucune quete specifique renseignee.") .. COL_RESET)
       y = y - 20
     end
   end
@@ -775,11 +775,11 @@ local function RefreshDetail(item)
 
   local cTitle = cHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   cTitle:SetPoint("LEFT", cHeader, "LEFT", 26, 0)
-  cTitle:SetText(COL_YELLOW .. "Composants" .. COL_RESET)
+  cTitle:SetText(COL_YELLOW .. T("COMPONENTS_HEADER", "Composants") .. COL_RESET)
 
   local cCountFS = cHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   cCountFS:SetPoint("RIGHT", cHeader, "RIGHT", -6, 0)
-  cCountFS:SetText("|cFFAAAAAA" .. cCount .. " item" .. (cCount > 1 and "s" or "") .. "|r")
+  cCountFS:SetText("|cFFAAAAAA" .. cCount .. " " .. (cCount > 1 and T("ITEMS_PLURAL", "items") or T("ITEM_SINGULAR", "item")) .. "|r")
   y = y - 28
 
   if cOpen then
@@ -808,7 +808,7 @@ local function RefreshDetail(item)
         cNameFS:SetWidth(W - 90)
         cNameFS:SetWordWrap(false)
         cNameFS:SetJustifyH("LEFT")
-        cNameFS:SetText((ok and COL_GREY or COL_WHITE) .. (tr.name or ("Item #" .. tostring(tr.itemID))) .. COL_RESET)
+        cNameFS:SetText((ok and COL_GREY or COL_WHITE) .. (tr.name or (T("ITEM_HASH", "Item #") .. tostring(tr.itemID))) .. COL_RESET)
 
         local cCntFS = cRow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         cCntFS:SetPoint("TOPRIGHT", cRow, "TOPRIGHT", -8, -4)
@@ -856,11 +856,11 @@ local function RefreshDetail(item)
             GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
             GameTooltip:SetItemByID(tr.itemID)
             GameTooltip:AddLine(" ")
-            GameTooltip:AddLine(string.format("Possede : %d / %d", count, need),
+            GameTooltip:AddLine(string.format(T("OWNED_COUNT_FMT", "Possede : %d / %d"), count, need),
               ok and 0.27 or cColor.r, ok and 1.00 or cColor.g, ok and 0.27 or cColor.b)
             if howTo then
               GameTooltip:AddLine(" ")
-              GameTooltip:AddLine("Comment l'obtenir :", 0.95, 0.78, 0.35)
+              GameTooltip:AddLine(T("HOWTO_HEADER_COLON", "Comment l'obtenir :"), 0.95, 0.78, 0.35)
               GameTooltip:AddLine(howTo, 0.8, 0.8, 0.8, true)
             end
             GameTooltip:Show()
@@ -872,7 +872,7 @@ local function RefreshDetail(item)
     else
       local cNone = detailFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
       cNone:SetPoint("TOPLEFT", 14, y)
-      cNone:SetText(COL_GREY .. "Aucun composant a suivre." .. COL_RESET)
+      cNone:SetText(COL_GREY .. T("NO_COMPONENT_LISTED", "Aucun composant a suivre.") .. COL_RESET)
       y = y - 20
     end
   end
@@ -959,15 +959,15 @@ local function MakeListRow(parent)
     if item and item.itemID and item.itemID > 0 then
       GameTooltip:SetItemByID(item.itemID)
     else
-      GameTooltip:SetText((item and item.name) or "A completer")
+      GameTooltip:SetText((item and item.name) or T("TO_COMPLETE", "A completer"))
     end
     if item and s._inProgress then
       GameTooltip:AddLine(" ")
-      GameTooltip:AddLine("Progression :", 0.95, 0.78, 0.35)
+      GameTooltip:AddLine(T("PROGRESS_HEADER", "Progression :"), 0.95, 0.78, 0.35)
       local qD, qT = item._qDone or 0, item._qTotal or 0
       local tD, tT = item._tDone or 0, item._tTotal or 0
-      if qT > 0 then GameTooltip:AddLine(string.format("  Quêtes : %d / %d", qD, qT), 0.30, 0.60, 1.0) end
-      if tT > 0 then GameTooltip:AddLine(string.format("  Composants : %d / %d", tD, tT), 1.0, 0.82, 0.0) end
+      if qT > 0 then GameTooltip:AddLine(string.format("  " .. T("QUESTS_COUNT_FMT", "Quêtes : %d / %d"), qD, qT), 0.30, 0.60, 1.0) end
+      if tT > 0 then GameTooltip:AddLine(string.format("  " .. T("COMPONENTS_COUNT_FMT", "Composants : %d / %d"), tD, tT), 1.0, 0.82, 0.0) end
     end
     if item and s._obtained and item.itemID and item.itemID > 0 then
       local chars = GetCharsWithItem(item.itemID)
@@ -981,7 +981,7 @@ local function MakeListRow(parent)
       end
       if #chars > 0 then
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Detenu par :", 0.95, 0.78, 0.35)
+        GameTooltip:AddLine(T("OWNED_BY_HEADER", "Detenu par :"), 0.95, 0.78, 0.35)
         for _, ch in ipairs(chars) do
           local hex = ch.class and CLASS_COLORS[ch.class] or nil
           if hex then
@@ -1054,13 +1054,13 @@ local function FillListRow(row, item, rowW)
   row.pctFS:SetText("")
 
   if item.placeholder then
-    row.subFS:SetText(COL_GREY .. "A completer" .. COL_RESET)
+    row.subFS:SetText(COL_GREY .. T("TO_COMPLETE", "A completer") .. COL_RESET)
   elseif obtained then
     local ownerStr = item.itemID and item.itemID > 0 and GetOwnersText(item.itemID, true) or nil
     if ownerStr then
-      row.subFS:SetText(COL_GREEN .. "[Obtenu]" .. COL_RESET .. "  " .. ownerStr)
+      row.subFS:SetText(COL_GREEN .. T("TAG_OBTAINED", "[Obtenu]") .. COL_RESET .. "  " .. ownerStr)
     else
-      row.subFS:SetText(COL_GREEN .. "[Obtenu]" .. COL_RESET)
+      row.subFS:SetText(COL_GREEN .. T("TAG_OBTAINED", "[Obtenu]") .. COL_RESET)
     end
   elseif not equippable then
     row.subFS:SetText(GetClassesText(item))
@@ -1068,9 +1068,9 @@ local function FillListRow(row, item, rowW)
     local qD, qT = item._qDone or 0, item._qTotal or 0
     local tD, tT = item._tDone or 0, item._tTotal or 0
     local parts = {}
-    if qT > 0 then table.insert(parts, string.format("|cFF4D99FFQuêtes %d/%d|r", qD, qT)) end
-    if tT > 0 then table.insert(parts, string.format("|cFFFFCC00Compos. %d/%d|r", tD, tT)) end
-    row.subFS:SetText(COL_YELLOW .. "[En cours] " .. COL_RESET
+    if qT > 0 then table.insert(parts, string.format("|cFF4D99FF" .. T("QUESTS_SHORT_FMT", "Quêtes %d/%d") .. "|r", qD, qT)) end
+    if tT > 0 then table.insert(parts, string.format("|cFFFFCC00" .. T("COMPONENTS_SHORT_FMT", "Compos. %d/%d") .. "|r", tD, tT)) end
+    row.subFS:SetText(COL_YELLOW .. T("TAG_IN_PROGRESS_SP", "[En cours] ") .. COL_RESET
                       .. (#parts > 0 and table.concat(parts, "  ") or ""))
 
     local totalDone  = (item._qDone or 0) + (item._tDone or 0)
@@ -1084,7 +1084,7 @@ local function FillListRow(row, item, rowW)
 
     row.pctFS:SetText(string.format("|cFFFFCC00%d%%|r", math.floor(pct * 100)))
   else
-    row.subFS:SetText(COL_RED .. "[Non obtenu]" .. COL_RESET)
+    row.subFS:SetText(COL_RED .. T("TAG_NOT_OBTAINED", "[Non obtenu]") .. COL_RESET)
   end
 end
 
@@ -1180,7 +1180,7 @@ local function BuildUI()
 
   local dragHint = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   dragHint:SetPoint("TOP", 0, -30)
-  dragHint:SetText("|cFF888888Glisser pour deplacer  -  /lt|r")
+  dragHint:SetText("|cFF888888" .. T("DRAG_HINT", "Glisser pour deplacer  -  /lt") .. "|r")
 
   -- Separateur haut : PLEINE LARGEUR (de bord a bord de la fenetre)
   local sepTop = mainFrame:CreateTexture(nil, "ARTWORK")
@@ -1256,7 +1256,7 @@ local function BuildUI()
       s:SetBackdropBorderColor(col.r, col.g, col.b, 1.0)
       GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
       GameTooltip:AddLine(fullName, col.r, col.g, col.b)
-      GameTooltip:AddLine("Legendaires de l'extension", 0.8, 0.8, 0.8)
+      GameTooltip:AddLine(T("EXT_TAB_TOOLTIP", "Legendaires de l'extension"), 0.8, 0.8, 0.8)
       GameTooltip:Show()
     end)
     eb:SetScript("OnLeave", function(s)
@@ -1302,15 +1302,15 @@ local function BuildUI()
   mainFrame.headerText = mainFrame:CreateFontString(nil, "OVERLAY")
   mainFrame.headerText:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE")
   mainFrame.headerText:SetPoint("TOPLEFT", tabColBg, "TOPRIGHT", 8, -2)
-  mainFrame.headerText:SetText(COL_GOLD .. "Selectionnez une extension" .. COL_RESET)
+  mainFrame.headerText:SetText(COL_GOLD .. T("SELECT_EXT", "Selectionnez une extension") .. COL_RESET)
 
   local legend = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   legend:SetPoint("TOPLEFT", tabColBg, "TOPRIGHT", 8, -18)
   legend:SetText(
-    COL_GREEN  .. "  Obtenu  " .. COL_RESET ..
-    COL_YELLOW .. "  En cours  " .. COL_RESET ..
-    COL_RED    .. "  Non obtenu  " .. COL_RESET ..
-    COL_GREY   .. "  Non dispo" .. COL_RESET
+    COL_GREEN  .. "  " .. T("LEGEND_OBTAINED", "Obtenu") .. "  " .. COL_RESET ..
+    COL_YELLOW .. "  " .. T("LEGEND_IN_PROGRESS", "En cours") .. "  " .. COL_RESET ..
+    COL_RED    .. "  " .. T("LEGEND_NOT_OBTAINED", "Non obtenu") .. "  " .. COL_RESET ..
+    COL_GREY   .. "  " .. T("LEGEND_UNAVAILABLE", "Non dispo") .. COL_RESET
   )
 
   -- Zone centrale scrollable (commence sous headerText + legend)
@@ -1393,7 +1393,7 @@ local function BuildUI()
   end)
   resizeBtn:SetScript("OnEnter", function(s)
     GameTooltip:SetOwner(s, "ANCHOR_LEFT")
-    GameTooltip:AddLine("Etirer la fenetre", 0.95, 0.78, 0.35)
+    GameTooltip:AddLine(T("RESIZE_HINT", "Etirer la fenetre"), 0.95, 0.78, 0.35)
     GameTooltip:Show()
   end)
   resizeBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1413,7 +1413,7 @@ local function BuildUI()
   -- CASE "MASQUER OBTENUS" toujours visible (acces rapide)
   -- ================================================================
   local hideObtLabel = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  hideObtLabel:SetText("|cFFDDDDDDMasquer obtenus|r")
+  hideObtLabel:SetText("|cFFDDDDDD" .. T("HIDE_OBTAINED_LABEL", "Masquer obtenus") .. "|r")
   hideObtLabel:SetPoint("TOPRIGHT", mainFrame, "TOPRIGHT", -(rightW + 26), -50)
 
   local hideObtCheck = CreateFrame("CheckButton", nil, mainFrame, "UICheckButtonTemplate")
@@ -1429,7 +1429,7 @@ local function BuildUI()
   end)
   hideObtCheck:SetScript("OnEnter", function(s)
     GameTooltip:SetOwner(s, "ANCHOR_LEFT")
-    GameTooltip:AddLine("Masquer / afficher les objets deja obtenus", 0.9, 0.9, 0.9)
+    GameTooltip:AddLine(T("HIDE_OBTAINED_TT", "Masquer / afficher les objets deja obtenus"), 0.9, 0.9, 0.9)
     GameTooltip:Show()
   end)
   hideObtCheck:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1529,7 +1529,7 @@ local function BuildUI()
     -- Message si tout est masque par les filtres
     if self.emptyFS then
       if #items == 0 then
-        self.emptyFS:SetText(COL_GREY .. "Aucun objet a afficher avec les filtres actuels." .. COL_RESET)
+        self.emptyFS:SetText(COL_GREY .. T("NO_ITEM_WITH_FILTERS", "Aucun objet a afficher avec les filtres actuels.") .. COL_RESET)
         self.emptyFS:Show()
       else
         self.emptyFS:Hide()
@@ -1658,11 +1658,11 @@ local function BuildMinimapButton()
     if s._hl then s._hl:SetAlpha(1) end
     GameTooltip:SetOwner(s, "ANCHOR_LEFT")
     GameTooltip:AddLine("|cFFff954eLegTracker|r", 0.95, 0.78, 0.35)
-    GameTooltip:AddLine("Suivi des objets legendaires", 0.9, 0.9, 0.9)
-    GameTooltip:AddLine("Suivi de compte complet", 0.7, 0.9, 0.7)
+    GameTooltip:AddLine(T("MM_TT_SUBTITLE", "Suivi des objets legendaires"), 0.9, 0.9, 0.9)
+    GameTooltip:AddLine(T("MM_TT_SUBTITLE2", "Suivi de compte complet"), 0.7, 0.9, 0.7)
     GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("|cFFFFD700Clic gauche|r : ouvrir / fermer", 0.7, 0.7, 0.7)
-    GameTooltip:AddLine("|cFFFFD700Glisser|r : repositionner l'icone", 0.7, 0.7, 0.7)
+    GameTooltip:AddLine("|cFFFFD700" .. T("MM_TT_LEFTCLICK_LABEL", "Clic gauche") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"), 0.7, 0.7, 0.7)
+    GameTooltip:AddLine("|cFFFFD700" .. T("MM_TT_DRAG_LABEL", "Glisser") .. "|r : " .. T("REPOSITION_HINT", "repositionner l'icone"), 0.7, 0.7, 0.7)
     GameTooltip:Show()
   end)
   minimapBtn:SetScript("OnLeave", function(s)
@@ -1685,9 +1685,9 @@ end
 function LegTracker_OnAddonCompartmentEnter(btn)
   GameTooltip:SetOwner(btn, "ANCHOR_LEFT")
   GameTooltip:AddLine("LegTracker", 0.95, 0.78, 0.35)
-  GameTooltip:AddLine("Suivi des legendaires (compte complet)", 0.9, 0.9, 0.9)
+  GameTooltip:AddLine(T("AC_TT_SUBTITLE", "Suivi des legendaires (compte complet)"), 0.9, 0.9, 0.9)
   GameTooltip:AddLine(" ")
-  GameTooltip:AddLine("|cFFFFD700Clic|r : ouvrir / fermer", 0.7, 0.7, 0.7)
+  GameTooltip:AddLine("|cFFFFD700" .. T("CLICK_LABEL", "Clic") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"), 0.7, 0.7, 0.7)
   GameTooltip:Show()
 end
 
@@ -1703,13 +1703,13 @@ SlashCmdList["LEGTRACKER"] = function(msg)
   msg = (msg or ""):lower()
   if msg == "scan" then
     ScanAll()
-    print(COL_BLUE .. "LegTracker" .. COL_RESET .. " Scan termine (compte complet).")
+    print(COL_BLUE .. "LegTracker" .. COL_RESET .. " " .. T("SCAN_DONE", "Scan termine (compte complet)."))
     if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
     return
   end
   if msg == "reset" then
     if LegTrackerDB then LegTrackerDB.accountData = {} end
-    print(COL_BLUE .. "LegTracker" .. COL_RESET .. " Donnees de compte reinitialises.")
+    print(COL_BLUE .. "LegTracker" .. COL_RESET .. " " .. T("ACCOUNT_DATA_RESET", "Donnees de compte reinitialises."))
     return
   end
   if msg == "options" or msg == "config" then
@@ -1820,8 +1820,8 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     end
 
     print(COL_BLUE .. "LegTracker v7.0" .. COL_RESET
-          .. " chargé -- tapez " .. COL_GOLD .. "/lt" .. COL_RESET .. " pour ouvrir."
-          .. " |cFF888888(/lt scan = forcer scan, /lt reset = reinit donnees compte)|r")
+          .. " " .. T("LOGIN_LOADED", "chargé -- tapez") .. " " .. COL_GOLD .. "/lt" .. COL_RESET .. " " .. T("LOGIN_TO_OPEN", "pour ouvrir.")
+          .. " |cFF888888" .. T("LOGIN_SUBCMDS", "(/lt scan = forcer scan, /lt reset = reinit donnees compte)") .. "|r")
 
   elseif event == "BANKFRAME_OPENED" or event == "BANKFRAME_CLOSED" then
     -- Rescanner apres ouverture/fermeture banque (pour detecter items en banque)

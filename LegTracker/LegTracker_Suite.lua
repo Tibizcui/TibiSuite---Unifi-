@@ -7,6 +7,8 @@ local ACCENT   = { 1.000, 0.427, 0.043 }   -- orange (logo #FF6D0B)
 local LOGO     = "Interface\\AddOns\\LegTracker\\medias\\LegTracker"
 local KEY      = "Leg"
 local FULLSKIN = false
+local L        = LegTrackerL or {}
+local function T(key, default) return L[key] or default end
 
 local function GetUI() return _G.TibiMidnight end
 local function ApplyOpts()
@@ -25,28 +27,28 @@ local function BuildOptions()
     name = "LegTrackerOptionsMidnight",
     title = "LegTracker - Options", accent = ACCENT })
 
-  panel:Section("Fenêtre")
-  panel:Button("Ouvrir / fermer", function()
+  panel:Section(T("OPT_SEC_WINDOW", "Fenêtre"))
+  panel:Button(T("OPT_TOGGLE", "Ouvrir / fermer"), function()
     if _G.LegTracker_Toggle then _G.LegTracker_Toggle() end
   end)
-  panel:Slider("Échelle (%)", 70, 150, 5,
+  panel:Slider(T("OPT_SCALE", "Échelle (%)"), 70, 150, 5,
     function() return math.floor(((_G.LegTrackerDB and _G.LegTrackerDB.scale) or 1) * 100 + 0.5) end,
     function(v) if _G.LegTrackerDB then _G.LegTrackerDB.scale = v / 100 end; ApplyOpts() end)
-  panel:Slider("Opacité (%)", 40, 100, 5,
+  panel:Slider(T("OPT_OPACITY", "Opacité (%)"), 40, 100, 5,
     function() return math.floor(((_G.LegTrackerDB and _G.LegTrackerDB.alpha) or 0.97) * 100 + 0.5) end,
     function(v) if _G.LegTrackerDB then _G.LegTrackerDB.alpha = v / 100 end; ApplyOpts() end)
-  panel:Check("Verrouiller la fenêtre",
+  panel:Check(T("OPT_LOCK", "Verrouiller la fenêtre"),
     function() return _G.LegTrackerDB and _G.LegTrackerDB.locked end,
     function(v) if _G.LegTrackerDB then _G.LegTrackerDB.locked = v end; ApplyOpts() end)
-  panel:Check("Afficher le bouton minimap",
+  panel:Check(T("OPT_SHOW_MINIMAP", "Afficher le bouton minimap"),
     function() return _G.LegTrackerDB and _G.LegTrackerDB.showMinimap ~= false end,
     function(v) if _G.LegTrackerDB then _G.LegTrackerDB.showMinimap = v end; ApplyOpts() end)
-  panel:Check("Ouvrir automatiquement au login",
+  panel:Check(T("OPT_AUTOOPEN", "Ouvrir automatiquement au login"),
     function() return _G.LegTrackerDB and _G.LegTrackerDB.autoOpen end,
     function(v) if _G.LegTrackerDB then _G.LegTrackerDB.autoOpen = v end end)
 
-  panel:Section("Filtres")
-  panel:Check("Masquer les objets obtenus",
+  panel:Section(T("OPT_SEC_FILTERS", "Filtres"))
+  panel:Check(T("OPT_HIDE_OBTAINED", "Masquer les objets obtenus"),
     function() return _G.LegTrackerDB and _G.LegTrackerDB.filters and _G.LegTrackerDB.filters.hideObtained end,
     function(v)
       if _G.LegTrackerDB then _G.LegTrackerDB.filters = _G.LegTrackerDB.filters or {}; _G.LegTrackerDB.filters.hideObtained = v end
@@ -54,38 +56,38 @@ local function BuildOptions()
       if f and f.hideObtainedCheck then f.hideObtainedCheck:SetChecked(v) end
       Refresh()
     end)
-  panel:Check("Masquer les non-équipables",
+  panel:Check(T("OPT_HIDE_UNAVAILABLE", "Masquer les non-équipables"),
     function() return _G.LegTrackerDB and _G.LegTrackerDB.filters and _G.LegTrackerDB.filters.hideUnavailable end,
     function(v)
       if _G.LegTrackerDB then _G.LegTrackerDB.filters = _G.LegTrackerDB.filters or {}; _G.LegTrackerDB.filters.hideUnavailable = v end
       Refresh()
     end)
-  panel:Check("Masquer les objets legacy",
+  panel:Check(T("OPT_HIDE_LEGACY", "Masquer les objets legacy"),
     function() return _G.LegTrackerDB and _G.LegTrackerDB.filters and _G.LegTrackerDB.filters.hideLegacy end,
     function(v)
       if _G.LegTrackerDB then _G.LegTrackerDB.filters = _G.LegTrackerDB.filters or {}; _G.LegTrackerDB.filters.hideLegacy = v end
       Refresh()
     end)
 
-  panel:Section("Boutons flottants")
-  panel:Check("Masquer le bouton Options",
+  panel:Section(T("OPT_SEC_FLOATING", "Boutons flottants"))
+  panel:Check(T("OPT_HIDE_OPTIONS_BTN", "Masquer le bouton Options"),
     function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "options") end,
     function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "options", v) end end,
-    "Masque le bouton Options qui deborde au-dessus de la fenetre. Meme masque, Maj+clic droit sur la fenetre l'ouvre.")
-  panel:Check("Masquer le champ Recherche",
+    T("OPT_HIDE_OPTIONS_BTN_TT", "Masque le bouton Options qui deborde au-dessus de la fenetre. Meme masque, Maj+clic droit sur la fenetre l'ouvre."))
+  panel:Check(T("OPT_HIDE_SEARCH_BTN", "Masquer le champ Recherche"),
     function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "search") end,
     function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "search", v) end end,
-    "Masque le champ Recherche qui deborde au-dessus de la fenetre.")
+    T("OPT_HIDE_SEARCH_BTN_TT", "Masque le champ Recherche qui deborde au-dessus de la fenetre."))
 
-  panel:Section("Réinitialisation")
-  panel:Button("Recentrer la fenêtre", function()
+  panel:Section(T("OPT_SEC_RESET", "Réinitialisation"))
+  panel:Button(T("OPT_RECENTER", "Recentrer la fenêtre"), function()
     local f = _G[FRAME]
     if not f then return end
     LegTrackerDB.pos = {x = 0, y = 0}
     f:ClearAllPoints()
     f:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
   end)
-  panel:Button("Taille par défaut", function()
+  panel:Button(T("OPT_DEFAULT_SIZE", "Taille par défaut"), function()
     local f = _G[FRAME]
     if not f then return end
     LegTrackerDB.width  = f.defaultW
@@ -94,7 +96,7 @@ local function BuildOptions()
     Refresh()
   end)
 
-  panel:Note("Astuce : clic droit sur la vignette LegTracker dans la barre TibiSuite ouvre aussi ces options.")
+  panel:Note(T("OPT_NOTE", "Astuce : clic droit sur la vignette LegTracker dans la barre TibiSuite ouvre aussi ces options."))
   return panel
 end
 
@@ -127,7 +129,7 @@ local function provider(q)
           for _, qu in ipairs(item.quests) do
             local qhay = (qu.name or "") .. " " .. (qu.npc or "") .. " " .. (qu.zone or "")
             if ui.Match(qhay, q) then
-              add((qu.name or "quête") .. "  |cff808080quête · " .. iname .. "|r")
+              add((qu.name or T("QUEST_SINGULAR", "quete")) .. "  |cff808080" .. T("SEARCH_QUEST_TAG", "quête ·") .. " " .. iname .. "|r")
             end
           end
         end
@@ -135,7 +137,7 @@ local function provider(q)
         if type(item.trackers) == "table" then
           for _, tr in ipairs(item.trackers) do
             if tr.name and ui.Match(tr.name, q) then
-              add(tr.name .. "  |cff808080composant · " .. iname .. "|r")
+              add(tr.name .. "  |cff808080" .. T("SEARCH_COMPONENT_TAG", "composant ·") .. " " .. iname .. "|r")
             end
           end
         end
@@ -152,7 +154,7 @@ local function OpenSearch()
   if not searchPopup then
     searchPopup = ui.CreateSearchPopup({
       name = "LegTrackerSearchPopup",
-      title = "|cFF9480FFLegTracker|r  Recherche", accent = ACCENT, logo = LOGO, provider = provider })
+      title = "|cFF9480FFLegTracker|r  " .. T("SEARCH_TITLE", "Recherche"), accent = ACCENT, logo = LOGO, provider = provider })
   end
   searchPopup.Toggle()
 end
