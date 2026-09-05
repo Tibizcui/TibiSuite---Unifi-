@@ -21,5 +21,8 @@
 # egale ou superieure)
 Core\TibiSuiteUI.lua
 
+## Localisation FR (par defaut, en dur dans le code) / EN
+Locale\enUS.lua
+
 XPBar.lua
 XPBar_Module.lua

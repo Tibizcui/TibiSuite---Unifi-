@@ -15,6 +15,8 @@ local KEY    = "XPBar"
 local LABEL  = "XPBar"
 local ACCENT = { 0.737, 0.220, 0.980 }   -- violet (logo #BC38FA)
 local FRAME  = "XPBarContainer"
+local L      = XPBarL or {}
+local function T(key, default) return L[key] or default end
 
 local function GetUI() return _G.TibiMidnight end
 
@@ -114,8 +116,8 @@ local function BuildStandaloneMinimapButton()
   btn:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_LEFT")
     GameTooltip:AddLine("XPBar")
-    GameTooltip:AddLine("Clic gauche : afficher/masquer", 0.9, 0.9, 0.95)
-    GameTooltip:AddLine("Clic droit : options", 0.9, 0.9, 0.95)
+    GameTooltip:AddLine(T("MM_TT_LEFT", "Clic gauche : afficher/masquer"), 0.9, 0.9, 0.95)
+    GameTooltip:AddLine(T("MM_TT_RIGHT", "Clic droit : options"), 0.9, 0.9, 0.95)
     GameTooltip:Show()
   end)
   btn:SetScript("OnLeave", function() GameTooltip:Hide() end)

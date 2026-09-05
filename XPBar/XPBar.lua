@@ -5,57 +5,91 @@
 local ADDON = "XPBar"
 
 -- ══════════════════════════════════════════════════
--- LOCALISATION (structure prête pour d'autres langues)
+-- LOCALISATION
+-- Le francais reste le defaut embarque directement ici (via l'operateur
+-- "or") : Locale\enUS.lua ecrase ensuite ces cles si le client est en
+-- anglais. Aucun risque de regression du comportement francais existant.
 -- ══════════════════════════════════════════════════
-local L = {
-    LEVEL           = "Niveau",
-    XP              = "XP",
-    PROGRESS        = "Progression",
-    REMAINING       = "Restant",
-    RESTED          = "Repos",
-    QUESTS          = "Quêtes",
-    QUESTS_DONE     = "Quêtes terminées",
-    SESSION         = "Session",
-    XP_PER_HOUR     = "XP/heure",
-    XP_PER_HOUR_ROLL= "XP/h (récent)",
-    TIME_LEFT       = "Temps restant",
-    PLAYED          = "Joué",
-    LEVELS_GAINED   = "Niveaux gagnés",
-    QUESTS_TURNED   = "Quêtes rendues",
-    HINT            = "|cffFFD700Maj+Drag|r déplacer  ·  |cffFFD700Maj+Clic droit|r options",
-    POS_SAVED       = "Position sauvegardée.",
-    POS_RESET       = "Position réinitialisée.",
-    SESSION_RESET   = "Session réinitialisée.",
-    -- Options
-    OPT_TITLE       = "XPBar - Options",
-    OPT_TAB         = "Options",
-    OPT_HINT        = "|cffFFD700Maj+Drag|r pour déplacer   |cffFFD700Maj+Clic droit|r pour ouvrir/fermer",
-    OPT_WIDTH       = "Largeur :",
-    OPT_HEIGHT      = "Hauteur :",
-    OPT_COLORS      = "Couleurs",
-    OPT_COL_BAR     = "Barre XP",
-    OPT_COL_QUEST   = "Quêtes",
-    OPT_COL_RESTED  = "Repos",
-    OPT_COL_INC     = "Incomplètes",
-    OPT_OPACITY     = "Opacité fond :",
-    OPT_FONTSIZE    = "Taille texte :",
-    OPT_DISPLAY     = "Affichage",
-    OPT_PLAYED      = "Temps joué",
-    OPT_SESSION     = "Temps de session",
-    OPT_LEVELING    = "Temps restant & XP/heure",
-    OPT_COMPLETED   = "Quêtes terminées & Repos",
-    OPT_ROLLING     = "XP/h sur période récente",
-    OPT_INCBAR      = "Barre des quêtes incomplètes",
-    OPT_MAXLEVEL    = "Afficher au niveau max",
-    OPT_RESETRELOAD = "Réinit. session au /reload",
-    OPT_HIDENATIVE  = "Masquer la barre d'XP native",
-    OPT_HIDECOMBAT  = "Masquer en combat",
-    OPT_HIDEVEHICLE = "Masquer en véhicule",
-    OPT_MOUSEOVER   = "Afficher au survol seulement",
-    OPT_CLOSE       = "Fermer",
-    OPT_RESETPOS    = "Réinit. position",
-    OPT_RESETSESS   = "Réinit. session",
-}
+XPBarL = XPBarL or {}
+local L = XPBarL
+L.LEVEL            = L.LEVEL            or "Niveau"
+L.XP               = L.XP               or "XP"
+L.PROGRESS         = L.PROGRESS         or "Progression"
+L.REMAINING        = L.REMAINING        or "Restant"
+L.RESTED           = L.RESTED           or "Repos"
+L.QUESTS           = L.QUESTS           or "Quêtes"
+L.QUESTS_DONE      = L.QUESTS_DONE      or "Quêtes terminées"
+L.SESSION          = L.SESSION          or "Session"
+L.XP_PER_HOUR      = L.XP_PER_HOUR      or "XP/heure"
+L.XP_PER_HOUR_ROLL = L.XP_PER_HOUR_ROLL or "XP/h (récent)"
+L.TIME_LEFT        = L.TIME_LEFT        or "Temps restant"
+L.PLAYED           = L.PLAYED           or "Joué"
+L.LEVELS_GAINED    = L.LEVELS_GAINED    or "Niveaux gagnés"
+L.QUESTS_TURNED    = L.QUESTS_TURNED    or "Quêtes rendues"
+L.HINT             = L.HINT             or "|cffFFD700Maj+Drag|r déplacer  ·  |cffFFD700Maj+Clic droit|r options"
+L.POS_SAVED        = L.POS_SAVED        or "Position sauvegardée."
+L.POS_RESET        = L.POS_RESET        or "Position réinitialisée."
+L.SESSION_RESET    = L.SESSION_RESET    or "Session réinitialisée."
+-- Options (panneau standalone)
+L.OPT_TITLE       = L.OPT_TITLE       or "XPBar - Options"
+L.OPT_TAB         = L.OPT_TAB         or "Options"
+L.OPT_HINT        = L.OPT_HINT        or "|cffFFD700Maj+Drag|r pour déplacer   |cffFFD700Maj+Clic droit|r pour ouvrir/fermer"
+L.OPT_WIDTH       = L.OPT_WIDTH       or "Largeur :"
+L.OPT_HEIGHT      = L.OPT_HEIGHT      or "Hauteur :"
+L.OPT_COLORS      = L.OPT_COLORS      or "Couleurs"
+L.OPT_COL_BAR     = L.OPT_COL_BAR     or "Barre XP"
+L.OPT_COL_QUEST   = L.OPT_COL_QUEST   or "Quêtes"
+L.OPT_COL_RESTED  = L.OPT_COL_RESTED  or "Repos"
+L.OPT_COL_INC     = L.OPT_COL_INC     or "Incomplètes"
+L.OPT_OPACITY     = L.OPT_OPACITY     or "Opacité fond :"
+L.OPT_FONTSIZE    = L.OPT_FONTSIZE    or "Taille texte :"
+L.OPT_DISPLAY     = L.OPT_DISPLAY     or "Affichage"
+L.OPT_PLAYED      = L.OPT_PLAYED      or "Temps joué"
+L.OPT_SESSION     = L.OPT_SESSION     or "Temps de session"
+L.OPT_LEVELING    = L.OPT_LEVELING    or "Temps restant & XP/heure"
+L.OPT_COMPLETED   = L.OPT_COMPLETED   or "Quêtes terminées & Repos"
+L.OPT_ROLLING     = L.OPT_ROLLING     or "XP/h sur période récente"
+L.OPT_INCBAR      = L.OPT_INCBAR      or "Barre des quêtes incomplètes"
+L.OPT_MAXLEVEL    = L.OPT_MAXLEVEL    or "Afficher au niveau max"
+L.OPT_RESETRELOAD = L.OPT_RESETRELOAD or "Réinit. session au /reload"
+L.OPT_HIDENATIVE  = L.OPT_HIDENATIVE  or "Masquer la barre d'XP native"
+L.OPT_HIDECOMBAT  = L.OPT_HIDECOMBAT  or "Masquer en combat"
+L.OPT_HIDEVEHICLE = L.OPT_HIDEVEHICLE or "Masquer en véhicule"
+L.OPT_MOUSEOVER   = L.OPT_MOUSEOVER   or "Afficher au survol seulement"
+L.OPT_CLOSE       = L.OPT_CLOSE       or "Fermer"
+L.OPT_RESETPOS    = L.OPT_RESETPOS    or "Réinit. position"
+L.OPT_RESETSESS   = L.OPT_RESETSESS   or "Réinit. session"
+L.OPT_SEC_ORIENTATION = L.OPT_SEC_ORIENTATION or "Orientation"
+L.OPT_VERTBAR         = L.OPT_VERTBAR         or "Barre verticale"
+L.OPT_VERTTEXT        = L.OPT_VERTTEXT        or "Texte a cote (vertical)"
+L.OPT_VTHICK          = L.OPT_VTHICK          or "Epaisseur :"
+L.OPT_VLENGTH         = L.OPT_VLENGTH         or "Longueur :"
+-- Slash / login / debug
+L.SLASH_HIDDEN   = L.SLASH_HIDDEN   or "Masqué. /xpbar show pour ré-afficher."
+L.SLASH_HELP     = L.SLASH_HELP     or " /xpbar — options  |  /xpbar hide/show  |  /xpbar session  |  /xpbar reset"
+L.SLASH_HELP_DBG = L.SLASH_HELP_DBG or "  /xpbar debug — identifier les frames XP natifs"
+L.LOGIN_LOADED   = L.LOGIN_LOADED   or "chargé -- tapez"
+L.LOGIN_TO_OPEN  = L.LOGIN_TO_OPEN  or "pour les options."
+L.DEBUG_HEADER   = L.DEBUG_HEADER   or "Frames XP détectés :"
+L.DEBUG_HIDDEN   = L.DEBUG_HIDDEN   or "caché"
+L.DEBUG_MISSING  = L.DEBUG_MISSING  or "inexistant"
+L.DEBUG_CHILDREN = L.DEBUG_CHILDREN or "Enfants de MainMenuBar :"
+-- Options (panneau integre TibiSuite "Midnight") - wording parfois different
+-- du panneau standalone, d'ou les cles distinctes suffixees _2.
+L.OPT_SEC_DIMENSIONS = L.OPT_SEC_DIMENSIONS or "Dimensions"
+L.OPT_WIDTH_2        = L.OPT_WIDTH_2        or "Largeur"
+L.OPT_HEIGHT_2       = L.OPT_HEIGHT_2       or "Hauteur"
+L.OPT_PLAYED_2       = L.OPT_PLAYED_2       or "Temps de jeu total"
+L.OPT_LEVELING_2     = L.OPT_LEVELING_2     or "Temps estimé de niveau"
+L.OPT_COMPLETED_2    = L.OPT_COMPLETED_2    or "Quêtes complétées"
+L.OPT_ROLLING_2      = L.OPT_ROLLING_2      or "XP/h glissant"
+L.OPT_INCBAR_2       = L.OPT_INCBAR_2       or "Barre d'XP incomplète"
+L.OPT_SEC_VISIBILITY = L.OPT_SEC_VISIBILITY or "Visibilité"
+L.OPT_VERTTEXT_2     = L.OPT_VERTTEXT_2     or "Texte a cote (mode vertical)"
+L.OPT_VTHICK_2       = L.OPT_VTHICK_2       or "Epaisseur (vertical)"
+L.OPT_VLENGTH_2      = L.OPT_VLENGTH_2      or "Longueur (vertical)"
+L.OPT_SEC_FLOATING   = L.OPT_SEC_FLOATING   or "Bouton flottant"
+L.OPT_HIDE_OPTIONS_BTN= L.OPT_HIDE_OPTIONS_BTN or "Masquer le bouton Options"
 
 -- ══════════════════════════════════════════════════
 -- DEFAULTS
@@ -912,20 +946,20 @@ CreateOptionsPanel = function()
 
     -- ── Orientation ───────────────────────────────
     Sep(-462)
-    Header("Orientation", C1, -470)
-    MakeCheckbox(optionsFrame, "Barre verticale", C1, -490,
+    Header(L.OPT_SEC_ORIENTATION, C1, -470)
+    MakeCheckbox(optionsFrame, L.OPT_VERTBAR, C1, -490,
         function() return IsVertical() end,
         function(v)
             db.orientation = v and "VERTICAL" or "HORIZONTAL"
             ApplyOrientation() ; UpdateBar()
         end)
-    MakeCheckbox(optionsFrame, "Texte a cote (vertical)", C2, -490,
+    MakeCheckbox(optionsFrame, L.OPT_VERTTEXT, C2, -490,
         function() return db.verticalText end,
         function(v) db.verticalText = v ; LayoutLabels() ; UpdateBar() end)
-    MakeSlider(optionsFrame, "Epaisseur :", C1, -524, 8, 60, 1,
+    MakeSlider(optionsFrame, L.OPT_VTHICK, C1, -524, 8, 60, 1,
         function() return db.vWidth end,
         function(v) db.vWidth = v ; if IsVertical() then ApplySize() end ; UpdateBar() end)
-    MakeSlider(optionsFrame, "Longueur :", C2, -524, 100, 900, 10,
+    MakeSlider(optionsFrame, L.OPT_VLENGTH, C2, -524, 100, 900, 10,
         function() return db.vHeight end,
         function(v) db.vHeight = v ; if IsVertical() then ApplySize() end ; UpdateBar() end)
 
@@ -988,7 +1022,7 @@ SlashCmdList["XPBAR"] = function(msg)
         CreateOptionsPanel()
     elseif msg == "hide" then
         containerFrame:Hide()
-        print("|cffFFD700[XPBar]|r Masqué. /xpbar show pour ré-afficher.")
+        print("|cffFFD700[XPBar]|r " .. L.SLASH_HIDDEN)
     elseif msg == "show" then
         containerFrame:Show() ; UpdateBar()
     elseif msg == "session" then
@@ -1006,32 +1040,32 @@ SlashCmdList["XPBAR"] = function(msg)
             "MainMenuBarArtFrame", "ReputationWatchBar",
             "MainMenuExpBar_ExhaustionTick",
         }
-        print("|cffFFD700[XPBar DEBUG]|r Frames XP détectés :")
+        print("|cffFFD700[XPBar DEBUG]|r " .. L.DEBUG_HEADER)
         for _, name in ipairs(candidates) do
             local f = _G[name]
             if f then
-                local shown = f:IsShown() and "|cff00ff00VISIBLE|r" or "|cffff4444caché|r"
+                local shown = f:IsShown() and "|cff00ff00VISIBLE|r" or ("|cffff4444" .. L.DEBUG_HIDDEN .. "|r")
                 local alpha = string.format("alpha=%.1f", f:GetAlpha())
                 print(string.format("  |cffffff99%s|r : %s %s", name, shown, alpha))
             else
-                print(string.format("  |cff888888%s|r : inexistant", name))
+                print(string.format("  |cff888888%s|r : %s", name, L.DEBUG_MISSING))
             end
         end
         if MainMenuBar then
-            print("|cffFFD700Enfants de MainMenuBar :|r")
+            print("|cffFFD700" .. L.DEBUG_CHILDREN .. "|r")
             local i = 1
             local child = select(i, MainMenuBar:GetChildren())
             while child do
                 local n = child:GetName() or ("(sans nom) "..tostring(child))
-                local shown = child:IsShown() and "VISIBLE" or "caché"
+                local shown = child:IsShown() and "VISIBLE" or L.DEBUG_HIDDEN
                 print(string.format("  %s : %s", n, shown))
                 i = i + 1
                 child = select(i, MainMenuBar:GetChildren())
             end
         end
     else
-        print("|cffFFD700[XPBar]|r  /xpbar — options  |  /xpbar hide/show  |  /xpbar session  |  /xpbar reset")
-        print("  /xpbar debug — identifier les frames XP natifs")
+        print("|cffFFD700[XPBar]|r " .. L.SLASH_HELP)
+        print(L.SLASH_HELP_DBG)
     end
 end
 
@@ -1103,7 +1137,7 @@ evFrame:SetScript("OnEvent", function(self, event, arg1, arg2)
         PushXPSample()   -- point de départ pour l'XP/h glissant
         if RequestTimePlayed then RequestTimePlayed() end
         UpdateBar()
-        print("|cFFBC38FAXPBar|r v7.0 chargé -- tapez |cFFFFD700/xpbar|r pour les options.")
+        print("|cFFBC38FAXPBar|r v7.0 " .. L.LOGIN_LOADED .. " |cFFFFD700/xpbar|r " .. L.LOGIN_TO_OPEN)
 
     elseif event == "PLAYER_LOGOUT" then
         -- Déclenché aussi par /reload : horodate la déconnexion pour permettre,
@@ -1186,60 +1220,60 @@ local function BuildMidnightOptions()
         name = "XPBarOptionsMidnight",
         title = "XPBar - Options", accent = ACCENT_XP })
 
-    midnightPanel:Section("Dimensions")
-    midnightPanel:Slider("Largeur", 200, 1200, 10,
+    midnightPanel:Section(L.OPT_SEC_DIMENSIONS)
+    midnightPanel:Slider(L.OPT_WIDTH_2, 200, 1200, 10,
         function() return db and db.width or 400 end,
         function(v) if db then db.width = v end; ApplySize(); UpdateBar() end)
-    midnightPanel:Slider("Hauteur", 10, 60, 1,
+    midnightPanel:Slider(L.OPT_HEIGHT_2, 10, 60, 1,
         function() return db and db.height or 20 end,
         function(v) if db then db.height = v end; ApplySize(); UpdateBar() end)
 
-    midnightPanel:Section("Affichage")
+    midnightPanel:Section(L.OPT_DISPLAY)
     local function disp(label, key)
         midnightPanel:Check(label,
             function() return db and db[key] end,
             function(v) if db then db[key] = v end; UpdateBar() end)
     end
-    disp("Temps de jeu total", "showPlayedTime")
-    disp("Temps de session", "showSessionTime")
-    disp("Temps estimé de niveau", "showLevelingTime")
-    disp("Quêtes complétées", "showCompletedQuests")
-    disp("XP/h glissant", "showRollingXP")
-    disp("Barre d'XP incomplète", "showIncompleteBar")
-    disp("Afficher au niveau max", "showAtMaxLevel")
-    disp("Masquer la barre d'XP native", "hideDefaultXPBar")
+    disp(L.OPT_PLAYED_2, "showPlayedTime")
+    disp(L.OPT_SESSION, "showSessionTime")
+    disp(L.OPT_LEVELING_2, "showLevelingTime")
+    disp(L.OPT_COMPLETED_2, "showCompletedQuests")
+    disp(L.OPT_ROLLING_2, "showRollingXP")
+    disp(L.OPT_INCBAR_2, "showIncompleteBar")
+    disp(L.OPT_MAXLEVEL, "showAtMaxLevel")
+    disp(L.OPT_HIDENATIVE, "hideDefaultXPBar")
 
-    midnightPanel:Section("Visibilité")
+    midnightPanel:Section(L.OPT_SEC_VISIBILITY)
     local function vis(label, key)
         midnightPanel:Check(label,
             function() return db and db[key] end,
             function(v) if db then db[key] = v end; if ApplyVisibility then ApplyVisibility() end end)
     end
-    vis("Masquer en combat", "hideInCombat")
-    vis("Masquer en véhicule", "hideInVehicle")
-    vis("Afficher au survol seulement", "mouseoverOnly")
+    vis(L.OPT_HIDECOMBAT, "hideInCombat")
+    vis(L.OPT_HIDEVEHICLE, "hideInVehicle")
+    vis(L.OPT_MOUSEOVER, "mouseoverOnly")
 
-    midnightPanel:Section("Orientation")
-    midnightPanel:Check("Barre verticale",
+    midnightPanel:Section(L.OPT_SEC_ORIENTATION)
+    midnightPanel:Check(L.OPT_VERTBAR,
         function() return db and db.orientation == "VERTICAL" end,
         function(v)
             if db then db.orientation = v and "VERTICAL" or "HORIZONTAL" end
             ApplyOrientation(); UpdateBar()
         end)
-    midnightPanel:Check("Texte a cote (mode vertical)",
+    midnightPanel:Check(L.OPT_VERTTEXT_2,
         function() return db and db.verticalText end,
         function(v) if db then db.verticalText = v end; LayoutLabels(); UpdateBar() end)
-    midnightPanel:Slider("Epaisseur (vertical)", 8, 60, 1,
+    midnightPanel:Slider(L.OPT_VTHICK_2, 8, 60, 1,
         function() return db and db.vWidth or 24 end,
         function(v) if db then db.vWidth = v end
             if IsVertical() then ApplySize() end; UpdateBar() end)
-    midnightPanel:Slider("Longueur (vertical)", 100, 900, 10,
+    midnightPanel:Slider(L.OPT_VLENGTH_2, 100, 900, 10,
         function() return db and db.vHeight or 300 end,
         function(v) if db then db.vHeight = v end
             if IsVertical() then ApplySize() end; UpdateBar() end)
 
-    midnightPanel:Section("Bouton flottant")
-    midnightPanel:Check("Masquer le bouton Options",
+    midnightPanel:Section(L.OPT_SEC_FLOATING)
+    midnightPanel:Check(L.OPT_HIDE_OPTIONS_BTN,
         function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("XPBarContainer", "options") end,
         function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("XPBarContainer", "options", v) end end)
 
