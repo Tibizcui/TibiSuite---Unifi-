@@ -35,6 +35,9 @@
 ## egale ou superieure)
 Core\TibiSuiteUI.lua
 
+## Localisation FR (par defaut, en dur dans le code) / EN
+Locale\enUS.lua
+
 ## Les fichiers data sont charges en premier
 data\TheWarWithin.lua
 data\Midnight.lua

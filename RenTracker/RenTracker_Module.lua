@@ -14,6 +14,8 @@ local FRAME  = "RNTMainFrame"
 local ACCENT = { 0.867, 0.651, 0.412 }   -- or/sable (logo #DDA669) - accent existant
 local LOGO   = "Interface\\AddOns\\RenTracker\\medias\\RenTracker"
 local KEY    = "Rep"
+local L      = RenTrackerL or {}
+local function T(key, default) return L[key] or default end
 
 local function GetUI() return _G.TibiMidnight end
 
@@ -53,32 +55,32 @@ local function BuildOptions()
     name = "RenTrackerOptionsMidnight",
     title = "RenTracker - Options", accent = ACCENT })
 
-  panel:Section("Fenêtre")
-  panel:Button("Ouvrir / fermer", function()
+  panel:Section(T("OPT_SEC_WINDOW", "Fenêtre"))
+  panel:Button(T("OPT_TOGGLE", "Ouvrir / fermer"), function()
     if _G.RenTracker_Toggle then _G.RenTracker_Toggle() end
   end)
-  panel:Button("Recentrer la fenêtre", function()
+  panel:Button(T("OPT_RECENTER", "Recentrer la fenêtre"), function()
     local f = _G[FRAME]; if f then f:ClearAllPoints(); f:SetPoint("CENTER") end
   end)
 
-  panel:Section("Comportement")
-  panel:Check("Suivi auto de la réputation par zone",
+  panel:Section(T("OPT_SEC_BEHAVIOR", "Comportement"))
+  panel:Check(T("OPT_AUTOTRACK", "Suivi auto de la réputation par zone"),
     function() return OptGet("autoTrack") end, function(v) OptSet("autoTrack", v) end)
-  panel:Check("Message de bienvenue au login",
+  panel:Check(T("OPT_LOGINMSG_2", "Message de bienvenue au login"),
     function() return OptGet("loginMsg") end, function(v) OptSet("loginMsg", v) end)
-  panel:Check("Son de notification",
+  panel:Check(T("OPT_SOUND_2", "Son de notification"),
     function() return OptGet("sound") end, function(v) OptSet("sound", v) end)
 
-  panel:Section("Boutons flottants (barre TibiSuite)")
-  panel:Check("Masquer le bouton Options",
+  panel:Section(T("OPT_SEC_FLOATING", "Boutons flottants (barre TibiSuite)"))
+  panel:Check(T("OPT_HIDE_OPTIONS_BTN", "Masquer le bouton Options"),
     function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("RNTMainFrame", "options") end,
     function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("RNTMainFrame", "options", v) end end)
-  panel:Check("Masquer le champ Recherche",
+  panel:Check(T("OPT_HIDE_SEARCH_BTN", "Masquer le champ Recherche"),
     function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("RNTMainFrame", "search") end,
     function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("RNTMainFrame", "search", v) end end)
-  panel:Note("Le bouton Options et le champ Recherche debordent au-dessus de la fenetre. Meme masques, Maj+clic droit sur la fenetre ouvre ces options.")
+  panel:Note(T("OPT_FLOATING_NOTE", "Le bouton Options et le champ Recherche debordent au-dessus de la fenetre. Meme masques, Maj+clic droit sur la fenetre ouvre ces options."))
 
-  panel:Note("Astuce : clic droit sur l'onglet Réput. dans la barre TibiSuite ouvre aussi ces options.")
+  panel:Note(T("OPT_NOTE", "Astuce : clic droit sur l'onglet Réput. dans la barre TibiSuite ouvre aussi ces options."))
   return panel
 end
 
@@ -109,7 +111,7 @@ local function provider(q)
           for _, qu in ipairs(fac.quests) do
             local qhay = (qu.name or "") .. " " .. (qu.npc or "") .. " " .. (qu.zone or "")
             if ui.Match(qhay, q) then
-              add((qu.name or "quête") .. "  |cff808080" .. fname .. "|r")
+              add((qu.name or T("QUEST_SINGULAR", "quête")) .. "  |cff808080" .. fname .. "|r")
             end
           end
         end
@@ -164,7 +166,7 @@ end
 if HasCore() and IsEnabledByCore() then
   TibiSuite.RegisterModule({
     key           = KEY,
-    label         = "Réput.",
+    label         = T("MODULE_LABEL", "Réput."),
     accent        = ACCENT,
     onOpen        = function() if _G.RenTracker_Toggle then _G.RenTracker_Toggle() end end,
     onOptions     = function() RenTracker_OpenOptions() end,
@@ -172,7 +174,7 @@ if HasCore() and IsEnabledByCore() then
   })
 elseif GetUI() and GetUI().RegisterSearch then
   -- Repli : suite absente mais socle present -> au moins la recherche marche.
-  GetUI().RegisterSearch(KEY, "Réput.", provider)
+  GetUI().RegisterSearch(KEY, T("MODULE_LABEL", "Réput."), provider)
 end
 
 -- La fenetre RNTMainFrame est construite par RenTracker.lua sur son ADDON_LOADED,

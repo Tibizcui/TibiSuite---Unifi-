@@ -5,6 +5,8 @@
 -- ================================================================
 
 local ADDON = "RenTracker"
+local L = RenTrackerL or {}
+local function T(key, default) return L[key] or default end
 
 -- RenTrackerData est rempli par les fichiers data/
 RenTrackerData = RenTrackerData or {}
@@ -53,14 +55,14 @@ end
 local function GetRenownTier(rank, cap)
   cap = cap or 20
   if rank >= cap then
-    return {r=1.00, g=0.50, b=0.00}, "Exalté"   -- Orange
+    return {r=1.00, g=0.50, b=0.00}, T("REN_EXALTED", "Exalté")   -- Orange
   end
   local pct = rank / cap
-  if pct >= 0.85 then return {r=0.65, g=0.30, b=1.00}, "Révéré"   end  -- Violet
-  if pct >= 0.65 then return {r=0.30, g=0.60, b=1.00}, "Honoré"   end  -- Bleu
-  if pct >= 0.45 then return {r=0.30, g=0.85, b=0.30}, "Aimable"  end  -- Vert
-  if pct >= 0.25 then return {r=0.55, g=0.85, b=0.55}, "Familier" end  -- Vert clair
-  return              {r=1.00, g=1.00, b=1.00}, "Neutre"              -- Blanc
+  if pct >= 0.85 then return {r=0.65, g=0.30, b=1.00}, T("REN_REVERED", "Révéré")   end  -- Violet
+  if pct >= 0.65 then return {r=0.30, g=0.60, b=1.00}, T("REN_HONORED", "Honoré")   end  -- Bleu
+  if pct >= 0.45 then return {r=0.30, g=0.85, b=0.30}, T("REN_FRIENDLY", "Aimable")  end  -- Vert
+  if pct >= 0.25 then return {r=0.55, g=0.85, b=0.55}, T("REN_NEUTRAL_PLUS", "Familier") end  -- Vert clair
+  return              {r=1.00, g=1.00, b=1.00}, T("REN_NEUTRAL", "Neutre")              -- Blanc
 end
 
 local function GetRenownColor(rank, cap)
@@ -311,14 +313,14 @@ end
 -- SYSTEME CLASSIQUE : niveaux et couleurs officiels WoW
 -- ================================================================
 local CLASSIC_LEVELS = {
-  {id=1, name="Hostile",  color={r=0.80,g=0.05,b=0.05}},
-  {id=2, name="Inamical", color={r=0.90,g=0.25,b=0.05}},
-  {id=3, name="Neutre",   color={r=0.85,g=0.85,b=0.00}},
-  {id=4, name="Aimable",  color={r=0.35,g=0.75,b=0.35}},
-  {id=5, name="Honoré",   color={r=0.30,g=0.75,b=0.65}},
-  {id=6, name="Révéré",   color={r=0.25,g=0.65,b=0.90}},
-  {id=7, name="Exalté",   color={r=0.95,g=0.70,b=0.10}},
-  {id=8, name="Paragon",  color={r=1.00,g=0.90,b=0.50}},
+  {id=1, name=T("REN_HOSTILE", "Hostile"),  color={r=0.80,g=0.05,b=0.05}},
+  {id=2, name=T("REN_UNFRIENDLY", "Inamical"), color={r=0.90,g=0.25,b=0.05}},
+  {id=3, name=T("REN_NEUTRAL", "Neutre"),   color={r=0.85,g=0.85,b=0.00}},
+  {id=4, name=T("REN_FRIENDLY", "Aimable"),  color={r=0.35,g=0.75,b=0.35}},
+  {id=5, name=T("REN_HONORED", "Honoré"),   color={r=0.30,g=0.75,b=0.65}},
+  {id=6, name=T("REN_REVERED", "Révéré"),   color={r=0.25,g=0.65,b=0.90}},
+  {id=7, name=T("REN_EXALTED", "Exalté"),   color={r=0.95,g=0.70,b=0.10}},
+  {id=8, name=T("REN_PARAGON", "Paragon"),  color={r=1.00,g=0.90,b=0.50}},
 }
 
 -- ================================================================
@@ -486,7 +488,7 @@ local function GetRenownData(factionId, fac)
         if atExalt and not hasParagon then
           -- Violet officiel WoW pour Exalté (couleur du rang Exalted dans l'UI)
           finalColor = {r=0.78, g=0.27, b=1.00}
-          finalLabel = "Exalté"
+          finalLabel = T("REN_EXALTED", "Exalté")
         end
 
         return {
@@ -529,7 +531,7 @@ local function GetRenownData(factionId, fac)
   return {
     system="renown", rank=0, cur=0, max=REP_PER, pct=0,
     paragon=false, cap=RENOWN_CAP,
-    color={r=0.5,g=0.5,b=0.5}, label="Inconnu", found=false,
+    color={r=0.5,g=0.5,b=0.5}, label=T("UNKNOWN", "Inconnu"), found=false,
   }
 end
 
@@ -668,7 +670,7 @@ local function BuildUI()
   -- Bouton Options (ouvre le panneau de reglages)
   local optBtn = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
   optBtn:SetSize(70, 18)
-  optBtn:SetText("Options")
+  optBtn:SetText(T("OPTIONS_LABEL", "Options"))
   optBtn:SetPoint("TOPRIGHT", closeBtn, "TOPLEFT", -2, -4)
   optBtn:SetScript("OnClick", function()
     if RenTracker_ToggleOptions then RenTracker_ToggleOptions() end
@@ -677,7 +679,7 @@ local function BuildUI()
 
   local drag = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   drag:SetPoint("TOP", 0, -30)
-  drag:SetText("|cFF888888Glisser pour deplacer  -  /rt|r")
+  drag:SetText("|cFF888888" .. T("DRAG_HINT", "Glisser pour deplacer  -  /rt") .. "|r")
 
 
   -- Separateur haut (sous titre)
@@ -777,9 +779,9 @@ local function BuildUI()
       local extD = RenTrackerData and RenTrackerData[extKey]
       if extD then
         local nbFac = extD.factions and #extD.factions or 0
-        local sys   = extD.system == "renown" and "Système Renown" or "Système Classique"
-        local pg    = extD.hasParagon and "|cFFFFD700Paragon actif|r" or "|cFF888888Sans Paragon|r"
-        GameTooltip:AddLine(nbFac.." faction"..(nbFac>1 and "s" or "").." · "..sys, 0.75, 0.75, 0.75)
+        local sys   = extD.system == "renown" and T("SYS_RENOWN", "Système Renown") or T("SYS_CLASSIC", "Système Classique")
+        local pg    = extD.hasParagon and ("|cFFFFD700" .. T("PARAGON_ON", "Paragon actif") .. "|r") or ("|cFF888888" .. T("PARAGON_OFF", "Sans Paragon") .. "|r")
+        GameTooltip:AddLine(nbFac.." " .. (nbFac>1 and T("FACTIONS_PLURAL", "factions") or T("FACTION_SINGULAR", "faction")) .. " · "..sys, 0.75, 0.75, 0.75)
         GameTooltip:AddLine(pg)
       end
       GameTooltip:Show()
@@ -865,9 +867,9 @@ local function BuildUI()
       local extD = RenTrackerData and RenTrackerData[extKey]
       if extD then
         local nbFac = extD.factions and #extD.factions or 0
-        local sys   = extD.system == "renown" and "Système Renown" or "Système Classique"
-        local pg    = extD.hasParagon and "|cFFFFD700Paragon actif|r" or "|cFF888888Sans Paragon|r"
-        GameTooltip:AddLine(nbFac.." faction"..(nbFac>1 and "s" or "").." · "..sys, 0.75, 0.75, 0.75)
+        local sys   = extD.system == "renown" and T("SYS_RENOWN", "Système Renown") or T("SYS_CLASSIC", "Système Classique")
+        local pg    = extD.hasParagon and ("|cFFFFD700" .. T("PARAGON_ON", "Paragon actif") .. "|r") or ("|cFF888888" .. T("PARAGON_OFF", "Sans Paragon") .. "|r")
+        GameTooltip:AddLine(nbFac.." " .. (nbFac>1 and T("FACTIONS_PLURAL", "factions") or T("FACTION_SINGULAR", "faction")) .. " · "..sys, 0.75, 0.75, 0.75)
         GameTooltip:AddLine(pg)
       end
       GameTooltip:Show()
@@ -910,7 +912,7 @@ local function BuildUI()
   mainFrame.extActiveLabel:SetWidth(CTW - 140)
   mainFrame.extActiveLabel:SetJustifyH("LEFT")
   mainFrame.extActiveLabel:SetWordWrap(false)
-  mainFrame.extActiveLabel:SetText("|cFFFFD700Extensions|r")
+  mainFrame.extActiveLabel:SetText("|cFFFFD700" .. T("EXTENSIONS_LABEL", "Extensions") .. "|r")
 
   -- Recap global : total de factions au max toutes extensions confondues
   mainFrame.globalSummary = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -929,8 +931,8 @@ local function BuildUI()
   local GH_H      = 20      -- hauteur du header de groupe
 
   local CAT_DEFS = {
-    { key="principale", label="Principales", col={r=1.00,g=0.82,b=0.00} },
-    { key="secondaire", label="Secondaires", col={r=0.30,g=0.70,b=1.00} },
+    { key="principale", label=T("CAT_MAIN", "Principales"), col={r=1.00,g=0.82,b=0.00} },
+    { key="secondaire", label=T("CAT_SECONDARY", "Secondaires"), col={r=0.30,g=0.70,b=1.00} },
     { key="pvp",        label="PvP",         col={r=0.95,g=0.30,b=0.30} },
   }
 
@@ -942,7 +944,7 @@ local function BuildUI()
     end
     if fac.friendship then
       local fd = GetFriendshipData(fac.id, fac)
-      if fd.capped then return 1.0, "Max", fd.color.r, fd.color.g, fd.color.b end
+      if fd.capped then return 1.0, T("MAX_LABEL", "Max"), fd.color.r, fd.color.g, fd.color.b end
       if not fd.found then return 0, "?", 0.4, 0.4, 0.4 end
       return fd.pct, fd.label, fd.color.r, fd.color.g, fd.color.b
     end
@@ -954,7 +956,7 @@ local function BuildUI()
           local rank = d.renownLevel or 0
           local pct  = math.min(1.0, rank / cap)
           if rank >= cap then
-            return 1.0, "Max", 0.78, 0.27, 1.00
+            return 1.0, T("MAX_LABEL", "Max"), 0.78, 0.27, 1.00
           end
           local lbl = tostring(rank).."/"..tostring(cap)
           local rc  = GetRenownColor(rank, cap)
@@ -975,7 +977,7 @@ local function BuildUI()
                    or ((nx > cr) and math.min(1.0,(cv-cr)/(nx-cr)) or 0)
           local label = lvl.name
           if reaction >= 8 then
-            return 1.0, "Exalté", 0.78, 0.27, 1.00
+            return 1.0, T("REN_EXALTED", "Exalté"), 0.78, 0.27, 1.00
           end
           return pct, label, lvl.color.r, lvl.color.g, lvl.color.b
         end
@@ -1159,7 +1161,7 @@ local function BuildUI()
             s:SetBackdropBorderColor(col.r*0.7, col.g*0.7, col.b*0.7, 1.0)
             GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
             GameTooltip:AddLine(facRef.name, col.r, col.g, col.b)
-            GameTooltip:AddLine("Zone : "..facRef.zone, 0.8, 0.8, 0.8)
+            GameTooltip:AddLine(T("ZONE_LABEL", "Zone :") .. " "..facRef.zone, 0.8, 0.8, 0.8)
             GameTooltip:Show()
           end)
           row:SetScript("OnLeave", function(s)
@@ -1243,14 +1245,14 @@ local function BuildUI()
   -- ================================================================
   local questHeader = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   mainFrame._questHeader = questHeader
-  questHeader:SetText("|cFFFFD700Quêtes disponibles|r")
+  questHeader:SetText("|cFFFFD700" .. T("QUESTS_AVAILABLE", "Quêtes disponibles") .. "|r")
 
   local legend = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   mainFrame._legend = legend
   legend:SetText(
-    "|cFF4D99FF[Hebdo]|r  " ..
-    "|cFFFFCC00[Unique]|r  " ..
-    "|cFF4DCC4D[Quotidien]|r"
+    "|cFF4D99FF" .. T("TAG_WEEKLY", "[Hebdo]") .. "|r  " ..
+    "|cFFFFCC00" .. T("TAG_ONETIME", "[Unique]") .. "|r  " ..
+    "|cFF4DCC4D" .. T("TAG_DAILY", "[Quotidien]") .. "|r"
   )
 
   -- scrollBg : cadre contenant les quêtes (pas de scrollbar)
@@ -1317,7 +1319,7 @@ local function BuildUI()
 
     -- Recap global : total de factions au max, + hauts faits de l'ext active
     if self.globalSummary then
-      local summary = string.format("|cFF888888Global :|r |cFFFFD700%d|r|cFF666666/%d au max|r", gDone, gTotal)
+      local summary = string.format("|cFF888888" .. T("GLOBAL_LABEL", "Global :") .. "|r |cFFFFD700%d|r|cFF666666/%d " .. T("AT_MAX", "au max") .. "|r", gDone, gTotal)
       if RenTrackerAchievements and RenTrackerAchievements[extKey]
          and RenTrackerAchievements[extKey].achievements then
         local aDone, aTot = 0, 0
@@ -1326,7 +1328,7 @@ local function BuildUI()
           if IsAchievementDone(a.id) then aDone = aDone + 1 end
         end
         if aTot > 0 then
-          summary = summary .. string.format("   |cFF888888HF :|r |cFFFFD700%d|r|cFF666666/%d|r", aDone, aTot)
+          summary = summary .. string.format("   |cFF888888" .. T("ACHIEV_LABEL", "HF :") .. "|r |cFFFFD700%d|r|cFF666666/%d|r", aDone, aTot)
         end
       end
       self.globalSummary:SetText(summary)
@@ -1359,7 +1361,7 @@ local function BuildUI()
     end
 
     if not fac then
-      self.infoLine1:SetText("|cFF888888Aucune faction disponible.|r")
+      self.infoLine1:SetText("|cFF888888" .. T("NO_FACTION_AVAILABLE", "Aucune faction disponible.") .. "|r")
       self.infoLine2:SetText("")
       self.barText:SetText("")
       if self.barFill then self.barFill:SetWidth(3) end
@@ -1373,7 +1375,7 @@ local function BuildUI()
     self._repHeader:ClearAllPoints()
     self._repHeader:SetPoint("TOPLEFT",  CX,  barY + 2)
     self._repHeader:SetWidth(CTW)
-    self._repHeader:SetText("|cFFFFD700Réputations|r")
+    self._repHeader:SetText("|cFFFFD700" .. T("REPUTATIONS_HEADER", "Réputations") .. "|r")
 
     local barY2 = barY - 18
     self._barBg:ClearAllPoints()
@@ -1431,35 +1433,35 @@ local function BuildUI()
     -- Texte barre
     if rd.system == "friendship" then
       if rd.capped then
-        self.barText:SetText(string.format("|cFF%02X%02X%02X%s - Max|r",
+        self.barText:SetText(string.format("|cFF%02X%02X%02X%s - " .. T("MAX_LABEL", "Max") .. "|r",
           math.floor(col.r*255), math.floor(col.g*255), math.floor(col.b*255), rd.label))
       else
-        self.barText:SetText(string.format("|cFF%02X%02X%02X%s|r  %d / %d rep",
+        self.barText:SetText(string.format("|cFF%02X%02X%02X%s|r  %d / %d " .. T("REP_WORD", "rep"),
           math.floor(col.r*255), math.floor(col.g*255), math.floor(col.b*255),
           rd.label, rd.cur, rd.max))
       end
     elseif rd.system == "classic" then
       if rd.exalted and not rd.hasParagon then
-        self.barText:SetText("|cFFFFFFFFExalté - 100%|r")
+        self.barText:SetText("|cFFFFFFFF" .. T("REN_EXALTED", "Exalté") .. " - 100%|r")
       elseif rd.liveParagon then
         self.barText:SetText(string.format("|cFFFFD700%s - PARAGON|r  %d / %d", rd.label, rd.cur, rd.max))
       elseif rd.paragon then
         self.barText:SetText(string.format("|cFFFFD700%s - PARAGON|r", rd.label))
       else
-        self.barText:SetText(string.format("|cFF%02X%02X%02X%s|r  %d / %d rep",
+        self.barText:SetText(string.format("|cFF%02X%02X%02X%s|r  %d / %d " .. T("REP_WORD", "rep"),
           math.floor(col.r*255), math.floor(col.g*255), math.floor(col.b*255),
           rd.label, rd.cur, rd.max))
       end
     else
       if rd.liveParagon then
-        self.barText:SetText(string.format("|cFFFFD700Renown %d/%d - %s - PARAGON|r  %d / %d",
+        self.barText:SetText(string.format("|cFFFFD700" .. T("RENOWN_WORD", "Renown") .. " %d/%d - %s - PARAGON|r  %d / %d",
           rd.rank, rd.cap, rd.label, rd.cur, rd.max))
       elseif rd.paragon then
-        self.barText:SetText(string.format("|cFFFFD700Renown %d/%d - %s - PARAGON|r",
+        self.barText:SetText(string.format("|cFFFFD700" .. T("RENOWN_WORD", "Renown") .. " %d/%d - %s - PARAGON|r",
           rd.rank, rd.cap, rd.label))
         isMaxed = true
       else
-        self.barText:SetText(string.format("|cFF%02X%02X%02XRenown %d / %d - %s|r  %d / %d rep",
+        self.barText:SetText(string.format("|cFF%02X%02X%02X" .. T("RENOWN_WORD", "Renown") .. " %d / %d - %s|r  %d / %d " .. T("REP_WORD", "rep"),
           math.floor(col.r*255), math.floor(col.g*255), math.floor(col.b*255),
           rd.rank, rd.cap, rd.label, rd.cur, rd.max))
       end
@@ -1469,10 +1471,10 @@ local function BuildUI()
 
     -- Infos PNJ
     self.infoLine1:SetText(
-      "|cFF888888Zone :|r |cFFFFCC44"..fac.zone..
-      "|r   |cFF888888Quartier-maître :|r |cFFCCBB88"..fac.qm_name.."|r")
+      "|cFF888888" .. T("ZONE_LABEL", "Zone :") .. "|r |cFFFFCC44"..fac.zone..
+      "|r   |cFF888888" .. T("QUARTERMASTER_LABEL", "Quartier-maître :") .. "|r |cFFCCBB88"..fac.qm_name.."|r")
     self.infoLine2:SetText(
-      "|cFF888888Localisation :|r |cFF99CCFF"..fac.qm_zone..
+      "|cFF888888" .. T("LOCATION_LABEL", "Localisation :") .. "|r |cFF99CCFF"..fac.qm_zone..
       "  ("..fac.qm_coord..")|r")
 
     -- Nettoyer quetes
@@ -1484,9 +1486,9 @@ local function BuildUI()
     end
 
     local groups = {
-      {key="weekly",  label="Quêtes hebdomadaires", quests={}},
-      {key="onetime", label="Quêtes uniques",        quests={}},
-      {key="daily",   label="Quêtes quotidiennes",   quests={}},
+      {key="weekly",  label=T("QUESTS_WEEKLY", "Quêtes hebdomadaires"), quests={}},
+      {key="onetime", label=T("QUESTS_ONETIME", "Quêtes uniques"),        quests={}},
+      {key="daily",   label=T("QUESTS_DAILY", "Quêtes quotidiennes"),   quests={}},
     }
     for _, quest in ipairs(fac.quests) do
       for _, g in ipairs(groups) do
@@ -1513,9 +1515,9 @@ local function BuildUI()
       daily   = {r=0.30, g=0.80, b=0.30},
     }
     local TYPE_LABELS = {
-      weekly  = "[Hebdo]",
-      onetime = "[Unique]",
-      daily   = "[Quotidien]",
+      weekly  = T("TAG_WEEKLY", "[Hebdo]"),
+      onetime = T("TAG_ONETIME", "[Unique]"),
+      daily   = T("TAG_DAILY", "[Quotidien]"),
     }
 
     local function BuildQuestRow(parent, quest, yOff, faction)
@@ -1575,11 +1577,11 @@ local function BuildUI()
       npcStr:SetSize(textW, 14)
       npcStr:SetJustifyH("LEFT")
       if done then
-        npcStr:SetText("|cFF555555PNJ : "..quest.npc.."  Coord. de zone : "..quest.coords.."|r")
+        npcStr:SetText("|cFF555555" .. T("NPC_LABEL", "PNJ :") .. " "..quest.npc.."  " .. T("ZONE_COORD_LABEL", "Coord. de zone :") .. " "..quest.coords.."|r")
       else
         npcStr:SetText(
-          "|cFF888888PNJ :|r |cFFCCBB88"..quest.npc..
-          "|r  |cFF888888Coord. de zone :|r |cFF99CCFF"..quest.coords.."|r")
+          "|cFF888888" .. T("NPC_LABEL", "PNJ :") .. "|r |cFFCCBB88"..quest.npc..
+          "|r  |cFF888888" .. T("ZONE_COORD_LABEL", "Coord. de zone :") .. "|r |cFF99CCFF"..quest.coords.."|r")
       end
 
       local repStr = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -1590,9 +1592,9 @@ local function BuildUI()
       local facG = math.floor(fac.color.g*255)
       local facB = math.floor(fac.color.b*255)
       if done then
-        repStr:SetText("|cFF555555Rep : +"..quest.rep.."|r")
+        repStr:SetText("|cFF555555" .. T("REP_LABEL", "Rep :") .. " +"..quest.rep.."|r")
       else
-        repStr:SetText(string.format("|cFF888888Rep :|r |cFF%02X%02X%02X+%s|r",
+        repStr:SetText(string.format("|cFF888888" .. T("REP_LABEL", "Rep :") .. "|r |cFF%02X%02X%02X+%s|r",
           facR, facG, facB, quest.rep))
       end
 
@@ -1615,7 +1617,7 @@ local function BuildUI()
         local itemStartY = -62 - tipLines * 14 - 6
         local itemHeader = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         itemHeader:SetPoint("TOPLEFT", row, "TOPLEFT", 12, itemStartY)
-        itemHeader:SetText("|cFFFFD700Items a collecter :|r")
+        itemHeader:SetText("|cFFFFD700" .. T("ITEMS_TO_COLLECT", "Items a collecter :") .. "|r")
         for idx, item in ipairs(quest.itemTracking) do
           local inBag = 0
           if item.itemID and GetItemCount then
@@ -1629,7 +1631,7 @@ local function BuildUI()
           local colStr
           if needed == 0 then
             -- Pas de cap fixe, juste afficher la quantite
-            colStr = string.format("|cFFCCBB88%s|r |cFF99CCFF[%d en sac]|r  |cFF666666%s|r",
+            colStr = string.format("|cFFCCBB88%s|r |cFF99CCFF[%d " .. T("IN_BAG", "en sac") .. "]|r  |cFF666666%s|r",
               item.name, inBag, item.tip or "")
           elseif inBag >= needed then
             colStr = string.format("|cFF44CC44%s|r |cFF44CC44[%d/%d]|r",
@@ -1669,8 +1671,8 @@ local function BuildUI()
         s:SetBackdropBorderColor(tc.r, tc.g, tc.b, 0.9)
         GameTooltip:SetOwner(s, "ANCHOR_BOTTOMRIGHT")
         GameTooltip:AddLine(quest.name, 1, 1, 1)
-        GameTooltip:AddLine("Zone : "..quest.zone, 0.7, 0.7, 0.7)
-        GameTooltip:AddLine("+"..quest.rep.." rep", tc.r, tc.g, tc.b)
+        GameTooltip:AddLine(T("ZONE_LABEL", "Zone :") .. " "..quest.zone, 0.7, 0.7, 0.7)
+        GameTooltip:AddLine("+"..quest.rep.." " .. T("REP_WORD", "rep"), tc.r, tc.g, tc.b)
         if quest.tip and quest.tip ~= "" then
           GameTooltip:AddLine(quest.tip, 0.8, 0.8, 0.8, true)
         end
@@ -1922,10 +1924,10 @@ local function BuildMinimapButton()
     if s._hl then s._hl:SetAlpha(1) end
     GameTooltip:SetOwner(s, "ANCHOR_LEFT")
     GameTooltip:AddLine("RenTracker", 0.45, 0.70, 1.0)
-    GameTooltip:AddLine("Suivi des réputations", 0.9, 0.9, 0.9)
+    GameTooltip:AddLine(T("MM_TT_SUBTITLE", "Suivi des réputations"), 0.9, 0.9, 0.9)
     GameTooltip:AddLine(" ", 1, 1, 1)
-    GameTooltip:AddLine("|cFFFFD700Clic gauche|r : ouvrir / fermer", 0.7, 0.7, 0.7)
-    GameTooltip:AddLine("|cFFFFD700Glisser|r : repositionner l'icône", 0.7, 0.7, 0.7)
+    GameTooltip:AddLine("|cFFFFD700" .. T("LEFT_CLICK_LABEL", "Clic gauche") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"), 0.7, 0.7, 0.7)
+    GameTooltip:AddLine("|cFFFFD700" .. T("DRAG_LABEL", "Glisser") .. "|r : " .. T("REPOSITION_HINT", "repositionner l'icône"), 0.7, 0.7, 0.7)
     GameTooltip:Show()
   end)
   minimapBtn:SetScript("OnLeave", function(s)
@@ -1953,9 +1955,9 @@ end
 function RenTracker_OnAddonCompartmentEnter(btn)
   GameTooltip:SetOwner(btn, "ANCHOR_LEFT")
   GameTooltip:AddLine("RenTracker", 0.45, 0.70, 1.0)
-  GameTooltip:AddLine("Suivi des réputations", 0.9, 0.9, 0.9)
+  GameTooltip:AddLine(T("MM_TT_SUBTITLE", "Suivi des réputations"), 0.9, 0.9, 0.9)
   GameTooltip:AddLine(" ")
-  GameTooltip:AddLine("|cFFFFD700Clic|r : ouvrir / fermer", 0.7, 0.7, 0.7)
+  GameTooltip:AddLine("|cFFFFD700" .. T("CLICK_LABEL", "Clic") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"), 0.7, 0.7, 0.7)
   GameTooltip:Show()
 end
 
@@ -2007,7 +2009,7 @@ local function BuildOptionsPanel()
 
   local title = optFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   title:SetPoint("TOP", 0, -16)
-  title:SetText("|cFFFFD700RenTracker|r  |cFF888888Options|r")
+  title:SetText("|cFFFFD700RenTracker|r  |cFF888888" .. T("OPTIONS_LABEL", "Options") .. "|r")
 
   local close = CreateFrame("Button", nil, optFrame, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", -6, -6)
@@ -2029,13 +2031,13 @@ local function BuildOptionsPanel()
     return cb
   end
 
-  AddCheck(-48,  "Suivi automatique par zone",           "autoTrack")
-  AddCheck(-80,  "Message de connexion dans le chat",    "loginMsg")
-  AddCheck(-112, "Son au passage de niveau de Renown",   "sound")
+  AddCheck(-48,  T("OPT_AUTOTRACK", "Suivi automatique par zone"),           "autoTrack")
+  AddCheck(-80,  T("OPT_LOGINMSG", "Message de connexion dans le chat"),    "loginMsg")
+  AddCheck(-112, T("OPT_SOUND", "Son au passage de niveau de Renown"),   "sound")
 
   local hint = optFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   hint:SetPoint("BOTTOM", 0, 18)
-  hint:SetText("|cFF888888/rt config pour rouvrir ce panneau|r")
+  hint:SetText("|cFF888888" .. T("OPT_REOPEN_HINT", "/rt config pour rouvrir ce panneau") .. "|r")
 
   optFrame:Hide()
 end
@@ -2112,14 +2114,14 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- zone) si la connexion est deja effective. Aucun impact sur les donnees.
     if IsLoggedIn() then
       if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-        print("|cFF4D99FFRenTracker|r v7.0 chargé -- tapez |cFFFFD700/rt|r pour ouvrir.")
+        print("|cFF4D99FFRenTracker|r v7.0 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
     end
 
   elseif event == "PLAYER_LOGIN" then
     if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-      print("|cFF4D99FFRenTracker|r v7.0 chargé -- tapez |cFFFFD700/rt|r pour ouvrir.")
+      print("|cFF4D99FFRenTracker|r v7.0 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)
