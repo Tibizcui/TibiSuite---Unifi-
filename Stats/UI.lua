@@ -725,6 +725,15 @@ local PVP_BRACKET_LABEL_KEYS = {
   rbg = "PVP_BRACKET_RBG", shuffle = "PVP_BRACKET_SHUFFLE", blitz = "PVP_BRACKET_BLITZ",
 }
 
+-- Petit "chip" statistique (libelle discret en haut, valeur mise en avant en
+-- dessous, sur 2 lignes dans une seule FontString) - reutilise pour Honneur/
+-- Conquete et pour le palier max de Tourments, meme esprit visuel que les
+-- cartes value/label de la grille du dessus.
+local function SetChip(fs, label, value)
+  fs:SetText(UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. label .. "|r\n"
+    .. UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. tostring(value) .. "|r")
+end
+
 local function BuildPvPSection(content, top)
   if not pvpPanel then
     pvpPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
@@ -732,16 +741,28 @@ local function BuildPvPSection(content, top)
     pvpPanel.title = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     pvpPanel.title:SetPoint("TOPLEFT", 14, -12)
     pvpPanel.title:SetText(L["PVP_SECTION_TITLE"])
-    pvpPanel.currency = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    pvpPanel.currency:SetPoint("TOPRIGHT", -14, -12)
+    pvpPanel.conquestChip = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    pvpPanel.conquestChip:SetJustifyH("RIGHT")
+    pvpPanel.conquestChip:SetPoint("TOPRIGHT", -14, -8)
+    pvpPanel.honorChip = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    pvpPanel.honorChip:SetJustifyH("RIGHT")
+    pvpPanel.honorChip:SetPoint("TOPRIGHT", pvpPanel.conquestChip, "TOPLEFT", -30, 0)
     pvpPanel.noData = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    pvpPanel.noData:SetPoint("TOPLEFT", 14, -34)
+    pvpPanel.noData:SetPoint("TOPLEFT", 14, -38)
     pvpPanel.noData:SetText(L["PVP_NO_DATA"])
+    pvpPanel.sep = pvpPanel:CreateTexture(nil, "ARTWORK")
+    pvpPanel.sep:SetColorTexture(1, 1, 1, 0.08)
+    pvpPanel.sep:SetHeight(1)
+    pvpPanel.sep:SetPoint("TOPLEFT", 14, -38)
+    pvpPanel.sep:SetPoint("TOPRIGHT", -14, -38)
     pvpPanel.rows = {}
     for i = 1, #PVP_BRACKET_ORDER do
-      local row = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-      row:SetPoint("TOPLEFT", 14, -12 - 22 * i)
-      pvpPanel.rows[i] = row
+      local left = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      left:SetPoint("TOPLEFT", 14, -50 - 26 * (i - 1))
+      local right = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+      right:SetJustifyH("RIGHT")
+      right:SetPoint("TOPRIGHT", -14, -52 - 26 * (i - 1))
+      pvpPanel.rows[i] = { left = left, right = right }
     end
   end
 
@@ -758,22 +779,27 @@ local function BuildPvPSection(content, top)
       if b then
         shown = shown + 1
         local row = pvpPanel.rows[shown]
-        local record = string.format(L["PVP_RECORD_FMT"], b.seasonWon or 0, math.max(0, (b.seasonPlayed or 0) - (b.seasonWon or 0)))
-        row:SetText(UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. L[PVP_BRACKET_LABEL_KEYS[key]] .. "|r : "
-          .. tostring(b.rating or 0) .. "  (" .. L["PVP_BEST"] .. " " .. tostring(b.seasonBest or b.rating or 0) .. ")   " .. record)
-        row:Show()
+        local wins, losses = b.seasonWon or 0, math.max(0, (b.seasonPlayed or 0) - (b.seasonWon or 0))
+        row.left:SetText(UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. L[PVP_BRACKET_LABEL_KEYS[key]] .. "|r   "
+          .. UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. tostring(b.rating or 0) .. "|r"
+          .. UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. "  (" .. L["PVP_BEST"] .. " " .. tostring(b.seasonBest or b.rating or 0) .. ")|r")
+        row.right:SetText(string.format(L["PVP_RECORD_FMT"], wins, losses))
+        row.left:Show()
+        row.right:Show()
       end
     end
   end
-  for i = shown + 1, #PVP_BRACKET_ORDER do pvpPanel.rows[i]:Hide() end
+  for i = shown + 1, #PVP_BRACKET_ORDER do
+    pvpPanel.rows[i].left:Hide()
+    pvpPanel.rows[i].right:Hide()
+  end
 
-  local parts = {}
-  if pvp and pvp.honor then parts[#parts + 1] = L["PVP_HONOR"] .. ": " .. tostring(pvp.honor) end
-  if pvp and pvp.conquest then parts[#parts + 1] = L["PVP_CONQUEST"] .. ": " .. tostring(pvp.conquest) end
-  pvpPanel.currency:SetText(table.concat(parts, "   "))
+  SetChip(pvpPanel.honorChip, L["PVP_HONOR"], pvp and pvp.honor or 0)
+  SetChip(pvpPanel.conquestChip, L["PVP_CONQUEST"], pvp and pvp.conquest or 0)
 
   pvpPanel.noData:SetShown(shown == 0)
-  local height = (shown == 0) and 60 or (34 + shown * 22 + 12)
+  pvpPanel.sep:SetShown(shown > 0)
+  local height = (shown == 0) and 64 or (46 + shown * 26 + 12)
   pvpPanel:SetHeight(height)
   pvpPanel:Show()
   return height
@@ -795,35 +821,51 @@ local function BuildTorghastSection(content, top)
     UI.SkinFrame(torghastPanel, ACCENT, UI.C.PANEL)
     torghastPanel.title = torghastPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     torghastPanel.title:SetPoint("TOPLEFT", 14, -12)
-    torghastPanel.title:SetText(L["TORGHAST_SECTION_TITLE"])
-    torghastPanel.row = torghastPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    torghastPanel.row:SetPoint("TOPLEFT", 14, -34)
+    torghastPanel.tierChip = torghastPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    torghastPanel.tierChip:SetJustifyH("RIGHT")
+    torghastPanel.tierChip:SetPoint("TOPRIGHT", -14, -8)
+    torghastPanel.ashChip = torghastPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    torghastPanel.ashChip:SetPoint("TOPLEFT", 14, -50)
+    torghastPanel.cindersChip = torghastPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    torghastPanel.cindersChip:SetPoint("TOPLEFT", torghastPanel.ashChip, "TOPLEFT", 180, 0)
     torghastPanel.noData = torghastPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    torghastPanel.noData:SetPoint("TOPLEFT", 14, -34)
-    torghastPanel.noData:SetText(L["TORGHAST_NO_DATA"])
+    torghastPanel.noData:SetPoint("TOPLEFT", 14, -38)
   end
 
   torghastPanel:ClearAllPoints()
   torghastPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
   torghastPanel:SetWidth(W - 60)
+  torghastPanel.title:SetText(L["TORGHAST_SECTION_TITLE"])
 
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
   local t = rec and rec.torghast
   local hasData = t and (t.highestLayer or t.soulAsh or t.soulCinders)
   if hasData then
-    local parts = {}
-    if t.highestLayer then parts[#parts + 1] = L["TORGHAST_LAYER"] .. " " .. t.highestLayer end
-    if t.soulAsh then parts[#parts + 1] = L["TORGHAST_ASH"] .. ": " .. t.soulAsh end
-    if t.soulCinders then parts[#parts + 1] = L["TORGHAST_CINDERS"] .. ": " .. t.soulCinders end
-    torghastPanel.row:SetText(table.concat(parts, "   "))
-    torghastPanel.row:Show()
+    SetChip(torghastPanel.tierChip, L["TORGHAST_LAYER"], t.highestLayer or "-")
+    if t.soulAsh then
+      torghastPanel.ashChip:SetText(UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. L["TORGHAST_ASH"] .. "|r  "
+        .. UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. t.soulAsh .. "|r")
+      torghastPanel.ashChip:Show()
+    else
+      torghastPanel.ashChip:Hide()
+    end
+    if t.soulCinders then
+      torghastPanel.cindersChip:SetText(UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. L["TORGHAST_CINDERS"] .. "|r  "
+        .. UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. t.soulCinders .. "|r")
+      torghastPanel.cindersChip:Show()
+    else
+      torghastPanel.cindersChip:Hide()
+    end
+    torghastPanel.tierChip:Show()
     torghastPanel.noData:Hide()
   else
-    torghastPanel.row:Hide()
+    torghastPanel.tierChip:Hide()
+    torghastPanel.ashChip:Hide()
+    torghastPanel.cindersChip:Hide()
     torghastPanel.noData:Show()
   end
 
-  local height = 60
+  local height = hasData and 66 or 60
   torghastPanel:SetHeight(height)
   torghastPanel:Show()
   return height
