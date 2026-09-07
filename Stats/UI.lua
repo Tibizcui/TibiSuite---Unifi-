@@ -734,6 +734,13 @@ local function SetChip(fs, label, value)
     .. UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. tostring(value) .. "|r")
 end
 
+local PVP_MAX_BG_ROWS = 6
+
+local function PctText(wins, total)
+  if not total or total == 0 then return 0 end
+  return math.floor(wins / total * 100 + 0.5)
+end
+
 local function BuildPvPSection(content, top)
   if not pvpPanel then
     pvpPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
@@ -741,34 +748,58 @@ local function BuildPvPSection(content, top)
     pvpPanel.title = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     pvpPanel.title:SetPoint("TOPLEFT", 14, -12)
     pvpPanel.title:SetText(L["PVP_SECTION_TITLE"])
-    pvpPanel.conquestChip = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    pvpPanel.conquestChip:SetJustifyH("RIGHT")
-    pvpPanel.conquestChip:SetPoint("TOPRIGHT", -14, -8)
-    pvpPanel.honorChip = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    pvpPanel.honorChip:SetJustifyH("RIGHT")
-    pvpPanel.honorChip:SetPoint("TOPRIGHT", pvpPanel.conquestChip, "TOPLEFT", -30, 0)
-    pvpPanel.deathsChip = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    pvpPanel.deathsChip:SetJustifyH("RIGHT")
-    pvpPanel.deathsChip:SetPoint("TOPRIGHT", pvpPanel.honorChip, "TOPLEFT", -30, 0)
-    pvpPanel.killsChip = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    pvpPanel.killsChip:SetJustifyH("RIGHT")
-    pvpPanel.killsChip:SetPoint("TOPRIGHT", pvpPanel.deathsChip, "TOPLEFT", -30, 0)
+
+    -- Chips d'en-tete, chaines de droite a gauche.
+    local chipKeys = { "conquestChip", "honorChip", "deathsEnemyChip", "deathsPlayersChip", "killsChip" }
+    local prev
+    for _, key in ipairs(chipKeys) do
+      local fs = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      fs:SetJustifyH("RIGHT")
+      if prev then fs:SetPoint("TOPRIGHT", prev, "TOPLEFT", -26, 0)
+      else fs:SetPoint("TOPRIGHT", -14, -8) end
+      pvpPanel[key] = fs
+      prev = fs
+    end
+
     pvpPanel.noData = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     pvpPanel.noData:SetPoint("TOPLEFT", 14, -38)
     pvpPanel.noData:SetText(L["PVP_NO_DATA"])
-    pvpPanel.sep = pvpPanel:CreateTexture(nil, "ARTWORK")
-    pvpPanel.sep:SetColorTexture(1, 1, 1, 0.08)
-    pvpPanel.sep:SetHeight(1)
-    pvpPanel.sep:SetPoint("TOPLEFT", 14, -38)
-    pvpPanel.sep:SetPoint("TOPRIGHT", -14, -38)
+    pvpPanel.sep1 = pvpPanel:CreateTexture(nil, "ARTWORK")
+    pvpPanel.sep1:SetColorTexture(1, 1, 1, 0.08)
+    pvpPanel.sep1:SetHeight(1)
+    pvpPanel.sep1:SetPoint("TOPLEFT", 14, -38)
+    pvpPanel.sep1:SetPoint("TOPRIGHT", -14, -38)
+
+    pvpPanel.arenaTitle = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    pvpPanel.arenaTitle:SetPoint("TOPLEFT", 14, -48)
+    pvpPanel.arenaSummary = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    pvpPanel.arenaSummary:SetJustifyH("RIGHT")
+    pvpPanel.arenaSummary:SetPoint("TOPRIGHT", -14, -48)
+
     pvpPanel.rows = {}
     for i = 1, #PVP_BRACKET_ORDER do
       local left = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-      left:SetPoint("TOPLEFT", 14, -50 - 26 * (i - 1))
       local right = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
       right:SetJustifyH("RIGHT")
-      right:SetPoint("TOPRIGHT", -14, -52 - 26 * (i - 1))
       pvpPanel.rows[i] = { left = left, right = right }
+    end
+
+    pvpPanel.sep2 = pvpPanel:CreateTexture(nil, "ARTWORK")
+    pvpPanel.sep2:SetColorTexture(1, 1, 1, 0.08)
+    pvpPanel.sep2:SetHeight(1)
+    pvpPanel.sep2:SetPoint("TOPLEFT", 14, 0)
+    pvpPanel.sep2:SetPoint("TOPRIGHT", -14, 0)
+
+    pvpPanel.bgTitle = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    pvpPanel.bgSummary = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    pvpPanel.bgSummary:SetJustifyH("RIGHT")
+    pvpPanel.bgNoData = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    pvpPanel.bgRows = {}
+    for i = 1, PVP_MAX_BG_ROWS do
+      local left = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      local right = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+      right:SetJustifyH("RIGHT")
+      pvpPanel.bgRows[i] = { left = left, right = right }
     end
   end
 
@@ -778,6 +809,8 @@ local function BuildPvPSection(content, top)
 
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
   local pvp = rec and rec.pvp
+
+  -- Brackets classes (arene/BG classe/blitz).
   local shown = 0
   if pvp and pvp.brackets then
     for _, key in ipairs(PVP_BRACKET_ORDER) do
@@ -786,10 +819,14 @@ local function BuildPvPSection(content, top)
         shown = shown + 1
         local row = pvpPanel.rows[shown]
         local wins, losses = b.seasonWon or 0, math.max(0, (b.seasonPlayed or 0) - (b.seasonWon or 0))
+        row.left:ClearAllPoints()
+        row.left:SetPoint("TOPLEFT", 14, -60 - 26 * (shown - 1))
+        row.right:ClearAllPoints()
+        row.right:SetPoint("TOPRIGHT", -14, -62 - 26 * (shown - 1))
         row.left:SetText(UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. L[PVP_BRACKET_LABEL_KEYS[key]] .. "|r   "
           .. UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. tostring(b.rating or 0) .. "|r"
           .. UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. "  (" .. L["PVP_BEST"] .. " " .. tostring(b.seasonBest or b.rating or 0) .. ")|r")
-        row.right:SetText(string.format(L["PVP_RECORD_FMT"], wins, losses))
+        row.right:SetText(string.format(L["PVP_RECORD_FMT"], wins, losses, PctText(wins, wins + losses)))
         row.left:Show()
         row.right:Show()
       end
@@ -799,15 +836,75 @@ local function BuildPvPSection(content, top)
     pvpPanel.rows[i].left:Hide()
     pvpPanel.rows[i].right:Hide()
   end
+  local bracketsBottom = -60 - math.max(shown, 1) * 26 + (shown == 0 and 26 or 0)
 
   SetChip(pvpPanel.killsChip, L["PVP_KILLS"], pvp and pvp.honorableKills or 0)
-  SetChip(pvpPanel.deathsChip, L["PVP_DEATHS"], pvp and pvp.deaths or 0)
+  SetChip(pvpPanel.deathsPlayersChip, L["PVP_DEATHS_BY_PLAYERS"], pvp and pvp.deathsByPlayers or 0)
+  SetChip(pvpPanel.deathsEnemyChip, L["PVP_DEATHS_BY_ENEMY"], pvp and pvp.deathsByEnemyFaction or 0)
   SetChip(pvpPanel.honorChip, L["PVP_HONOR"], pvp and pvp.honor or 0)
   SetChip(pvpPanel.conquestChip, L["PVP_CONQUEST"], pvp and pvp.conquest or 0)
 
+  -- Arene (2c2+3c3+melee solo cumules).
+  local arena = pvp and pvp.arena
+  pvpPanel.arenaTitle:SetText(UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. L["PVP_ARENA_TITLE"] .. "|r")
+  if arena then
+    pvpPanel.arenaSummary:SetText(string.format(L["PVP_ARENA_SUMMARY_FMT"], arena.played or 0, arena.won or 0, PctText(arena.won or 0, arena.played or 0)))
+  else
+    pvpPanel.arenaSummary:SetText("-")
+  end
+
   pvpPanel.noData:SetShown(shown == 0)
-  pvpPanel.sep:SetShown(shown > 0)
-  local height = (shown == 0) and 64 or (46 + shown * 26 + 12)
+  pvpPanel.sep1:SetShown(shown > 0)
+
+  -- Champs de bataille : resume + detail par nom (tries par victoires,
+  -- plafonne a PVP_MAX_BG_ROWS lignes).
+  local bgTop = bracketsBottom - 14
+  pvpPanel.sep2:ClearAllPoints()
+  pvpPanel.sep2:SetPoint("TOPLEFT", 14, bgTop)
+  pvpPanel.sep2:SetPoint("TOPRIGHT", -14, bgTop)
+  pvpPanel.bgTitle:ClearAllPoints()
+  pvpPanel.bgTitle:SetPoint("TOPLEFT", 14, bgTop - 10)
+  pvpPanel.bgTitle:SetText(UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. L["PVP_BG_TITLE"] .. "|r")
+  pvpPanel.bgSummary:ClearAllPoints()
+  pvpPanel.bgSummary:SetPoint("TOPRIGHT", -14, bgTop - 10)
+  local bgParticipation = pvp and pvp.bgParticipation
+  if bgParticipation and bgParticipation > 0 then
+    pvpPanel.bgSummary:SetText(string.format(L["PVP_BG_SUMMARY_FMT"], bgParticipation, (pvp and pvp.bgWinsTotal) or 0, PctText((pvp and pvp.bgWinsTotal) or 0, bgParticipation)))
+  else
+    pvpPanel.bgSummary:SetText("-")
+  end
+  pvpPanel.bgNoData:ClearAllPoints()
+  pvpPanel.bgNoData:SetPoint("TOPLEFT", 14, bgTop - 32)
+  pvpPanel.bgNoData:SetText(L["PVP_BG_NO_DATA"])
+  pvpPanel.bgNoData:SetShown(not bgParticipation or bgParticipation == 0)
+
+  local sortedBg = {}
+  if pvp and pvp.bgWinsByName then
+    for name, wins in pairs(pvp.bgWinsByName) do
+      sortedBg[#sortedBg + 1] = { name = name, wins = wins }
+    end
+    table.sort(sortedBg, function(a, b) return a.wins > b.wins end)
+  end
+  local bgShown = 0
+  for i = 1, math.min(#sortedBg, PVP_MAX_BG_ROWS) do
+    bgShown = i
+    local row = pvpPanel.bgRows[i]
+    row.left:ClearAllPoints()
+    row.left:SetPoint("TOPLEFT", 14, bgTop - 32 - 22 * (i - 1))
+    row.right:ClearAllPoints()
+    row.right:SetPoint("TOPRIGHT", -14, bgTop - 32 - 22 * (i - 1))
+    row.left:SetText(sortedBg[i].name)
+    row.right:SetText(tostring(sortedBg[i].wins))
+    row.left:Show()
+    row.right:Show()
+  end
+  for i = bgShown + 1, PVP_MAX_BG_ROWS do
+    pvpPanel.bgRows[i].left:Hide()
+    pvpPanel.bgRows[i].right:Hide()
+  end
+
+  local bottomDepth = bgTop - 32 - (bgShown > 0 and (bgShown * 22 + 10) or 22)
+  local height = -bottomDepth
   pvpPanel:SetHeight(height)
   pvpPanel:Show()
   return height

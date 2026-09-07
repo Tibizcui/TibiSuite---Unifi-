@@ -199,9 +199,14 @@ local PVP_BRACKETS = {
 local HONOR_CURRENCY_ID = 1792
 local CONQUEST_CURRENCY_ID = 1602
 
--- rec est optionnel : sert uniquement a recuperer rec.pvpDeaths (compteur
--- suivi par l'addon lui-meme, cf. OnPlayerDead plus bas - Blizzard n'expose
--- aucun total de morts PVP directement).
+-- Brackets qui se jouent en arene (2c2/3c3/melee solo) - utilise pour le
+-- cumul "arene" tous formats confondus, distinct des champs de bataille
+-- classes (rbg) et de Blitz (bataille classee mais pas une arene).
+local ARENA_BRACKET_KEYS = { "2v2", "3v3", "shuffle" }
+
+-- rec est optionnel : sert a recuperer les compteurs suivis par l'addon
+-- lui-meme (morts PVP, champs de bataille) - Blizzard n'expose aucun total
+-- direct pour ceux-la, contrairement au reste de cette fonction.
 function SX.CollectPvPSnapshot(rec)
   local ok, result = pcall(function()
     local brackets = {}
@@ -212,6 +217,15 @@ function SX.CollectPvPSnapshot(rec)
           rating = rating, seasonBest = seasonBest,
           seasonPlayed = seasonPlayed, seasonWon = seasonWon,
         }
+      end
+    end
+    local arenaPlayed, arenaWon, hasArena = 0, 0, false
+    for _, key in ipairs(ARENA_BRACKET_KEYS) do
+      local b = brackets[key]
+      if b then
+        hasArena = true
+        arenaPlayed = arenaPlayed + (b.seasonPlayed or 0)
+        arenaWon = arenaWon + (b.seasonWon or 0)
       end
     end
     local honor, conquest
@@ -228,29 +242,99 @@ function SX.CollectPvPSnapshot(rec)
       local ok2, hk = pcall(GetPVPLifetimeStats)
       if ok2 and type(hk) == "number" then honorableKills = hk end
     end
-    local deaths = rec and rec.pvpDeaths
-    if not next(brackets) and not honor and not conquest and not honorableKills and not deaths then return nil end
+    local deathsByPlayers = rec and rec.pvpDeathsByPlayers
+    local deathsByEnemyFaction = rec and rec.pvpDeathsByEnemyFaction
+    local bgParticipation = rec and rec.bgParticipation
+    local bgWinsTotal = rec and rec.bgWinsTotal
+    local bgWinsByName = rec and rec.bgWinsByName
+    if not next(brackets) and not honor and not conquest and not honorableKills
+      and not deathsByPlayers and not deathsByEnemyFaction and not bgParticipation then
+      return nil
+    end
     return {
       brackets = brackets, honor = honor, conquest = conquest,
-      honorableKills = honorableKills, deaths = deaths,
+      honorableKills = honorableKills,
+      deathsByPlayers = deathsByPlayers, deathsByEnemyFaction = deathsByEnemyFaction,
+      arena = hasArena and { played = arenaPlayed, won = arenaWon } or nil,
+      bgParticipation = bgParticipation, bgWinsTotal = bgWinsTotal, bgWinsByName = bgWinsByName,
     }
   end)
   if ok then return result end
   return nil
 end
 
--- Blizzard n'expose aucun total de "morts en PVP" (contrairement aux
--- victimes/honorableKills, cf. GetPVPLifetimeStats ci-dessus) : reconstruit
--- ici a partir de PLAYER_DEAD. A VERIFIER EN JEU : heuristique volontairement
--- prudente (ne compte que les morts survenues dans une instance de type
--- "pvp"/"arena" via IsInInstance) - une mort en PVP monde ouvert (hors
--- instance) n'est donc PAS comptee ici.
+-- ============================================================================
+-- CAUSE DES MORTS (qui a inflige le coup fatal) : Blizzard n'expose aucun
+-- total direct - reconstruit en retenant la derniere source de degats recue
+-- juste avant PLAYER_DEAD, via COMBAT_LOG_EVENT_UNFILTERED. Technique
+-- standard des addons "qui m'a tue". COMBATLOG_OBJECT_TYPE_PLAYER et
+-- COMBATLOG_OBJECT_REACTION_HOSTILE sont des constantes Blizzard stables de
+-- longue date (utilisees par la plupart des addons de journal de combat).
+-- A VERIFIER EN JEU : peut mal attribuer si le coup fatal est un DoT dont la
+-- source a quitte l'instance, ou un degat environnemental juste apres un
+-- dernier coup de joueur (cas limites assumes, pas de solution parfaite
+-- cote client).
+-- ============================================================================
+local lastDamageSource -- { isPlayer=bool, isHostile=bool }
+local DAMAGE_SUBEVENTS = {
+  SWING_DAMAGE = true, RANGE_DAMAGE = true, SPELL_DAMAGE = true,
+  SPELL_PERIODIC_DAMAGE = true, SPELL_BUILDING_DAMAGE = true,
+  ENVIRONMENTAL_DAMAGE = true,
+}
+
+local function OnCombatLogEvent()
+  local _, subEvent, _, sourceGUID, _, sourceFlags, _, destGUID = CombatLogGetCurrentEventInfo()
+  if not DAMAGE_SUBEVENTS[subEvent] then return end
+  if destGUID ~= UnitGUID("player") then return end
+  if not sourceGUID or sourceGUID == "" then return end
+  lastDamageSource = {
+    isPlayer = sourceFlags and bit.band(sourceFlags, COMBATLOG_OBJECT_TYPE_PLAYER) ~= 0,
+    isHostile = sourceFlags and bit.band(sourceFlags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0,
+  }
+end
+
 local function OnPlayerDead()
-  local inInstance, instanceType = IsInInstance()
-  if not inInstance or (instanceType ~= "pvp" and instanceType ~= "arena") then return end
   local rec = SX.EnsureChar(SX.CurrentCharKey())
-  rec.pvpDeaths = (rec.pvpDeaths or 0) + 1
+  if lastDamageSource and lastDamageSource.isPlayer then
+    rec.pvpDeathsByPlayers = (rec.pvpDeathsByPlayers or 0) + 1
+    if lastDamageSource.isHostile then
+      rec.pvpDeathsByEnemyFaction = (rec.pvpDeathsByEnemyFaction or 0) + 1
+    end
+  end
+  lastDamageSource = nil
   rec.pvp = SX.CollectPvPSnapshot(rec)
+end
+
+-- ============================================================================
+-- CHAMPS DE BATAILLE : participations + victoires (totales et par champ de
+-- bataille), classes et non classes confondus - Blizzard ne distingue pas
+-- cote client de maniere simple. GetBattlefieldWinner() retourne l'equipe
+-- gagnante (0=Horde, 1=Alliance) - convention stable de longue date. A
+-- VERIFIER EN JEU : le nom retourne par GetInstanceInfo() peut varier selon
+-- la version/le mode (normal vs classe) d'un meme champ de bataille, ce qui
+-- fractionnerait le detail par nom au lieu de le regrouper.
+-- ============================================================================
+local function OnBattlegroundComplete()
+  local inInstance, instanceType = IsInInstance()
+  if not inInstance or instanceType ~= "pvp" then return end
+  local name = GetInstanceInfo()
+  local rec = SX.EnsureChar(SX.CurrentCharKey())
+  rec.bgParticipation = (rec.bgParticipation or 0) + 1
+
+  local winnerFaction
+  if GetBattlefieldWinner then
+    local ok, winner = pcall(GetBattlefieldWinner)
+    if ok then winnerFaction = winner end
+  end
+  local myFaction = UnitFactionGroup("player")
+  local myFactionIndex = (myFaction == "Horde") and 0 or (myFaction == "Alliance" and 1 or nil)
+  if winnerFaction ~= nil and myFactionIndex ~= nil and winnerFaction == myFactionIndex then
+    rec.bgWinsTotal = (rec.bgWinsTotal or 0) + 1
+    rec.bgWinsByName = rec.bgWinsByName or {}
+    if name and name ~= "" then
+      rec.bgWinsByName[name] = (rec.bgWinsByName[name] or 0) + 1
+    end
+  end
 end
 
 function SX.CharBannerData(charKey)
@@ -635,6 +719,7 @@ evFrame:RegisterEvent("PVP_MATCH_COMPLETE")
 evFrame:RegisterEvent("ACHIEVEMENT_EARNED")
 evFrame:RegisterEvent("SCENARIO_COMPLETED")
 evFrame:RegisterEvent("PLAYER_DEAD")
+evFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 
 evFrame:SetScript("OnEvent", function(_, event, ...)
   if event == "ADDON_LOADED" then
@@ -686,10 +771,12 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
     SX.RefreshAchievementPoints(SX.EnsureChar(SX.CurrentCharKey()))
 
   elseif event == "PVP_MATCH_COMPLETE" then
-    -- Petit delai : les compteurs de saison/cote Blizzard ne semblent pas
-    -- toujours a jour a l'instant precis de l'evenement (constat sur d'autres
-    -- API similaires, pas verifie specifiquement ici) - a ajuster si les
-    -- valeurs remontent en retard d'une partie.
+    -- OnBattlegroundComplete() lit GetInstanceInfo()/GetBattlefieldWinner()
+    -- tout de suite (encore dans l'instance) ; le rafraichissement du
+    -- snapshot (cotes/saison) est retarde car ces compteurs Blizzard ne
+    -- semblent pas toujours a jour a l'instant precis de l'evenement
+    -- (constat sur d'autres API similaires, pas verifie specifiquement ici).
+    OnBattlegroundComplete()
     C_Timer.After(2, function()
       local rec = SX.EnsureChar(SX.CurrentCharKey())
       rec.pvp = SX.CollectPvPSnapshot(rec)
@@ -702,5 +789,8 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
 
   elseif event == "PLAYER_DEAD" then
     OnPlayerDead()
+
+  elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
+    OnCombatLogEvent()
   end
 end)
