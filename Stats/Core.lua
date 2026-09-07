@@ -161,6 +161,8 @@ function SX.RefreshCharMeta()
   end
   SX.RefreshAchievementPoints(rec)
   rec.pvp = SX.CollectPvPSnapshot()
+  SX.RefreshDelveCompanion(rec)
+  rec.torghast = SX.CollectTorghastSnapshot()
   return rec
 end
 
@@ -237,7 +239,7 @@ end
 -- AGREGATION
 -- ============================================================================
 function SX.Aggregate(charKey, from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {} }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0 }
   local rec = StatsDB[charKey]
   if not rec or not rec.days then return agg end
   for dayKey, d in pairs(rec.days) do
@@ -248,6 +250,7 @@ function SX.Aggregate(charKey, from, to)
       agg.goldSpent = agg.goldSpent + (d.goldSpent or 0)
       agg.played    = agg.played + (d.played or 0)
       agg.dungeons  = agg.dungeons + (d.dungeons or 0)
+      agg.delves    = agg.delves + (d.delves or 0)
       if d.mplus then
         for _, run in ipairs(d.mplus) do
           agg.mplusCount = agg.mplusCount + 1
@@ -260,7 +263,7 @@ function SX.Aggregate(charKey, from, to)
 end
 
 function SX.AggregateAccount(from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {} }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0 }
   -- SX.GetCharKeys() plutot que pairs(StatsDB) direct : ecarte StatsDB.export
   -- / StatsDB.exportedAt (cf. son commentaire) qui feraient planter
   -- SX.Aggregate en tentant de lire ".days" sur une chaine ou un nombre.
@@ -272,6 +275,7 @@ function SX.AggregateAccount(from, to)
     agg.played    = agg.played + a.played
     agg.dungeons  = agg.dungeons + a.dungeons
     agg.mplusCount = agg.mplusCount + a.mplusCount
+    agg.delves    = agg.delves + a.delves
   end
   return agg
 end
@@ -286,6 +290,7 @@ function SX.MetricValue(agg, metric)
   elseif metric == "gold" then return agg.goldGain - agg.goldSpent
   elseif metric == "dungeons" then return agg.dungeons + agg.mplusCount
   elseif metric == "played" then return agg.played
+  elseif metric == "delves" then return agg.delves
   end
   return 0
 end
@@ -398,6 +403,91 @@ local function OnChallengeModeCompleted()
   local d = SX.EnsureDay(rec, SX.TodayKey())
   d.mplus = d.mplus or {}
   table.insert(d.mplus, { map = mapName, level = level, time = time_, done = onTime and true or false })
+end
+
+-- ============================================================================
+-- ENREGISTREUR : GOUFFRES (Delves)
+-- ----------------------------------------------------------------------------
+-- Aucune fonction Blizzard ne fournit un compteur "gouffres completes" ou un
+-- "palier max atteint" (verifie en jeu le 2026-09-07 : liste complete de
+-- C_DelvesUI, rien de tel dedans). Reconstruit ici via SCENARIO_COMPLETED,
+-- comme le font les addons de suivi de gouffres actuels (ex: DelveGuide).
+-- A VERIFIER EN JEU : rien ne garantit que SCENARIO_COMPLETED ne se
+-- declenche QUE pour un gouffre - d'ou le filtre HasActiveDelve/IsInLair
+-- avant de compter quoi que ce soit, pour ecarter les autres scenarios
+-- (montee de niveau, donjons scenarises, etc.).
+-- ============================================================================
+local function OnScenarioCompleted()
+  if not C_DelvesUI then return end
+  local inDelve = (C_DelvesUI.HasActiveDelve and C_DelvesUI.HasActiveDelve())
+    or (C_DelvesUI.IsInLair and C_DelvesUI.IsInLair())
+  if not inDelve then return end
+  local tier
+  if C_DelvesUI.GetActiveDelveTier then
+    local ok, t = pcall(C_DelvesUI.GetActiveDelveTier)
+    if ok and type(t) == "number" then tier = t end
+  end
+  local rec = SX.EnsureChar(SX.CurrentCharKey())
+  local d = SX.EnsureDay(rec, SX.TodayKey())
+  d.delves = (d.delves or 0) + 1
+  if tier and (not rec.delveHighestTier or tier > rec.delveHighestTier) then
+    rec.delveHighestTier = tier
+  end
+end
+
+-- Niveau du compagnon de gouffre (Brann Bronzebeard) - snapshot instantane,
+-- rafraichi comme les points de hauts faits (pas lie a une completion
+-- particuliere). A VERIFIER EN JEU : le nom du champ "niveau" dans la table
+-- retournee par GetCompanionInfoForActivePlayer() n'a pas ete confirme,
+-- plusieurs noms plausibles sont essayes par prudence.
+function SX.RefreshDelveCompanion(rec)
+  if not (C_DelvesUI and C_DelvesUI.GetCompanionInfoForActivePlayer) then return end
+  local ok, info = pcall(C_DelvesUI.GetCompanionInfoForActivePlayer)
+  if not ok or type(info) ~= "table" then return end
+  local level = info.level or info.companionLevel or info.CompanionLevel
+  if type(level) == "number" then rec.delveCompanionLevel = level end
+end
+
+-- ============================================================================
+-- TOURMENTS (Torghast) : contenu ancien (Ombreterre). Pas d'evenement de fin
+-- de run identifie ni de compteur Blizzard pour un nombre de runs - on se
+-- limite aux monnaies encore lisibles (Cendres d'ame / Cendres d'ames
+-- noires) et au palier le plus haut valide via les hauts faits de suivi de
+-- palier. A VERIFIER EN JEU : la plage d'identifiants (14596-14604, paliers
+-- 1 a 9) n'est confirmee que pour les paliers 1, 8 et 9 - les autres sont
+-- une extrapolation (suite consecutive probable, pas verifiee), et rien
+-- au-dela du palier 9 n'est couvert.
+-- ============================================================================
+local SOUL_ASH_CURRENCY_ID = 1828
+local SOUL_CINDERS_CURRENCY_ID = 1906
+local TORGHAST_LAYER_ACHIEVEMENTS = {
+  [1] = 14596, [2] = 14597, [3] = 14598, [4] = 14599, [5] = 14600,
+  [6] = 14601, [7] = 14602, [8] = 14603, [9] = 14604,
+}
+
+function SX.CollectTorghastSnapshot()
+  local ok, result = pcall(function()
+    local ash, cinders
+    if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+      local a = C_CurrencyInfo.GetCurrencyInfo(SOUL_ASH_CURRENCY_ID)
+      local c = C_CurrencyInfo.GetCurrencyInfo(SOUL_CINDERS_CURRENCY_ID)
+      ash = a and a.quantity
+      cinders = c and c.quantity
+    end
+    local highestLayer
+    if GetAchievementInfo then
+      for layer, achID in pairs(TORGHAST_LAYER_ACHIEVEMENTS) do
+        local ok2, _, _, _, completed = pcall(GetAchievementInfo, achID)
+        if ok2 and completed and (not highestLayer or layer > highestLayer) then
+          highestLayer = layer
+        end
+      end
+    end
+    if not ash and not cinders and not highestLayer then return nil end
+    return { soulAsh = ash, soulCinders = cinders, highestLayer = highestLayer }
+  end)
+  if ok then return result end
+  return nil
 end
 
 -- ============================================================================
@@ -515,6 +605,7 @@ evFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 evFrame:RegisterEvent("PLAYER_LEVEL_UP")
 evFrame:RegisterEvent("PVP_MATCH_COMPLETE")
 evFrame:RegisterEvent("ACHIEVEMENT_EARNED")
+evFrame:RegisterEvent("SCENARIO_COMPLETED")
 
 evFrame:SetScript("OnEvent", function(_, event, ...)
   if event == "ADDON_LOADED" then
@@ -574,5 +665,10 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
       local rec = SX.EnsureChar(SX.CurrentCharKey())
       rec.pvp = SX.CollectPvPSnapshot()
     end)
+
+  elseif event == "SCENARIO_COMPLETED" then
+    OnScenarioCompleted()
+    local rec = SX.EnsureChar(SX.CurrentCharKey())
+    rec.torghast = SX.CollectTorghastSnapshot()
   end
 end)

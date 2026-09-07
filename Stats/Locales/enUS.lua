@@ -31,6 +31,9 @@ L["CARD_GOLD"]           = "Gold"
 L["CARD_GOLD_WEEK"]      = "Gold (week)"
 L["CARD_DUNGEONS"]       = "Dungeons & M+"
 L["CARD_PLAYED"]         = "Time played"
+L["CARD_DELVES"]         = "Delves"
+L["DELVES_TIER"]         = "Highest tier"
+L["DELVES_COMPANION"]    = "Companion lvl."
 L["WEEKLY_GOLD_NOTE"]    = "* Gold (week) is aligned on the weekly raid reset, not the calendar week."
 
 -- Detail
@@ -69,6 +72,12 @@ L["PVP_BRACKET_3V3"]     = "3v3 Arena"
 L["PVP_BRACKET_RBG"]     = "Rated BG"
 L["PVP_BRACKET_SHUFFLE"] = "Solo Shuffle"
 L["PVP_BRACKET_BLITZ"]   = "Blitz"
+
+L["TORGHAST_SECTION_TITLE"] = "Torment"
+L["TORGHAST_LAYER"]      = "Highest layer"
+L["TORGHAST_ASH"]        = "Soul Ash"
+L["TORGHAST_CINDERS"]    = "Soul Cinders"
+L["TORGHAST_NO_DATA"]    = "No Torghast data for this character."
 
 -- Divers
 L["OPT_TITLE"]           = "Settings"

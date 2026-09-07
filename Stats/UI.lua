@@ -451,7 +451,7 @@ end
 -- ============================================================================
 -- CARTES DE LA VUE D'ENSEMBLE
 -- ============================================================================
-local CARD_METRICS = { "quests", "gold", "dungeons", "played" }
+local CARD_METRICS = { "quests", "gold", "dungeons", "played", "delves" }
 local cards = {}
 
 local function CardLabel(metric)
@@ -460,6 +460,7 @@ local function CardLabel(metric)
     return (view.period == "week") and L["CARD_GOLD_WEEK"] or L["CARD_GOLD"]
   elseif metric == "dungeons" then return L["CARD_DUNGEONS"]
   elseif metric == "played" then return L["CARD_PLAYED"]
+  elseif metric == "delves" then return L["CARD_DELVES"]
   end
 end
 
@@ -600,6 +601,14 @@ local function BuildOverview(content)
     end
     if metric == "dungeons" then
       card.sub:SetText(agg.dungeons .. " " .. L["DUNGEONS_NORMAL"] .. "  /  " .. agg.mplusCount .. " " .. L["DUNGEONS_MPLUS"])
+    elseif metric == "delves" then
+      -- Palier max/compagnon : snapshot du personnage principal uniquement,
+      -- pas de sens en mode Cumule (deux personnages, deux compagnons).
+      local rec = (view.char ~= "__account__") and StatsDB[view.char]
+      local subParts = {}
+      if rec and rec.delveHighestTier then subParts[#subParts + 1] = L["DELVES_TIER"] .. " " .. rec.delveHighestTier end
+      if rec and rec.delveCompanionLevel then subParts[#subParts + 1] = L["DELVES_COMPANION"] .. " " .. rec.delveCompanionLevel end
+      card.sub:SetText(table.concat(subParts, "  /  "))
     else
       card.sub:SetText("")
     end
@@ -775,6 +784,56 @@ local function HidePvPSection()
 end
 
 -- ============================================================================
+-- SECTION TOURMENTS (Torghast) - meme principe que la section PVP : photo
+-- instantanee (monnaies + palier max), pas d'historique jour par jour.
+-- ============================================================================
+local torghastPanel
+
+local function BuildTorghastSection(content, top)
+  if not torghastPanel then
+    torghastPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    UI.SkinFrame(torghastPanel, ACCENT, UI.C.PANEL)
+    torghastPanel.title = torghastPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    torghastPanel.title:SetPoint("TOPLEFT", 14, -12)
+    torghastPanel.title:SetText(L["TORGHAST_SECTION_TITLE"])
+    torghastPanel.row = torghastPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    torghastPanel.row:SetPoint("TOPLEFT", 14, -34)
+    torghastPanel.noData = torghastPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    torghastPanel.noData:SetPoint("TOPLEFT", 14, -34)
+    torghastPanel.noData:SetText(L["TORGHAST_NO_DATA"])
+  end
+
+  torghastPanel:ClearAllPoints()
+  torghastPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
+  torghastPanel:SetWidth(W - 60)
+
+  local rec = (view.char ~= "__account__") and StatsDB[view.char]
+  local t = rec and rec.torghast
+  local hasData = t and (t.highestLayer or t.soulAsh or t.soulCinders)
+  if hasData then
+    local parts = {}
+    if t.highestLayer then parts[#parts + 1] = L["TORGHAST_LAYER"] .. " " .. t.highestLayer end
+    if t.soulAsh then parts[#parts + 1] = L["TORGHAST_ASH"] .. ": " .. t.soulAsh end
+    if t.soulCinders then parts[#parts + 1] = L["TORGHAST_CINDERS"] .. ": " .. t.soulCinders end
+    torghastPanel.row:SetText(table.concat(parts, "   "))
+    torghastPanel.row:Show()
+    torghastPanel.noData:Hide()
+  else
+    torghastPanel.row:Hide()
+    torghastPanel.noData:Show()
+  end
+
+  local height = 60
+  torghastPanel:SetHeight(height)
+  torghastPanel:Show()
+  return height
+end
+
+local function HideTorghastSection()
+  if torghastPanel then torghastPanel:Hide() end
+end
+
+-- ============================================================================
 -- VUE DETAIL (une seule metrique)
 -- ============================================================================
 local detailWidgets = {}
@@ -879,6 +938,7 @@ end
 local function HideOverview()
   for _, card in pairs(cards) do card:Hide() end
   HidePvPSection()
+  HideTorghastSection()
 end
 
 -- ============================================================================
@@ -1059,9 +1119,11 @@ function SX.RefreshDashboard()
   else
     HideDetail()
     BuildOverview(mainFrame.content)
-    local gridDepth = 2 * 190 + 16 + 10
+    local gridRows = math.ceil(#CARD_METRICS / 2)
+    local gridDepth = gridRows * 190 + (gridRows - 1) * 16 + 10
     local pvpHeight = BuildPvPSection(mainFrame.content, -(gridDepth + 6))
-    mainFrame.content:SetHeight(gridDepth + 16 + pvpHeight + 10)
+    local torghastHeight = BuildTorghastSection(mainFrame.content, -(gridDepth + 6 + pvpHeight + 16))
+    mainFrame.content:SetHeight(gridDepth + 16 + pvpHeight + 16 + torghastHeight + 10)
   end
 end
 

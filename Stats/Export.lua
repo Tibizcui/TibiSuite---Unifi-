@@ -145,12 +145,16 @@ function SX.CollectExportData()
         class = select(2, UnitClass("player")), level = UnitLevel("player"),
         spec = currentSpecName(), ilvl = rec.ilvl,
         achievementPoints = rec.achievementPoints, pvp = rec.pvp,
+        delveHighestTier = rec.delveHighestTier, delveCompanionLevel = rec.delveCompanionLevel,
+        torghast = rec.torghast,
       }
     else
       charInfo = {
         name = rec.name or name, realm = rec.realm or realm,
         class = rec.class, level = rec.level, spec = rec.spec, ilvl = rec.ilvl,
         achievementPoints = rec.achievementPoints, pvp = rec.pvp,
+        delveHighestTier = rec.delveHighestTier, delveCompanionLevel = rec.delveCompanionLevel,
+        torghast = rec.torghast,
       }
     end
     chars[key] = {
