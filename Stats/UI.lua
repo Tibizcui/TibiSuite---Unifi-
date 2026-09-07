@@ -1082,6 +1082,87 @@ local function HideDelveDetail()
   if delveDetailPanel then delveDetailPanel:Hide() end
 end
 
+-- ----------------------------------------------------------------------------
+-- DETAIL TOURMENT : tableau par donjon (nom / nombre de fois / echelon max),
+-- distinct de la tour Torghast/Ombreterre (tuile resume plus haut) malgre le
+-- meme mot "Tourment" pour les deux systemes.
+-- ----------------------------------------------------------------------------
+local torghastDetailPanel
+local TORGHAST_MAX_TYPE_ROWS = 8
+local TORGHAST_COLS = { name = { x = 14, w = 440 }, count = { x = 454, w = 210 }, echelon = { x = 664, w = 202 } }
+
+local function BuildTorghastDetail(content, top)
+  if not torghastDetailPanel then
+    torghastDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    UI.SkinFrame(torghastDetailPanel, ACCENT, UI.C.PANEL)
+    torghastDetailPanel.title = torghastDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    torghastDetailPanel.title:SetPoint("TOPLEFT", 14, -12)
+    torghastDetailPanel.title:SetText(L["TORGHAST_TYPES_TITLE"])
+    torghastDetailPanel.head = {}
+    for key in pairs(TORGHAST_COLS) do
+      torghastDetailPanel.head[key] = torghastDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    end
+    torghastDetailPanel.rows = {}
+    for i = 1, TORGHAST_MAX_TYPE_ROWS do
+      local row = {}
+      for key in pairs(TORGHAST_COLS) do row[key] = torghastDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") end
+      torghastDetailPanel.rows[i] = row
+    end
+    torghastDetailPanel.noData = torghastDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    torghastDetailPanel.noData:SetPoint("TOPLEFT", 14, -38)
+    torghastDetailPanel.noData:SetText(L["TORGHAST_TYPES_NO_DATA"])
+  end
+
+  torghastDetailPanel:ClearAllPoints()
+  torghastDetailPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
+  torghastDetailPanel:SetWidth(W - 60)
+
+  local rec = (view.char ~= "__account__") and StatsDB[view.char]
+  local types = rec and rec.torghastByDungeon
+  local sorted = {}
+  if types then
+    for name, entry in pairs(types) do
+      sorted[#sorted + 1] = { name = name, count = entry.count, echelon = entry.highestEchelon }
+    end
+    table.sort(sorted, function(a, b) return (a.count or 0) > (b.count or 0) end)
+  end
+  local shown = math.min(#sorted, TORGHAST_MAX_TYPE_ROWS)
+
+  local headY = -38
+  PlaceCol(torghastDetailPanel.head.name, TORGHAST_COLS.name, headY, "LEFT")
+  torghastDetailPanel.head.name:SetText(L["TABLE_NAME"])
+  PlaceCol(torghastDetailPanel.head.count, TORGHAST_COLS.count, headY, "RIGHT")
+  torghastDetailPanel.head.count:SetText(L["TABLE_COUNT"])
+  PlaceCol(torghastDetailPanel.head.echelon, TORGHAST_COLS.echelon, headY, "RIGHT")
+  torghastDetailPanel.head.echelon:SetText(L["TABLE_ECHELON"])
+  for _, fs in pairs(torghastDetailPanel.head) do fs:SetShown(shown > 0) end
+
+  for i = 1, shown do
+    local y = headY - 20 - 22 * (i - 1)
+    local row = torghastDetailPanel.rows[i]
+    PlaceCol(row.name, TORGHAST_COLS.name, y, "LEFT")
+    row.name:SetText(sorted[i].name)
+    PlaceCol(row.count, TORGHAST_COLS.count, y, "RIGHT")
+    row.count:SetText(tostring(sorted[i].count or 0))
+    PlaceCol(row.echelon, TORGHAST_COLS.echelon, y, "RIGHT")
+    row.echelon:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. tostring(sorted[i].echelon or 0) .. "|r")
+    for _, fs in pairs(row) do fs:Show() end
+  end
+  for i = shown + 1, TORGHAST_MAX_TYPE_ROWS do
+    for _, fs in pairs(torghastDetailPanel.rows[i]) do fs:Hide() end
+  end
+  torghastDetailPanel.noData:SetShown(shown == 0)
+
+  local height = (shown == 0) and 60 or (-(headY - 20 - shown * 22) + 12)
+  torghastDetailPanel:SetHeight(height)
+  torghastDetailPanel:Show()
+  return height
+end
+
+local function HideTorghastDetail()
+  if torghastDetailPanel then torghastDetailPanel:Hide() end
+end
+
 -- ============================================================================
 -- VUE DETAIL (une seule metrique)
 -- ============================================================================
@@ -1189,6 +1270,7 @@ local function HideOverview()
   HideSummaryTiles()
   HidePvPDetail()
   HideDelveDetail()
+  HideTorghastDetail()
 end
 
 -- ============================================================================
@@ -1374,7 +1456,8 @@ function SX.RefreshDashboard()
     local tilesHeight = BuildSummaryTiles(mainFrame.content, -(gridDepth + 6))
     local pvpHeight = BuildPvPDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16))
     local delveHeight = BuildDelveDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16))
-    mainFrame.content:SetHeight(gridDepth + 16 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 10)
+    local torghastDetailHeight = BuildTorghastDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16))
+    mainFrame.content:SetHeight(gridDepth + 16 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16 + torghastDetailHeight + 10)
   end
 end
 

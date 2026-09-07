@@ -147,7 +147,7 @@ function SX.CollectExportData()
         achievementPoints = rec.achievementPoints, pvp = rec.pvp,
         delveHighestTier = rec.delveHighestTier, delveCompanionLevel = rec.delveCompanionLevel,
         delveTypes = rec.delveTypes, delveAllMaxed = SX.DelveAllMaxed(rec),
-        torghast = rec.torghast,
+        torghast = rec.torghast, torghastByDungeon = rec.torghastByDungeon,
       }
     else
       charInfo = {
@@ -156,7 +156,7 @@ function SX.CollectExportData()
         achievementPoints = rec.achievementPoints, pvp = rec.pvp,
         delveHighestTier = rec.delveHighestTier, delveCompanionLevel = rec.delveCompanionLevel,
         delveTypes = rec.delveTypes, delveAllMaxed = SX.DelveAllMaxed(rec),
-        torghast = rec.torghast,
+        torghast = rec.torghast, torghastByDungeon = rec.torghastByDungeon,
       }
     end
     chars[key] = {

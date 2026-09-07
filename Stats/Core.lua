@@ -637,6 +637,41 @@ function SX.CollectTorghastSnapshot()
 end
 
 -- ============================================================================
+-- TOURMENT PAR DONJON : difficulte "Tourment" appliquee a des donjons
+-- classiques, avec un haut fait distinct par donjon/echelon (ex: "Tourment :
+-- Couloirs Distordus (echelon 6)", confirme en jeu le 2026-09 par Tibiscui -
+-- different de la tour Torghast/Ombreterre suivie plus haut, malgre le meme
+-- mot "Tourment"). Capte via ACHIEVEMENT_EARNED, extrait le nom du donjon et
+-- l'echelon depuis le nom du haut fait obtenu. A VERIFIER EN JEU : le format
+-- exact n'est confirme que sur un seul exemple - la ponctuation/casse peut
+-- varier selon le donjon.
+-- ============================================================================
+local function OnAchievementEarned(achievementID)
+  local rec = SX.EnsureChar(SX.CurrentCharKey())
+  SX.RefreshAchievementPoints(rec)
+  if not achievementID or not GetAchievementInfo then return end
+
+  -- Les hauts faits sont definitifs : un ID deja vu ne doit jamais etre
+  -- recompte, meme si ACHIEVEMENT_EARNED se declenche deux fois pour le
+  -- meme haut fait (constate en jeu - print() Blizzard duplique).
+  rec.seenAchievementIDs = rec.seenAchievementIDs or {}
+  if rec.seenAchievementIDs[achievementID] then return end
+
+  local ok, _, name = pcall(GetAchievementInfo, achievementID)
+  if not ok or type(name) ~= "string" then return end
+  local dungeonName, echelon = name:match("^[Tt]ourment%s*:%s*(.-)%s*%(.-(%d+)%)%s*$")
+  if not dungeonName or dungeonName == "" or not echelon then return end
+
+  rec.seenAchievementIDs[achievementID] = true
+  rec.torghastByDungeon = rec.torghastByDungeon or {}
+  local entry = rec.torghastByDungeon[dungeonName] or { count = 0, highestEchelon = 0 }
+  entry.count = entry.count + 1
+  local echelonNum = tonumber(echelon) or 0
+  if echelonNum > entry.highestEchelon then entry.highestEchelon = echelonNum end
+  rec.torghastByDungeon[dungeonName] = entry
+end
+
+-- ============================================================================
 -- ENREGISTREUR : DONJONS NORMAUX (heuristique zone + boss)
 -- ---------------------------------------------------------------------------
 -- Pas d'evenement Blizzard "donjon termine" fiable pour les groupes hors
@@ -802,7 +837,7 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
     SX.RefreshCharMeta()
 
   elseif event == "ACHIEVEMENT_EARNED" then
-    SX.RefreshAchievementPoints(SX.EnsureChar(SX.CurrentCharKey()))
+    OnAchievementEarned(...)
 
   elseif event == "PVP_MATCH_COMPLETE" then
     -- OnBattlegroundComplete() lit GetInstanceInfo()/GetBattlefieldWinner()

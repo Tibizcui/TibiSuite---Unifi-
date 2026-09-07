@@ -102,6 +102,9 @@ L["TORGHAST_LAYER"]      = "Highest layer"
 L["TORGHAST_ASH"]        = "Soul Ash"
 L["TORGHAST_CINDERS"]    = "Soul Cinders"
 L["TORGHAST_NO_DATA"]    = "No Torghast data for this character."
+L["TORGHAST_TYPES_TITLE"] = "Detail by Torment"
+L["TORGHAST_TYPES_NO_DATA"] = "No Torment completed for this character."
+L["TABLE_ECHELON"]       = "Highest echelon"
 
 -- Divers
 L["OPT_TITLE"]           = "Settings"
