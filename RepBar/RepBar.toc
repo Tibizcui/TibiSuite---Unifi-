@@ -15,7 +15,7 @@
 # existant : une seule directive OptionalDeps par .toc). Voir
 # RepBar_Module.lua pour la detection a l'execution (HasCore()).
 ## OptionalDeps: TibiSuite
-## Group: TibiSuite, RenTracker
+## Group: TibiSuite
 
 # SavedVariables propre au module : position, taille, options d'affichage.
 # Aucune donnee de progression ici (la reputation vit cote jeu).

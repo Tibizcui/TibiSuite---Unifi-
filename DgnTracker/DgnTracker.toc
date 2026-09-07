@@ -18,7 +18,7 @@
 # une seule directive OptionalDeps par .toc (une deuxieme ecraserait la
 # premiere au lieu de s'y ajouter).
 ## OptionalDeps: TibiSuite
-## Group: TibiSuite, TomTom
+## Group: TibiSuite
 
 # INTOUCHABLE : le nom de dossier reste "DgnTracker", donc WoW continue de
 # lire WTF\...\SavedVariables\DgnTracker.lua et de recharger DgnTrackerDB a

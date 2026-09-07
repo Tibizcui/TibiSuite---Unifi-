@@ -17,7 +17,7 @@
 # une seule directive OptionalDeps par .toc) : voir SkillTracker_Module.lua
 # pour la detection a l'execution (HasCore()).
 ## OptionalDeps: TibiSuite
-## Group: TibiSuite, LibStub, LibDataBroker-1.1
+## Group: TibiSuite
 
 # INTOUCHABLE : le nom de dossier reste "SkillTracker", donc WoW continue de
 # lire WTF\...\SavedVariables\SkillTracker.lua et de recharger SkillTrackerDB a
