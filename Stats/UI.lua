@@ -704,6 +704,77 @@ local function BuildOverview(content)
 end
 
 -- ============================================================================
+-- SECTION PVP (sous la grille 2x2) - photo instantanee fournie par Blizzard
+-- (cote/saison, victoires-defaites, honneur, conquete), pas un historique
+-- jour par jour comme les 4 cartes ci-dessus : aucune donnee equivalente
+-- n'existe cote client pour reconstruire un tel historique.
+-- ============================================================================
+local pvpPanel
+local PVP_BRACKET_ORDER = { "2v2", "3v3", "rbg", "shuffle", "blitz" }
+local PVP_BRACKET_LABEL_KEYS = {
+  ["2v2"] = "PVP_BRACKET_2V2", ["3v3"] = "PVP_BRACKET_3V3",
+  rbg = "PVP_BRACKET_RBG", shuffle = "PVP_BRACKET_SHUFFLE", blitz = "PVP_BRACKET_BLITZ",
+}
+
+local function BuildPvPSection(content, top)
+  if not pvpPanel then
+    pvpPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    UI.SkinFrame(pvpPanel, ACCENT, UI.C.PANEL)
+    pvpPanel.title = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    pvpPanel.title:SetPoint("TOPLEFT", 14, -12)
+    pvpPanel.title:SetText(L["PVP_SECTION_TITLE"])
+    pvpPanel.currency = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    pvpPanel.currency:SetPoint("TOPRIGHT", -14, -12)
+    pvpPanel.noData = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    pvpPanel.noData:SetPoint("TOPLEFT", 14, -34)
+    pvpPanel.noData:SetText(L["PVP_NO_DATA"])
+    pvpPanel.rows = {}
+    for i = 1, #PVP_BRACKET_ORDER do
+      local row = pvpPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      row:SetPoint("TOPLEFT", 14, -12 - 22 * i)
+      pvpPanel.rows[i] = row
+    end
+  end
+
+  pvpPanel:ClearAllPoints()
+  pvpPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
+  pvpPanel:SetWidth(W - 60)
+
+  local rec = (view.char ~= "__account__") and StatsDB[view.char]
+  local pvp = rec and rec.pvp
+  local shown = 0
+  if pvp and pvp.brackets then
+    for _, key in ipairs(PVP_BRACKET_ORDER) do
+      local b = pvp.brackets[key]
+      if b then
+        shown = shown + 1
+        local row = pvpPanel.rows[shown]
+        local record = string.format(L["PVP_RECORD_FMT"], b.seasonWon or 0, math.max(0, (b.seasonPlayed or 0) - (b.seasonWon or 0)))
+        row:SetText(UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. L[PVP_BRACKET_LABEL_KEYS[key]] .. "|r : "
+          .. tostring(b.rating or 0) .. "  (" .. L["PVP_BEST"] .. " " .. tostring(b.seasonBest or b.rating or 0) .. ")   " .. record)
+        row:Show()
+      end
+    end
+  end
+  for i = shown + 1, #PVP_BRACKET_ORDER do pvpPanel.rows[i]:Hide() end
+
+  local parts = {}
+  if pvp and pvp.honor then parts[#parts + 1] = L["PVP_HONOR"] .. ": " .. tostring(pvp.honor) end
+  if pvp and pvp.conquest then parts[#parts + 1] = L["PVP_CONQUEST"] .. ": " .. tostring(pvp.conquest) end
+  pvpPanel.currency:SetText(table.concat(parts, "   "))
+
+  pvpPanel.noData:SetShown(shown == 0)
+  local height = (shown == 0) and 60 or (34 + shown * 22 + 12)
+  pvpPanel:SetHeight(height)
+  pvpPanel:Show()
+  return height
+end
+
+local function HidePvPSection()
+  if pvpPanel then pvpPanel:Hide() end
+end
+
+-- ============================================================================
 -- VUE DETAIL (une seule metrique)
 -- ============================================================================
 local detailWidgets = {}
@@ -807,6 +878,7 @@ end
 
 local function HideOverview()
   for _, card in pairs(cards) do card:Hide() end
+  HidePvPSection()
 end
 
 -- ============================================================================
@@ -939,7 +1011,15 @@ function SX.RefreshDashboard()
   if not mainFrame then return end
   view.char = view.char or SX.CurrentCharKey()
 
-  mainFrame.banner:SetText(UI.CharBannerText(view.char == "__account__" and nil or SX.CharBannerData(view.char)))
+  do
+    local bannerText = UI.CharBannerText(view.char == "__account__" and nil or SX.CharBannerData(view.char))
+    local rec = (view.char ~= "__account__") and StatsDB[view.char]
+    local pts = rec and rec.achievementPoints
+    if pts then
+      bannerText = bannerText .. "  |cFF888899-|r " .. UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. tostring(pts) .. "|r " .. L["ACHIEV_POINTS_SUFFIX"]
+    end
+    mainFrame.banner:SetText(bannerText)
+  end
   if mainFrame.charDD.Refresh then mainFrame.charDD.Refresh() end
   if mainFrame.compareDD.Refresh then mainFrame.compareDD.Refresh() end
   mainFrame.compareDD:SetShown(view.compareChar ~= nil)
@@ -979,7 +1059,9 @@ function SX.RefreshDashboard()
   else
     HideDetail()
     BuildOverview(mainFrame.content)
-    mainFrame.content:SetHeight(2 * 190 + 16 + 10)
+    local gridDepth = 2 * 190 + 16 + 10
+    local pvpHeight = BuildPvPSection(mainFrame.content, -(gridDepth + 6))
+    mainFrame.content:SetHeight(gridDepth + 16 + pvpHeight + 10)
   end
 end
 

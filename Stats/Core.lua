@@ -159,7 +159,68 @@ function SX.RefreshCharMeta()
     local _, avgEquipped = GetAverageItemLevel()
     if avgEquipped then rec.ilvl = math.floor(avgEquipped + 0.5) end
   end
+  SX.RefreshAchievementPoints(rec)
+  rec.pvp = SX.CollectPvPSnapshot()
   return rec
+end
+
+-- ============================================================================
+-- HAUTS FAITS + PVP : compteurs "instantanes" fournis directement par
+-- Blizzard (pas d'historique jour par jour cote client, contrairement aux
+-- quetes/or/donjons) - on stocke juste le dernier snapshot connu, rafraichi
+-- au login, a chaque changement de spe/equipement/niveau, a chaque haut fait
+-- obtenu et a chaque fin de partie PVP.
+-- ============================================================================
+function SX.RefreshAchievementPoints(rec)
+  if not GetTotalAchievementPoints then return end
+  local ok, pts = pcall(GetTotalAchievementPoints)
+  if ok and type(pts) == "number" then rec.achievementPoints = pts end
+end
+
+-- CORRECTIF A VERIFIER EN JEU : l'ordre des brackets (1=Arene 2c2, 2=Arene
+-- 3c3, 3=BG classe, 4=Melee solo, 5=Blitz) suit l'ordre d'ajout historique de
+-- Blizzard (jamais reordonne au fil des extensions, seulement complete), mais
+-- n'a pas ete confirme en jeu sur ce client - a valider par Tibiscui avec un
+-- personnage ayant des cotes dans plusieurs brackets, puis ajuster ici si
+-- besoin (rien d'autre a toucher : Export.lua/dashboard-shared.js lisent ces
+-- cles telles quelles, pas les index).
+local PVP_BRACKETS = {
+  { key = "2v2",     index = 1 },
+  { key = "3v3",     index = 2 },
+  { key = "rbg",     index = 3 },
+  { key = "shuffle", index = 4 },
+  { key = "blitz",   index = 5 },
+}
+
+-- Honneur = devise 1792, Conquete = devise 1602 (stables depuis Battle for
+-- Azeroth) - a verifier en jeu si les montants affiches semblent faux.
+local HONOR_CURRENCY_ID = 1792
+local CONQUEST_CURRENCY_ID = 1602
+
+function SX.CollectPvPSnapshot()
+  local ok, result = pcall(function()
+    local brackets = {}
+    for _, b in ipairs(PVP_BRACKETS) do
+      local rating, seasonBest, weeklyBest, seasonPlayed, seasonWon = GetPersonalRatedInfo(b.index)
+      if rating and seasonPlayed and seasonPlayed > 0 then
+        brackets[b.key] = {
+          rating = rating, seasonBest = seasonBest,
+          seasonPlayed = seasonPlayed, seasonWon = seasonWon,
+        }
+      end
+    end
+    local honor, conquest
+    if C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo then
+      local h = C_CurrencyInfo.GetCurrencyInfo(HONOR_CURRENCY_ID)
+      local c = C_CurrencyInfo.GetCurrencyInfo(CONQUEST_CURRENCY_ID)
+      honor = h and h.quantity
+      conquest = c and c.quantity
+    end
+    if not next(brackets) and not honor and not conquest then return nil end
+    return { brackets = brackets, honor = honor, conquest = conquest }
+  end)
+  if ok then return result end
+  return nil
 end
 
 function SX.CharBannerData(charKey)
@@ -452,6 +513,8 @@ evFrame:RegisterEvent("PLAYER_LOGOUT")
 evFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
 evFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
 evFrame:RegisterEvent("PLAYER_LEVEL_UP")
+evFrame:RegisterEvent("PVP_MATCH_COMPLETE")
+evFrame:RegisterEvent("ACHIEVEMENT_EARNED")
 
 evFrame:SetScript("OnEvent", function(_, event, ...)
   if event == "ADDON_LOADED" then
@@ -498,5 +561,18 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
 
   elseif event == "PLAYER_SPECIALIZATION_CHANGED" or event == "PLAYER_EQUIPMENT_CHANGED" or event == "PLAYER_LEVEL_UP" then
     SX.RefreshCharMeta()
+
+  elseif event == "ACHIEVEMENT_EARNED" then
+    SX.RefreshAchievementPoints(SX.EnsureChar(SX.CurrentCharKey()))
+
+  elseif event == "PVP_MATCH_COMPLETE" then
+    -- Petit delai : les compteurs de saison/cote Blizzard ne semblent pas
+    -- toujours a jour a l'instant precis de l'evenement (constat sur d'autres
+    -- API similaires, pas verifie specifiquement ici) - a ajuster si les
+    -- valeurs remontent en retard d'une partie.
+    C_Timer.After(2, function()
+      local rec = SX.EnsureChar(SX.CurrentCharKey())
+      rec.pvp = SX.CollectPvPSnapshot()
+    end)
   end
 end)

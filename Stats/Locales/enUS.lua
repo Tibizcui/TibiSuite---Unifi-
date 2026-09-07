@@ -56,6 +56,20 @@ L["EXPORT_NO_DATA"]      = "No data recorded yet for this character."
 L["DUNGEONS_NORMAL"]     = "Dungeons"
 L["DUNGEONS_MPLUS"]      = "Mythic+"
 
+-- Hauts faits / PVP
+L["ACHIEV_POINTS_SUFFIX"] = "achievement points"
+L["PVP_SECTION_TITLE"]   = "PVP"
+L["PVP_BEST"]            = "best"
+L["PVP_HONOR"]           = "Honor"
+L["PVP_CONQUEST"]        = "Conquest"
+L["PVP_RECORD_FMT"]      = "%d wins / %d losses"
+L["PVP_NO_DATA"]         = "No rated PVP activity this season."
+L["PVP_BRACKET_2V2"]     = "2v2 Arena"
+L["PVP_BRACKET_3V3"]     = "3v3 Arena"
+L["PVP_BRACKET_RBG"]     = "Rated BG"
+L["PVP_BRACKET_SHUFFLE"] = "Solo Shuffle"
+L["PVP_BRACKET_BLITZ"]   = "Blitz"
+
 -- Divers
 L["OPT_TITLE"]           = "Settings"
 L["SLASH_HELP"]          = "Commands: /ts stats, /stats"

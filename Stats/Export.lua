@@ -144,11 +144,13 @@ function SX.CollectExportData()
         name = UnitName("player"), realm = GetRealmName(),
         class = select(2, UnitClass("player")), level = UnitLevel("player"),
         spec = currentSpecName(), ilvl = rec.ilvl,
+        achievementPoints = rec.achievementPoints, pvp = rec.pvp,
       }
     else
       charInfo = {
         name = rec.name or name, realm = rec.realm or realm,
         class = rec.class, level = rec.level, spec = rec.spec, ilvl = rec.ilvl,
+        achievementPoints = rec.achievementPoints, pvp = rec.pvp,
       }
     end
     chars[key] = {
