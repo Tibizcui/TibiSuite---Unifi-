@@ -53,6 +53,8 @@ L["ACHIEV_POINTS_SUFFIX"] = "points de hauts faits"
 
 L["PVP_SECTION_TITLE"]   = "PVP"
 L["PVP_BEST"]            = "meilleur"
+L["PVP_KILLS"]           = "Adversaires tues"
+L["PVP_DEATHS"]          = "Morts en PVP"
 L["PVP_HONOR"]           = "Honneur"
 L["PVP_CONQUEST"]        = "Conquete"
 L["PVP_RECORD_FMT"]      = "%d victoires / %d defaites"

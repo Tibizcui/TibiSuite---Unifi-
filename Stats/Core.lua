@@ -160,7 +160,7 @@ function SX.RefreshCharMeta()
     if avgEquipped then rec.ilvl = math.floor(avgEquipped + 0.5) end
   end
   SX.RefreshAchievementPoints(rec)
-  rec.pvp = SX.CollectPvPSnapshot()
+  rec.pvp = SX.CollectPvPSnapshot(rec)
   SX.RefreshDelveCompanion(rec)
   rec.torghast = SX.CollectTorghastSnapshot()
   return rec
@@ -199,7 +199,10 @@ local PVP_BRACKETS = {
 local HONOR_CURRENCY_ID = 1792
 local CONQUEST_CURRENCY_ID = 1602
 
-function SX.CollectPvPSnapshot()
+-- rec est optionnel : sert uniquement a recuperer rec.pvpDeaths (compteur
+-- suivi par l'addon lui-meme, cf. OnPlayerDead plus bas - Blizzard n'expose
+-- aucun total de morts PVP directement).
+function SX.CollectPvPSnapshot(rec)
   local ok, result = pcall(function()
     local brackets = {}
     for _, b in ipairs(PVP_BRACKETS) do
@@ -218,11 +221,36 @@ function SX.CollectPvPSnapshot()
       honor = h and h.quantity
       conquest = c and c.quantity
     end
-    if not next(brackets) and not honor and not conquest then return nil end
-    return { brackets = brackets, honor = honor, conquest = conquest }
+    -- Cumul VIE ENTIERE (pas juste la saison), fourni directement par
+    -- Blizzard - confirme encore present et fonctionnel en 11.1.0 (2025).
+    local honorableKills
+    if GetPVPLifetimeStats then
+      local ok2, hk = pcall(GetPVPLifetimeStats)
+      if ok2 and type(hk) == "number" then honorableKills = hk end
+    end
+    local deaths = rec and rec.pvpDeaths
+    if not next(brackets) and not honor and not conquest and not honorableKills and not deaths then return nil end
+    return {
+      brackets = brackets, honor = honor, conquest = conquest,
+      honorableKills = honorableKills, deaths = deaths,
+    }
   end)
   if ok then return result end
   return nil
+end
+
+-- Blizzard n'expose aucun total de "morts en PVP" (contrairement aux
+-- victimes/honorableKills, cf. GetPVPLifetimeStats ci-dessus) : reconstruit
+-- ici a partir de PLAYER_DEAD. A VERIFIER EN JEU : heuristique volontairement
+-- prudente (ne compte que les morts survenues dans une instance de type
+-- "pvp"/"arena" via IsInInstance) - une mort en PVP monde ouvert (hors
+-- instance) n'est donc PAS comptee ici.
+local function OnPlayerDead()
+  local inInstance, instanceType = IsInInstance()
+  if not inInstance or (instanceType ~= "pvp" and instanceType ~= "arena") then return end
+  local rec = SX.EnsureChar(SX.CurrentCharKey())
+  rec.pvpDeaths = (rec.pvpDeaths or 0) + 1
+  rec.pvp = SX.CollectPvPSnapshot(rec)
 end
 
 function SX.CharBannerData(charKey)
@@ -606,6 +634,7 @@ evFrame:RegisterEvent("PLAYER_LEVEL_UP")
 evFrame:RegisterEvent("PVP_MATCH_COMPLETE")
 evFrame:RegisterEvent("ACHIEVEMENT_EARNED")
 evFrame:RegisterEvent("SCENARIO_COMPLETED")
+evFrame:RegisterEvent("PLAYER_DEAD")
 
 evFrame:SetScript("OnEvent", function(_, event, ...)
   if event == "ADDON_LOADED" then
@@ -663,12 +692,15 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
     -- valeurs remontent en retard d'une partie.
     C_Timer.After(2, function()
       local rec = SX.EnsureChar(SX.CurrentCharKey())
-      rec.pvp = SX.CollectPvPSnapshot()
+      rec.pvp = SX.CollectPvPSnapshot(rec)
     end)
 
   elseif event == "SCENARIO_COMPLETED" then
     OnScenarioCompleted()
     local rec = SX.EnsureChar(SX.CurrentCharKey())
     rec.torghast = SX.CollectTorghastSnapshot()
+
+  elseif event == "PLAYER_DEAD" then
+    OnPlayerDead()
   end
 end)
