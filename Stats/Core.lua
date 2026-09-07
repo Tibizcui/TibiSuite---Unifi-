@@ -529,6 +529,11 @@ end
 -- avant de compter quoi que ce soit, pour ecarter les autres scenarios
 -- (montee de niveau, donjons scenarises, etc.).
 -- ============================================================================
+-- Palier "max" a considerer complet dans le suivi par type (SX.DelveAllMaxed
+-- ci-dessous) - 8 est le plafond a la sortie de The War Within, a ajuster si
+-- une extension future en ajoute davantage.
+SX.DELVE_MAX_TIER = 8
+
 local function OnScenarioCompleted()
   if not C_DelvesUI then return end
   local inDelve = (C_DelvesUI.HasActiveDelve and C_DelvesUI.HasActiveDelve())
@@ -545,6 +550,35 @@ local function OnScenarioCompleted()
   if tier and (not rec.delveHighestTier or tier > rec.delveHighestTier) then
     rec.delveHighestTier = tier
   end
+
+  -- Detail par type de gouffre (ex: "La Folie Fongique") : Blizzard n'expose
+  -- pas le nom du gouffre actif directement (C_Scenario.GetInfo() renvoie le
+  -- nom generique "Delves", confirme par recherche externe, pas par test en
+  -- jeu) - repli sur le texte de sous-zone, les gouffres etant des lieux
+  -- geographiques du monde comme les autres. A VERIFIER EN JEU : peut
+  -- renvoyer une chaine vide/inattendue selon le moment exact de l'evenement.
+  local delveName = GetSubZoneText and GetSubZoneText()
+  if not delveName or delveName == "" then delveName = GetZoneText and GetZoneText() end
+  if delveName and delveName ~= "" then
+    rec.delveTypes = rec.delveTypes or {}
+    local entry = rec.delveTypes[delveName] or { count = 0, highestTier = 0 }
+    entry.count = entry.count + 1
+    if tier and tier > entry.highestTier then entry.highestTier = tier end
+    rec.delveTypes[delveName] = entry
+  end
+end
+
+-- true si au moins un type de gouffre a ete rencontre ET que tous ont
+-- atteint SX.DELVE_MAX_TIER - ne pretend pas connaitre la liste officielle
+-- complete des gouffres existants, seulement ceux effectivement rencontres
+-- par ce personnage (une liste incomplete de types "tous maxes" resterait
+-- vraie tant que de nouveaux types non-maxes n'ont pas encore ete tentes).
+function SX.DelveAllMaxed(rec)
+  if not rec or not rec.delveTypes or not next(rec.delveTypes) then return false end
+  for _, entry in pairs(rec.delveTypes) do
+    if (entry.highestTier or 0) < SX.DELVE_MAX_TIER then return false end
+  end
+  return true
 end
 
 -- Niveau du compagnon de gouffre (Brann Bronzebeard) - snapshot instantane,

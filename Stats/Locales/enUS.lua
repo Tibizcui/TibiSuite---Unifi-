@@ -34,6 +34,10 @@ L["CARD_PLAYED"]         = "Time played"
 L["CARD_DELVES"]         = "Delves"
 L["DELVES_TIER"]         = "Highest tier"
 L["DELVES_COMPANION"]    = "Companion lvl."
+L["DELVE_TYPES_TITLE"]   = "Detail by delve"
+L["DELVE_TYPES_NO_DATA"] = "No delve completed for this character."
+L["DELVE_ALL_MAXED"]     = "Every delve encountered is at max tier!"
+L["DELVE_TYPE_RECORD_FMT"] = "%dx - highest tier %d"
 L["WEEKLY_GOLD_NOTE"]    = "* Gold (week) is aligned on the weekly raid reset, not the calendar week."
 
 -- Detail

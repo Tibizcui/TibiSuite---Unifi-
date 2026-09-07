@@ -713,6 +713,81 @@ local function BuildOverview(content)
 end
 
 -- ============================================================================
+-- SECTION DETAIL PAR GOUFFRE (sous la grille 2x2) - nombre de completions et
+-- palier max par type de gouffre rencontre (ex: "La Folie Fongique"), plus
+-- un indicateur si tous les types rencontres sont au palier max. Snapshot
+-- cumule (pas un historique jour par jour).
+-- ============================================================================
+local delveTypesPanel
+local DELVE_MAX_TYPE_ROWS = 8
+
+local function BuildDelveTypesSection(content, top)
+  if not delveTypesPanel then
+    delveTypesPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    UI.SkinFrame(delveTypesPanel, ACCENT, UI.C.PANEL)
+    delveTypesPanel.title = delveTypesPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    delveTypesPanel.title:SetPoint("TOPLEFT", 14, -12)
+    delveTypesPanel.title:SetText(L["DELVE_TYPES_TITLE"])
+    delveTypesPanel.maxedBadge = delveTypesPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    delveTypesPanel.maxedBadge:SetJustifyH("RIGHT")
+    delveTypesPanel.maxedBadge:SetPoint("TOPRIGHT", -14, -14)
+    delveTypesPanel.noData = delveTypesPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    delveTypesPanel.noData:SetPoint("TOPLEFT", 14, -38)
+    delveTypesPanel.noData:SetText(L["DELVE_TYPES_NO_DATA"])
+    delveTypesPanel.rows = {}
+    for i = 1, DELVE_MAX_TYPE_ROWS do
+      local left = delveTypesPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      left:SetPoint("TOPLEFT", 14, -38 - 22 * (i - 1))
+      local right = delveTypesPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+      right:SetJustifyH("RIGHT")
+      right:SetPoint("TOPRIGHT", -14, -38 - 22 * (i - 1))
+      delveTypesPanel.rows[i] = { left = left, right = right }
+    end
+  end
+
+  delveTypesPanel:ClearAllPoints()
+  delveTypesPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
+  delveTypesPanel:SetWidth(W - 60)
+
+  local rec = (view.char ~= "__account__") and StatsDB[view.char]
+  local types = rec and rec.delveTypes
+  local sorted = {}
+  if types then
+    for name, entry in pairs(types) do
+      sorted[#sorted + 1] = { name = name, count = entry.count, tier = entry.highestTier }
+    end
+    table.sort(sorted, function(a, b) return (a.count or 0) > (b.count or 0) end)
+  end
+
+  local shown = 0
+  for i = 1, math.min(#sorted, DELVE_MAX_TYPE_ROWS) do
+    shown = i
+    local row = delveTypesPanel.rows[i]
+    row.left:SetText(sorted[i].name)
+    row.right:SetText(string.format(L["DELVE_TYPE_RECORD_FMT"], sorted[i].count or 0, sorted[i].tier or 0))
+    row.left:Show()
+    row.right:Show()
+  end
+  for i = shown + 1, DELVE_MAX_TYPE_ROWS do
+    delveTypesPanel.rows[i].left:Hide()
+    delveTypesPanel.rows[i].right:Hide()
+  end
+
+  local allMaxed = rec and SX.DelveAllMaxed(rec)
+  delveTypesPanel.maxedBadge:SetText(allMaxed and (UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. L["DELVE_ALL_MAXED"] .. "|r") or "")
+  delveTypesPanel.noData:SetShown(shown == 0)
+
+  local height = (shown == 0) and 60 or (38 + shown * 22 + 12)
+  delveTypesPanel:SetHeight(height)
+  delveTypesPanel:Show()
+  return height
+end
+
+local function HideDelveTypesSection()
+  if delveTypesPanel then delveTypesPanel:Hide() end
+end
+
+-- ============================================================================
 -- SECTION PVP (sous la grille 2x2) - photo instantanee fournie par Blizzard
 -- (cote/saison, victoires-defaites, honneur, conquete), pas un historique
 -- jour par jour comme les 4 cartes ci-dessus : aucune donnee equivalente
@@ -1084,6 +1159,7 @@ end
 
 local function HideOverview()
   for _, card in pairs(cards) do card:Hide() end
+  HideDelveTypesSection()
   HidePvPSection()
   HideTorghastSection()
 end
@@ -1268,9 +1344,10 @@ function SX.RefreshDashboard()
     BuildOverview(mainFrame.content)
     local gridRows = math.ceil(#CARD_METRICS / 2)
     local gridDepth = gridRows * 190 + (gridRows - 1) * 16 + 10
-    local pvpHeight = BuildPvPSection(mainFrame.content, -(gridDepth + 6))
-    local torghastHeight = BuildTorghastSection(mainFrame.content, -(gridDepth + 6 + pvpHeight + 16))
-    mainFrame.content:SetHeight(gridDepth + 16 + pvpHeight + 16 + torghastHeight + 10)
+    local delveTypesHeight = BuildDelveTypesSection(mainFrame.content, -(gridDepth + 6))
+    local pvpHeight = BuildPvPSection(mainFrame.content, -(gridDepth + 6 + delveTypesHeight + 16))
+    local torghastHeight = BuildTorghastSection(mainFrame.content, -(gridDepth + 6 + delveTypesHeight + 16 + pvpHeight + 16))
+    mainFrame.content:SetHeight(gridDepth + 16 + delveTypesHeight + 16 + pvpHeight + 16 + torghastHeight + 10)
   end
 end
 
