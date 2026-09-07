@@ -4,7 +4,7 @@
 ## Notes: Suivi autonome des quetes, de l'or, des donjons/M+ et du temps de jeu par jour et par personnage, avec tableau de bord et export web. Module de la suite TibiSuite par Tibiscui.
 ## Notes-frFR: Suivi autonome des quetes, de l'or, des donjons/M+ et du temps de jeu par jour et par personnage, avec tableau de bord et export web. Module de la suite TibiSuite par Tibiscui.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.0.1
+## Version: 7.0.2
 ## X-Curse-Project-ID: 1680348
 
 # ----------------------------------------------------------------

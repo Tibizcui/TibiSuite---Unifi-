@@ -4,7 +4,7 @@
 ## Notes: Unified weekly dashboard for Season 2: what is left to do to maximize your rewards.
 ## Notes-frFR: Tableau de bord hebdomadaire unifie pour la Saison 1 et 2 : ce qu'il reste a faire pour maximiser vos recompenses.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.0.1
+## Version: 7.0.2
 ## X-Curse-Project-ID: 1629524
 ## IconTexture: Interface\AddOns\WeeklyCompass\medias\TibiSuiteIcon
 
