@@ -27,17 +27,15 @@ name: Release to CurseForge
 # depuis le secret GitHub "CF_API_TOKEN" deja cree (pas besoin de dupliquer le
 # secret, juste de le mapper vers le bon nom de variable).
 #
-# NB anti-spam CurseForge (incident du 2026-09) : pousser plusieurs tags
-# d'un coup declenche un workflow par tag, quasi simultanement. Chaque
-# workflow publie sur un PROJET CURSEFORGE DIFFERENT depuis le meme compte,
-# et CurseForge a bloque 3 des uploads avec "Changes Required : merge your
-# uploads into a single project, or space them out." Deux garde-fous ici :
-#   1) "concurrency" (plus bas) serialise les RUNS du workflow : un seul a la
-#      fois, les autres attendent en file plutot que de tourner en parallele.
-#   2) L'etape "Respecte un delai minimal..." impose au moins 1h depuis la
-#      derniere publication reussie (horodatage lu/ecrit dans la variable de
-#      depot LAST_CF_PUBLISH_EPOCH via gh CLI) avant de publier. Si plus d'1h
-#      s'est deja ecoulee (tags pousses manuellement, espaces), aucune attente.
+# NB anti-spam CurseForge (incident du 2026-09, resolu) : l'incident initial
+# (3 projets bloques "Changes Required : merge your uploads into a single
+# project, or space them out.") venait d'un upload manuel en double du zip en
+# plus du push de tag, pas d'une simultaneite entre projets CurseForge -- voir
+# commit "CI CurseForge : serialise les publications + delai minimal d'1h".
+# Ce garde-fou (concurrency + attente d'1h entre publications) a ete retire
+# une fois le souci reel regle cote CurseForge : les tags peuvent de nouveau
+# etre pousses en meme temps ou a la suite, chaque module publie des que son
+# job est pret, sans file d'attente ni delai artificiel.
 on:
   push:
     tags:
@@ -52,16 +50,8 @@ on:
         type: boolean
         default: true
 
-# Un seul run de ce workflow a la fois (tous modules confondus) : si
-# plusieurs tags sont pousses d'un coup, les runs suivants attendent en file
-# au lieu de publier en parallele sur CurseForge.
-concurrency:
-  group: curseforge-release
-  cancel-in-progress: false
-
 permissions:
   contents: read
-  actions: write   # necessaire pour lire/ecrire la variable de depot LAST_CF_PUBLISH_EPOCH
 
 jobs:
   release:
@@ -127,26 +117,6 @@ jobs:
         with:
           args: -d -t ${{ runner.temp }}/pkg-${{ matrix.module }}
 
-      - name: Respecte un delai minimal d'1h depuis la derniere publication CurseForge
-        if: |
-          steps.gate.outputs.run == 'true' &&
-          (github.event_name == 'push' || github.event.inputs.dry_run != 'true')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          MIN_GAP=3600
-          last="$(gh variable get LAST_CF_PUBLISH_EPOCH --repo "${{ github.repository }}" 2>/dev/null || true)"
-          [[ "$last" =~ ^[0-9]+$ ]] || last=0
-          now=$(date +%s)
-          elapsed=$(( now - last ))
-          if [ "$elapsed" -lt "$MIN_GAP" ]; then
-            wait=$(( MIN_GAP - elapsed ))
-            echo "Derniere publication CurseForge il y a ${elapsed}s (< ${MIN_GAP}s) : pause de ${wait}s avant de publier ${{ matrix.module }}."
-            sleep "$wait"
-          else
-            echo "Derniere publication CurseForge il y a ${elapsed}s (>= ${MIN_GAP}s) : publication immediate de ${{ matrix.module }}."
-          fi
-
       - name: Package et publie ${{ matrix.module }} sur CurseForge
         if: |
           steps.gate.outputs.run == 'true' &&
@@ -156,11 +126,3 @@ jobs:
           args: -t ${{ runner.temp }}/pkg-${{ matrix.module }}
         env:
           CF_API_KEY: ${{ secrets.CF_API_TOKEN }}
-
-      - name: Enregistre l'horodatage de cette publication CurseForge
-        if: |
-          steps.gate.outputs.run == 'true' &&
-          (github.event_name == 'push' || github.event.inputs.dry_run != 'true')
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh variable set LAST_CF_PUBLISH_EPOCH --repo "${{ github.repository }}" --body "$(date +%s)"
