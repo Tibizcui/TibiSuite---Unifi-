@@ -1088,7 +1088,7 @@ end
 -- meme mot "Tourment" pour les deux systemes.
 -- ----------------------------------------------------------------------------
 local torghastDetailPanel
-local TORGHAST_MAX_TYPE_ROWS = 8
+local TORGHAST_MAX_TYPE_ROWS = 10
 local TORGHAST_COLS = { name = { x = 14, w = 440 }, count = { x = 454, w = 210 }, echelon = { x = 664, w = 202 } }
 
 local function BuildTorghastDetail(content, top)
