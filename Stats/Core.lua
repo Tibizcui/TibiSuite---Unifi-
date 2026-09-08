@@ -162,6 +162,8 @@ function SX.RefreshCharMeta()
   SX.RefreshAchievementPoints(rec)
   rec.pvp = SX.CollectPvPSnapshot(rec)
   SX.RefreshDelveCompanion(rec)
+  SX.ScanDelveTierAchievement(rec)
+  SX.ScanDelveLifetimeStatistics(rec)
   rec.torghast = SX.CollectTorghastSnapshot()
   SX.ScanTorghastAchievements(rec)
   return rec
@@ -580,6 +582,144 @@ function SX.DelveAllMaxed(rec)
     if (entry.highestTier or 0) < SX.DELVE_MAX_TIER then return false end
   end
   return true
+end
+
+-- ----------------------------------------------------------------------------
+-- Rattrapage retroactif du "Total" et du "Palier max" (tuile Gouffres) via
+-- les Statistiques Blizzard - confirme en jeu le 2026-09-08 (capture
+-- d'ecran du panneau Hauts faits > Statistiques > Gouffres) : la categorie
+-- contient "Gouffres du niveau N termines" (N=1..11, compteur A VIE, toutes
+-- saisons/extensions confondues) et "Gouffres termines" (total a vie).
+-- Contrairement au tableau "Detail par gouffre" (par NOM de gouffre, aucune
+-- statistique equivalente trouvee), ces compteurs sont globaux et donc
+-- reconstructibles retroactivement, y compris pour des runs faits avant
+-- que l'addon ne suive quoi que ce soit. Ancrage texte volontairement
+-- prudent : uniquement des prefixes ASCII confirmes par la capture d'ecran
+-- ("Gouffres du niveau ", "Gouffres termin"), jamais de caractere accentue
+-- dans le pattern (cf. le piege NBSP deja rencontre sur le francais,
+-- meme si aucune ponctuation a risque n'apparait ici).
+-- ----------------------------------------------------------------------------
+local function FindStatisticsCategoryID(nameSubstr)
+  if not (GetStatisticsCategoryList and GetCategoryInfo) then return nil end
+  local ok, cats = pcall(GetStatisticsCategoryList)
+  if not ok or type(cats) ~= "table" then return nil end
+  for _, catID in ipairs(cats) do
+    local okInfo, name = pcall(GetCategoryInfo, catID)
+    if okInfo and type(name) == "string" and name:find(nameSubstr, 1, true) then
+      return catID
+    end
+  end
+  return nil
+end
+
+function SX.ScanDelveLifetimeStatistics(rec)
+  if not (GetCategoryNumAchievements and GetAchievementInfo and GetStatistic) then return end
+  local catID = FindStatisticsCategoryID("Gouffres")
+  if not catID then return end
+  local okNum, num = pcall(GetCategoryNumAchievements, catID)
+  if not okNum or type(num) ~= "number" then return end
+
+  -- Espacement autour du nombre insere ("niveau 11") suppose non-ASCII par
+  -- la localisation francaise (meme classe de piege que le NBSP devant
+  -- ":"/"!" deja rencontre, cf. feedback_wow_french_nbsp_patterns) : aucun
+  -- caractere d'espacement litteral dans le pattern, ".-" (n'importe quels
+  -- octets, y compris une sequence UTF-8 multi-octets) comble l'ecart entre
+  -- les mots-cles ASCII surs ("niveau", "termin", "Gouffres").
+  local highestTier
+  for i = 1, num do
+    local okInfo, id, name = pcall(GetAchievementInfo, catID, i)
+    if okInfo and type(id) == "number" and type(name) == "string" then
+      local okStat, value = pcall(GetStatistic, id)
+      local n = okStat and tonumber(value)
+      if name:find("niveau", 1, true) and name:find("termin", 1, true) then
+        local lvl = tonumber(name:match("niveau.-(%d+).-termin"))
+        if lvl and n and n > 0 and (not highestTier or lvl > highestTier) then
+          highestTier = lvl
+        end
+      elseif name:find("Gouffres", 1, true) and name:find("termin", 1, true) then
+        if n then rec.delveCompletedLifetime = n end
+      end
+    end
+  end
+
+  if highestTier and (not rec.delveHighestTier or highestTier > rec.delveHighestTier) then
+    rec.delveHighestTier = highestTier
+  end
+end
+
+-- ----------------------------------------------------------------------------
+-- Haut fait de palier de gouffre, lie a la tuile "Palier max" (pas au
+-- tableau "Detail par gouffre" : contrairement aux Tourments, il n'existe
+-- pas de haut fait par TYPE de gouffre, un seul par PALIER atteint, valable
+-- pour n'importe quel gouffre). Volontairement AUCUN ID code en dur
+-- (contrairement a TORGHAST_LAYER_ACHIEVEMENTS plus bas, ecrit avant qu'on
+-- tire cette lecon) : ces hauts faits sont ajoutes/renouveles CHAQUE SAISON
+-- ("Gouffres ... : palier N (saison X)") - une liste fixe se perimerait des
+-- la saison suivante. A la place on enumere en jeu la categorie "Gouffres"
+-- ET toutes ses sous-categories (saisons/extensions, ex. "Midnight"), sans
+-- jamais supposer de nom de sous-categorie ni d'ID - le scan reste valable
+-- pour les saisons futures sans modification de code. On ne tente pas non
+-- plus d'extraire le numero de palier depuis le nom du haut fait (piege
+-- NBSP deja rencontre sur le francais, cf. ExtractTourmentDungeon) : parmi
+-- les hauts faits de palier COMPLETES trouves, on retient celui qui a le
+-- plus de points (les paliers eleves rapportent plus de points chez
+-- Blizzard) comme "meilleur palier obtenu", et on affiche son nom/ID tels
+-- quels - jamais besoin d'en reparser un numero.
+-- A VERIFIER EN JEU : GetCategoryList/GetCategoryInfo/GetCategoryNumAchievements/
+-- GetAchievementInfo(categorie,index) sont l'API classique de scan complet
+-- (utilisee par des addons comme AllTheThings) mais jamais exercee dans ce
+-- depot - proteger par pcall partout, echouer proprement si l'API differe.
+-- ----------------------------------------------------------------------------
+local function FindDelveCategoryIDs()
+  if not (GetCategoryList and GetCategoryInfo) then return nil end
+  local ok, cats = pcall(GetCategoryList)
+  if not ok or type(cats) ~= "table" then return nil end
+
+  local rootID
+  for _, catID in ipairs(cats) do
+    local okInfo, name = pcall(GetCategoryInfo, catID)
+    if okInfo and type(name) == "string" and name:find("Gouffres", 1, true) then
+      rootID = catID
+      break
+    end
+  end
+  if not rootID then return nil end
+
+  local ids = { rootID }
+  for _, catID in ipairs(cats) do
+    local okInfo, _, parentID = pcall(GetCategoryInfo, catID)
+    if okInfo and parentID == rootID then
+      ids[#ids + 1] = catID
+    end
+  end
+  return ids
+end
+
+function SX.ScanDelveTierAchievement(rec)
+  if not (GetCategoryNumAchievements and GetAchievementInfo) then return end
+  local catIDs = FindDelveCategoryIDs()
+  if not catIDs then return end
+
+  local best
+  for _, catID in ipairs(catIDs) do
+    local okNum, num = pcall(GetCategoryNumAchievements, catID)
+    if okNum and type(num) == "number" then
+      for i = 1, num do
+        local okInfo, id, name, points, completed = pcall(GetAchievementInfo, catID, i)
+        if okInfo and completed and type(id) == "number" then
+          points = tonumber(points) or 0
+          if not best or points > best.points then
+            best = { id = id, name = name, points = points }
+          end
+        end
+      end
+    end
+  end
+
+  if best then
+    rec.delveTierAchievementID = best.id
+    rec.delveTierAchievementName = best.name
+  end
 end
 
 -- Niveau du compagnon de gouffre (Brann Bronzebeard) - snapshot instantane,

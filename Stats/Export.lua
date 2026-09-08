@@ -146,6 +146,8 @@ function SX.CollectExportData()
         spec = currentSpecName(), ilvl = rec.ilvl,
         achievementPoints = rec.achievementPoints, pvp = rec.pvp,
         delveHighestTier = rec.delveHighestTier, delveCompanionLevel = rec.delveCompanionLevel,
+        delveCompletedLifetime = rec.delveCompletedLifetime,
+        delveTierAchievementID = rec.delveTierAchievementID, delveTierAchievementName = rec.delveTierAchievementName,
         delveTypes = rec.delveTypes, delveAllMaxed = SX.DelveAllMaxed(rec),
         torghast = rec.torghast, torghastByDungeon = rec.torghastByDungeon,
       }
@@ -155,6 +157,8 @@ function SX.CollectExportData()
         class = rec.class, level = rec.level, spec = rec.spec, ilvl = rec.ilvl,
         achievementPoints = rec.achievementPoints, pvp = rec.pvp,
         delveHighestTier = rec.delveHighestTier, delveCompanionLevel = rec.delveCompanionLevel,
+        delveCompletedLifetime = rec.delveCompletedLifetime,
+        delveTierAchievementID = rec.delveTierAchievementID, delveTierAchievementName = rec.delveTierAchievementName,
         delveTypes = rec.delveTypes, delveAllMaxed = SX.DelveAllMaxed(rec),
         torghast = rec.torghast, torghastByDungeon = rec.torghastByDungeon,
       }

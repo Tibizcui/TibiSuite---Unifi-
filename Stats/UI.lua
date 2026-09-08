@@ -767,6 +767,28 @@ local function BuildTile(parent, title)
   tile.sub:SetPoint("BOTTOMLEFT", 14, 12)
   tile.sub:SetPoint("BOTTOMRIGHT", -14, 12)
   tile.sub:SetJustifyH("LEFT")
+
+  -- Zone invisible superposee a la ligne "sub" : donne l'infobulle native du
+  -- haut fait au survol et l'ouvre au clic quand tile.subHit.achievementID
+  -- est renseigne (une FontString seule n'est pas interactive en WoW).
+  tile.subHit = CreateFrame("Button", nil, tile)
+  tile.subHit:SetPoint("BOTTOMLEFT", tile.sub, "BOTTOMLEFT", 0, -2)
+  tile.subHit:SetPoint("TOPRIGHT", tile.sub, "TOPRIGHT", 0, 2)
+  tile.subHit:SetScript("OnEnter", function(self)
+    if not self.achievementID then return end
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    GameTooltip:SetAchievementByID(self.achievementID)
+    GameTooltip:Show()
+  end)
+  tile.subHit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  tile.subHit:SetScript("OnMouseUp", function(self)
+    if not self.achievementID then return end
+    pcall(function()
+      if not AchievementFrame and AchievementFrame_LoadUI then AchievementFrame_LoadUI() end
+      if AchievementFrame_SelectAchievement then AchievementFrame_SelectAchievement(self.achievementID) end
+      if ShowUIPanel and AchievementFrame then ShowUIPanel(AchievementFrame) end
+    end)
+  end)
   return tile
 end
 
@@ -800,18 +822,29 @@ local function BuildSummaryTiles(content, top)
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
 
   local delveTypes = rec and rec.delveTypes
-  local delveTotal = 0
-  if delveTypes then for _, e in pairs(delveTypes) do delveTotal = delveTotal + (e.count or 0) end end
+  local delveTypesTotal = 0
+  if delveTypes then for _, e in pairs(delveTypes) do delveTypesTotal = delveTypesTotal + (e.count or 0) end end
+  -- "Detail par gouffre" (delveTypes) ne compte qu'a partir du moment ou
+  -- l'addon a commence a suivre (aucune API retroactive par NOM de gouffre) ;
+  -- delveCompletedLifetime vient des Statistiques Blizzard (a vie, toutes
+  -- saisons) et peut donc etre superieur - on prend toujours le plus grand
+  -- des deux pour ne jamais afficher un total qui recule.
+  local delveTotal = math.max(delveTypesTotal, (rec and rec.delveCompletedLifetime) or 0)
   SetChip(summaryTiles.delves.stats[1], L["DELVES_TOTAL"], delveTotal)
   SetChip(summaryTiles.delves.stats[2], L["TILE_TIER"], (rec and rec.delveHighestTier) or "-")
   SetChip(summaryTiles.delves.stats[3], L["TILE_COMPANION"], (rec and rec.delveCompanionLevel) or "-")
-  if rec and SX.DelveAllMaxed(rec) then
+  local delveAchID = rec and rec.delveTierAchievementID
+  local delveAchName = rec and rec.delveTierAchievementName
+  if delveAchName then
+    summaryTiles.delves.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. delveAchName .. "|r")
+  elseif rec and SX.DelveAllMaxed(rec) then
     summaryTiles.delves.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. L["DELVE_ALL_MAXED"] .. "|r")
   elseif delveTotal == 0 then
     summaryTiles.delves.sub:SetText(L["DELVE_TYPES_NO_DATA"])
   else
     summaryTiles.delves.sub:SetText("")
   end
+  summaryTiles.delves.subHit.achievementID = delveAchID
 
   local pvp = rec and rec.pvp
   SetChip(summaryTiles.pvp.stats[1], L["TILE_KILLS"], pvp and pvp.honorableKills or 0)
