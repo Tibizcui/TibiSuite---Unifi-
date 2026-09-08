@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.0
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numéro de version sur l'ensemble de la suite (voir Stats 7.1.0 pour le détail des changements de cette version).
+
 ## 7.0.3
 - Correction de bugs de langue et d'interface (UI).
 
