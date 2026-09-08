@@ -653,15 +653,44 @@ end
 --   "Couloirs Distordus : echelon 1"              (echelons 1-5, ID <= 14472,
 --                                                   pas de prefixe "Tourment",
 --                                                   pas de parentheses)
--- La 2e forme est volontairement ancree sur le mot "echelon" (pas juste
--- "n'importe quoi : n'importe quoi + chiffre$") pour eviter de capturer un
--- haut fait sans rapport qui se terminerait par un chiffre.
+-- CORRECTIF confirme en jeu (2026-09-08) : une premiere version basee sur
+-- %s*/le mot "echelon" accentue echouait silencieusement sur les 8 hauts
+-- faits reels malgre un test reussi hors jeu sur les memes chaines - cause
+-- la plus probable : l'espace juste avant ":" dans "Tourment :" n'est pas
+-- un espace ASCII normal (probablement une espace insecable, convention
+-- typographique francaise avant ":"), que %s ne reconnait pas, et/ou un
+-- encodage different de "e" accentue (NFC/NFD) entre le fichier addon et le
+-- texte du client. Repli total sur des ancres ASCII exactes (":", "(",
+-- "chelon", chiffres) via string.find en mode texte brut - aucune
+-- dependance a un espace ou un octet accentue precis, quel que soit
+-- l'encodage/la typographie autour.
 local function ExtractTourmentDungeon(name)
-  local dungeonName, echelon = name:match("^[Tt]ourment%s*:%s*(.-)%s*%(.-(%d+)%)%s*$")
-  if dungeonName and echelon then return dungeonName, echelon end
-  dungeonName, echelon = name:match("^(.-)%s*:%s*échelon%s*(%d+)%s*$")
-  if dungeonName and echelon then return dungeonName, echelon end
-  return nil, nil
+  if not name:find("chelon", 1, true) then return nil, nil end
+  local echelon = name:match("chelon%D-(%d+)")
+  if not echelon then return nil, nil end
+
+  local colonPos = name:find(":", 1, true)
+  if not colonPos then return nil, nil end
+
+  local dungeonName
+  if name:find("^[Tt]ourment") then
+    -- Format "Tourment : <donjon> (echelon N)" - le donjon est entre ":" et "(".
+    local parenPos = name:find("(", colonPos, true)
+    if not parenPos then return nil, nil end
+    dungeonName = name:sub(colonPos + 1, parenPos - 1)
+  else
+    -- Format "<donjon> : echelon N" - le donjon est avant ":".
+    dungeonName = name:sub(1, colonPos - 1)
+  end
+  -- Normalise toute espace insecable (U+00A0, octets 194 160 en UTF-8) en
+  -- espace normale avant de trimmer - confirme en jeu (2026-09-08) : une
+  -- espace insecable juste avant la parenthese ouvrante restait invisible a
+  -- l'affichage mais empechait la fusion de "couloirs Distordus" (echelons
+  -- 6-8) avec "Couloirs Distordus" (echelons 1-5) en une seule entree.
+  dungeonName = dungeonName:gsub(string.char(194, 160), " ")
+  dungeonName = dungeonName:gsub("^%s+", ""):gsub("%s+$", "")
+  if dungeonName == "" then return nil, nil end
+  return dungeonName, echelon
 end
 
 -- Traite UN haut fait "Tourment" - partage par le gestionnaire d'evenement
@@ -705,12 +734,38 @@ end
 -- si un autre donjon "Tourment" avec echelons est confirme en jeu.
 local TWISTING_CORRIDORS_ACHIEVEMENTS = { 14468, 14469, 14470, 14471, 14472, 14568, 14569, 14570 }
 
+-- Fusionne les entrees deja enregistrees sous des cles legerement
+-- differentes (espace insecable residuelle avant le correctif du
+-- 2026-09-08, cf. ExtractTourmentDungeon) - rejoue le meme nettoyage sur les
+-- CLES deja stockees, pour les personnages qui avaient deja utilise
+-- l'ancienne version buguee (sinon la fusion ne se ferait jamais : les
+-- hauts faits concernes sont deja dans seenAchievementIDs, donc plus jamais
+-- retraites).
+local function CleanupTorghastByDungeon(rec)
+  if not rec.torghastByDungeon then return end
+  local cleaned = {}
+  for name, entry in pairs(rec.torghastByDungeon) do
+    local cleanName = name:gsub(string.char(194, 160), " "):gsub("^%s+", ""):gsub("%s+$", "")
+    if cleanName ~= "" then
+      local existing = cleaned[cleanName]
+      if existing then
+        existing.count = existing.count + (entry.count or 0)
+        if (entry.highestEchelon or 0) > existing.highestEchelon then existing.highestEchelon = entry.highestEchelon end
+      else
+        cleaned[cleanName] = { count = entry.count or 0, highestEchelon = entry.highestEchelon or 0 }
+      end
+    end
+  end
+  rec.torghastByDungeon = cleaned
+end
+
 -- Scan retroactif : les hauts faits deja obtenus avant l'ajout de ce suivi
 -- ne redeclenchent jamais ACHIEVEMENT_EARNED, donc rien ne les capte sans
 -- repasser explicitement dessus. Appele au login (SX.RefreshCharMeta) -
 -- RecordTorghastAchievement se dedoublonne lui-meme, sans risque a rappeler
 -- a chaque fois.
 function SX.ScanTorghastAchievements(rec)
+  CleanupTorghastByDungeon(rec)
   for _, achID in ipairs(TWISTING_CORRIDORS_ACHIEVEMENTS) do
     RecordTorghastAchievement(rec, achID)
   end
@@ -848,6 +903,15 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
     local rec = SX.EnsureChar(SX.CurrentCharKey())
     SX.PurgeOldDays(rec)
     C_Timer.NewTicker(60, FlushPlayed)
+    -- Rescan retarde : les donnees de hauts faits ne semblent pas toujours
+    -- completement chargees a l'instant precis de PLAYER_LOGIN (constat
+    -- similaire deja fait sur d'autres API Blizzard dans ce fichier, cf.
+    -- PVP_MATCH_COMPLETE) - le scan synchrone dans RefreshCharMeta ci-dessus
+    -- peut donc rater des hauts faits pourtant deja obtenus. Sans risque a
+    -- rappeler : RecordTorghastAchievement se dedoublonne lui-meme.
+    C_Timer.After(5, function()
+      SX.ScanTorghastAchievements(SX.EnsureChar(SX.CurrentCharKey()))
+    end)
 
   elseif event == "PLAYER_MONEY" then
     OnPlayerMoney()
