@@ -1106,6 +1106,25 @@ local function BuildTorghastDetail(content, top)
     for i = 1, TORGHAST_MAX_TYPE_ROWS do
       local row = {}
       for key in pairs(TORGHAST_COLS) do row[key] = torghastDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") end
+      -- Zone invisible superposee a la colonne "echelon max" : la FontString
+      -- affiche deja le lien colore (texte), ce bouton transparent lui donne
+      -- l'infobulle native du haut fait au survol et l'ouvre au clic - une
+      -- FontString seule n'est pas interactive en WoW.
+      local hit = CreateFrame("Button", nil, torghastDetailPanel)
+      hit:SetScript("OnEnter", function(self)
+        if not self.achievementID then return end
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetAchievementByID(self.achievementID)
+        GameTooltip:Show()
+      end)
+      hit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+      hit:SetScript("OnMouseUp", function(self)
+        if not self.achievementID then return end
+        if not AchievementFrame then AchievementFrame_LoadUI() end
+        if AchievementFrame_SelectAchievement then AchievementFrame_SelectAchievement(self.achievementID) end
+        if ShowUIPanel and AchievementFrame then ShowUIPanel(AchievementFrame) end
+      end)
+      row.hit = hit
       torghastDetailPanel.rows[i] = row
     end
     torghastDetailPanel.noData = torghastDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -1122,7 +1141,7 @@ local function BuildTorghastDetail(content, top)
   local sorted = {}
   if types then
     for name, entry in pairs(types) do
-      sorted[#sorted + 1] = { name = name, count = entry.count, echelon = entry.highestEchelon }
+      sorted[#sorted + 1] = { name = name, count = entry.count, echelon = entry.highestEchelon, achievementID = entry.highestAchievementID }
     end
     table.sort(sorted, function(a, b) return (a.count or 0) > (b.count or 0) end)
   end
@@ -1145,7 +1164,17 @@ local function BuildTorghastDetail(content, top)
     PlaceCol(row.count, TORGHAST_COLS.count, y, "RIGHT")
     row.count:SetText(tostring(sorted[i].count or 0))
     PlaceCol(row.echelon, TORGHAST_COLS.echelon, y, "RIGHT")
-    row.echelon:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. tostring(sorted[i].echelon or 0) .. "|r")
+    local achID = sorted[i].achievementID
+    local achLink = achID and GetAchievementLink and GetAchievementLink(achID)
+    if achLink then
+      row.echelon:SetText(achLink)
+    else
+      row.echelon:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. tostring(sorted[i].echelon or 0) .. "|r")
+    end
+    row.hit:ClearAllPoints()
+    row.hit:SetPoint("TOPLEFT", TORGHAST_COLS.echelon.x, y)
+    row.hit:SetSize(TORGHAST_COLS.echelon.w, 20)
+    row.hit.achievementID = achID
     for _, fs in pairs(row) do fs:Show() end
   end
   for i = shown + 1, TORGHAST_MAX_TYPE_ROWS do

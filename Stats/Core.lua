@@ -717,7 +717,15 @@ local function RecordTorghastAchievement(rec, achievementID)
   local entry = rec.torghastByDungeon[dungeonName] or { count = 0, highestEchelon = 0 }
   entry.count = entry.count + 1
   local echelonNum = tonumber(echelon) or 0
-  if echelonNum > entry.highestEchelon then entry.highestEchelon = echelonNum end
+  if echelonNum > entry.highestEchelon then
+    entry.highestEchelon = echelonNum
+    -- ID + nom du haut fait de l'echelon max : l'ID sert au vrai lien de
+    -- haut fait cote addon (icone/infobulle/clic natifs), le nom sert de
+    -- repli texte cote site/Companion (pas de tooltip WoW possible en dehors
+    -- du jeu).
+    entry.highestAchievementID = achievementID
+    entry.highestAchievementName = name
+  end
   rec.torghastByDungeon[dungeonName] = entry
 end
 
@@ -750,9 +758,17 @@ local function CleanupTorghastByDungeon(rec)
       local existing = cleaned[cleanName]
       if existing then
         existing.count = existing.count + (entry.count or 0)
-        if (entry.highestEchelon or 0) > existing.highestEchelon then existing.highestEchelon = entry.highestEchelon end
+        if (entry.highestEchelon or 0) > existing.highestEchelon then
+          existing.highestEchelon = entry.highestEchelon
+          existing.highestAchievementID = entry.highestAchievementID
+          existing.highestAchievementName = entry.highestAchievementName
+        end
       else
-        cleaned[cleanName] = { count = entry.count or 0, highestEchelon = entry.highestEchelon or 0 }
+        cleaned[cleanName] = {
+          count = entry.count or 0, highestEchelon = entry.highestEchelon or 0,
+          highestAchievementID = entry.highestAchievementID,
+          highestAchievementName = entry.highestAchievementName,
+        }
       end
     end
   end
