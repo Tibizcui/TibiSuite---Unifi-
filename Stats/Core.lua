@@ -163,6 +163,7 @@ function SX.RefreshCharMeta()
   rec.pvp = SX.CollectPvPSnapshot(rec)
   SX.RefreshDelveCompanion(rec)
   rec.torghast = SX.CollectTorghastSnapshot()
+  SX.ScanTorghastAchievements(rec)
   return rec
 end
 
@@ -641,24 +642,23 @@ end
 -- classiques, avec un haut fait distinct par donjon/echelon (ex: "Tourment :
 -- Couloirs Distordus (echelon 6)", confirme en jeu le 2026-09 par Tibiscui -
 -- different de la tour Torghast/Ombreterre suivie plus haut, malgre le meme
--- mot "Tourment"). Capte via ACHIEVEMENT_EARNED, extrait le nom du donjon et
--- l'echelon depuis le nom du haut fait obtenu. A VERIFIER EN JEU : le format
--- exact n'est confirme que sur un seul exemple - la ponctuation/casse peut
--- varier selon le donjon.
+-- mot "Tourment"). Capte via ACHIEVEMENT_EARNED (evenements futurs) ET un
+-- scan retroactif au login (hauts faits deja obtenus avant l'ajout de ce
+-- suivi, qui ne redeclenchent jamais ACHIEVEMENT_EARNED).
 -- ============================================================================
-local function OnAchievementEarned(achievementID)
-  local rec = SX.EnsureChar(SX.CurrentCharKey())
-  SX.RefreshAchievementPoints(rec)
-  if not achievementID or not GetAchievementInfo then return end
 
-  -- Les hauts faits sont definitifs : un ID deja vu ne doit jamais etre
-  -- recompte, meme si ACHIEVEMENT_EARNED se declenche deux fois pour le
-  -- meme haut fait (constate en jeu - print() Blizzard duplique).
+-- Traite UN haut fait "Tourment : <donjon> (echelon N)" - partage par le
+-- gestionnaire d'evenement et le scan retroactif. Dedoublonne par ID de haut
+-- fait (definitif : jamais recompte, meme si ACHIEVEMENT_EARNED se declenche
+-- deux fois pour le meme haut fait, constate en jeu).
+local function RecordTorghastAchievement(rec, achievementID)
+  if not achievementID or not GetAchievementInfo then return end
   rec.seenAchievementIDs = rec.seenAchievementIDs or {}
   if rec.seenAchievementIDs[achievementID] then return end
 
-  local ok, _, name = pcall(GetAchievementInfo, achievementID)
+  local ok, _, name, _, completed = pcall(GetAchievementInfo, achievementID)
   if not ok or type(name) ~= "string" then return end
+  if completed == false then return end -- nil (ancienne signature) accepte, false refuse explicitement
   local dungeonName, echelon = name:match("^[Tt]ourment%s*:%s*(.-)%s*%(.-(%d+)%)%s*$")
   if not dungeonName or dungeonName == "" or not echelon then return end
 
@@ -669,6 +669,30 @@ local function OnAchievementEarned(achievementID)
   local echelonNum = tonumber(echelon) or 0
   if echelonNum > entry.highestEchelon then entry.highestEchelon = echelonNum end
   rec.torghastByDungeon[dungeonName] = entry
+end
+
+local function OnAchievementEarned(achievementID)
+  local rec = SX.EnsureChar(SX.CurrentCharKey())
+  SX.RefreshAchievementPoints(rec)
+  RecordTorghastAchievement(rec, achievementID)
+end
+
+-- IDs confirmes (Wowhead, 2026-09) pour "Tourment : Couloirs Distordus"
+-- echelons 1-8 - le seul donjon "Tourment" identifie a ce jour avec un haut
+-- fait par echelon (les autres ailes visibles sur la carte, ex: Forges des
+-- Ames, Mort'Regar, ne semblent pas avoir ce systeme repetable). A COMPLETER
+-- si un autre donjon "Tourment" avec echelons est confirme en jeu.
+local TWISTING_CORRIDORS_ACHIEVEMENTS = { 14468, 14469, 14470, 14471, 14472, 14568, 14569, 14570 }
+
+-- Scan retroactif : les hauts faits deja obtenus avant l'ajout de ce suivi
+-- ne redeclenchent jamais ACHIEVEMENT_EARNED, donc rien ne les capte sans
+-- repasser explicitement dessus. Appele au login (SX.RefreshCharMeta) -
+-- RecordTorghastAchievement se dedoublonne lui-meme, sans risque a rappeler
+-- a chaque fois.
+function SX.ScanTorghastAchievements(rec)
+  for _, achID in ipairs(TWISTING_CORRIDORS_ACHIEVEMENTS) do
+    RecordTorghastAchievement(rec, achID)
+  end
 end
 
 -- ============================================================================
