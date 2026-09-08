@@ -94,6 +94,7 @@ L["TORGHAST_NO_DATA"]    = "Keine Torghast-Daten fuer diesen Charakter."
 L["TORGHAST_TYPES_TITLE"] = "Details je Qual"
 L["TORGHAST_TYPES_NO_DATA"] = "Keine Qual fuer diesen Charakter abgeschlossen."
 L["TABLE_ECHELON"]       = "Hoechste Stufe"
+L["TABLE_ACHIEVEMENT"]   = "Erfolg"
 
 L["OPT_TITLE"]           = "Einstellungen"
 L["SLASH_HELP"]          = "Befehle: /ts stats, /stats"

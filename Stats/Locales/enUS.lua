@@ -105,6 +105,7 @@ L["TORGHAST_NO_DATA"]    = "No Torghast data for this character."
 L["TORGHAST_TYPES_TITLE"] = "Detail by Torment"
 L["TORGHAST_TYPES_NO_DATA"] = "No Torment completed for this character."
 L["TABLE_ECHELON"]       = "Highest echelon"
+L["TABLE_ACHIEVEMENT"]   = "Achievement"
 
 -- Divers
 L["OPT_TITLE"]           = "Settings"

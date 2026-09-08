@@ -775,6 +775,34 @@ local function CleanupTorghastByDungeon(rec)
   rec.torghastByDungeon = cleaned
 end
 
+-- Comble highestAchievementID/Name pour les entrees deja enregistrees AVANT
+-- l'ajout de ce suivi (2026-09-08) : ces 8 ID sont deja dans
+-- seenAchievementIDs, donc RecordTorghastAchievement ne les retraitera
+-- jamais - sans repasser explicitement dessus ici, "Couloirs Distordus"
+-- resterait pour toujours prive de lien de haut fait cliquable. Ne
+-- fonctionne que pour les donjons dont on connait la liste d'ID (donc pas
+-- "Epreuve du Geolier" et les autres captes seulement via
+-- ACHIEVEMENT_EARNED) - ceux-la se completeront naturellement des que le
+-- joueur validera un nouvel echelon pour ce donjon.
+local function BackfillTorghastAchievementInfo(rec)
+  if not rec.torghastByDungeon or not GetAchievementInfo then return end
+  for _, achID in ipairs(TWISTING_CORRIDORS_ACHIEVEMENTS) do
+    local ok, _, name = pcall(GetAchievementInfo, achID)
+    if ok and type(name) == "string" then
+      local dungeonName, echelon = ExtractTourmentDungeon(name)
+      if dungeonName and echelon then
+        dungeonName = dungeonName:sub(1, 1):upper() .. dungeonName:sub(2)
+        dungeonName = dungeonName:gsub(string.char(194, 160), " "):gsub("^%s+", ""):gsub("%s+$", "")
+        local entry = rec.torghastByDungeon[dungeonName]
+        if entry and not entry.highestAchievementID and tonumber(echelon) == entry.highestEchelon then
+          entry.highestAchievementID = achID
+          entry.highestAchievementName = name
+        end
+      end
+    end
+  end
+end
+
 -- Scan retroactif : les hauts faits deja obtenus avant l'ajout de ce suivi
 -- ne redeclenchent jamais ACHIEVEMENT_EARNED, donc rien ne les capte sans
 -- repasser explicitement dessus. Appele au login (SX.RefreshCharMeta) -
@@ -785,6 +813,7 @@ function SX.ScanTorghastAchievements(rec)
   for _, achID in ipairs(TWISTING_CORRIDORS_ACHIEVEMENTS) do
     RecordTorghastAchievement(rec, achID)
   end
+  BackfillTorghastAchievementInfo(rec)
 end
 
 -- ============================================================================

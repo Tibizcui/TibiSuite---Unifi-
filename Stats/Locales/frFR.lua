@@ -95,6 +95,7 @@ L["TORGHAST_NO_DATA"]    = "Aucune donnee Tourments pour ce personnage."
 L["TORGHAST_TYPES_TITLE"] = "Detail par Tourment"
 L["TORGHAST_TYPES_NO_DATA"] = "Aucun Tourment termine pour ce personnage."
 L["TABLE_ECHELON"]       = "Echelon max"
+L["TABLE_ACHIEVEMENT"]   = "Haut fait"
 
 L["OPT_TITLE"]           = "Reglages"
 L["SLASH_HELP"]          = "Commandes : /ts stats, /stats"
