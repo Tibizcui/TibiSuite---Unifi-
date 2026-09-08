@@ -647,10 +647,27 @@ end
 -- suivi, qui ne redeclenchent jamais ACHIEVEMENT_EARNED).
 -- ============================================================================
 
--- Traite UN haut fait "Tourment : <donjon> (echelon N)" - partage par le
--- gestionnaire d'evenement et le scan retroactif. Dedoublonne par ID de haut
--- fait (definitif : jamais recompte, meme si ACHIEVEMENT_EARNED se declenche
--- deux fois pour le meme haut fait, constate en jeu).
+-- Deux formats confirmes en jeu le 2026-09-08 (meme donjon "Couloirs
+-- Distordus", brackets d'echelons differents) :
+--   "Tourment : couloirs Distordus (echelon 6)"   (echelons 6-8, ID >= 14568)
+--   "Couloirs Distordus : echelon 1"              (echelons 1-5, ID <= 14472,
+--                                                   pas de prefixe "Tourment",
+--                                                   pas de parentheses)
+-- La 2e forme est volontairement ancree sur le mot "echelon" (pas juste
+-- "n'importe quoi : n'importe quoi + chiffre$") pour eviter de capturer un
+-- haut fait sans rapport qui se terminerait par un chiffre.
+local function ExtractTourmentDungeon(name)
+  local dungeonName, echelon = name:match("^[Tt]ourment%s*:%s*(.-)%s*%(.-(%d+)%)%s*$")
+  if dungeonName and echelon then return dungeonName, echelon end
+  dungeonName, echelon = name:match("^(.-)%s*:%s*échelon%s*(%d+)%s*$")
+  if dungeonName and echelon then return dungeonName, echelon end
+  return nil, nil
+end
+
+-- Traite UN haut fait "Tourment" - partage par le gestionnaire d'evenement
+-- et le scan retroactif. Dedoublonne par ID de haut fait (definitif : jamais
+-- recompte, meme si ACHIEVEMENT_EARNED se declenche deux fois pour le meme
+-- haut fait, constate en jeu).
 local function RecordTorghastAchievement(rec, achievementID)
   if not achievementID or not GetAchievementInfo then return end
   rec.seenAchievementIDs = rec.seenAchievementIDs or {}
@@ -659,8 +676,12 @@ local function RecordTorghastAchievement(rec, achievementID)
   local ok, _, name, _, completed = pcall(GetAchievementInfo, achievementID)
   if not ok or type(name) ~= "string" then return end
   if completed == false then return end -- nil (ancienne signature) accepte, false refuse explicitement
-  local dungeonName, echelon = name:match("^[Tt]ourment%s*:%s*(.-)%s*%(.-(%d+)%)%s*$")
+  local dungeonName, echelon = ExtractTourmentDungeon(name)
   if not dungeonName or dungeonName == "" or not echelon then return end
+  -- Normalise la casse de la premiere lettre (ASCII) : les deux formats
+  -- observes different sur ce point ("Couloirs" vs "couloirs") et creeraient
+  -- sinon deux entrees separees pour le meme donjon.
+  dungeonName = dungeonName:sub(1, 1):upper() .. dungeonName:sub(2)
 
   rec.seenAchievementIDs[achievementID] = true
   rec.torghastByDungeon = rec.torghastByDungeon or {}
