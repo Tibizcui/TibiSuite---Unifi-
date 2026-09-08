@@ -49,6 +49,10 @@ on:
         description: 'Dry run (ne pousse rien sur CurseForge)'
         type: boolean
         default: true
+      version:
+        description: 'Version a utiliser comme nom de fichier (ex: v7.1.0) - laisser vide pour un test dev-horodate'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -87,7 +91,11 @@ jobs:
             echo "version=${GITHUB_REF#refs/tags/${{ matrix.module }}-}" >> "$GITHUB_OUTPUT"
           elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.module }}" = "${{ matrix.module }}" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "version=dev-$(date +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+            if [ -n "${{ github.event.inputs.version }}" ]; then
+              echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+            else
+              echo "version=dev-$(date +%Y%m%d%H%M%S)" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "run=false" >> "$GITHUB_OUTPUT"
           fi
