@@ -451,7 +451,7 @@ end
 -- ============================================================================
 -- CARTES DE LA VUE D'ENSEMBLE
 -- ============================================================================
-local CARD_METRICS = { "quests", "gold", "dungeons", "played", "delves", "repGained" }
+local CARD_METRICS = { "quests", "gold", "dungeons", "played", "delves", "repGained", "pvpKillsGained", "soulAshGained" }
 local cards = {}
 
 local function CardLabel(metric)
@@ -462,6 +462,8 @@ local function CardLabel(metric)
   elseif metric == "played" then return L["CARD_PLAYED"]
   elseif metric == "delves" then return L["CARD_DELVES"]
   elseif metric == "repGained" then return L["CARD_REP_GAINED"]
+  elseif metric == "pvpKillsGained" then return L["CARD_PVP_KILLS_GAINED"]
+  elseif metric == "soulAshGained" then return L["CARD_SOUL_ASH_GAINED"]
   end
 end
 
@@ -1142,8 +1144,8 @@ local TORGHAST_MAX_TYPE_ROWS = 10
 local TORGHAST_COLS = {
   name = { x = 14, w = 260 },
   count = { x = 274, w = 90 },
-  echelon = { x = 364, w = 110 },
-  achievement = { x = 474, w = 392 },
+  echelon = { x = 364, w = 90 },
+  achievement = { x = 484, w = 382 },
 }
 
 local function BuildTorghastDetail(content, top)
