@@ -139,6 +139,7 @@ function SX.CollectExportData()
         delveTypes = rec.delveTypes, delveAllMaxed = SX.DelveAllMaxed(rec),
         torghast = rec.torghast, torghastByDungeon = rec.torghastByDungeon,
         reputations = rec.reputations,
+        professionsNative = rec.professionsNative,
       }
     else
       charInfo = {
@@ -151,6 +152,7 @@ function SX.CollectExportData()
         delveTypes = rec.delveTypes, delveAllMaxed = SX.DelveAllMaxed(rec),
         torghast = rec.torghast, torghastByDungeon = rec.torghastByDungeon,
         reputations = rec.reputations,
+        professionsNative = rec.professionsNative,
       }
     end
     chars[key] = {

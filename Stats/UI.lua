@@ -455,7 +455,7 @@ end
 -- par categorie DANS LE MEME ORDRE que les tuiles resume plus bas
 -- (Gouffres/PVP/Tourments/Reputations) - facilite le repere visuel entre
 -- les deux sections.
-local CARD_METRICS = { "quests", "gold", "played", "dungeons", "delves", "pvpKillsGained", "soulAshGained", "repGained" }
+local CARD_METRICS = { "quests", "gold", "played", "dungeons", "delves", "pvpKillsGained", "soulAshGained", "repGained", "profGained" }
 local cards = {}
 
 local function CardLabel(metric)
@@ -468,6 +468,7 @@ local function CardLabel(metric)
   elseif metric == "repGained" then return L["CARD_REP_GAINED"]
   elseif metric == "pvpKillsGained" then return L["CARD_PVP_KILLS_GAINED"]
   elseif metric == "soulAshGained" then return L["CARD_SOUL_ASH_GAINED"]
+  elseif metric == "profGained" then return L["CARD_PROF_GAINED"]
   end
 end
 
@@ -799,7 +800,14 @@ local function BuildTile(parent, title)
   return tile
 end
 
-local SUMMARY_ORDER = { "delves", "pvp", "torghast", "reputations" }
+-- 5 tuiles, disposees en 2 lignes (3 puis 2) plutot que 5 en largeur -
+-- une seule ligne de 5 rendrait chaque tuile trop etroite pour ses 3
+-- chiffres (retour utilisateur sur les Metiers : ne pas re-tomber dans
+-- "tout est melange" en serrant trop d'elements sur une meme ligne).
+local SUMMARY_ROWS = {
+  { "delves", "pvp", "torghast" },
+  { "reputations", "professions" },
+}
 
 local function BuildSummaryTiles(content, top)
   if not summaryTiles then
@@ -808,23 +816,26 @@ local function BuildSummaryTiles(content, top)
       pvp = BuildTile(content, L["PVP_SECTION_TITLE"]),
       torghast = BuildTile(content, L["TORGHAST_SECTION_TITLE"]),
       reputations = BuildTile(content, L["REPUTATION_SECTION_TITLE"]),
+      professions = BuildTile(content, L["PROFESSIONS_SECTION_TITLE"]),
     }
   end
 
   local gap = 14
-  local tileW = (W - 60 - 3 * gap) / 4
-  for i, key in ipairs(SUMMARY_ORDER) do
-    local tile = summaryTiles[key]
-    tile:ClearAllPoints()
-    tile:SetPoint("TOPLEFT", content, "TOPLEFT", (i - 1) * (tileW + gap), top)
-    tile:SetSize(tileW, SUMMARY_TILE_H)
-    local statW = (tileW - 28) / 3
-    for s = 1, 3 do
-      tile.stats[s]:ClearAllPoints()
-      tile.stats[s]:SetPoint("TOPLEFT", 14 + (s - 1) * statW, -34)
-      tile.stats[s]:SetWidth(statW)
+  local tileW = (W - 60 - 2 * gap) / 3
+  for r, row in ipairs(SUMMARY_ROWS) do
+    for c, key in ipairs(row) do
+      local tile = summaryTiles[key]
+      tile:ClearAllPoints()
+      tile:SetPoint("TOPLEFT", content, "TOPLEFT", (c - 1) * (tileW + gap), top - (r - 1) * (SUMMARY_TILE_H + gap))
+      tile:SetSize(tileW, SUMMARY_TILE_H)
+      local statW = (tileW - 28) / 3
+      for s = 1, 3 do
+        tile.stats[s]:ClearAllPoints()
+        tile.stats[s]:SetPoint("TOPLEFT", 14 + (s - 1) * statW, -34)
+        tile.stats[s]:SetWidth(statW)
+      end
+      tile:Show()
     end
-    tile:Show()
   end
 
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
@@ -881,7 +892,33 @@ local function BuildSummaryTiles(content, top)
     summaryTiles.reputations.sub:SetText("")
   end
 
-  return SUMMARY_TILE_H
+  local profSummary = rec and rec.professionsNative and rec.professionsNative.summary
+  local profInProgress = profSummary and (profSummary.tracked - profSummary.maxedCount) or 0
+  SetChip(summaryTiles.professions.stats[1], L["PROF_TRACKED"], (profSummary and profSummary.tracked) or 0)
+  SetChip(summaryTiles.professions.stats[2], L["PROF_MAXED"], (profSummary and profSummary.maxedCount) or 0)
+  SetChip(summaryTiles.professions.stats[3], L["PROF_IN_PROGRESS"], profInProgress)
+  -- Ligne : nom du metier le plus recemment progresse (le plus recent parmi
+  -- ceux non-maxes), sinon tous au max, sinon aucun metier suivi.
+  local mostRecentProf, mostRecentAt
+  local profList = rec and rec.professionsNative and rec.professionsNative.list
+  if profList then
+    for _, p in ipairs(profList) do
+      if not p.maxed and p.lastGainAt and (not mostRecentAt or p.lastGainAt > mostRecentAt) then
+        mostRecentProf, mostRecentAt = p.name, p.lastGainAt
+      end
+    end
+  end
+  if mostRecentProf then
+    summaryTiles.professions.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. mostRecentProf .. "|r")
+  elseif profSummary and profSummary.tracked > 0 and profSummary.maxedCount == profSummary.tracked then
+    summaryTiles.professions.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. L["PROF_ALL_MAXED"] .. "|r")
+  elseif not profSummary or profSummary.tracked == 0 then
+    summaryTiles.professions.sub:SetText(L["PROF_NO_DATA"])
+  else
+    summaryTiles.professions.sub:SetText("")
+  end
+
+  return 2 * SUMMARY_TILE_H + gap
 end
 
 local function HideSummaryTiles()
@@ -1355,6 +1392,90 @@ local function HideReputationDetail()
   if reputationDetailPanel then reputationDetailPanel:Hide() end
 end
 
+-- ----------------------------------------------------------------------------
+-- DETAIL METIERS : tableau des metiers les plus RECEMMENT progresses (meme
+-- principe strict que reputation - un vrai filtre sur lastGainAt, pas un
+-- tri par % avec repli, et exclut les metiers deja a 100%).
+-- ----------------------------------------------------------------------------
+local professionDetailPanel
+local PROF_MAX_ROWS = 10
+local PROF_COLS = { name = { x = 14, w = 440 }, level = { x = 454, w = 210 }, progress = { x = 664, w = 202 } }
+
+local function BuildProfessionDetail(content, top)
+  if not professionDetailPanel then
+    professionDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    UI.SkinFrame(professionDetailPanel, ACCENT, UI.C.PANEL)
+    professionDetailPanel.title = professionDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    professionDetailPanel.title:SetPoint("TOPLEFT", 14, -12)
+    professionDetailPanel.title:SetText(L["PROF_TYPES_TITLE"])
+    professionDetailPanel.head = {}
+    for key in pairs(PROF_COLS) do
+      professionDetailPanel.head[key] = professionDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    end
+    professionDetailPanel.rows = {}
+    for i = 1, PROF_MAX_ROWS do
+      local row = {}
+      for key in pairs(PROF_COLS) do row[key] = professionDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") end
+      professionDetailPanel.rows[i] = row
+    end
+    professionDetailPanel.noData = professionDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    professionDetailPanel.noData:SetPoint("TOPLEFT", 14, -38)
+    professionDetailPanel.noData:SetText(L["PROF_NO_RECENT_DATA"])
+  end
+
+  professionDetailPanel:ClearAllPoints()
+  professionDetailPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
+  professionDetailPanel:SetWidth(W - 60)
+
+  local rec = (view.char ~= "__account__") and StatsDB[view.char]
+  local list = rec and rec.professionsNative and rec.professionsNative.list
+  local sorted = {}
+  if list then
+    for _, info in ipairs(list) do
+      if not info.maxed and info.lastGainAt then sorted[#sorted + 1] = info end
+    end
+    table.sort(sorted, function(a, b) return a.lastGainAt > b.lastGainAt end)
+  end
+  local shown = math.min(#sorted, PROF_MAX_ROWS)
+
+  local headY = -38
+  PlaceCol(professionDetailPanel.head.name, PROF_COLS.name, headY, "LEFT")
+  professionDetailPanel.head.name:SetText(L["TABLE_NAME"])
+  PlaceCol(professionDetailPanel.head.level, PROF_COLS.level, headY, "LEFT")
+  professionDetailPanel.head.level:SetText(L["TABLE_LEVEL"])
+  PlaceCol(professionDetailPanel.head.progress, PROF_COLS.progress, headY, "RIGHT")
+  professionDetailPanel.head.progress:SetText(L["TABLE_PROGRESS"])
+  for _, fs in pairs(professionDetailPanel.head) do fs:SetShown(shown > 0) end
+
+  for i = 1, shown do
+    local y = headY - 20 - 22 * (i - 1)
+    local row = professionDetailPanel.rows[i]
+    local info = sorted[i]
+    PlaceCol(row.name, PROF_COLS.name, y, "LEFT")
+    row.name:SetText(info.name or "?")
+    PlaceCol(row.level, PROF_COLS.level, y, "LEFT")
+    row.level:SetText(tostring(info.cur or 0) .. " / " .. tostring(info.max or 0))
+    PlaceCol(row.progress, PROF_COLS.progress, y, "RIGHT")
+    -- Plafonne a 100% (jamais au-dela), meme si cur venait a depasser max.
+    local pctText = tostring(math.min(100, math.floor((info.pct or 0) * 100 + 0.5))) .. "%"
+    row.progress:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. pctText .. "|r")
+    for _, fs in pairs(row) do fs:Show() end
+  end
+  for i = shown + 1, PROF_MAX_ROWS do
+    for _, fs in pairs(professionDetailPanel.rows[i]) do fs:Hide() end
+  end
+  professionDetailPanel.noData:SetShown(shown == 0)
+
+  local height = (shown == 0) and 60 or (-(headY - 20 - shown * 22) + 12)
+  professionDetailPanel:SetHeight(height)
+  professionDetailPanel:Show()
+  return height
+end
+
+local function HideProfessionDetail()
+  if professionDetailPanel then professionDetailPanel:Hide() end
+end
+
 -- ============================================================================
 -- VUE DETAIL (une seule metrique)
 -- ============================================================================
@@ -1464,6 +1585,7 @@ local function HideOverview()
   HideDelveDetail()
   HideTorghastDetail()
   HideReputationDetail()
+  HideProfessionDetail()
 end
 
 -- ============================================================================
@@ -1651,7 +1773,8 @@ function SX.RefreshDashboard()
     local delveHeight = BuildDelveDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16))
     local torghastDetailHeight = BuildTorghastDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16))
     local reputationDetailHeight = BuildReputationDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16 + torghastDetailHeight + 16))
-    mainFrame.content:SetHeight(gridDepth + 16 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16 + torghastDetailHeight + 16 + reputationDetailHeight + 10)
+    local professionDetailHeight = BuildProfessionDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16 + torghastDetailHeight + 16 + reputationDetailHeight + 16))
+    mainFrame.content:SetHeight(gridDepth + 16 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16 + torghastDetailHeight + 16 + reputationDetailHeight + 16 + professionDetailHeight + 10)
   end
 end
 

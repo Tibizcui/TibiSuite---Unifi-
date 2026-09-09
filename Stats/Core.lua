@@ -106,7 +106,7 @@ end
 function SX.EnsureDay(rec, dayKey)
   local d = rec.days[dayKey]
   if not d then
-    d = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, repGained = 0, pvpKillsGained = 0, soulAshGained = 0 }
+    d = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, repGained = 0, pvpKillsGained = 0, soulAshGained = 0, profGained = 0 }
     rec.days[dayKey] = d
   end
   d.mplus = d.mplus or {}
@@ -167,6 +167,7 @@ function SX.RefreshCharMeta()
   rec.torghast = SX.CollectTorghastSnapshot()
   SX.ScanTorghastAchievements(rec)
   SX.CollectReputationSnapshot(rec)
+  SX.CollectProfessionSnapshot(rec)
   return rec
 end
 
@@ -375,7 +376,7 @@ end
 -- AGREGATION
 -- ============================================================================
 function SX.Aggregate(charKey, from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, soulAshGained = 0 }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, soulAshGained = 0, profGained = 0 }
   local rec = StatsDB[charKey]
   if not rec or not rec.days then return agg end
   for dayKey, d in pairs(rec.days) do
@@ -390,6 +391,7 @@ function SX.Aggregate(charKey, from, to)
       agg.repGained = agg.repGained + (d.repGained or 0)
       agg.pvpKillsGained = agg.pvpKillsGained + (d.pvpKillsGained or 0)
       agg.soulAshGained = agg.soulAshGained + (d.soulAshGained or 0)
+      agg.profGained = agg.profGained + (d.profGained or 0)
       if d.mplus then
         for _, run in ipairs(d.mplus) do
           agg.mplusCount = agg.mplusCount + 1
@@ -402,7 +404,7 @@ function SX.Aggregate(charKey, from, to)
 end
 
 function SX.AggregateAccount(from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, soulAshGained = 0 }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, soulAshGained = 0, profGained = 0 }
   -- SX.GetCharKeys() plutot que pairs(StatsDB) direct : ecarte StatsDB.export
   -- / StatsDB.exportedAt (cf. son commentaire) qui feraient planter
   -- SX.Aggregate en tentant de lire ".days" sur une chaine ou un nombre.
@@ -418,6 +420,7 @@ function SX.AggregateAccount(from, to)
     agg.repGained = agg.repGained + a.repGained
     agg.pvpKillsGained = agg.pvpKillsGained + a.pvpKillsGained
     agg.soulAshGained = agg.soulAshGained + a.soulAshGained
+    agg.profGained = agg.profGained + a.profGained
   end
   return agg
 end
@@ -436,6 +439,7 @@ function SX.MetricValue(agg, metric)
   elseif metric == "repGained" then return agg.repGained
   elseif metric == "pvpKillsGained" then return agg.pvpKillsGained
   elseif metric == "soulAshGained" then return agg.soulAshGained
+  elseif metric == "profGained" then return agg.profGained
   end
   return 0
 end
@@ -1247,6 +1251,90 @@ local function OnFactionUpdate()
 end
 
 -- ============================================================================
+-- METIERS : instantane (niveau/max) + progression recente + suivi quotidien
+-- des points gagnes, meme principe que REPUTATIONS ci-dessus. Contrairement
+-- au reste de l'export "professions" (rec.professions, alimente par
+-- Export.lua en lecture seule depuis SkillTrackerDB - un AUTRE addon, avec
+-- son decoupage par extension deja resolu et conserve tel quel), cette
+-- partie lit directement l'API Blizzard (GetProfessions/GetProfessionInfo,
+-- meme API que SkillTracker/Constants.lua documente deja utiliser) pour
+-- ajouter la couche "recent"/"quotidien" que SkillTrackerDB n'a pas.
+-- A VERIFIER EN JEU : Stats n'a jamais appele GetProfessions() lui-meme
+-- avant ce jour (seul SkillTracker l'exerce dans ce depot).
+-- ============================================================================
+function SX.CollectProfessionSnapshot(rec)
+  local ok, result = pcall(function()
+    if not (GetProfessions and GetProfessionInfo) then return nil end
+    local indices = { GetProfessions() }
+    local list, seenName = {}, {}
+    local maxedCount = 0
+    for _, index in ipairs(indices) do
+      if index then
+        local name, _, cur, max = GetProfessionInfo(index)
+        if name and name ~= "" and type(cur) == "number" and type(max) == "number" and max > 0 and not seenName[name] then
+          seenName[name] = true
+          local maxed = cur >= max
+          if maxed then maxedCount = maxedCount + 1 end
+          list[#list + 1] = {
+            name = name, cur = cur, max = max, pct = math.min(1, cur / max), maxed = maxed,
+            lastGainAt = rec.profRecentGain and rec.profRecentGain[name],
+          }
+        end
+      end
+    end
+    return { list = list, summary = { tracked = #list, maxedCount = maxedCount } }
+  end)
+  if ok then rec.professionsNative = result end
+end
+
+-- Suivi quotidien des points de metier gagnes : diff simple sur le niveau
+-- courant (jamais decroissant, contrairement a une monnaie) - seul un
+-- changement du "max" (nouveau contenu de metier debloque) reinitialise la
+-- baseline sans compter de delta pour cette transition, meme garde-fou que
+-- le renom. Baseline EN MEMOIRE (non sauvegardee) ; rec.profRecentGain
+-- (SAUVEGARDE) retient la derniere date de gain par metier, pour le
+-- tableau "Detail par metier" (progression recente uniquement, comme les
+-- reputations).
+local profBaseline = {}
+
+local function DoProfessionRescan()
+  if not (GetProfessions and GetProfessionInfo) then return end
+  local rec = SX.EnsureChar(SX.CurrentCharKey())
+  rec.profRecentGain = rec.profRecentGain or {}
+  local now = time()
+  local indices = { GetProfessions() }
+  local totalGain = 0
+  for _, index in ipairs(indices) do
+    if index then
+      local name, _, cur, max = GetProfessionInfo(index)
+      if name and name ~= "" and type(cur) == "number" and type(max) == "number" then
+        local base = profBaseline[name]
+        if base and base.max == max and cur > base.cur then
+          totalGain = totalGain + (cur - base.cur)
+          rec.profRecentGain[name] = now
+        end
+        profBaseline[name] = { cur = cur, max = max }
+      end
+    end
+  end
+  if totalGain > 0 then
+    local d = SX.EnsureDay(rec, SX.TodayKey())
+    d.profGained = (d.profGained or 0) + totalGain
+  end
+  SX.CollectProfessionSnapshot(rec)
+end
+
+local profUpdatePending = false
+local function OnSkillLinesChanged()
+  if profUpdatePending then return end
+  profUpdatePending = true
+  C_Timer.After(1, function()
+    profUpdatePending = false
+    DoProfessionRescan()
+  end)
+end
+
+-- ============================================================================
 -- ENREGISTREUR : DONJONS NORMAUX (heuristique zone + boss)
 -- ---------------------------------------------------------------------------
 -- Pas d'evenement Blizzard "donjon termine" fiable pour les groupes hors
@@ -1367,6 +1455,7 @@ evFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 evFrame:RegisterEvent("UPDATE_FACTION")
 evFrame:RegisterEvent("PLAYER_PVP_KILLS_CHANGED")
 evFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
+evFrame:RegisterEvent("SKILL_LINES_CHANGED")
 
 evFrame:SetScript("OnEvent", function(_, event, ...)
   if event == "ADDON_LOADED" then
@@ -1457,5 +1546,8 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
 
   elseif event == "CURRENCY_DISPLAY_UPDATE" then
     OnCurrencyUpdate()
+
+  elseif event == "SKILL_LINES_CHANGED" then
+    OnSkillLinesChanged()
   end
 end)
