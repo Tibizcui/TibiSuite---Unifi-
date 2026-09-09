@@ -451,7 +451,11 @@ end
 -- ============================================================================
 -- CARTES DE LA VUE D'ENSEMBLE
 -- ============================================================================
-local CARD_METRICS = { "quests", "gold", "dungeons", "played", "delves", "repGained", "pvpKillsGained", "soulAshGained" }
+-- Ordre : stats generales d'abord (quetes/or/temps/donjons), puis une carte
+-- par categorie DANS LE MEME ORDRE que les tuiles resume plus bas
+-- (Gouffres/PVP/Tourments/Reputations) - facilite le repere visuel entre
+-- les deux sections.
+local CARD_METRICS = { "quests", "gold", "played", "dungeons", "delves", "pvpKillsGained", "soulAshGained", "repGained" }
 local cards = {}
 
 local function CardLabel(metric)
