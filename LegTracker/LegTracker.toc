@@ -1,4 +1,4 @@
-## Interface: 120007, 120005
+## Interface: 120100, 120007, 120005
 ## Title: LegTracker
 ## Title-frFR: LegTracker
 ## Notes: Suivi des objets legendaires par extension, statut, quetes et composants. Suivi de compte complet.

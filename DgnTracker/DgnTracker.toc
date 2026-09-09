@@ -1,4 +1,4 @@
-## Interface: 120007, 120005
+## Interface: 120100, 120007, 120005
 ## Title: DgnTracker
 ## Title-frFR: DgnTracker
 ## Notes: Dungeon, Raid, Delve, Torghast entrance tracker. All expansions from Vanilla to Midnight.

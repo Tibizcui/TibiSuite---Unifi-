@@ -1,4 +1,4 @@
-## Interface: 120007
+## Interface: 120100, 120007, 120005
 ## Title: DailyTracker
 ## Title-frFR: DailyTracker
 ## Notes: Daily and weekly activity tracker. Midnight & The War Within. Auto-detection via C_QuestLog.

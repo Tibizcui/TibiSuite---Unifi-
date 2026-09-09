@@ -1,4 +1,4 @@
-## Interface: 120007, 120005
+## Interface: 120100, 120007, 120005
 ## Title: XPBar
 ## Title-frFR: XPBar
 ## Notes: Barre XP avancée - Niveau, XP, Repos, Quêtes, Stats de session
