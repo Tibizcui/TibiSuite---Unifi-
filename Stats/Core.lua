@@ -106,7 +106,7 @@ end
 function SX.EnsureDay(rec, dayKey)
   local d = rec.days[dayKey]
   if not d then
-    d = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {} }
+    d = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, repGained = 0 }
     rec.days[dayKey] = d
   end
   d.mplus = d.mplus or {}
@@ -166,6 +166,7 @@ function SX.RefreshCharMeta()
   SX.ScanDelveLifetimeStatistics(rec)
   rec.torghast = SX.CollectTorghastSnapshot()
   SX.ScanTorghastAchievements(rec)
+  SX.CollectReputationSnapshot(rec)
   return rec
 end
 
@@ -354,7 +355,7 @@ end
 -- AGREGATION
 -- ============================================================================
 function SX.Aggregate(charKey, from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0 }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0 }
   local rec = StatsDB[charKey]
   if not rec or not rec.days then return agg end
   for dayKey, d in pairs(rec.days) do
@@ -366,6 +367,7 @@ function SX.Aggregate(charKey, from, to)
       agg.played    = agg.played + (d.played or 0)
       agg.dungeons  = agg.dungeons + (d.dungeons or 0)
       agg.delves    = agg.delves + (d.delves or 0)
+      agg.repGained = agg.repGained + (d.repGained or 0)
       if d.mplus then
         for _, run in ipairs(d.mplus) do
           agg.mplusCount = agg.mplusCount + 1
@@ -378,7 +380,7 @@ function SX.Aggregate(charKey, from, to)
 end
 
 function SX.AggregateAccount(from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0 }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0 }
   -- SX.GetCharKeys() plutot que pairs(StatsDB) direct : ecarte StatsDB.export
   -- / StatsDB.exportedAt (cf. son commentaire) qui feraient planter
   -- SX.Aggregate en tentant de lire ".days" sur une chaine ou un nombre.
@@ -391,6 +393,7 @@ function SX.AggregateAccount(from, to)
     agg.dungeons  = agg.dungeons + a.dungeons
     agg.mplusCount = agg.mplusCount + a.mplusCount
     agg.delves    = agg.delves + a.delves
+    agg.repGained = agg.repGained + a.repGained
   end
   return agg
 end
@@ -406,6 +409,7 @@ function SX.MetricValue(agg, metric)
   elseif metric == "dungeons" then return agg.dungeons + agg.mplusCount
   elseif metric == "played" then return agg.played
   elseif metric == "delves" then return agg.delves
+  elseif metric == "repGained" then return agg.repGained
   end
   return 0
 end
@@ -957,6 +961,233 @@ function SX.ScanTorghastAchievements(rec)
 end
 
 -- ============================================================================
+-- REPUTATIONS : instantane (palier/renom/amitie par faction) + suivi
+-- quotidien de la reputation gagnee. Lecture universelle adaptee de
+-- RepBar/RepBar.lua (ReadReputation) et RenTracker/RenTracker.lua
+-- (GetRenownData) - meme logique de detection amitie/renom/classique,
+-- reecrite ici de facon autonome pour que Stats reste complet seul (cf. le
+-- "point d'extension inerte" plus haut : aucune fusion de donnees inter-
+-- modules non testee).
+-- ============================================================================
+
+-- Liste des factionID a interroger. Deux sources cumulees, jamais l'une
+-- requise pour l'autre :
+-- 1) RenTrackerData (si RenTracker est charge) - lecture seule, meme
+--    principe deja utilise par RepBar pour ses infobulles de zone. Donne
+--    une liste organisee par extension, la plus complete.
+-- 2) Le panneau Reputation natif (C_Reputation.GetNumFactions/
+--    GetFactionDataByIndex) - toujours execute, garantit que Stats
+--    fonctionne seul sans RenTracker installe.
+-- Mise en cache pour la session (une nouvelle faction debloquee en cours de
+-- session n'apparaitra qu'au prochain /reload - limite mineure acceptee
+-- plutot que de re-scanner cette liste a chaque UPDATE_FACTION).
+local knownFactionIDsCache = nil
+
+local function CollectKnownFactionIDs()
+  if knownFactionIDsCache then return knownFactionIDsCache end
+  local ids, seen = {}, {}
+  if type(_G.RenTrackerData) == "table" then
+    for _, ext in pairs(_G.RenTrackerData) do
+      if type(ext) == "table" and type(ext.factions) == "table" then
+        for _, fac in ipairs(ext.factions) do
+          if fac.id and not seen[fac.id] then
+            seen[fac.id] = true
+            ids[#ids + 1] = fac.id
+          end
+        end
+      end
+    end
+  end
+  if C_Reputation and C_Reputation.GetNumFactions and C_Reputation.GetFactionDataByIndex then
+    local ok, num = pcall(C_Reputation.GetNumFactions)
+    if ok and type(num) == "number" then
+      for i = 1, num do
+        local okD, d = pcall(C_Reputation.GetFactionDataByIndex, i)
+        if okD and d and not d.isHeader and d.factionID and d.factionID ~= 0 and not seen[d.factionID] then
+          seen[d.factionID] = true
+          ids[#ids + 1] = d.factionID
+        end
+      end
+    end
+  end
+  knownFactionIDsCache = ids
+  return ids
+end
+
+-- Lecture universelle d'une faction : amitie (paliers nommes) -> renom
+-- (Major Factions, SL/DF/TWW/Midnight) -> classique (BfA et avant), avec
+-- paragon au renom plafonne ou a l'exalte classique. A VERIFIER EN JEU :
+-- la signature a 4 retours de GetFactionParagonInfo (le 4e, "recompense en
+-- attente", n'a jamais ete exerce dans ce depot - RepBar n'utilise que les
+-- deux premiers).
+local function ReadReputationInfo(factionID)
+  if not factionID or factionID == 0 then return nil end
+  local out = { factionID = factionID }
+
+  if C_GossipInfo and C_GossipInfo.GetFriendshipReputation then
+    local ok, fr = pcall(C_GossipInfo.GetFriendshipReputation, factionID)
+    if ok and fr and fr.friendshipFactionID and fr.friendshipFactionID ~= 0 then
+      out.system = "friendship"
+      out.name = fr.name
+      out.label = fr.reaction or ""
+      local cur, minv, maxv = fr.standing or 0, fr.reactionThreshold or 0, fr.nextThreshold or 0
+      if maxv and maxv > minv then
+        out.cur, out.max = cur - minv, maxv - minv
+        out.pct = out.max > 0 and (out.cur / out.max) or 1
+      else
+        out.cur, out.max, out.pct, out.maxed = 1, 1, 1, true
+      end
+      return out
+    end
+  end
+
+  if C_MajorFactions and C_MajorFactions.GetMajorFactionData then
+    local ok, d = pcall(C_MajorFactions.GetMajorFactionData, factionID)
+    if ok and d and (d.renownLevel or d.renownLevelThreshold) then
+      out.system = "renown"
+      out.name = d.name
+      out.rank = d.renownLevel or 0
+      out.cur = d.renownReputationEarned or 0
+      out.max = d.renownLevelThreshold or 1
+      out.pct = (out.max > 0) and math.min(1, out.cur / out.max) or 0
+      local isCap = false
+      if C_MajorFactions.HasMaximumRenown then
+        local cok, c = pcall(C_MajorFactions.HasMaximumRenown, factionID)
+        isCap = cok and c
+      end
+      if isCap then
+        out.maxed = true
+        out.cur, out.pct = out.max, 1
+        if C_Reputation and C_Reputation.IsFactionParagon and C_Reputation.GetFactionParagonInfo then
+          local pok, isP = pcall(C_Reputation.IsFactionParagon, factionID)
+          if pok and isP then
+            local gok, val, thr, _, pending = pcall(C_Reputation.GetFactionParagonInfo, factionID)
+            if gok and val and thr and thr > 0 then out.paragonReady = pending == true end
+          end
+        end
+      end
+      return out
+    end
+  end
+
+  if C_Reputation and C_Reputation.GetFactionDataByID then
+    local ok, d = pcall(C_Reputation.GetFactionDataByID, factionID)
+    if ok and d and d.name then
+      out.system = "classic"
+      out.name = d.name
+      local reaction = d.reaction or 4
+      out.reaction = reaction
+      out.label = _G["FACTION_STANDING_LABEL" .. reaction] or ""
+      local minv, maxv, val = d.currentReactionThreshold or 0, d.nextReactionThreshold or 0, d.currentStanding or 0
+      if maxv and maxv > minv then
+        out.cur, out.max = val - minv, maxv - minv
+        out.pct = out.max > 0 and (out.cur / out.max) or 1
+      else
+        out.cur, out.max, out.pct, out.maxed = 1, 1, 1, true
+      end
+      if reaction >= 8 then
+        out.maxed = true
+        out.pct = 1
+        if C_Reputation.IsFactionParagon and C_Reputation.GetFactionParagonInfo then
+          local pok, isP = pcall(C_Reputation.IsFactionParagon, factionID)
+          if pok and isP then
+            local gok, val2, thr2, _, pending = pcall(C_Reputation.GetFactionParagonInfo, factionID)
+            if gok and val2 and thr2 and thr2 > 0 then out.paragonReady = pending == true end
+          end
+        end
+      end
+      return out
+    end
+  end
+
+  return nil
+end
+
+-- Instantane complet, rafraichi a chaque login (SX.RefreshCharMeta) et a
+-- chaque UPDATE_FACTION debounce (DoFactionRescan ci-dessous). Chaque entree
+-- recoit aussi lastGainAt (timestamp, sauvegarde dans rec.repRecentGain) si
+-- connu - permet au tableau "Detail par reputation" de mettre en avant les
+-- factions recemment progressees plutot qu'un mur de factions exaltees de
+-- longue date (constat utilisateur : le tri par % remontait uniquement des
+-- factions a 100% sans interet immediat).
+function SX.CollectReputationSnapshot(rec)
+  local ok, result = pcall(function()
+    local ids = CollectKnownFactionIDs()
+    local list, seenName = {}, {}
+    local maxedCount, paragonReady, highestRenownRank = 0, 0, nil
+    for _, id in ipairs(ids) do
+      local info = ReadReputationInfo(id)
+      if info and info.name and info.name ~= "" and not seenName[info.name] then
+        seenName[info.name] = true
+        info.lastGainAt = rec.repRecentGain and rec.repRecentGain[id]
+        list[#list + 1] = info
+        if info.maxed then maxedCount = maxedCount + 1 end
+        if info.paragonReady then paragonReady = paragonReady + 1 end
+        if info.system == "renown" and info.rank and (not highestRenownRank or info.rank > highestRenownRank) then
+          highestRenownRank = info.rank
+        end
+      end
+    end
+    return {
+      list = list,
+      summary = { tracked = #list, maxedCount = maxedCount, paragonReady = paragonReady, highestRenownRank = highestRenownRank },
+    }
+  end)
+  if ok then rec.reputations = result end
+end
+
+-- Suivi quotidien de la reputation gagnee (UPDATE_FACTION) --------------
+-- UPDATE_FACTION ne transporte aucune information (ni faction, ni delta) -
+-- seul moyen fiable : re-lire l'etat de chaque faction connue et comparer a
+-- la derniere lecture memorisee. Baseline EN MEMOIRE uniquement (jamais
+-- sauvegardee) : au premier passage de la session, aucune baseline n'existe
+-- encore pour aucune faction, donc aucun delta n'est compte, seulement une
+-- initialisation silencieuse - evite un faux pic au login. Un changement de
+-- palier (renom qui monte, seuils qui changent) reinitialise simplement la
+-- baseline SANS compter de delta pour cette transition precise (limite
+-- acceptee plutot que de deviner un delta a travers un changement de
+-- systeme de seuils). Debounce de 1s : UPDATE_FACTION peut se declencher en
+-- rafale (ramassage en masse), pas de raison de rescanner a chaque tick.
+-- rec.repRecentGain (SAUVEGARDE, contrairement a repBaseline) : timestamp du
+-- dernier gain detecte par faction, persiste d'une session a l'autre pour
+-- que "recemment progressee" reste vrai apres un /reload.
+local repBaseline = {}
+
+local function DoFactionRescan()
+  local rec = SX.EnsureChar(SX.CurrentCharKey())
+  rec.repRecentGain = rec.repRecentGain or {}
+  local now = time()
+  local ids = CollectKnownFactionIDs()
+  local totalGain = 0
+  for _, id in ipairs(ids) do
+    local info = ReadReputationInfo(id)
+    if info and info.cur and info.max then
+      local base = repBaseline[id]
+      if base and base.max == info.max and info.cur > base.cur then
+        totalGain = totalGain + (info.cur - base.cur)
+        rec.repRecentGain[id] = now
+      end
+      repBaseline[id] = { cur = info.cur, max = info.max }
+    end
+  end
+  if totalGain > 0 then
+    local d = SX.EnsureDay(rec, SX.TodayKey())
+    d.repGained = (d.repGained or 0) + totalGain
+  end
+  SX.CollectReputationSnapshot(rec)
+end
+
+local factionUpdatePending = false
+local function OnFactionUpdate()
+  if factionUpdatePending then return end
+  factionUpdatePending = true
+  C_Timer.After(1, function()
+    factionUpdatePending = false
+    DoFactionRescan()
+  end)
+end
+
+-- ============================================================================
 -- ENREGISTREUR : DONJONS NORMAUX (heuristique zone + boss)
 -- ---------------------------------------------------------------------------
 -- Pas d'evenement Blizzard "donjon termine" fiable pour les groupes hors
@@ -1074,6 +1305,7 @@ evFrame:RegisterEvent("ACHIEVEMENT_EARNED")
 evFrame:RegisterEvent("SCENARIO_COMPLETED")
 evFrame:RegisterEvent("PLAYER_DEAD")
 evFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
+evFrame:RegisterEvent("UPDATE_FACTION")
 
 evFrame:SetScript("OnEvent", function(_, event, ...)
   if event == "ADDON_LOADED" then
@@ -1155,5 +1387,8 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
 
   elseif event == "COMBAT_LOG_EVENT_UNFILTERED" then
     OnCombatLogEvent()
+
+  elseif event == "UPDATE_FACTION" then
+    OnFactionUpdate()
   end
 end)

@@ -1,7 +1,7 @@
 --[[============================================================================
   Stats - Export.lua
   ---------------------------------------------------------------------------
-  Collecte (Stats + Metiers si charge + reputations si un module en fournit),
+  Collecte (Stats + Metiers si charge + reputations),
   serialisation JSON maison (lisible directement en JS cote site, pas de
   mini-interpreteur Lua necessaire), compression LZW (Libs/LZW.lua), encodage
   Base64 imprimable. Meme point d'entree pour le bouton de la fenetre Stats
@@ -104,18 +104,6 @@ local function collectAllProfessions()
   return nil
 end
 
--- Nom exact du champ a verifier en jeu selon le module de reputation
--- effectivement installe (RepBar ou RenTracker) - best effort, jamais bloquant.
-local function collectReputations()
-  local ok, result = pcall(function()
-    if _G.RepBarDB then return { source = "RepBar", data = _G.RepBarDB } end
-    if _G.RenTrackerDB then return { source = "RenTracker", data = _G.RenTrackerDB } end
-    return nil
-  end)
-  if ok then return result end
-  return nil
-end
-
 local function currentSpecName()
   local si = GetSpecialization and GetSpecialization()
   if not si then return nil end
@@ -150,6 +138,7 @@ function SX.CollectExportData()
         delveTierAchievementID = rec.delveTierAchievementID, delveTierAchievementName = rec.delveTierAchievementName,
         delveTypes = rec.delveTypes, delveAllMaxed = SX.DelveAllMaxed(rec),
         torghast = rec.torghast, torghastByDungeon = rec.torghastByDungeon,
+        reputations = rec.reputations,
       }
     else
       charInfo = {
@@ -161,6 +150,7 @@ function SX.CollectExportData()
         delveTierAchievementID = rec.delveTierAchievementID, delveTierAchievementName = rec.delveTierAchievementName,
         delveTypes = rec.delveTypes, delveAllMaxed = SX.DelveAllMaxed(rec),
         torghast = rec.torghast, torghastByDungeon = rec.torghastByDungeon,
+        reputations = rec.reputations,
       }
     end
     chars[key] = {
@@ -176,7 +166,6 @@ function SX.CollectExportData()
     account = { generatedBy = currentKey },
     data = {
       chars = chars,
-      reputations = collectReputations(),
     },
   }
 end

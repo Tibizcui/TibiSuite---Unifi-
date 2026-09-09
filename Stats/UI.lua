@@ -451,7 +451,7 @@ end
 -- ============================================================================
 -- CARTES DE LA VUE D'ENSEMBLE
 -- ============================================================================
-local CARD_METRICS = { "quests", "gold", "dungeons", "played", "delves" }
+local CARD_METRICS = { "quests", "gold", "dungeons", "played", "delves", "repGained" }
 local cards = {}
 
 local function CardLabel(metric)
@@ -461,6 +461,7 @@ local function CardLabel(metric)
   elseif metric == "dungeons" then return L["CARD_DUNGEONS"]
   elseif metric == "played" then return L["CARD_PLAYED"]
   elseif metric == "delves" then return L["CARD_DELVES"]
+  elseif metric == "repGained" then return L["CARD_REP_GAINED"]
   end
 end
 
@@ -792,7 +793,7 @@ local function BuildTile(parent, title)
   return tile
 end
 
-local SUMMARY_ORDER = { "delves", "pvp", "torghast" }
+local SUMMARY_ORDER = { "delves", "pvp", "torghast", "reputations" }
 
 local function BuildSummaryTiles(content, top)
   if not summaryTiles then
@@ -800,11 +801,12 @@ local function BuildSummaryTiles(content, top)
       delves = BuildTile(content, L["CARD_DELVES"]),
       pvp = BuildTile(content, L["PVP_SECTION_TITLE"]),
       torghast = BuildTile(content, L["TORGHAST_SECTION_TITLE"]),
+      reputations = BuildTile(content, L["REPUTATION_SECTION_TITLE"]),
     }
   end
 
   local gap = 14
-  local tileW = (W - 60 - 2 * gap) / 3
+  local tileW = (W - 60 - 3 * gap) / 4
   for i, key in ipairs(SUMMARY_ORDER) do
     local tile = summaryTiles[key]
     tile:ClearAllPoints()
@@ -857,6 +859,21 @@ local function BuildSummaryTiles(content, top)
   SetChip(summaryTiles.torghast.stats[2], L["TILE_ASH"], (t and t.soulAsh) or 0)
   SetChip(summaryTiles.torghast.stats[3], L["TILE_CINDERS"], (t and t.soulCinders) or 0)
   summaryTiles.torghast.sub:SetText((t and (t.highestLayer or t.soulAsh or t.soulCinders)) and "" or L["TORGHAST_NO_DATA"])
+
+  local repSummary = rec and rec.reputations and rec.reputations.summary
+  SetChip(summaryTiles.reputations.stats[1], L["REP_TRACKED"], (repSummary and repSummary.tracked) or 0)
+  SetChip(summaryTiles.reputations.stats[2], L["REP_MAX_RANK"], (repSummary and repSummary.highestRenownRank) or "-")
+  SetChip(summaryTiles.reputations.stats[3], L["REP_MAXED"], (repSummary and repSummary.maxedCount) or 0)
+  if repSummary and repSummary.paragonReady and repSummary.paragonReady > 0 then
+    summaryTiles.reputations.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3])
+      .. string.format(L["REP_PARAGON_FMT"], repSummary.paragonReady) .. "|r")
+  elseif repSummary and repSummary.tracked > 0 and repSummary.maxedCount == repSummary.tracked then
+    summaryTiles.reputations.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. L["REP_ALL_MAXED"] .. "|r")
+  elseif not repSummary or repSummary.tracked == 0 then
+    summaryTiles.reputations.sub:SetText(L["REP_NO_DATA"])
+  else
+    summaryTiles.reputations.sub:SetText("")
+  end
 
   return SUMMARY_TILE_H
 end
@@ -1238,6 +1255,100 @@ local function HideTorghastDetail()
   if torghastDetailPanel then torghastDetailPanel:Hide() end
 end
 
+-- ----------------------------------------------------------------------------
+-- DETAIL REPUTATIONS : tableau par faction (nom / systeme / progression).
+-- ----------------------------------------------------------------------------
+local reputationDetailPanel
+local REP_MAX_ROWS = 10
+local REP_COLS = { name = { x = 14, w = 440 }, system = { x = 454, w = 210 }, progress = { x = 664, w = 202 } }
+
+local function RepSystemLabel(info)
+  if info.system == "renown" then return L["REP_RENOWN"] .. " " .. tostring(info.rank or 0)
+  elseif info.system == "friendship" or info.system == "classic" then return info.label or ""
+  end
+  return ""
+end
+
+local function BuildReputationDetail(content, top)
+  if not reputationDetailPanel then
+    reputationDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    UI.SkinFrame(reputationDetailPanel, ACCENT, UI.C.PANEL)
+    reputationDetailPanel.title = reputationDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    reputationDetailPanel.title:SetPoint("TOPLEFT", 14, -12)
+    reputationDetailPanel.title:SetText(L["REP_TYPES_TITLE"])
+    reputationDetailPanel.head = {}
+    for key in pairs(REP_COLS) do
+      reputationDetailPanel.head[key] = reputationDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    end
+    reputationDetailPanel.rows = {}
+    for i = 1, REP_MAX_ROWS do
+      local row = {}
+      for key in pairs(REP_COLS) do row[key] = reputationDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") end
+      reputationDetailPanel.rows[i] = row
+    end
+    reputationDetailPanel.noData = reputationDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    reputationDetailPanel.noData:SetPoint("TOPLEFT", 14, -38)
+    reputationDetailPanel.noData:SetText(L["REP_NO_DATA"])
+  end
+
+  reputationDetailPanel:ClearAllPoints()
+  reputationDetailPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
+  reputationDetailPanel:SetWidth(W - 60)
+
+  local rec = (view.char ~= "__account__") and StatsDB[view.char]
+  local list = rec and rec.reputations and rec.reputations.list
+  -- Uniquement les factions avec une progression RECENTE constatee
+  -- (lastGainAt present) - pas un tri par % avec repli, un vrai filtre : les
+  -- factions jamais touchees depuis que ce suivi existe n'apparaissent pas
+  -- du tout (demande explicite : "uniquement les 10 dernieres reputations
+  -- sur lesquelles le joueur a fait progresser la completion recemment").
+  local sorted = {}
+  if list then
+    for _, info in ipairs(list) do
+      if not info.maxed and info.lastGainAt then sorted[#sorted + 1] = info end
+    end
+    table.sort(sorted, function(a, b) return a.lastGainAt > b.lastGainAt end)
+  end
+  local shown = math.min(#sorted, REP_MAX_ROWS)
+  reputationDetailPanel.noData:SetText(L["REP_NO_RECENT_DATA"])
+
+  local headY = -38
+  PlaceCol(reputationDetailPanel.head.name, REP_COLS.name, headY, "LEFT")
+  reputationDetailPanel.head.name:SetText(L["TABLE_NAME"])
+  PlaceCol(reputationDetailPanel.head.system, REP_COLS.system, headY, "LEFT")
+  reputationDetailPanel.head.system:SetText(L["TABLE_SYSTEM"])
+  PlaceCol(reputationDetailPanel.head.progress, REP_COLS.progress, headY, "RIGHT")
+  reputationDetailPanel.head.progress:SetText(L["TABLE_PROGRESS"])
+  for _, fs in pairs(reputationDetailPanel.head) do fs:SetShown(shown > 0) end
+
+  for i = 1, shown do
+    local y = headY - 20 - 22 * (i - 1)
+    local row = reputationDetailPanel.rows[i]
+    local info = sorted[i]
+    PlaceCol(row.name, REP_COLS.name, y, "LEFT")
+    row.name:SetText(info.name or "?")
+    PlaceCol(row.system, REP_COLS.system, y, "LEFT")
+    row.system:SetText(RepSystemLabel(info))
+    PlaceCol(row.progress, REP_COLS.progress, y, "RIGHT")
+    local pctText = tostring(math.floor((info.pct or 0) * 100 + 0.5)) .. "%"
+    row.progress:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. pctText .. "|r")
+    for _, fs in pairs(row) do fs:Show() end
+  end
+  for i = shown + 1, REP_MAX_ROWS do
+    for _, fs in pairs(reputationDetailPanel.rows[i]) do fs:Hide() end
+  end
+  reputationDetailPanel.noData:SetShown(shown == 0)
+
+  local height = (shown == 0) and 60 or (-(headY - 20 - shown * 22) + 12)
+  reputationDetailPanel:SetHeight(height)
+  reputationDetailPanel:Show()
+  return height
+end
+
+local function HideReputationDetail()
+  if reputationDetailPanel then reputationDetailPanel:Hide() end
+end
+
 -- ============================================================================
 -- VUE DETAIL (une seule metrique)
 -- ============================================================================
@@ -1346,6 +1457,7 @@ local function HideOverview()
   HidePvPDetail()
   HideDelveDetail()
   HideTorghastDetail()
+  HideReputationDetail()
 end
 
 -- ============================================================================
@@ -1532,7 +1644,8 @@ function SX.RefreshDashboard()
     local pvpHeight = BuildPvPDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16))
     local delveHeight = BuildDelveDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16))
     local torghastDetailHeight = BuildTorghastDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16))
-    mainFrame.content:SetHeight(gridDepth + 16 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16 + torghastDetailHeight + 10)
+    local reputationDetailHeight = BuildReputationDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16 + torghastDetailHeight + 16))
+    mainFrame.content:SetHeight(gridDepth + 16 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16 + torghastDetailHeight + 16 + reputationDetailHeight + 10)
   end
 end
 
