@@ -609,6 +609,21 @@ end
 -- une extension future en ajoute davantage.
 SX.DELVE_MAX_TIER = 8
 
+-- Applique un palier lu (immediatement ou via le repli retarde ci-dessous)
+-- au record : tuile "Palier max" (global) ET entree du gouffre nomme
+-- concerne (tableau "Detail par gouffre").
+local function ApplyDelveTier(rec, delveName, tier)
+  if not tier then return end
+  if not rec.delveHighestTier or tier > rec.delveHighestTier then
+    rec.delveHighestTier = tier
+  end
+  if delveName and delveName ~= "" then
+    rec.delveTypes = rec.delveTypes or {}
+    local entry = rec.delveTypes[delveName]
+    if entry and tier > entry.highestTier then entry.highestTier = tier end
+  end
+end
+
 local function OnScenarioCompleted()
   if not C_DelvesUI then return end
   local inDelve = (C_DelvesUI.HasActiveDelve and C_DelvesUI.HasActiveDelve())
@@ -622,9 +637,6 @@ local function OnScenarioCompleted()
   local rec = SX.EnsureChar(SX.CurrentCharKey())
   local d = SX.EnsureDay(rec, SX.TodayKey())
   d.delves = (d.delves or 0) + 1
-  if tier and (not rec.delveHighestTier or tier > rec.delveHighestTier) then
-    rec.delveHighestTier = tier
-  end
 
   -- Detail par type de gouffre (ex: "La Folie Fongique") : Blizzard n'expose
   -- pas le nom du gouffre actif directement (C_Scenario.GetInfo() renvoie le
@@ -636,10 +648,25 @@ local function OnScenarioCompleted()
   if not delveName or delveName == "" then delveName = GetZoneText and GetZoneText() end
   if delveName and delveName ~= "" then
     rec.delveTypes = rec.delveTypes or {}
-    local entry = rec.delveTypes[delveName] or { count = 0, highestTier = 0 }
-    entry.count = entry.count + 1
-    if tier and tier > entry.highestTier then entry.highestTier = tier end
-    rec.delveTypes[delveName] = entry
+    rec.delveTypes[delveName] = rec.delveTypes[delveName] or { count = 0, highestTier = 0 }
+    rec.delveTypes[delveName].count = rec.delveTypes[delveName].count + 1
+  end
+  ApplyDelveTier(rec, delveName, tier)
+
+  -- Repli : GetActiveDelveTier() peut ne pas encore repondre a l'instant
+  -- precis de SCENARIO_COMPLETED (meme constat deja fait ailleurs dans ce
+  -- fichier sur d'autres API Blizzard, cf. PVP_MATCH_COMPLETE) - explique le
+  -- "Palier max" reste a 0 malgre un gouffre bien compte (constat
+  -- utilisateur). Un seul reessai, 2s plus tard, si le palier n'a pas ete lu
+  -- du premier coup.
+  if not tier and C_DelvesUI.GetActiveDelveTier then
+    local charKey = SX.CurrentCharKey()
+    C_Timer.After(2, function()
+      local ok2, t2 = pcall(C_DelvesUI.GetActiveDelveTier)
+      if ok2 and type(t2) == "number" then
+        ApplyDelveTier(SX.EnsureChar(charKey), delveName, t2)
+      end
+    end)
   end
 end
 
@@ -805,6 +832,15 @@ function SX.RefreshDelveCompanion(rec)
   if not ok or type(info) ~= "table" then return end
   local level = info.level or info.companionLevel or info.CompanionLevel
   if type(level) == "number" then rec.delveCompanionLevel = level end
+  -- Nom du compagnon (Brann Bronzebeard, Valeera Sanguinar...) - sert
+  -- UNIQUEMENT a l'exclure de la liste des reputations (cf.
+  -- SX.CollectReputationSnapshot ci-dessous : le lien du compagnon utilise
+  -- l'API "amitie" des reputations cote Blizzard, ce qui le faisait
+  -- apparaitre a tort dans le tableau Reputations alors qu'il a deja son
+  -- propre affichage dans la tuile Gouffres). A VERIFIER EN JEU : nom de
+  -- champ non confirme, plusieurs noms plausibles essayes par prudence.
+  local name = info.name or info.companionName or info.Name
+  if type(name) == "string" and name ~= "" then rec.delveCompanionName = name end
 end
 
 -- ============================================================================
@@ -1185,7 +1221,12 @@ function SX.CollectReputationSnapshot(rec)
     local maxedCount, paragonReady, highestRenownRank = 0, 0, nil
     for _, id in ipairs(ids) do
       local info = ReadReputationInfo(id)
-      if info and info.name and info.name ~= "" and not seenName[info.name] then
+      -- Le lien avec le compagnon de gouffre (Brann Bronzebeard, Valeera
+      -- Sanguinar...) utilise l'API "amitie" des reputations cote Blizzard -
+      -- exclu ici car il a deja son propre affichage (tuile Gouffres,
+      -- rec.delveCompanionLevel) et n'est pas une vraie faction.
+      local isCompanion = info and rec.delveCompanionName and info.name == rec.delveCompanionName
+      if info and info.name and info.name ~= "" and not isCompanion and not seenName[info.name] then
         seenName[info.name] = true
         info.lastGainAt = rec.repRecentGain and rec.repRecentGain[id]
         list[#list + 1] = info

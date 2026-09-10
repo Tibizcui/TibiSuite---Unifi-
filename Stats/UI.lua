@@ -2075,7 +2075,10 @@ function SX.RefreshDashboard()
     local rec = (view.char ~= "__account__") and StatsDB[view.char]
     local pts = rec and rec.achievementPoints
     if pts then
-      bannerText = bannerText .. "  |cFF888899-|r " .. UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. tostring(pts) .. "|r " .. L["ACHIEV_POINTS_SUFFIX"]
+      -- Icone officielle des hauts faits (texture native, meme icone que
+      -- l'onglet Hauts faits/le bouton du menu principal) devant le total.
+      bannerText = bannerText .. "  |cFF888899-|r |TInterface\\Icons\\Achievement_General:14:14:0:-1|t "
+        .. UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. tostring(pts) .. "|r " .. L["ACHIEV_POINTS_SUFFIX"]
     end
     mainFrame.banner:SetText(bannerText)
   end
