@@ -69,6 +69,7 @@ L["DETAIL_AVG"]          = "Average"
 L["DETAIL_BACK"]         = "Back to overview"
 L["OVERLAY_BUTTON"]      = "Overlay all curves"
 L["OVERLAY_TITLE"]       = "All metrics"
+L["OVERLAY_LEGEND_HINT"] = "Click a metric to show/hide it"
 
 -- Comparaison
 L["COMPARE_BUTTON"]      = "Compare"

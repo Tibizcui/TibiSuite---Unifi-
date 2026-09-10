@@ -62,6 +62,7 @@ L["DETAIL_AVG"]          = "Durchschnitt"
 L["DETAIL_BACK"]         = "Zurueck zur Uebersicht"
 L["OVERLAY_BUTTON"]      = "Kurven ueberlagern"
 L["OVERLAY_TITLE"]       = "Alle Kennzahlen"
+L["OVERLAY_LEGEND_HINT"] = "Klicke auf eine Kennzahl, um sie ein-/auszublenden"
 
 L["COMPARE_BUTTON"]      = "Vergleichen"
 L["COMPARE_STOP"]        = "Vergleich beenden"

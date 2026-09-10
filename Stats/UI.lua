@@ -1819,6 +1819,10 @@ local function BuildOverlayDetail(content)
     d.chartInner:SetPoint("TOPLEFT", 16, -16)
     d.chartInner:SetPoint("BOTTOMRIGHT", -16, 30)
 
+    d.legendHint = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    d.legendHint:SetPoint("TOPLEFT", d.chart, "BOTTOMLEFT", 0, -14)
+    d.legendHint:SetText(L["OVERLAY_LEGEND_HINT"])
+
     d.legendButtons = {}
 
     d.built = true
@@ -1874,7 +1878,7 @@ local function BuildOverlayDetail(content)
   -- Legende cliquable construite sur la liste COMPLETE (pas filtree) pour
   -- pouvoir re-cocher une courbe cachee ; le graphique lui-meme n'utilise
   -- que les courbes cochees (visibleSeries).
-  BuildLegendToggles(content, d.legendButtons, CARD_METRICS, function(k) return OVERLAY_COLORS[k] end, view.overlayEnabledMetrics, -(66 + 300 + 14))
+  BuildLegendToggles(content, d.legendButtons, CARD_METRICS, function(k) return OVERLAY_COLORS[k] end, view.overlayEnabledMetrics, -(66 + 300 + 14 + 16))
   local visibleSeries = FilterEnabledSeries(seriesList, view.overlayEnabledMetrics)
 
   local fmtFn = function(point)
@@ -1940,6 +1944,10 @@ local function BuildPvPChartDetail(content)
     d.chartInner:SetPoint("TOPLEFT", 16, -16)
     d.chartInner:SetPoint("BOTTOMRIGHT", -16, 30)
 
+    d.legendHint = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    d.legendHint:SetPoint("TOPLEFT", d.chart, "BOTTOMLEFT", 0, -14)
+    d.legendHint:SetText(L["OVERLAY_LEGEND_HINT"])
+
     d.legendButtons = {}
 
     d.built = true
@@ -1971,7 +1979,7 @@ local function BuildPvPChartDetail(content)
     seriesList[#seriesList + 1] = { key = metric, color = PVP_OVERLAY_COLORS[metric] or ACCENT, points = NormalizeSeries(raw) }
   end
 
-  BuildLegendToggles(content, d.legendButtons, PVP_CHART_METRICS, function(k) return PVP_OVERLAY_COLORS[k] end, view.pvpEnabledMetrics, -(66 + 300 + 14))
+  BuildLegendToggles(content, d.legendButtons, PVP_CHART_METRICS, function(k) return PVP_OVERLAY_COLORS[k] end, view.pvpEnabledMetrics, -(66 + 300 + 14 + 16))
   local visibleSeries = FilterEnabledSeries(seriesList, view.pvpEnabledMetrics)
 
   local fmtFn = function(point)

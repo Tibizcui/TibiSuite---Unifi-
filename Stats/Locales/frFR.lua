@@ -62,6 +62,7 @@ L["DETAIL_AVG"]          = "Moyenne"
 L["DETAIL_BACK"]         = "Retour a la vue d'ensemble"
 L["OVERLAY_BUTTON"]      = "Superposer les courbes"
 L["OVERLAY_TITLE"]       = "Toutes les metriques"
+L["OVERLAY_LEGEND_HINT"] = "Clique sur une metrique pour l'afficher/la masquer"
 
 L["COMPARE_BUTTON"]      = "Comparer"
 L["COMPARE_STOP"]        = "Arreter"
