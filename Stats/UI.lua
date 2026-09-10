@@ -490,19 +490,19 @@ local function RenderOverlayChart(container, seriesList, showLabels, fmtFn, gran
   -- raison (constat utilisateur : chevauchement illisible avec des
   -- puces pleines, capture d'ecran en jeu).
   --
-  -- Granularite "jour" = barres, pas de lignes (meme convention que
-  -- RenderChart plus haut : "barres pour jour, ligne pour semaine/mois/
-  -- annee"). Les metriques suivies (quetes, donjons, gouffres...) sont des
-  -- COMPTEURS journaliers epars - beaucoup de jours a 0, quelques pics -
-  -- relier ces valeurs par des segments diagonaux cree un zigzag illisible
-  -- meme avec une seule courbe selectionnee (constat utilisateur : la
-  -- legende cliquable filtre bien les courbes, mais celle qui reste est
-  -- "zigzag / illisible" a la granularite Jour). Une interpolation
-  -- Catmull-Rom testee avant ca a empire les choses (une spline peut
-  -- largement depasser/overshoot la plage locale quand la valeur change
-  -- brusquement de direction) - le vrai probleme n'etait pas le lissage
-  -- mais le style "ligne" applique a une donnee ponctuelle/eparse.
-  if granularity == "day" then
+  -- Granularite "jour"/"semaine" = barres, pas de lignes. Les metriques
+  -- suivies (quetes, donjons, gouffres...) restent des COMPTEURS eparses
+  -- meme agregees par semaine (~12 buckets) - beaucoup de semaines a 0,
+  -- quelques pics - relier ces valeurs par des segments diagonaux cree un
+  -- zigzag illisible meme avec une seule courbe selectionnee (constat
+  -- utilisateur, confirme separement sur Jour PUIS sur Semaine apres le
+  -- premier correctif). Mois/Annee restent en ligne : assez de mois/annees
+  -- de recul pour que la tendance reste lisible sans barres. Une
+  -- interpolation Catmull-Rom testee avant ca a empire les choses (une
+  -- spline peut largement depasser/overshoot la plage locale quand la
+  -- valeur change brusquement de direction) - le vrai probleme n'etait pas
+  -- le lissage mais le style "ligne" applique a une donnee ponctuelle/eparse.
+  if granularity == "day" or granularity == "week" then
     local barW = math.max((cw / n) * 0.55, 2)
     for _, s in ipairs(seriesList) do
       for i, p in ipairs(s.points) do
