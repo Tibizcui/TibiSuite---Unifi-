@@ -53,6 +53,8 @@ L["DETAIL_MIN"]          = "Min"
 L["DETAIL_MAX"]          = "Max"
 L["DETAIL_AVG"]          = "Moyenne"
 L["DETAIL_BACK"]         = "Retour a la vue d'ensemble"
+L["OVERLAY_BUTTON"]      = "Superposer les courbes"
+L["OVERLAY_TITLE"]       = "Toutes les metriques"
 
 L["COMPARE_BUTTON"]      = "Comparer"
 L["COMPARE_STOP"]        = "Arreter"

@@ -60,6 +60,8 @@ L["DETAIL_MIN"]          = "Min"
 L["DETAIL_MAX"]          = "Max"
 L["DETAIL_AVG"]          = "Average"
 L["DETAIL_BACK"]         = "Back to overview"
+L["OVERLAY_BUTTON"]      = "Overlay all curves"
+L["OVERLAY_TITLE"]       = "All metrics"
 
 -- Comparaison
 L["COMPARE_BUTTON"]      = "Compare"

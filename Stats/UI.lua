@@ -448,6 +448,74 @@ local function RenderChart(container, series, style, color, series2, color2, sho
   end
 end
 
+-- Superpose N series (une par metrique de CARD_METRICS) sur le meme axe -
+-- seriesList = liste de { key, color={r,g,b}, points } ou points est deja
+-- normalise 0-100 (cf. NormalizeSeries). Une seule zone de survol par
+-- abscisse (pas une par serie) : fmtFn recoit { index, seriesList } et
+-- compose une infobulle listant la valeur REELLE de chaque metrique a cette
+-- date (points[i].actual, pas la valeur normalisee tracee a l'ecran).
+local function RenderOverlayChart(container, seriesList, showLabels, fmtFn)
+  WipeChart(container)
+  local cw, ch = container:GetWidth(), container:GetHeight()
+  if not seriesList or #seriesList == 0 or cw <= 0 then return end
+  local n = 0
+  for _, s in ipairs(seriesList) do n = math.max(n, #s.points) end
+  if n == 0 then return end
+
+  local labelH = showLabels and 14 or 0
+  local plotH = ch - labelH
+  local function yFor(v) return (v / 100) * (plotH - 4) end
+  local stepX = n > 1 and (cw / (n - 1)) or 0
+
+  for _, s in ipairs(seriesList) do
+    local prevX, prevY
+    for i, p in ipairs(s.points) do
+      local x = (i - 1) * stepX
+      local y = yFor(p.value)
+      local dot = AcquireBar(container)
+      dot:ClearAllPoints()
+      dot:SetColorTexture(s.color[1], s.color[2], s.color[3], 1)
+      dot:SetSize(5, 5)
+      dot:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", x - 2.5, labelH + y - 2.5)
+      if prevX then
+        local seg = AcquireBar(container)
+        seg:ClearAllPoints()
+        seg:SetColorTexture(s.color[1], s.color[2], s.color[3], 0.85)
+        local dx, dy = x - prevX, y - prevY
+        local len = math.sqrt(dx * dx + dy * dy)
+        seg:SetSize(math.max(len, 0.01), 2)
+        seg:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", prevX, labelH + prevY - 1)
+        seg:SetRotation(math.atan2(dy, dx))
+      end
+      prevX, prevY = x, y
+    end
+  end
+
+  if fmtFn then
+    for i = 1, n do
+      local x = (i - 1) * stepX
+      local hitW = math.max(stepX, 10)
+      local hit = AcquireHit(container)
+      hit:ClearAllPoints()
+      hit:SetSize(hitW, ch)
+      hit:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", x - hitW / 2, 0)
+      AttachHitTooltip(hit, { index = i, seriesList = seriesList }, fmtFn)
+    end
+  end
+
+  if showLabels then
+    local first = seriesList[1]
+    for i, p in ipairs(first.points) do
+      local x = (i - 1) * stepX
+      local lbl = AcquireLabel(container)
+      lbl:ClearAllPoints()
+      lbl:SetPoint("TOP", container, "BOTTOMLEFT", x, labelH - ch)
+      lbl:SetWidth(stepX > 0 and stepX or 40)
+      lbl:SetText(p.label)
+    end
+  end
+end
+
 -- ============================================================================
 -- CARTES DE LA VUE D'ENSEMBLE
 -- ============================================================================
@@ -457,6 +525,16 @@ end
 -- les deux sections.
 local CARD_METRICS = { "quests", "gold", "played", "dungeons", "delves", "pvpKillsGained", "repGained", "profGained" }
 local cards = {}
+
+-- Couleurs fixes pour la superposition multi-metriques (graphique "Toutes les
+-- metriques") - une couleur par entree de CARD_METRICS, memes teintes que le
+-- site/Tibi Companion (dashboard-shared.js, OVERLAY_COLORS) pour rester
+-- coherent entre les deux interfaces.
+local OVERLAY_COLORS = {
+  quests = { 0.310, 0.816, 0.773 }, gold = { 0.957, 0.839, 0.541 }, played = { 0.486, 0.620, 1.000 },
+  dungeons = { 1.000, 0.541, 0.541 }, delves = { 0.702, 0.537, 0.957 }, pvpKillsGained = { 1.000, 0.431, 0.780 },
+  repGained = { 0.431, 0.906, 0.718 }, profGained = { 1.000, 0.706, 0.329 },
+}
 
 local function CardLabel(metric)
   if metric == "quests" then return L["CARD_QUESTS"]
@@ -516,6 +594,26 @@ local function CombineSeries(a, b)
   for i, p in ipairs(a) do
     local bv = (b and b[i] and b[i].value) or 0
     out[i] = { label = p.label, value = p.value + bv, from = p.from, to = p.to }
+  end
+  return out
+end
+
+-- Normalise une serie sur 0-100 (min-max de la serie elle-meme) pour rendre
+-- des metriques d'echelles tres differentes (quetes ~100, or ~milliers,
+-- temps joue en heures...) comparables visuellement sur un meme axe -
+-- utilise par le graphique "Toutes les metriques". La valeur reelle est
+-- conservee dans `actual` pour l'infobulle.
+local function NormalizeSeries(series)
+  local minV, maxV
+  for _, p in ipairs(series) do
+    if not minV or p.value < minV then minV = p.value end
+    if not maxV or p.value > maxV then maxV = p.value end
+  end
+  minV, maxV = minV or 0, maxV or 0
+  local span = maxV - minV
+  local out = {}
+  for i, p in ipairs(series) do
+    out[i] = { label = p.label, actual = p.value, value = span > 0 and ((p.value - minV) / span) * 100 or 50 }
   end
   return out
 end
@@ -1577,6 +1675,120 @@ local function HideDetail()
   for g, b in pairs(d.granButtons) do b:Hide() end
 end
 
+-- ============================================================================
+-- SUPERPOSITION DE TOUTES LES METRIQUES ("Superposer les courbes") : meme
+-- chrome que BuildDetail (retour, granularite Jour/Semaine/Mois) mais un
+-- graphique multi-courbes (RenderOverlayChart) a la place du graphique/
+-- min-max-moyenne d'une seule metrique, plus une legende couleur.
+-- ============================================================================
+local overlayWidgets = {}
+
+local function BuildOverlayDetail(content)
+  local d = overlayWidgets
+  if not d.built then
+    d.back = UI.MakeButton(content, 160, 22, L["DETAIL_BACK"])
+    d.back:SetPoint("TOPLEFT", 0, 0)
+    d.back:SetScript("OnClick", function() view.detailMetric = nil; SX.RefreshDashboard() end)
+
+    d.title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    d.title:SetPoint("TOPLEFT", 0, -34)
+    d.title:SetText(L["OVERLAY_TITLE"])
+
+    d.granLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    d.granLabel:SetPoint("TOPRIGHT", 0, -8)
+
+    d.granButtons = {}
+    for _, g in ipairs(SX.GRANULARITIES) do
+      local b = UI.MakeButton(content, 60, 20, "")
+      d.granButtons[g] = b
+    end
+
+    d.chart = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    UI.SkinFrame(d.chart, ACCENT, UI.C.PANEL)
+    d.chart:SetPoint("TOPLEFT", 0, -66)
+    d.chart:SetSize(W - 60, 300)
+    d.chartInner = CreateFrame("Frame", nil, d.chart)
+    d.chartInner:SetPoint("TOPLEFT", 16, -16)
+    d.chartInner:SetPoint("BOTTOMRIGHT", -16, 30)
+
+    d.legend = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    d.legend:SetPoint("TOPLEFT", d.chart, "BOTTOMLEFT", 0, -14)
+    d.legend:SetPoint("TOPRIGHT", d.chart, "BOTTOMRIGHT", 0, -14)
+    d.legend:SetJustifyH("LEFT")
+
+    d.built = true
+  end
+
+  -- Meme verrouillage granularite/periode que BuildDetail (evite une
+  -- granularite plus fine que la fenetre affichee).
+  local lockMap = { day = { day = false, week = view.period == "day", month = true },
+                     week = { day = false, week = false, month = view.period == "week" },
+                     month = { day = true, week = false, month = false },
+                     year = { day = true, week = true, month = false } }
+  local locks = lockMap[view.period] or {}
+  local gx = 0
+  for _, g in ipairs(SX.GRANULARITIES) do
+    local b = d.granButtons[g]
+    b:ClearAllPoints()
+    b:SetPoint("TOPRIGHT", content, "TOPRIGHT", -gx, -30)
+    gx = gx + 64
+    local locked = locks[g]
+    if locked and view.detailGranularity == g then view.detailGranularity = "day" end
+    b:SetEnabled(not locked)
+    local gLabel = L["GRANULARITY_" .. g:upper()]
+    local labelText
+    if locked then
+      labelText = "|cFF555555" .. gLabel .. "|r"
+    elseif view.detailGranularity == g then
+      labelText = UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. gLabel .. "|r"
+    else
+      labelText = gLabel
+    end
+    b._label:SetText(labelText)
+    b:SetScript("OnClick", function() if not locked then view.detailGranularity = g; SX.RefreshDashboard() end end)
+  end
+  d.granLabel:SetText(L["GRANULARITY_LABEL"])
+  d.granLabel:ClearAllPoints()
+  d.granLabel:SetPoint("RIGHT", d.granButtons[SX.GRANULARITIES[1]], "LEFT", -8, 0)
+
+  local bucketCount = (view.detailGranularity == "day") and 30 or 12
+  local seriesList = {}
+  for _, metric in ipairs(CARD_METRICS) do
+    local raw = SX.BuildSeries(view.char, metric, view.detailGranularity, bucketCount)
+    seriesList[#seriesList + 1] = { key = metric, color = OVERLAY_COLORS[metric] or ACCENT, points = NormalizeSeries(raw) }
+  end
+
+  local fmtFn = function(point)
+    local first = point.seriesList[1]
+    local p1 = first and first.points[point.index]
+    local lines = { p1 and p1.label or "" }
+    for _, s in ipairs(point.seriesList) do
+      local p = s.points[point.index]
+      if p then
+        lines[#lines + 1] = UI.Hex(s.color[1], s.color[2], s.color[3]) .. CardLabel(s.key) .. ": " .. fmtMetric(s.key, p.actual) .. "|r"
+      end
+    end
+    return table.concat(lines, "\n")
+  end
+  RenderOverlayChart(d.chartInner, seriesList, true, fmtFn)
+
+  local legendParts = {}
+  for _, s in ipairs(seriesList) do
+    legendParts[#legendParts + 1] = UI.Hex(s.color[1], s.color[2], s.color[3]) .. CardLabel(s.key) .. "|r"
+  end
+  d.legend:SetText(table.concat(legendParts, "   "))
+
+  for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
+  for g, b in pairs(d.granButtons) do b:Show() end
+end
+
+local function HideOverlayDetail()
+  local d = overlayWidgets
+  if not d.built then return end
+  for _, w in pairs(d) do if type(w) == "table" and w.Hide then w:Hide() end end
+  for g, b in pairs(d.granButtons) do b:Hide() end
+end
+
 local function HideOverview()
   for _, card in pairs(cards) do card:Hide() end
   HideSummaryTiles()
@@ -1675,6 +1887,17 @@ local function BuildMainFrame()
     function(key) view.compareChar = key; SX.RefreshDashboard() end)
   mainFrame.compareDD:SetPoint("LEFT", mainFrame.compareBtn, "RIGHT", 8, 0)
 
+  -- Superposition de toutes les metriques : meme ligne que Comparer, cale a
+  -- droite (espace libre confirme par lecture du code, PAS teste en jeu -
+  -- A VERIFIER : chevauchement eventuel avec Comparer/Cumule sur une petite
+  -- resolution ou une langue au texte plus long).
+  mainFrame.overlayBtn = UI.MakeButton(mainFrame, 220, 22, L["OVERLAY_BUTTON"])
+  mainFrame.overlayBtn:SetPoint("TOPRIGHT", mainFrame, "TOPRIGHT", -14, -94)
+  mainFrame.overlayBtn:SetScript("OnClick", function()
+    view.detailMetric = (view.detailMetric == "__overlay__") and nil or "__overlay__"
+    SX.RefreshDashboard()
+  end)
+
   -- Cumule revient dans le sous-bloc "Comparer" : accroche au selecteur
   -- secondaire, masque tant que Comparer n'est pas actif (comme au tout debut).
   mainFrame.cumulativeCB = CreateFrame("CheckButton", nil, mainFrame, "UICheckButtonTemplate")
@@ -1731,6 +1954,8 @@ function SX.RefreshDashboard()
   mainFrame.compareDD:SetShown(view.compareChar ~= nil)
   mainFrame.cumulativeCB:SetShown(view.compareChar ~= nil)
   mainFrame.compareBtn._label:SetText(view.compareChar and L["COMPARE_STOP"] or L["COMPARE_BUTTON"])
+  mainFrame.overlayBtn._label:SetText(view.detailMetric == "__overlay__"
+    and (UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. L["OVERLAY_BUTTON"] .. "|r") or L["OVERLAY_BUTTON"])
 
   if view.compareChar then
     local pColor = SeriesColor(view.char, ACCENT)
@@ -1758,12 +1983,19 @@ function SX.RefreshDashboard()
   end
   mainFrame.weeklyNote:SetShown(view.period == "week")
 
-  if view.detailMetric then
+  if view.detailMetric == "__overlay__" then
     HideOverview()
+    HideDetail()
+    BuildOverlayDetail(mainFrame.content)
+    mainFrame.content:SetHeight(420)
+  elseif view.detailMetric then
+    HideOverview()
+    HideOverlayDetail()
     BuildDetail(mainFrame.content, view.detailMetric)
     mainFrame.content:SetHeight(420)
   else
     HideDetail()
+    HideOverlayDetail()
     BuildOverview(mainFrame.content)
     local gridRows = math.ceil(#CARD_METRICS / 2)
     local gridDepth = gridRows * 190 + (gridRows - 1) * 16 + 10
