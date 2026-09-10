@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.1.5.2
+- Correction : le compagnon de gouffre (Brann Bronzebeard/Valeera Sanguinar) n'apparait plus a tort dans le tableau Reputations (il utilisait l'API "amitie" des reputations cote Blizzard).
+- Correction : le "Palier max" par gouffre nomme pouvait rester bloque a 0 malgre un gouffre bien compte - reessai automatique ajoute.
+- Icone officielle des hauts faits ajoutee devant le total de points, dans le bandeau personnage.
+
 ## 7.1.5.1
 - PVP separe du graphique Evolution general dans son propre graphique dedie "PVP dans le temps" (granularite Jour/Semaine/Mois/Annee independante).
 - Suivi quotidien ajoute pour les champs de bataille (joues/gagnes) et les arenes (jouees/gagnees), en plus des adversaires tues deja suivis.
