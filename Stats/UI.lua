@@ -510,6 +510,13 @@ local function RenderOverlayChart(container, seriesList, showLabels, fmtFn, gran
         local y = math.max(yFor(p.value), 1)
         local bar = AcquireBar(container)
         bar:ClearAllPoints()
+        -- AcquireBar recycle le meme pool de textures que le style "ligne"
+        -- ci-dessous (SetRotation pour orienter un segment diagonal) : sans
+        -- remise a zero explicite, une texture reutilisee garde l'angle de
+        -- son precedent rendu (ex. bascule Semaine -> Jour) et une "barre"
+        -- s'affiche encore penchee en diagonale (constat utilisateur,
+        -- capture d'ecran en jeu apres /reload confirme).
+        bar:SetRotation(0)
         bar:SetColorTexture(s.color[1], s.color[2], s.color[3], 0.8)
         bar:SetSize(barW, y)
         bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", x - barW / 2, labelH)
