@@ -25,6 +25,13 @@ local view = {
   period = "week",
   detailMetric = nil,  -- nil = vue d'ensemble ; sinon "quests"/"gold"/"dungeons"/"played"/"__overlay__"/"__pvp__"
   detailGranularity = "day",
+  -- "semaine" par defaut (pas "jour" comme detailGranularity) : 7-8
+  -- metriques normalisees independamment, superposees en granularite jour,
+  -- produisent un zigzag illisible des que le joueur est actif chaque jour
+  -- sur plusieurs categories (constat utilisateur, capture d'ecran en jeu -
+  -- le lissage Catmull-Rom seul ne suffisait pas). L'agregation par semaine
+  -- lisse le bruit quotidien a la source, pas juste visuellement.
+  overlayGranularity = "week",
   pvpChartGranularity = "day",
 }
 
@@ -507,16 +514,17 @@ local function RenderOverlayChart(container, seriesList, showLabels, fmtFn)
   local function yFor(v) return (v / 100) * (plotH - 4) end
   local stepX = n > 1 and (cw / (n - 1)) or 0
 
+  -- Pas de puces par point ici (contrairement a drawLine/RenderChart) :
+  -- avec 5-8 series superposees, une puce a chaque point (x7-8) ajoutait
+  -- surtout du bruit visuel sans lisibilite en plus - le detail exact par
+  -- date reste accessible via l'infobulle (fmtFn/AttachHitTooltip
+  -- ci-dessous). Lignes plus fines et plus transparentes pour la meme
+  -- raison (constat utilisateur : chevauchement illisible avec des
+  -- puces pleines, capture d'ecran en jeu).
   for _, s in ipairs(seriesList) do
-    -- Points bruts (un par valeur reelle, pour les puces cliquables/survolables).
     local raw = {}
     for i, p in ipairs(s.points) do
       raw[i] = { x = (i - 1) * stepX, y = yFor(p.value) }
-      local dot = AcquireBar(container)
-      dot:ClearAllPoints()
-      dot:SetColorTexture(s.color[1], s.color[2], s.color[3], 1)
-      dot:SetSize(5, 5)
-      dot:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", raw[i].x - 2.5, labelH + raw[i].y - 2.5)
     end
     -- Ligne : lissee via les points intermediaires Catmull-Rom, pas les
     -- points bruts directement (segments droits abrupts sinon).
@@ -526,11 +534,11 @@ local function RenderOverlayChart(container, seriesList, showLabels, fmtFn)
       if prevX then
         local seg = AcquireBar(container)
         seg:ClearAllPoints()
-        seg:SetColorTexture(s.color[1], s.color[2], s.color[3], 0.85)
+        seg:SetColorTexture(s.color[1], s.color[2], s.color[3], 0.6)
         local dx, dy = pt.x - prevX, pt.y - prevY
         local len = math.sqrt(dx * dx + dy * dy)
-        seg:SetSize(math.max(len, 0.01), 2)
-        seg:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", prevX, labelH + prevY - 1)
+        seg:SetSize(math.max(len, 0.01), 1.5)
+        seg:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", prevX, labelH + prevY - 0.75)
         seg:SetRotation(math.atan2(dy, dx))
       end
       prevX, prevY = pt.x, pt.y
@@ -1803,8 +1811,9 @@ local function BuildOverlayDetail(content)
     d.built = true
   end
 
-  -- Meme verrouillage granularite/periode que BuildDetail (evite une
-  -- granularite plus fine que la fenetre affichee).
+  -- Granularite INDEPENDANTE de detailGranularity (single-metrique) :
+  -- demarre en "semaine", pas "jour" (cf. view.overlayGranularity). Meme
+  -- verrouillage granularite/periode que BuildDetail.
   local lockMap = { day = { day = false, week = view.period == "day", month = true },
                      week = { day = false, week = false, month = view.period == "week" },
                      month = { day = true, week = false, month = false },
@@ -1819,19 +1828,19 @@ local function BuildOverlayDetail(content)
     gx = gx + 64
     leftmostBtn = b
     local locked = locks[g]
-    if locked and view.detailGranularity == g then view.detailGranularity = "day" end
+    if locked and view.overlayGranularity == g then view.overlayGranularity = "week" end
     b:SetEnabled(not locked)
     local gLabel = L["GRANULARITY_" .. g:upper()]
     local labelText
     if locked then
       labelText = "|cFF555555" .. gLabel .. "|r"
-    elseif view.detailGranularity == g then
+    elseif view.overlayGranularity == g then
       labelText = UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. gLabel .. "|r"
     else
       labelText = gLabel
     end
     b._label:SetText(labelText)
-    b:SetScript("OnClick", function() if not locked then view.detailGranularity = g; SX.RefreshDashboard() end end)
+    b:SetScript("OnClick", function() if not locked then view.overlayGranularity = g; SX.RefreshDashboard() end end)
   end
   -- Ancre AU BOUT DE LA RANGEE (le dernier bouton positionne = le plus a
   -- gauche, gx croissant) - pas SX.GRANULARITIES[1] ("jour", le plus a
@@ -1842,10 +1851,10 @@ local function BuildOverlayDetail(content)
   d.granLabel:ClearAllPoints()
   d.granLabel:SetPoint("RIGHT", leftmostBtn, "LEFT", -8, 0)
 
-  local bucketCount = (view.detailGranularity == "day") and 30 or 12
+  local bucketCount = (view.overlayGranularity == "day") and 30 or 12
   local seriesList = {}
   for _, metric in ipairs(CARD_METRICS) do
-    local raw = SX.BuildSeries(view.char, metric, view.detailGranularity, bucketCount)
+    local raw = SX.BuildSeries(view.char, metric, view.overlayGranularity, bucketCount)
     seriesList[#seriesList + 1] = { key = metric, color = OVERLAY_COLORS[metric] or ACCENT, points = NormalizeSeries(raw) }
   end
 
