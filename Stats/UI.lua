@@ -449,6 +449,45 @@ local function RenderChart(container, series, style, color, series2, color2, sho
   end
 end
 
+-- Interpolation Catmull-Rom (meme principe que catmullRomPath cote site/
+-- Tibi Companion, dashboard-shared.js) : lisse la ligne brisee entre points
+-- bruts en une courbe, au lieu de segments droits abrupts. Necessaire ici
+-- specifiquement car RenderOverlayChart normalise CHAQUE serie 0-100 sur sa
+-- PROPRE plage (cf. NormalizeSeries) - une metrique peu active (beaucoup de
+-- jours a 0 puis un seul pic) s'etire donc sur toute la hauteur du
+-- graphique en triangle abrupt ; avec 7-8 metriques superposees, ces pics
+-- bruts se chevauchent en zigzag difficile a lire (constat utilisateur,
+-- capture d'ecran en jeu). p0/p3 dupliquent les extremites (pas de point
+-- avant le premier / apres le dernier).
+local function CatmullRomPoint(p0, p1, p2, p3, t)
+  local t2, t3 = t * t, t * t * t
+  local x = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3)
+  local y = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
+  return x, y
+end
+
+-- SEGMENTS_PER_SPAN modeste (3) : assez pour lisser visuellement, sans faire
+-- exploser le nombre de textures (jusqu'a 8 metriques x ~30 points/jour).
+local OVERLAY_SMOOTH_SEGMENTS = 3
+
+local function SmoothPoints(pts)
+  if #pts < 3 then return pts end
+  local out = {}
+  for i = 1, #pts - 1 do
+    local p0 = pts[i - 1] or pts[i]
+    local p1 = pts[i]
+    local p2 = pts[i + 1]
+    local p3 = pts[i + 2] or p2
+    out[#out + 1] = p1
+    for step = 1, OVERLAY_SMOOTH_SEGMENTS - 1 do
+      local x, y = CatmullRomPoint(p0, p1, p2, p3, step / OVERLAY_SMOOTH_SEGMENTS)
+      out[#out + 1] = { x = x, y = y }
+    end
+  end
+  out[#out + 1] = pts[#pts]
+  return out
+end
+
 -- Superpose N series (une par metrique de CARD_METRICS) sur le meme axe -
 -- seriesList = liste de { key, color={r,g,b}, points } ou points est deja
 -- normalise 0-100 (cf. NormalizeSeries). Une seule zone de survol par
@@ -469,26 +508,32 @@ local function RenderOverlayChart(container, seriesList, showLabels, fmtFn)
   local stepX = n > 1 and (cw / (n - 1)) or 0
 
   for _, s in ipairs(seriesList) do
-    local prevX, prevY
+    -- Points bruts (un par valeur reelle, pour les puces cliquables/survolables).
+    local raw = {}
     for i, p in ipairs(s.points) do
-      local x = (i - 1) * stepX
-      local y = yFor(p.value)
+      raw[i] = { x = (i - 1) * stepX, y = yFor(p.value) }
       local dot = AcquireBar(container)
       dot:ClearAllPoints()
       dot:SetColorTexture(s.color[1], s.color[2], s.color[3], 1)
       dot:SetSize(5, 5)
-      dot:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", x - 2.5, labelH + y - 2.5)
+      dot:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", raw[i].x - 2.5, labelH + raw[i].y - 2.5)
+    end
+    -- Ligne : lissee via les points intermediaires Catmull-Rom, pas les
+    -- points bruts directement (segments droits abrupts sinon).
+    local smoothed = SmoothPoints(raw)
+    local prevX, prevY
+    for _, pt in ipairs(smoothed) do
       if prevX then
         local seg = AcquireBar(container)
         seg:ClearAllPoints()
         seg:SetColorTexture(s.color[1], s.color[2], s.color[3], 0.85)
-        local dx, dy = x - prevX, y - prevY
+        local dx, dy = pt.x - prevX, pt.y - prevY
         local len = math.sqrt(dx * dx + dy * dy)
         seg:SetSize(math.max(len, 0.01), 2)
         seg:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", prevX, labelH + prevY - 1)
         seg:SetRotation(math.atan2(dy, dx))
       end
-      prevX, prevY = x, y
+      prevX, prevY = pt.x, pt.y
     end
   end
 
