@@ -19,6 +19,7 @@ L["GRANULARITY_LABEL"]   = "Statistik nach:"
 L["GRANULARITY_DAY"]     = "Tag"
 L["GRANULARITY_WEEK"]    = "Woche"
 L["GRANULARITY_MONTH"]   = "Monat"
+L["GRANULARITY_YEAR"]    = "Jahr"
 
 L["CARD_QUESTS"]         = "Quests"
 L["CARD_GOLD"]           = "Gold"

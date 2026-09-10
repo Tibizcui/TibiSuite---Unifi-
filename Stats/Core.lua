@@ -483,7 +483,7 @@ function SX.MetricValue(agg, metric)
 end
 
 -- Serie de `count` points se terminant a la periode courante, granularite
--- day/week/month. Utilisee pour les mini-courbes et le detail par metrique.
+-- day/week/month/year. Utilisee pour les mini-courbes et le detail par metrique.
 function SX.BuildSeries(charKey, metric, granularity, count)
   local series = {}
   local now = time()
@@ -497,6 +497,15 @@ function SX.BuildSeries(charKey, metric, granularity, count)
       from = SX.StartOfWeek(now) - i * 7 * 86400
       to = from + 7 * 86400 - 1
       label = date("%d/%m", from)
+    elseif granularity == "year" then
+      local dt = dateTable(now)
+      dt.month, dt.day, dt.hour, dt.min, dt.sec = 1, 1, 0, 0, 0
+      dt.year = dt.year - i
+      from = time(dt)
+      local dt2 = dateTable(from)
+      dt2.year = dt2.year + 1
+      to = time(dt2) - 1
+      label = date("%Y", from)
     else -- month
       local dt = dateTable(now)
       dt.day, dt.hour, dt.min, dt.sec = 1, 0, 0, 0

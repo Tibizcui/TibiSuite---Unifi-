@@ -23,6 +23,6 @@ SX.SCHEMA_VERSION = 2
 SX.HISTORY_MAX_DAYS = 400
 
 SX.PERIODS = { "day", "week", "month", "year" }
-SX.GRANULARITIES = { "day", "week", "month" }
+SX.GRANULARITIES = { "day", "week", "month", "year" }
 
 SX.METRICS = { "quests", "gold", "dungeons", "played" }
