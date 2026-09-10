@@ -33,6 +33,13 @@ local view = {
   -- lisse le bruit quotidien a la source, pas juste visuellement.
   overlayGranularity = "week",
   pvpChartGranularity = "day",
+  -- Legende cliquable des graphiques superposes : cle metrique -> false
+  -- veut dire "courbe cachee" (absent/true = visible). Meme constat que
+  -- overlayGranularity : trop de courbes normalisees independamment
+  -- superposees reste illisible quelle que soit la granularite/le lissage -
+  -- laisser choisir lesquelles afficher regle le probleme a la racine.
+  overlayEnabledMetrics = {},
+  pvpEnabledMetrics = {},
 }
 
 local function fmtGold(copper)
@@ -580,6 +587,52 @@ local function CardLabel(metric)
   elseif metric == "arenaPlayedGained" then return L["CARD_ARENA_PLAYED_GAINED"]
   elseif metric == "arenaWonGained" then return L["CARD_ARENA_WON_GAINED"]
   end
+end
+
+-- Legende cliquable pour les graphiques superposes : un petit bouton-texte
+-- par metrique (couleur pleine si visible, gris si cachee via stateTable),
+-- flux gauche-a-droite avec largeur mesuree (pas de layout automatique en
+-- UI WoW). pool est une table persistante (ex. overlayWidgets.legendButtons)
+-- pour reutiliser les memes boutons d'un rafraichissement a l'autre. Repond
+-- au constat utilisateur : trop de courbes superposees reste illisible
+-- quels que soient granularite/lissage - laisser choisir lesquelles
+-- afficher regle le probleme a la racine plutot que d'ajuster le rendu.
+local function BuildLegendToggles(container, pool, metricKeys, colorOf, stateTable, top)
+  local x = 0
+  for _, key in ipairs(metricKeys) do
+    local btn = pool[key]
+    if not btn then
+      btn = CreateFrame("Button", nil, container)
+      local fs = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      fs:SetPoint("LEFT", 0, 0)
+      btn._label = fs
+      pool[key] = btn
+    end
+    btn:SetScript("OnClick", function()
+      stateTable[key] = (stateTable[key] == false) and true or false
+      SX.RefreshDashboard()
+    end)
+    local enabled = stateTable[key] ~= false
+    local c = colorOf(key) or ACCENT
+    local text = CardLabel(key)
+    btn._label:SetText(enabled and (UI.Hex(c[1], c[2], c[3]) .. text .. "|r") or ("|cFF555555" .. text .. "|r"))
+    local w = btn._label:GetStringWidth() + 4
+    btn:SetSize(w, 16)
+    btn:ClearAllPoints()
+    btn:SetPoint("TOPLEFT", container, "TOPLEFT", x, top)
+    x = x + w + 18
+    btn:Show()
+  end
+end
+
+-- Filtre les series dont l'utilisateur a decoche la courbe (legende
+-- interactive ci-dessus) - stateTable[key] == false = cachee.
+local function FilterEnabledSeries(seriesList, stateTable)
+  local out = {}
+  for _, s in ipairs(seriesList) do
+    if stateTable[s.key] ~= false then out[#out + 1] = s end
+  end
+  return out
 end
 
 -- L'astuce "semaine calee sur le reset" (GoldRangeFor) ne s'applique qu'a la
@@ -1766,10 +1819,7 @@ local function BuildOverlayDetail(content)
     d.chartInner:SetPoint("TOPLEFT", 16, -16)
     d.chartInner:SetPoint("BOTTOMRIGHT", -16, 30)
 
-    d.legend = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    d.legend:SetPoint("TOPLEFT", d.chart, "BOTTOMLEFT", 0, -14)
-    d.legend:SetPoint("TOPRIGHT", d.chart, "BOTTOMRIGHT", 0, -14)
-    d.legend:SetJustifyH("LEFT")
+    d.legendButtons = {}
 
     d.built = true
   end
@@ -1821,6 +1871,12 @@ local function BuildOverlayDetail(content)
     seriesList[#seriesList + 1] = { key = metric, color = OVERLAY_COLORS[metric] or ACCENT, points = NormalizeSeries(raw) }
   end
 
+  -- Legende cliquable construite sur la liste COMPLETE (pas filtree) pour
+  -- pouvoir re-cocher une courbe cachee ; le graphique lui-meme n'utilise
+  -- que les courbes cochees (visibleSeries).
+  BuildLegendToggles(content, d.legendButtons, CARD_METRICS, function(k) return OVERLAY_COLORS[k] end, view.overlayEnabledMetrics, -(66 + 300 + 14))
+  local visibleSeries = FilterEnabledSeries(seriesList, view.overlayEnabledMetrics)
+
   local fmtFn = function(point)
     local first = point.seriesList[1]
     local p1 = first and first.points[point.index]
@@ -1833,13 +1889,7 @@ local function BuildOverlayDetail(content)
     end
     return table.concat(lines, "\n")
   end
-  RenderOverlayChart(d.chartInner, seriesList, true, fmtFn)
-
-  local legendParts = {}
-  for _, s in ipairs(seriesList) do
-    legendParts[#legendParts + 1] = UI.Hex(s.color[1], s.color[2], s.color[3]) .. CardLabel(s.key) .. "|r"
-  end
-  d.legend:SetText(table.concat(legendParts, "   "))
+  RenderOverlayChart(d.chartInner, visibleSeries, true, fmtFn)
 
   for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
   for g, b in pairs(d.granButtons) do b:Show() end
@@ -1850,6 +1900,7 @@ local function HideOverlayDetail()
   if not d.built then return end
   for _, w in pairs(d) do if type(w) == "table" and w.Hide then w:Hide() end end
   for g, b in pairs(d.granButtons) do b:Hide() end
+  for k, b in pairs(d.legendButtons) do b:Hide() end
 end
 
 -- ============================================================================
@@ -1889,10 +1940,7 @@ local function BuildPvPChartDetail(content)
     d.chartInner:SetPoint("TOPLEFT", 16, -16)
     d.chartInner:SetPoint("BOTTOMRIGHT", -16, 30)
 
-    d.legend = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    d.legend:SetPoint("TOPLEFT", d.chart, "BOTTOMLEFT", 0, -14)
-    d.legend:SetPoint("TOPRIGHT", d.chart, "BOTTOMRIGHT", 0, -14)
-    d.legend:SetJustifyH("LEFT")
+    d.legendButtons = {}
 
     d.built = true
   end
@@ -1923,6 +1971,9 @@ local function BuildPvPChartDetail(content)
     seriesList[#seriesList + 1] = { key = metric, color = PVP_OVERLAY_COLORS[metric] or ACCENT, points = NormalizeSeries(raw) }
   end
 
+  BuildLegendToggles(content, d.legendButtons, PVP_CHART_METRICS, function(k) return PVP_OVERLAY_COLORS[k] end, view.pvpEnabledMetrics, -(66 + 300 + 14))
+  local visibleSeries = FilterEnabledSeries(seriesList, view.pvpEnabledMetrics)
+
   local fmtFn = function(point)
     local first = point.seriesList[1]
     local p1 = first and first.points[point.index]
@@ -1935,13 +1986,7 @@ local function BuildPvPChartDetail(content)
     end
     return table.concat(lines, "\n")
   end
-  RenderOverlayChart(d.chartInner, seriesList, true, fmtFn)
-
-  local legendParts = {}
-  for _, s in ipairs(seriesList) do
-    legendParts[#legendParts + 1] = UI.Hex(s.color[1], s.color[2], s.color[3]) .. CardLabel(s.key) .. "|r"
-  end
-  d.legend:SetText(table.concat(legendParts, "   "))
+  RenderOverlayChart(d.chartInner, visibleSeries, true, fmtFn)
 
   for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
   for g, b in pairs(d.granButtons) do b:Show() end
@@ -1952,6 +1997,7 @@ local function HidePvPChartDetail()
   if not d.built then return end
   for _, w in pairs(d) do if type(w) == "table" and w.Hide then w:Hide() end end
   for g, b in pairs(d.granButtons) do b:Hide() end
+  for k, b in pairs(d.legendButtons) do b:Hide() end
 end
 
 local function HideOverview()
