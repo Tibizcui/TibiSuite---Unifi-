@@ -455,7 +455,7 @@ end
 -- par categorie DANS LE MEME ORDRE que les tuiles resume plus bas
 -- (Gouffres/PVP/Tourments/Reputations) - facilite le repere visuel entre
 -- les deux sections.
-local CARD_METRICS = { "quests", "gold", "played", "dungeons", "delves", "pvpKillsGained", "soulAshGained", "repGained", "profGained" }
+local CARD_METRICS = { "quests", "gold", "played", "dungeons", "delves", "pvpKillsGained", "repGained", "profGained" }
 local cards = {}
 
 local function CardLabel(metric)
@@ -467,7 +467,6 @@ local function CardLabel(metric)
   elseif metric == "delves" then return L["CARD_DELVES"]
   elseif metric == "repGained" then return L["CARD_REP_GAINED"]
   elseif metric == "pvpKillsGained" then return L["CARD_PVP_KILLS_GAINED"]
-  elseif metric == "soulAshGained" then return L["CARD_SOUL_ASH_GAINED"]
   elseif metric == "profGained" then return L["CARD_PROF_GAINED"]
   end
 end

@@ -106,7 +106,7 @@ end
 function SX.EnsureDay(rec, dayKey)
   local d = rec.days[dayKey]
   if not d then
-    d = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, repGained = 0, pvpKillsGained = 0, soulAshGained = 0, profGained = 0 }
+    d = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, repGained = 0, pvpKillsGained = 0, profGained = 0 }
     rec.days[dayKey] = d
   end
   d.mplus = d.mplus or {}
@@ -376,7 +376,7 @@ end
 -- AGREGATION
 -- ============================================================================
 function SX.Aggregate(charKey, from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, soulAshGained = 0, profGained = 0 }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0 }
   local rec = StatsDB[charKey]
   if not rec or not rec.days then return agg end
   for dayKey, d in pairs(rec.days) do
@@ -390,7 +390,6 @@ function SX.Aggregate(charKey, from, to)
       agg.delves    = agg.delves + (d.delves or 0)
       agg.repGained = agg.repGained + (d.repGained or 0)
       agg.pvpKillsGained = agg.pvpKillsGained + (d.pvpKillsGained or 0)
-      agg.soulAshGained = agg.soulAshGained + (d.soulAshGained or 0)
       agg.profGained = agg.profGained + (d.profGained or 0)
       if d.mplus then
         for _, run in ipairs(d.mplus) do
@@ -404,7 +403,7 @@ function SX.Aggregate(charKey, from, to)
 end
 
 function SX.AggregateAccount(from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, soulAshGained = 0, profGained = 0 }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0 }
   -- SX.GetCharKeys() plutot que pairs(StatsDB) direct : ecarte StatsDB.export
   -- / StatsDB.exportedAt (cf. son commentaire) qui feraient planter
   -- SX.Aggregate en tentant de lire ".days" sur une chaine ou un nombre.
@@ -419,7 +418,6 @@ function SX.AggregateAccount(from, to)
     agg.delves    = agg.delves + a.delves
     agg.repGained = agg.repGained + a.repGained
     agg.pvpKillsGained = agg.pvpKillsGained + a.pvpKillsGained
-    agg.soulAshGained = agg.soulAshGained + a.soulAshGained
     agg.profGained = agg.profGained + a.profGained
   end
   return agg
@@ -438,7 +436,6 @@ function SX.MetricValue(agg, metric)
   elseif metric == "delves" then return agg.delves
   elseif metric == "repGained" then return agg.repGained
   elseif metric == "pvpKillsGained" then return agg.pvpKillsGained
-  elseif metric == "soulAshGained" then return agg.soulAshGained
   elseif metric == "profGained" then return agg.profGained
   end
   return 0
@@ -809,39 +806,6 @@ function SX.CollectTorghastSnapshot()
   end)
   if ok then return result end
   return nil
-end
-
--- Suivi quotidien des Cendres d'ame gagnees (monnaie, meme technique que
--- repGained) : diff entre deux lectures du solde, seuls les deltas POSITIFS
--- sont comptes (une depense fait chuter le solde sans que ce soit une
--- "perte" a soustraire - la baseline est simplement remise a jour vers le
--- solde le plus recent, gain comme depense). Baseline EN MEMOIRE (non
--- sauvegardee) : premiere lecture de la session = initialisation
--- silencieuse, aucun delta compte. Debounce 1s : CURRENCY_DISPLAY_UPDATE
--- peut se declencher en rafale (plusieurs monnaies changent d'un coup).
-local soulAshBaseline = nil
-
-local function DoSoulAshRescan()
-  if not (C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo) then return end
-  local ok, info = pcall(C_CurrencyInfo.GetCurrencyInfo, SOUL_ASH_CURRENCY_ID)
-  if not (ok and info and type(info.quantity) == "number") then return end
-  local qty = info.quantity
-  if soulAshBaseline and qty > soulAshBaseline then
-    local rec = SX.EnsureChar(SX.CurrentCharKey())
-    local d = SX.EnsureDay(rec, SX.TodayKey())
-    d.soulAshGained = (d.soulAshGained or 0) + (qty - soulAshBaseline)
-  end
-  soulAshBaseline = qty
-end
-
-local soulAshUpdatePending = false
-local function OnCurrencyUpdate()
-  if soulAshUpdatePending then return end
-  soulAshUpdatePending = true
-  C_Timer.After(1, function()
-    soulAshUpdatePending = false
-    DoSoulAshRescan()
-  end)
 end
 
 -- ============================================================================
@@ -1454,7 +1418,6 @@ evFrame:RegisterEvent("PLAYER_DEAD")
 evFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 evFrame:RegisterEvent("UPDATE_FACTION")
 evFrame:RegisterEvent("PLAYER_PVP_KILLS_CHANGED")
-evFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
 evFrame:RegisterEvent("SKILL_LINES_CHANGED")
 
 evFrame:SetScript("OnEvent", function(_, event, ...)
@@ -1543,9 +1506,6 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
 
   elseif event == "PLAYER_PVP_KILLS_CHANGED" then
     OnPvpKillsChanged()
-
-  elseif event == "CURRENCY_DISPLAY_UPDATE" then
-    OnCurrencyUpdate()
 
   elseif event == "SKILL_LINES_CHANGED" then
     OnSkillLinesChanged()
