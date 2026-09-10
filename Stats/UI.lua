@@ -469,7 +469,7 @@ end
 -- abscisse (pas une par serie) : fmtFn recoit { index, seriesList } et
 -- compose une infobulle listant la valeur REELLE de chaque metrique a cette
 -- date (points[i].actual, pas la valeur normalisee tracee a l'ecran).
-local function RenderOverlayChart(container, seriesList, showLabels, fmtFn)
+local function RenderOverlayChart(container, seriesList, showLabels, fmtFn, granularity)
   WipeChart(container)
   local cw, ch = container:GetWidth(), container:GetHeight()
   if not seriesList or #seriesList == 0 or cw <= 0 then return end
@@ -489,29 +489,52 @@ local function RenderOverlayChart(container, seriesList, showLabels, fmtFn)
   -- ci-dessous). Lignes plus fines et plus transparentes pour la meme
   -- raison (constat utilisateur : chevauchement illisible avec des
   -- puces pleines, capture d'ecran en jeu).
-  -- Segments DROITS entre points reels (pas de lissage courbe) : une
-  -- interpolation Catmull-Rom testee ici pour lisser les pics abrupts a
-  -- empire les choses (constat utilisateur, toujours chaotique apres
-  -- lissage + agregation Semaine) - une spline peut largement depasser
-  -- (overshoot) la plage locale entre deux points quand la valeur change
-  -- brusquement de direction, ce qui est frequent avec des metriques de
-  -- jeu normalisees independamment. Retour a la technique simple et
-  -- fiable deja utilisee par drawLine/RenderChart plus haut.
-  for _, s in ipairs(seriesList) do
-    local prevX, prevY
-    for i, p in ipairs(s.points) do
-      local x, y = (i - 1) * stepX, yFor(p.value)
-      if prevX then
-        local seg = AcquireBar(container)
-        seg:ClearAllPoints()
-        seg:SetColorTexture(s.color[1], s.color[2], s.color[3], 0.7)
-        local dx, dy = x - prevX, y - prevY
-        local len = math.sqrt(dx * dx + dy * dy)
-        seg:SetSize(math.max(len, 0.01), 1.5)
-        seg:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", prevX, labelH + prevY - 0.75)
-        seg:SetRotation(math.atan2(dy, dx))
+  --
+  -- Granularite "jour" = barres, pas de lignes (meme convention que
+  -- RenderChart plus haut : "barres pour jour, ligne pour semaine/mois/
+  -- annee"). Les metriques suivies (quetes, donjons, gouffres...) sont des
+  -- COMPTEURS journaliers epars - beaucoup de jours a 0, quelques pics -
+  -- relier ces valeurs par des segments diagonaux cree un zigzag illisible
+  -- meme avec une seule courbe selectionnee (constat utilisateur : la
+  -- legende cliquable filtre bien les courbes, mais celle qui reste est
+  -- "zigzag / illisible" a la granularite Jour). Une interpolation
+  -- Catmull-Rom testee avant ca a empire les choses (une spline peut
+  -- largement depasser/overshoot la plage locale quand la valeur change
+  -- brusquement de direction) - le vrai probleme n'etait pas le lissage
+  -- mais le style "ligne" applique a une donnee ponctuelle/eparse.
+  if granularity == "day" then
+    local barW = math.max((cw / n) * 0.55, 2)
+    for _, s in ipairs(seriesList) do
+      for i, p in ipairs(s.points) do
+        local x = (i - 1) * stepX
+        local y = math.max(yFor(p.value), 1)
+        local bar = AcquireBar(container)
+        bar:ClearAllPoints()
+        bar:SetColorTexture(s.color[1], s.color[2], s.color[3], 0.8)
+        bar:SetSize(barW, y)
+        bar:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", x - barW / 2, labelH)
       end
-      prevX, prevY = x, y
+    end
+  else
+    -- Semaine/Mois/Annee : donnees deja agregees, une ligne reste lisible.
+    -- Segments DROITS entre points reels (pas de lissage courbe, cf. le
+    -- constat Catmull-Rom ci-dessus).
+    for _, s in ipairs(seriesList) do
+      local prevX, prevY
+      for i, p in ipairs(s.points) do
+        local x, y = (i - 1) * stepX, yFor(p.value)
+        if prevX then
+          local seg = AcquireBar(container)
+          seg:ClearAllPoints()
+          seg:SetColorTexture(s.color[1], s.color[2], s.color[3], 0.7)
+          local dx, dy = x - prevX, y - prevY
+          local len = math.sqrt(dx * dx + dy * dy)
+          seg:SetSize(math.max(len, 0.01), 1.5)
+          seg:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", prevX, labelH + prevY - 0.75)
+          seg:SetRotation(math.atan2(dy, dx))
+        end
+        prevX, prevY = x, y
+      end
     end
   end
 
@@ -1893,7 +1916,7 @@ local function BuildOverlayDetail(content)
     end
     return table.concat(lines, "\n")
   end
-  RenderOverlayChart(d.chartInner, visibleSeries, true, fmtFn)
+  RenderOverlayChart(d.chartInner, visibleSeries, true, fmtFn, view.overlayGranularity)
 
   for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
   for g, b in pairs(d.granButtons) do b:Show() end
@@ -1994,7 +2017,7 @@ local function BuildPvPChartDetail(content)
     end
     return table.concat(lines, "\n")
   end
-  RenderOverlayChart(d.chartInner, visibleSeries, true, fmtFn)
+  RenderOverlayChart(d.chartInner, visibleSeries, true, fmtFn, view.pvpChartGranularity)
 
   for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
   for g, b in pairs(d.granButtons) do b:Show() end
