@@ -4,7 +4,7 @@
 ## Notes: Regroupe les boutons et icones de la minicarte dans un conteneur unique et retractable.
 ## Notes-frFR: Regroupe les boutons et icones de la minicarte dans un conteneur unique et retractable.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.2
+## Version: 7.1.5.3
 ## X-Curse-Project-ID: 1633313
 
 # ----------------------------------------------------------------

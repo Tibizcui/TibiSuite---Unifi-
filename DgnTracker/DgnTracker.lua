@@ -1,5 +1,5 @@
 -- ================================================================
--- DgnTracker v7.0
+-- DgnTracker v7.1.5.3
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
 
@@ -1096,7 +1096,7 @@ evFrame:SetScript("OnEvent",function(_,event,arg1)
     if minimapBtn then minimapBtn:Hide() end
 
   elseif event=="PLAYER_LOGIN" then
-    print("|cFF4D99FFDgnTracker|r v7.0 " .. T("LOGIN_LOADED", "chargé --") .. " |cFFFFD700/dg|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+    print("|cFF4D99FFDgnTracker|r v7.1.5.3 " .. T("LOGIN_LOADED", "chargé --") .. " |cFFFFD700/dg|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
   end
 end)
 

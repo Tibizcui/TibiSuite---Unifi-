@@ -4,7 +4,7 @@
 ## Notes: Tracks profession progression per expansion (current / max + %), for all your characters. Module of the TibiSuite suite by Tibiscui.
 ## Notes-frFR: Suit la progression des metiers par extension (actuel / max + %), pour tous vos personnages. Module de la suite TibiSuite par Tibiscui.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.2
+## Version: 7.1.5.3
 ## X-Curse-Project-ID: 1651940
 ## IconTexture: Interface\AddOns\SkillTracker\media\TibiSuiteIcon
 

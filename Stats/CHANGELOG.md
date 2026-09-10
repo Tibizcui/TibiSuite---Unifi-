@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.1.5.3
+- Superposition des courbes (Evolution "Toutes les metriques" + graphique PVP) : legende desormais cliquable pour afficher/masquer chaque metrique, avec un message d'aide dedie.
+- Correction : les courbes superposees zigzaguaient meme filtrees a une seule metrique - passage en barres pour les granularites Jour et Semaine (compteurs trop eparses pour une ligne lisible), la ligne restant reservee a Mois/Annee.
+- Ajout de la granularite Annee aux boutons "Stats par" (deja presente sur le site/Tibi Companion).
+- Correction des messages de version affiches dans le chat au chargement (plusieurs modules affichaient encore v7.0).
+
 ## 7.1.5.2
 - Correction : le compagnon de gouffre (Brann Bronzebeard/Valeera Sanguinar) n'apparait plus a tort dans le tableau Reputations (il utilisait l'API "amitie" des reputations cote Blizzard).
 - Correction : le "Palier max" par gouffre nomme pouvait rester bloque a 0 malgre un gouffre bien compte - reessai automatique ajoute.

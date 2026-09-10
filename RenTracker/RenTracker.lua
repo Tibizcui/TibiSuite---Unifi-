@@ -1,5 +1,5 @@
 -- ================================================================
--- RenTracker v7.0
+-- RenTracker v7.1.5.3
 -- Suivi des reputations | Toutes les extensions depuis vanilla
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
@@ -2114,14 +2114,14 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- zone) si la connexion est deja effective. Aucun impact sur les donnees.
     if IsLoggedIn() then
       if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-        print("|cFF4D99FFRenTracker|r v7.0 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+        print("|cFF4D99FFRenTracker|r v7.1.5.3 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
     end
 
   elseif event == "PLAYER_LOGIN" then
     if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-      print("|cFF4D99FFRenTracker|r v7.0 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFRenTracker|r v7.1.5.3 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)

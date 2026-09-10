@@ -3,7 +3,7 @@
 ## Title-frFR: XPBar
 ## Notes: Barre XP avancée - Niveau, XP, Repos, Quêtes, Stats de session
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.2
+## Version: 7.1.5.3
 ## X-Curse-Project-ID: 1585015
 # MODE DOUBLE (standalone ou integre) : pas de LoadOnDemand (ce module doit
 # pouvoir se charger seul, sans le core) ; dependance SOUPLE sur TibiSuite.
