@@ -23,8 +23,9 @@ local view = {
   compareChar = nil,   -- charKey secondaire (mode Comparer), nil = pas de comparaison
   cumulative = false,
   period = "week",
-  detailMetric = nil,  -- nil = vue d'ensemble ; sinon "quests"/"gold"/"dungeons"/"played"
+  detailMetric = nil,  -- nil = vue d'ensemble ; sinon "quests"/"gold"/"dungeons"/"played"/"__overlay__"/"__pvp__"
   detailGranularity = "day",
+  pvpChartGranularity = "day",
 }
 
 local function fmtGold(copper)
@@ -523,7 +524,10 @@ end
 -- par categorie DANS LE MEME ORDRE que les tuiles resume plus bas
 -- (Gouffres/PVP/Tourments/Reputations) - facilite le repere visuel entre
 -- les deux sections.
-local CARD_METRICS = { "quests", "gold", "played", "dungeons", "delves", "pvpKillsGained", "repGained", "profGained" }
+-- PVP (adversaires tues/champs de bataille/arenes) vit dans son propre
+-- graphique dedie (bouton "Graphique PVP" du panneau PVP) plutot qu'ici -
+-- cf. PVP_CHART_METRICS plus bas.
+local CARD_METRICS = { "quests", "gold", "played", "dungeons", "delves", "repGained", "profGained" }
 local cards = {}
 
 -- Couleurs fixes pour la superposition multi-metriques (graphique "Toutes les
@@ -532,8 +536,17 @@ local cards = {}
 -- coherent entre les deux interfaces.
 local OVERLAY_COLORS = {
   quests = { 0.310, 0.816, 0.773 }, gold = { 0.957, 0.839, 0.541 }, played = { 0.486, 0.620, 1.000 },
-  dungeons = { 1.000, 0.541, 0.541 }, delves = { 0.702, 0.537, 0.957 }, pvpKillsGained = { 1.000, 0.431, 0.780 },
+  dungeons = { 1.000, 0.541, 0.541 }, delves = { 0.702, 0.537, 0.957 },
   repGained = { 0.431, 0.906, 0.718 }, profGained = { 1.000, 0.706, 0.329 },
+}
+
+-- Graphique PVP dedie ("Graphique PVP") : adversaires tues + champs de
+-- bataille + arenes, toujours superposes (pas de mode une-seule-metrique,
+-- 5 courbes restent lisibles sans le detour par une grille de cartes).
+local PVP_CHART_METRICS = { "pvpKillsGained", "bgPlayedGained", "bgWonGained", "arenaPlayedGained", "arenaWonGained" }
+local PVP_OVERLAY_COLORS = {
+  pvpKillsGained = { 1.000, 0.431, 0.780 }, bgPlayedGained = { 0.486, 0.620, 1.000 }, bgWonGained = { 0.431, 0.906, 0.718 },
+  arenaPlayedGained = { 1.000, 0.706, 0.329 }, arenaWonGained = { 0.702, 0.537, 0.957 },
 }
 
 local function CardLabel(metric)
@@ -546,6 +559,10 @@ local function CardLabel(metric)
   elseif metric == "repGained" then return L["CARD_REP_GAINED"]
   elseif metric == "pvpKillsGained" then return L["CARD_PVP_KILLS_GAINED"]
   elseif metric == "profGained" then return L["CARD_PROF_GAINED"]
+  elseif metric == "bgPlayedGained" then return L["CARD_BG_PLAYED_GAINED"]
+  elseif metric == "bgWonGained" then return L["CARD_BG_WON_GAINED"]
+  elseif metric == "arenaPlayedGained" then return L["CARD_ARENA_PLAYED_GAINED"]
+  elseif metric == "arenaWonGained" then return L["CARD_ARENA_WON_GAINED"]
   end
 end
 
@@ -613,7 +630,11 @@ local function NormalizeSeries(series)
   local span = maxV - minV
   local out = {}
   for i, p in ipairs(series) do
-    out[i] = { label = p.label, actual = p.value, value = span > 0 and ((p.value - minV) / span) * 100 or 50 }
+    -- Serie plate (aucune variation, cas courant : 0 activite toute la
+    -- periode) -> 0%, pas 50% - eviterait de laisser croire a une valeur a
+    -- mi-chemin de quelque chose alors qu'il n'y a rien a etaler entre un
+    -- min et un max identiques.
+    out[i] = { label = p.label, actual = p.value, value = span > 0 and ((p.value - minV) / span) * 100 or 0 }
   end
   return out
 end
@@ -1037,6 +1058,17 @@ local function BuildPvPDetail(content, top)
     pvpDetailPanel.title = pvpDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     pvpDetailPanel.title:SetPoint("TOPLEFT", 14, -12)
     pvpDetailPanel.title:SetText(L["PVP_SECTION_TITLE"])
+
+    -- Ouvre le graphique PVP dedie (adversaires tues + champs de bataille +
+    -- arenes dans le temps). A VERIFIER EN JEU : place juste a droite du
+    -- titre "PVP" (texte court), suppose sans chevauchement avec les puces
+    -- de morts en haut a droite du panneau - pas confirme en jeu.
+    pvpDetailPanel.chartBtn = UI.MakeButton(pvpDetailPanel, 130, 20, L["PVP_CHART_BUTTON"])
+    pvpDetailPanel.chartBtn:SetPoint("LEFT", pvpDetailPanel.title, "RIGHT", 16, 0)
+    pvpDetailPanel.chartBtn:SetScript("OnClick", function()
+      view.detailMetric = "__pvp__"
+      SX.RefreshDashboard()
+    end)
 
     pvpDetailPanel.deathsEnemyChip = pvpDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     pvpDetailPanel.deathsEnemyChip:SetJustifyH("RIGHT")
@@ -1789,6 +1821,104 @@ local function HideOverlayDetail()
   for g, b in pairs(d.granButtons) do b:Hide() end
 end
 
+-- ============================================================================
+-- GRAPHIQUE PVP DEDIE ("Graphique PVP" du panneau PVP) : adversaires tues +
+-- champs de bataille joues/gagnes + arenes jouees/gagnees, toujours
+-- superposes (PVP_CHART_METRICS). Meme chrome que BuildOverlayDetail, mais
+-- sa propre granularite (view.pvpChartGranularity) et pas de verrouillage
+-- lie a view.period : c'est une vue dediee, pas imbriquee dans les cartes.
+-- ============================================================================
+local pvpChartWidgets = {}
+
+local function BuildPvPChartDetail(content)
+  local d = pvpChartWidgets
+  if not d.built then
+    d.back = UI.MakeButton(content, 160, 22, L["DETAIL_BACK"])
+    d.back:SetPoint("TOPLEFT", 0, 0)
+    d.back:SetScript("OnClick", function() view.detailMetric = nil; SX.RefreshDashboard() end)
+
+    d.title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    d.title:SetPoint("TOPLEFT", 0, -34)
+    d.title:SetText(L["PVP_CHART_TITLE"])
+
+    d.granLabel = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    d.granLabel:SetPoint("TOPRIGHT", 0, -8)
+
+    d.granButtons = {}
+    for _, g in ipairs(SX.GRANULARITIES) do
+      local b = UI.MakeButton(content, 60, 20, "")
+      d.granButtons[g] = b
+    end
+
+    d.chart = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    UI.SkinFrame(d.chart, ACCENT, UI.C.PANEL)
+    d.chart:SetPoint("TOPLEFT", 0, -66)
+    d.chart:SetSize(W - 60, 300)
+    d.chartInner = CreateFrame("Frame", nil, d.chart)
+    d.chartInner:SetPoint("TOPLEFT", 16, -16)
+    d.chartInner:SetPoint("BOTTOMRIGHT", -16, 30)
+
+    d.legend = content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    d.legend:SetPoint("TOPLEFT", d.chart, "BOTTOMLEFT", 0, -14)
+    d.legend:SetPoint("TOPRIGHT", d.chart, "BOTTOMRIGHT", 0, -14)
+    d.legend:SetJustifyH("LEFT")
+
+    d.built = true
+  end
+
+  local gx = 0
+  for _, g in ipairs(SX.GRANULARITIES) do
+    local b = d.granButtons[g]
+    b:ClearAllPoints()
+    b:SetPoint("TOPRIGHT", content, "TOPRIGHT", -gx, -30)
+    gx = gx + 64
+    local gLabel = L["GRANULARITY_" .. g:upper()]
+    b._label:SetText(view.pvpChartGranularity == g
+      and (UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. gLabel .. "|r") or gLabel)
+    b:SetScript("OnClick", function() view.pvpChartGranularity = g; SX.RefreshDashboard() end)
+  end
+  d.granLabel:SetText(L["GRANULARITY_LABEL"])
+  d.granLabel:ClearAllPoints()
+  d.granLabel:SetPoint("RIGHT", d.granButtons[SX.GRANULARITIES[1]], "LEFT", -8, 0)
+
+  local bucketCount = (view.pvpChartGranularity == "day") and 30 or 12
+  local seriesList = {}
+  for _, metric in ipairs(PVP_CHART_METRICS) do
+    local raw = SX.BuildSeries(view.char, metric, view.pvpChartGranularity, bucketCount)
+    seriesList[#seriesList + 1] = { key = metric, color = PVP_OVERLAY_COLORS[metric] or ACCENT, points = NormalizeSeries(raw) }
+  end
+
+  local fmtFn = function(point)
+    local first = point.seriesList[1]
+    local p1 = first and first.points[point.index]
+    local lines = { p1 and p1.label or "" }
+    for _, s in ipairs(point.seriesList) do
+      local p = s.points[point.index]
+      if p then
+        lines[#lines + 1] = UI.Hex(s.color[1], s.color[2], s.color[3]) .. CardLabel(s.key) .. ": " .. fmtMetric(s.key, p.actual) .. "|r"
+      end
+    end
+    return table.concat(lines, "\n")
+  end
+  RenderOverlayChart(d.chartInner, seriesList, true, fmtFn)
+
+  local legendParts = {}
+  for _, s in ipairs(seriesList) do
+    legendParts[#legendParts + 1] = UI.Hex(s.color[1], s.color[2], s.color[3]) .. CardLabel(s.key) .. "|r"
+  end
+  d.legend:SetText(table.concat(legendParts, "   "))
+
+  for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
+  for g, b in pairs(d.granButtons) do b:Show() end
+end
+
+local function HidePvPChartDetail()
+  local d = pvpChartWidgets
+  if not d.built then return end
+  for _, w in pairs(d) do if type(w) == "table" and w.Hide then w:Hide() end end
+  for g, b in pairs(d.granButtons) do b:Hide() end
+end
+
 local function HideOverview()
   for _, card in pairs(cards) do card:Hide() end
   HideSummaryTiles()
@@ -1986,16 +2116,25 @@ function SX.RefreshDashboard()
   if view.detailMetric == "__overlay__" then
     HideOverview()
     HideDetail()
+    HidePvPChartDetail()
     BuildOverlayDetail(mainFrame.content)
+    mainFrame.content:SetHeight(420)
+  elseif view.detailMetric == "__pvp__" then
+    HideOverview()
+    HideDetail()
+    HideOverlayDetail()
+    BuildPvPChartDetail(mainFrame.content)
     mainFrame.content:SetHeight(420)
   elseif view.detailMetric then
     HideOverview()
     HideOverlayDetail()
+    HidePvPChartDetail()
     BuildDetail(mainFrame.content, view.detailMetric)
     mainFrame.content:SetHeight(420)
   else
     HideDetail()
     HideOverlayDetail()
+    HidePvPChartDetail()
     BuildOverview(mainFrame.content)
     local gridRows = math.ceil(#CARD_METRICS / 2)
     local gridDepth = gridRows * 190 + (gridRows - 1) * 16 + 10

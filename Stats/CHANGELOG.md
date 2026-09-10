@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.1
+- PVP separe du graphique Evolution general dans son propre graphique dedie "PVP dans le temps" (granularite Jour/Semaine/Mois/Annee independante).
+- Suivi quotidien ajoute pour les champs de bataille (joues/gagnes) et les arenes (jouees/gagnees), en plus des adversaires tues deja suivis.
+
 ## 7.1.5
 - Reputations : suivi natif ajoute (tuile resume Suivies/Rang max/Exaltees + tableau des 10 dernieres progressions recentes), integre a l'Evolution quotidienne.
 - Metiers : suivi natif ajoute (tuile resume + progressions recentes + courbe quotidienne), en miroir de la refonte visuelle du site et de Tibi Companion (icones, tri par extension du plus recent au plus ancien, regroupement des metiers a 100%).

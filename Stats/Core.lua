@@ -106,7 +106,8 @@ end
 function SX.EnsureDay(rec, dayKey)
   local d = rec.days[dayKey]
   if not d then
-    d = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, repGained = 0, pvpKillsGained = 0, profGained = 0 }
+    d = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, repGained = 0, pvpKillsGained = 0, profGained = 0,
+          bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0 }
     rec.days[dayKey] = d
   end
   d.mplus = d.mplus or {}
@@ -345,6 +346,8 @@ local function OnBattlegroundComplete()
   local name = GetInstanceInfo()
   local rec = SX.EnsureChar(SX.CurrentCharKey())
   rec.bgParticipation = (rec.bgParticipation or 0) + 1
+  local d = SX.EnsureDay(rec, SX.TodayKey())
+  d.bgPlayedGained = (d.bgPlayedGained or 0) + 1
 
   local winnerFaction
   if GetBattlefieldWinner then
@@ -359,7 +362,31 @@ local function OnBattlegroundComplete()
     if name and name ~= "" then
       rec.bgWinsByName[name] = (rec.bgWinsByName[name] or 0) + 1
     end
+    d.bgWonGained = (d.bgWonGained or 0) + 1
   end
+end
+
+-- Suivi quotidien Arene (parties jouees/gagnees) : pas d'evenement "fin de
+-- partie d'arene" distinct expose simplement cote client - diff entre deux
+-- lectures des compteurs SAISON cumulatifs de GetPersonalRatedInfo (2v2+3v3+
+-- melee solo, deja sommes dans SX.CollectPvPSnapshot -> rec.pvp.arena),
+-- meme technique que les autres compteurs "gagne aujourd'hui" de ce fichier.
+-- Baseline EN MEMOIRE : premiere lecture de la session = initialisation
+-- silencieuse. Ces compteurs remettent a zero a chaque nouvelle saison PVP -
+-- une chute de la baseline (nouvelle saison) est traitee comme un simple
+-- reset silencieux, pas une perte a soustraire.
+local arenaBaseline = nil
+
+local function DoArenaRescan(rec)
+  local arena = rec and rec.pvp and rec.pvp.arena
+  if not arena then return end
+  local played, won = arena.played or 0, arena.won or 0
+  if arenaBaseline and played >= arenaBaseline.played then
+    local d = SX.EnsureDay(rec, SX.TodayKey())
+    d.arenaPlayedGained = (d.arenaPlayedGained or 0) + (played - arenaBaseline.played)
+    d.arenaWonGained = (d.arenaWonGained or 0) + math.max(0, won - arenaBaseline.won)
+  end
+  arenaBaseline = { played = played, won = won }
 end
 
 function SX.CharBannerData(charKey)
@@ -376,7 +403,8 @@ end
 -- AGREGATION
 -- ============================================================================
 function SX.Aggregate(charKey, from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0 }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
+                bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0 }
   local rec = StatsDB[charKey]
   if not rec or not rec.days then return agg end
   for dayKey, d in pairs(rec.days) do
@@ -391,6 +419,10 @@ function SX.Aggregate(charKey, from, to)
       agg.repGained = agg.repGained + (d.repGained or 0)
       agg.pvpKillsGained = agg.pvpKillsGained + (d.pvpKillsGained or 0)
       agg.profGained = agg.profGained + (d.profGained or 0)
+      agg.bgPlayedGained = agg.bgPlayedGained + (d.bgPlayedGained or 0)
+      agg.bgWonGained = agg.bgWonGained + (d.bgWonGained or 0)
+      agg.arenaPlayedGained = agg.arenaPlayedGained + (d.arenaPlayedGained or 0)
+      agg.arenaWonGained = agg.arenaWonGained + (d.arenaWonGained or 0)
       if d.mplus then
         for _, run in ipairs(d.mplus) do
           agg.mplusCount = agg.mplusCount + 1
@@ -403,7 +435,8 @@ function SX.Aggregate(charKey, from, to)
 end
 
 function SX.AggregateAccount(from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0 }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
+                bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0 }
   -- SX.GetCharKeys() plutot que pairs(StatsDB) direct : ecarte StatsDB.export
   -- / StatsDB.exportedAt (cf. son commentaire) qui feraient planter
   -- SX.Aggregate en tentant de lire ".days" sur une chaine ou un nombre.
@@ -419,6 +452,10 @@ function SX.AggregateAccount(from, to)
     agg.repGained = agg.repGained + a.repGained
     agg.pvpKillsGained = agg.pvpKillsGained + a.pvpKillsGained
     agg.profGained = agg.profGained + a.profGained
+    agg.bgPlayedGained = agg.bgPlayedGained + a.bgPlayedGained
+    agg.bgWonGained = agg.bgWonGained + a.bgWonGained
+    agg.arenaPlayedGained = agg.arenaPlayedGained + a.arenaPlayedGained
+    agg.arenaWonGained = agg.arenaWonGained + a.arenaWonGained
   end
   return agg
 end
@@ -437,6 +474,10 @@ function SX.MetricValue(agg, metric)
   elseif metric == "repGained" then return agg.repGained
   elseif metric == "pvpKillsGained" then return agg.pvpKillsGained
   elseif metric == "profGained" then return agg.profGained
+  elseif metric == "bgPlayedGained" then return agg.bgPlayedGained
+  elseif metric == "bgWonGained" then return agg.bgWonGained
+  elseif metric == "arenaPlayedGained" then return agg.arenaPlayedGained
+  elseif metric == "arenaWonGained" then return agg.arenaWonGained
   end
   return 0
 end
@@ -1488,6 +1529,7 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
     C_Timer.After(2, function()
       local rec = SX.EnsureChar(SX.CurrentCharKey())
       rec.pvp = SX.CollectPvPSnapshot(rec)
+      DoArenaRescan(rec)
     end)
 
   elseif event == "SCENARIO_COMPLETED" then
