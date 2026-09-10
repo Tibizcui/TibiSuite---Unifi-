@@ -1701,11 +1701,13 @@ local function BuildDetail(content, metric)
                      year = { day = true, week = true, month = false } }
   local locks = lockMap[view.period] or {}
   local gx = 0
+  local leftmostBtn
   for _, g in ipairs(SX.GRANULARITIES) do
     local b = d.granButtons[g]
     b:ClearAllPoints()
     b:SetPoint("TOPRIGHT", content, "TOPRIGHT", -gx, -30)
     gx = gx + 64
+    leftmostBtn = b
     local locked = locks[g]
     if locked and view.detailGranularity == g then view.detailGranularity = "day" end
     b:SetEnabled(not locked)
@@ -1721,9 +1723,14 @@ local function BuildDetail(content, metric)
     b._label:SetText(labelText)
     b:SetScript("OnClick", function() if not locked then view.detailGranularity = g; SX.RefreshDashboard() end end)
   end
+  -- Ancre AU BOUT DE LA RANGEE (le dernier bouton positionne = le plus a
+  -- gauche, gx croissant) - pas SX.GRANULARITIES[1] ("jour", le plus a
+  -- DROITE) : ce dernier chevauchait "Semaine" avec "Stats par :", le
+  -- libelle debordant largement a gauche de son ancre (constat utilisateur,
+  -- capture d'ecran en jeu - texte "Semaine"/"Stats par :" mele).
   d.granLabel:SetText(L["GRANULARITY_LABEL"])
   d.granLabel:ClearAllPoints()
-  d.granLabel:SetPoint("RIGHT", d.granButtons[SX.GRANULARITIES[1]], "LEFT", -8, 0)
+  d.granLabel:SetPoint("RIGHT", leftmostBtn, "LEFT", -8, 0)
 
   local bucketCount = (view.detailGranularity == "day") and 30 or (view.detailGranularity == "week" and 12 or 12)
   local series = SX.BuildSeries(view.char, metric, view.detailGranularity, bucketCount)
@@ -1804,11 +1811,13 @@ local function BuildOverlayDetail(content)
                      year = { day = true, week = true, month = false } }
   local locks = lockMap[view.period] or {}
   local gx = 0
+  local leftmostBtn
   for _, g in ipairs(SX.GRANULARITIES) do
     local b = d.granButtons[g]
     b:ClearAllPoints()
     b:SetPoint("TOPRIGHT", content, "TOPRIGHT", -gx, -30)
     gx = gx + 64
+    leftmostBtn = b
     local locked = locks[g]
     if locked and view.detailGranularity == g then view.detailGranularity = "day" end
     b:SetEnabled(not locked)
@@ -1824,9 +1833,14 @@ local function BuildOverlayDetail(content)
     b._label:SetText(labelText)
     b:SetScript("OnClick", function() if not locked then view.detailGranularity = g; SX.RefreshDashboard() end end)
   end
+  -- Ancre AU BOUT DE LA RANGEE (le dernier bouton positionne = le plus a
+  -- gauche, gx croissant) - pas SX.GRANULARITIES[1] ("jour", le plus a
+  -- DROITE) : ce dernier chevauchait "Semaine" avec "Stats par :", le
+  -- libelle debordant largement a gauche de son ancre (constat utilisateur,
+  -- capture d'ecran en jeu - texte "Semaine"/"Stats par :" mele).
   d.granLabel:SetText(L["GRANULARITY_LABEL"])
   d.granLabel:ClearAllPoints()
-  d.granLabel:SetPoint("RIGHT", d.granButtons[SX.GRANULARITIES[1]], "LEFT", -8, 0)
+  d.granLabel:SetPoint("RIGHT", leftmostBtn, "LEFT", -8, 0)
 
   local bucketCount = (view.detailGranularity == "day") and 30 or 12
   local seriesList = {}
@@ -1912,19 +1926,23 @@ local function BuildPvPChartDetail(content)
   end
 
   local gx = 0
+  local leftmostBtn
   for _, g in ipairs(SX.GRANULARITIES) do
     local b = d.granButtons[g]
     b:ClearAllPoints()
     b:SetPoint("TOPRIGHT", content, "TOPRIGHT", -gx, -30)
     gx = gx + 64
+    leftmostBtn = b
     local gLabel = L["GRANULARITY_" .. g:upper()]
     b._label:SetText(view.pvpChartGranularity == g
       and (UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. gLabel .. "|r") or gLabel)
     b:SetScript("OnClick", function() view.pvpChartGranularity = g; SX.RefreshDashboard() end)
   end
+  -- Ancre au bout de la rangee (le plus a gauche), pas [1] ("jour", le plus
+  -- a droite) - meme correctif que BuildDetail/BuildOverlayDetail.
   d.granLabel:SetText(L["GRANULARITY_LABEL"])
   d.granLabel:ClearAllPoints()
-  d.granLabel:SetPoint("RIGHT", d.granButtons[SX.GRANULARITIES[1]], "LEFT", -8, 0)
+  d.granLabel:SetPoint("RIGHT", leftmostBtn, "LEFT", -8, 0)
 
   local bucketCount = (view.pvpChartGranularity == "day") and 30 or 12
   local seriesList = {}
