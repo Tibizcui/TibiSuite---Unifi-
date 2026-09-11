@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.4
+- Graphique "Toutes les metriques" : ajout d'une echelle de temps defilable. L'axe affiche desormais les dates (jour 11/09/2026, semaine, mois 09/2026, annee 2026) et une scroll bar horizontale (ou la molette) permet de remonter dans tout l'historique, avec la plage affichee rappelee sous le graphique. Fenetre par defaut calee sur la periode la plus recente : ~1 mois de jours, ~6 mois de semaines, 1 an de mois.
+
 ## 7.1.5.3
 - Superposition des courbes (Evolution "Toutes les metriques" + graphique PVP) : legende desormais cliquable pour afficher/masquer chaque metrique, avec un message d'aide dedie.
 - Correction : les courbes superposees zigzaguaient meme filtrees a une seule metrique - passage en barres pour les granularites Jour et Semaine (compteurs trop eparses pour une ligne lisible), la ligne restant reservee a Mois/Annee.

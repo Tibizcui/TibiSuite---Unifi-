@@ -63,6 +63,8 @@ L["DETAIL_BACK"]         = "Retour a la vue d'ensemble"
 L["OVERLAY_BUTTON"]      = "Superposer les courbes"
 L["OVERLAY_TITLE"]       = "Toutes les metriques"
 L["OVERLAY_LEGEND_HINT"] = "Clique sur une metrique pour l'afficher/la masquer"
+L["OVERLAY_RANGE_FMT"]   = "Du %s au %s"
+L["OVERLAY_WEEK_OF"]     = "Semaine du "
 
 L["COMPARE_BUTTON"]      = "Comparer"
 L["COMPARE_STOP"]        = "Arreter"

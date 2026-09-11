@@ -11,7 +11,7 @@ local function Loc(key, default) return L[key] or default end
 -- ─────────────────────────────────────────────
 -- Constantes
 -- ─────────────────────────────────────────────
-local ADDON_VERSION = "7.1.5.3"
+local ADDON_VERSION = "7.1.5.4"
 local SAVE_INTERVAL = 300  -- sauvegarde incrémentale toutes les 5 minutes
 
 -- Structure par défaut d'un personnage

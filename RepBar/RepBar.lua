@@ -1,4 +1,4 @@
--- RepBar.lua v7.1.5.3
+-- RepBar.lua v7.1.5.4
 -- Barre de reputation avancee - Tibiscui
 -- Remplace la barre de reputation native, suit la faction par zone (via
 -- RenTracker) et bascule a la validation d'une quete.
@@ -1076,7 +1076,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
         if not db then InitDB() end
         EnforceNativeRepBar()
         C_Timer.After(0.5, UpdateBar)
-        print("|cFF5CADF5RepBar|r v7.1.5.3 " .. L.LOGIN_LOADED .. " |cFFFFD700/repbar|r " .. L.LOGIN_TO_OPEN)
+        print("|cFF5CADF5RepBar|r v7.1.5.4 " .. L.LOGIN_LOADED .. " |cFFFFD700/repbar|r " .. L.LOGIN_TO_OPEN)
 
     elseif event == "PLAYER_ENTERING_WORLD" then
         EnforceNativeRepBar()

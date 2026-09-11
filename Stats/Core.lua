@@ -522,6 +522,58 @@ function SX.BuildSeries(charKey, metric, granularity, count)
   return series
 end
 
+-- Timestamp du jour le plus ancien enregistre pour un personnage (ou le plus
+-- ancien tous personnages confondus pour "__account__"). Sert a construire la
+-- timeline complete du graphique "Toutes les metriques" (defilable). Renvoie
+-- nil si aucune donnee. Meme garde type(rec)=="table" que HasFullYearOfData
+-- (ecarte StatsDB.export / StatsDB.exportedAt).
+function SX.EarliestDay(charKey)
+  local earliest = nil
+  local function scan(rec)
+    if type(rec) ~= "table" or not rec.days then return end
+    for dayKey in pairs(rec.days) do
+      local t = SX.ParseDayKey(dayKey)
+      if t and (not earliest or t < earliest) then earliest = t end
+    end
+  end
+  if charKey == "__account__" then
+    for _, key in ipairs(SX.GetCharKeys()) do scan(StatsDB[key]) end
+  else
+    scan(StatsDB[charKey])
+  end
+  return earliest
+end
+
+-- Nombre de buckets d'historique (du plus ancien jour enregistre jusqu'a la
+-- periode courante, incluse) pour une granularite donnee. Borne en bas par
+-- minCount (au moins la fenetre visible) et en haut par un plafond de securite
+-- par granularite : au-dela, le cout d'agregation (AggregateFor par bucket)
+-- deviendrait sensible et l'historique n'est de toute facon pas exploitable a
+-- l'oeil. Utilise par la timeline defilable de "Toutes les metriques".
+local OVERLAY_BUCKET_CAP = { day = 366, week = 157, month = 120, year = 30 }
+function SX.OverlayBucketCount(charKey, granularity, minCount)
+  minCount = minCount or 1
+  local earliest = SX.EarliestDay(charKey)
+  local now = time()
+  local count = minCount
+  if earliest then
+    if granularity == "day" then
+      count = math.floor((SX.StartOfDay(now) - SX.StartOfDay(earliest)) / 86400) + 1
+    elseif granularity == "week" then
+      count = math.floor((SX.StartOfWeek(now) - SX.StartOfWeek(earliest)) / (7 * 86400)) + 1
+    elseif granularity == "year" then
+      count = (dateTable(now).year - dateTable(earliest).year) + 1
+    else -- month
+      local a, b = dateTable(now), dateTable(earliest)
+      count = (a.year - b.year) * 12 + (a.month - b.month) + 1
+    end
+  end
+  local cap = OVERLAY_BUCKET_CAP[granularity] or 120
+  if count < minCount then count = minCount end
+  if count > cap then count = cap end
+  return count
+end
+
 function SX.MinMaxAvg(series)
   local minV, maxV, sum, n = nil, nil, 0, 0
   for _, p in ipairs(series) do

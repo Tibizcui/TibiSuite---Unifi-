@@ -70,6 +70,8 @@ L["DETAIL_BACK"]         = "Back to overview"
 L["OVERLAY_BUTTON"]      = "Overlay all curves"
 L["OVERLAY_TITLE"]       = "All metrics"
 L["OVERLAY_LEGEND_HINT"] = "Click a metric to show/hide it"
+L["OVERLAY_RANGE_FMT"]   = "From %s to %s"
+L["OVERLAY_WEEK_OF"]     = "Week of "
 
 -- Comparaison
 L["COMPARE_BUTTON"]      = "Compare"

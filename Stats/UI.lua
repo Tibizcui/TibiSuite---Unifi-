@@ -40,6 +40,11 @@ local view = {
   -- laisser choisir lesquelles afficher regle le probleme a la racine.
   overlayEnabledMetrics = {},
   pvpEnabledMetrics = {},
+  -- Timeline defilable de "Toutes les metriques" : decalage (en buckets,
+  -- depuis le plus ancien) du bord GAUCHE de la fenetre visible. nil = pas
+  -- encore calcule -> BuildOverlayDetail le cale sur la periode la plus
+  -- recente au premier affichage / a chaque changement de granularite.
+  overlayScroll = nil,
 }
 
 local function fmtGold(copper)
@@ -571,6 +576,145 @@ local function RenderOverlayChart(container, seriesList, showLabels, fmtFn, gran
 end
 
 -- ============================================================================
+-- TIMELINE DEFILABLE DE "TOUTES LES METRIQUES"
+-- ============================================================================
+-- Estampilles de date. L'axe reste compact (annee sur 2 chiffres) tandis que
+-- l'infobulle et la plage affichee sous le graphique donnent l'annee complete
+-- (cf. la demande : "pour jour : 11/09/2026").
+local function OverlayAxisStamp(from, gran)
+  if gran == "day" or gran == "week" then return date("%d/%m/%y", from)
+  elseif gran == "month" then return date("%m/%Y", from)
+  else return date("%Y", from) end
+end
+
+local function OverlayFullStamp(from, gran)
+  if gran == "day" then return date("%d/%m/%Y", from)
+  elseif gran == "week" then return (L["OVERLAY_WEEK_OF"] or "Semaine du ") .. date("%d/%m/%Y", from)
+  elseif gran == "month" then return date("%m/%Y", from)
+  else return date("%Y", from) end
+end
+
+local function OverlayRangeStamp(from, gran)
+  if gran == "day" or gran == "week" then return date("%d/%m/%Y", from)
+  elseif gran == "month" then return date("%m/%Y", from)
+  else return date("%Y", from) end
+end
+
+-- Rendu de la fenetre visible [offset+1 .. offset+visible] de la timeline. La
+-- serie COMPLETE est normalisee et mise en cache par l'appelant
+-- (BuildOverlayDetail) : ici on ne dessine qu'une tranche, ce qui rend le
+-- defilement (scroll bar / molette) fluide sans tout reconstruire. Barres pour
+-- jour/semaine, ligne pour mois/annee (meme choix que RenderOverlayChart, cf.
+-- son commentaire sur les compteurs eparses). Renvoie le `from` du premier et
+-- du dernier bucket visibles (pour la plage affichee).
+local OVERLAY_LABEL_H = 16
+local function RenderOverlayTimeline(container, seriesList, gran, offset, visible, fmtFn)
+  WipeChart(container)
+  local cw, ch = container:GetWidth(), container:GetHeight()
+  if not seriesList or #seriesList == 0 or cw <= 0 then return end
+  local n = 0
+  for _, s in ipairs(seriesList) do n = math.max(n, #s.points) end
+  if n == 0 then return end
+
+  offset = math.max(0, math.min(offset or 0, math.max(0, n - visible)))
+  local winStart = offset + 1
+  local winEnd = math.min(offset + visible, n)
+  local m = winEnd - winStart + 1
+  if m < 1 then return end
+
+  local labelH = OVERLAY_LABEL_H
+  local plotH = ch - labelH
+  local function yFor(v) return (v / 100) * (plotH - 4) end
+
+  -- Abscisse (centre) de chaque bucket visible (indice LOCAL 1..m).
+  local centers = {}
+  local isBars = (gran == "day" or gran == "week")
+  if isBars then
+    local stepX = cw / m
+    for j = 1, m do centers[j] = (j - 0.5) * stepX end
+  else
+    local stepX = (m > 1) and (cw / (m - 1)) or 0
+    for j = 1, m do centers[j] = (m > 1) and ((j - 1) * stepX) or (cw / 2) end
+  end
+
+  if isBars then
+    local barW = math.max((cw / m) * 0.6, 2)
+    for _, s in ipairs(seriesList) do
+      for j = 1, m do
+        local p = s.points[winStart + j - 1]
+        if p then
+          local y = math.max(yFor(p.value), 1)
+          local bar = AcquireBar(container)
+          bar:ClearAllPoints()
+          bar:SetRotation(0)
+          bar:SetColorTexture(s.color[1], s.color[2], s.color[3], 0.8)
+          bar:SetSize(barW, y)
+          bar:SetPoint("BOTTOM", container, "BOTTOMLEFT", centers[j], labelH)
+        end
+      end
+    end
+  else
+    for _, s in ipairs(seriesList) do
+      local prevX, prevY
+      for j = 1, m do
+        local p = s.points[winStart + j - 1]
+        if p then
+          local x, y = centers[j], yFor(p.value)
+          if prevX then
+            local seg = AcquireBar(container)
+            seg:ClearAllPoints()
+            seg:SetColorTexture(s.color[1], s.color[2], s.color[3], 0.7)
+            local dx, dy = x - prevX, y - prevY
+            local len = math.sqrt(dx * dx + dy * dy)
+            seg:SetSize(math.max(len, 0.01), 1.5)
+            seg:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", prevX, labelH + prevY - 0.75)
+            seg:SetRotation(math.atan2(dy, dx))
+          end
+          prevX, prevY = x, y
+        end
+      end
+    end
+  end
+
+  -- Zones de survol (1 par bucket visible) : infobulle = detail par metrique.
+  if fmtFn then
+    local hitW = cw / m
+    for j = 1, m do
+      local i = winStart + j - 1
+      local hit = AcquireHit(container)
+      hit:ClearAllPoints()
+      hit:SetSize(hitW, ch)
+      hit:SetPoint("BOTTOM", container, "BOTTOMLEFT", centers[j], 0)
+      AttachHitTooltip(hit, { index = i, seriesList = seriesList }, fmtFn)
+    end
+  end
+
+  -- Axe de dates : un cran tous les `stride` buckets (le dernier toujours
+  -- etiquete), pour ne pas empiler des dates illisibles en vue Jour (jusqu'a
+  -- 31 barres). L'annee complete reste accessible au survol et dans la plage.
+  local bucketPx = cw / m
+  local stride = math.max(1, math.ceil(46 / math.max(bucketPx, 1)))
+  local ref = seriesList[1].points
+  for j = 1, m do
+    if ((m - j) % stride) == 0 then
+      local p = ref[winStart + j - 1]
+      if p and p.from then
+        local lbl = AcquireLabel(container)
+        lbl:ClearAllPoints()
+        lbl:SetJustifyH("CENTER")
+        lbl:SetWidth(math.max(bucketPx * stride, 30))
+        lbl:SetPoint("TOP", container, "BOTTOMLEFT", centers[j], labelH - 2)
+        lbl:SetText(OverlayAxisStamp(p.from, gran))
+      end
+    end
+  end
+
+  local firstFrom = ref[winStart] and ref[winStart].from
+  local lastFrom = ref[winEnd] and ref[winEnd].from
+  return firstFrom, lastFrom
+end
+
+-- ============================================================================
 -- CARTES DE LA VUE D'ENSEMBLE
 -- ============================================================================
 -- Ordre : stats generales d'abord (quetes/or/temps/donjons), puis une carte
@@ -733,7 +877,12 @@ local function NormalizeSeries(series)
     -- periode) -> 0%, pas 50% - eviterait de laisser croire a une valeur a
     -- mi-chemin de quelque chose alors qu'il n'y a rien a etaler entre un
     -- min et un max identiques.
-    out[i] = { label = p.label, actual = p.value, value = span > 0 and ((p.value - minV) / span) * 100 or 0 }
+    -- from/to conserves : la timeline defilable de "Toutes les metriques" en
+    -- a besoin pour formater l'axe de dates (jour/mois/annee avec l'annee) et
+    -- l'infobulle, la normalisation ne gardant sinon que label/actual/value.
+    -- Champs ignores par les autres consommateurs (graphique PVP).
+    out[i] = { label = p.label, actual = p.value, from = p.from, to = p.to,
+               value = span > 0 and ((p.value - minV) / span) * 100 or 0 }
   end
   return out
 end
@@ -1819,6 +1968,10 @@ end
 -- graphique multi-courbes (RenderOverlayChart) a la place du graphique/
 -- min-max-moyenne d'une seule metrique, plus une legende couleur.
 -- ============================================================================
+-- Nombre de buckets affiches SIMULTANEMENT (fenetre visible) par granularite ;
+-- l'historique complet est parcouru via la scroll bar. ~1 mois de jours, ~6
+-- mois de semaines, 1 an de mois, quelques annees.
+local OVERLAY_VISIBLE = { day = 31, week = 26, month = 12, year = 8 }
 local overlayWidgets = {}
 
 local function BuildOverlayDetail(content)
@@ -1849,8 +2002,43 @@ local function BuildOverlayDetail(content)
     d.chartInner:SetPoint("TOPLEFT", 16, -16)
     d.chartInner:SetPoint("BOTTOMRIGHT", -16, 30)
 
+    -- Plage de dates visible (annee complete), affichee sous le graphique.
+    d.rangeLabel = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    d.rangeLabel:SetPoint("TOPLEFT", d.chart, "BOTTOMLEFT", 0, -8)
+
+    -- Scroll bar horizontale : deplace la fenetre visible dans le temps.
+    d.slider = CreateFrame("Slider", nil, content)
+    d.slider:SetOrientation("HORIZONTAL")
+    d.slider:SetHeight(14)
+    d.slider:SetPoint("TOPLEFT", d.chart, "BOTTOMLEFT", 0, -24)
+    d.slider:SetPoint("TOPRIGHT", d.chart, "BOTTOMRIGHT", 0, -24)
+    d.slider:SetValueStep(1)
+    d.slider:SetObeyStepOnDrag(true)
+    local track = d.slider:CreateTexture(nil, "BACKGROUND")
+    track:SetColorTexture(1, 1, 1, 0.10)
+    track:SetHeight(4)
+    track:SetPoint("LEFT", d.slider, "LEFT", 0, 0)
+    track:SetPoint("RIGHT", d.slider, "RIGHT", 0, 0)
+    local thumb = d.slider:CreateTexture(nil, "OVERLAY")
+    thumb:SetColorTexture(ACCENT[1], ACCENT[2], ACCENT[3], 0.9)
+    thumb:SetSize(52, 14)
+    d.slider:SetThumbTexture(thumb)
+    d.slider:SetScript("OnValueChanged", function(_, value)
+      view.overlayScroll = math.floor(value + 0.5)
+      if not d._suppressScroll and d._renderWindow then d._renderWindow() end
+    end)
+
+    -- Molette au-dessus du graphique = defilement temporel (haut = recule
+    -- dans le temps). Passe par SetValue pour rester synchro avec le curseur.
+    d.chart:EnableMouseWheel(true)
+    d.chart:SetScript("OnMouseWheel", function(_, delta)
+      if not d._maxOffset or d._maxOffset <= 0 then return end
+      local v = math.min(math.max((view.overlayScroll or 0) - delta, 0), d._maxOffset)
+      d.slider:SetValue(v)
+    end)
+
     d.legendHint = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    d.legendHint:SetPoint("TOPLEFT", d.chart, "BOTTOMLEFT", 0, -14)
+    d.legendHint:SetPoint("TOPLEFT", d.chart, "BOTTOMLEFT", 0, -44)
     d.legendHint:SetText(L["OVERLAY_LEGEND_HINT"])
 
     d.legendButtons = {}
@@ -1898,23 +2086,39 @@ local function BuildOverlayDetail(content)
   d.granLabel:ClearAllPoints()
   d.granLabel:SetPoint("RIGHT", leftmostBtn, "LEFT", -8, 0)
 
-  local bucketCount = (view.overlayGranularity == "day") and 30 or 12
-  local seriesList = {}
-  for _, metric in ipairs(CARD_METRICS) do
-    local raw = SX.BuildSeries(view.char, metric, view.overlayGranularity, bucketCount)
-    seriesList[#seriesList + 1] = { key = metric, color = OVERLAY_COLORS[metric] or ACCENT, points = NormalizeSeries(raw) }
+  local gran = view.overlayGranularity
+  local visible = OVERLAY_VISIBLE[gran] or 12
+  local fullCount = SX.OverlayBucketCount(view.char, gran, visible)
+  d._maxOffset = math.max(0, fullCount - visible)
+
+  -- Cache de la serie COMPLETE normalisee (par personnage + granularite +
+  -- nombre de buckets) : le defilement ne fait que re-decouper une fenetre,
+  -- sans reconstruire ni reagreger a chaque cran. Un changement de
+  -- granularite, de personnage, ou l'apparition d'un nouveau bucket (nouveau
+  -- jour) recale la vue sur la periode la plus recente.
+  local cacheKey = tostring(view.char) .. "|" .. gran .. "|" .. fullCount
+  if d._cacheKey ~= cacheKey then
+    local list = {}
+    for _, metric in ipairs(CARD_METRICS) do
+      local raw = SX.BuildSeries(view.char, metric, gran, fullCount)
+      list[#list + 1] = { key = metric, color = OVERLAY_COLORS[metric] or ACCENT, points = NormalizeSeries(raw) }
+    end
+    d._fullSeries = list
+    d._cacheKey = cacheKey
+    view.overlayScroll = d._maxOffset
   end
+  if not view.overlayScroll then view.overlayScroll = d._maxOffset end
+  view.overlayScroll = math.min(math.max(view.overlayScroll, 0), d._maxOffset)
 
   -- Legende cliquable construite sur la liste COMPLETE (pas filtree) pour
   -- pouvoir re-cocher une courbe cachee ; le graphique lui-meme n'utilise
   -- que les courbes cochees (visibleSeries).
-  BuildLegendToggles(content, d.legendButtons, CARD_METRICS, function(k) return OVERLAY_COLORS[k] end, view.overlayEnabledMetrics, -(66 + 300 + 14 + 16))
-  local visibleSeries = FilterEnabledSeries(seriesList, view.overlayEnabledMetrics)
+  BuildLegendToggles(content, d.legendButtons, CARD_METRICS, function(k) return OVERLAY_COLORS[k] end, view.overlayEnabledMetrics, -(66 + 300 + 44 + 16))
 
   local fmtFn = function(point)
     local first = point.seriesList[1]
     local p1 = first and first.points[point.index]
-    local lines = { p1 and p1.label or "" }
+    local lines = { (p1 and p1.from) and OverlayFullStamp(p1.from, gran) or "" }
     for _, s in ipairs(point.seriesList) do
       local p = s.points[point.index]
       if p then
@@ -1923,10 +2127,37 @@ local function BuildOverlayDetail(content)
     end
     return table.concat(lines, "\n")
   end
-  RenderOverlayChart(d.chartInner, visibleSeries, true, fmtFn, view.overlayGranularity)
+
+  -- Redessine uniquement la fenetre visible (rappele a chaque cran de scroll /
+  -- de molette sans repasser par tout RefreshDashboard).
+  d._renderWindow = function()
+    local visibleSeries = FilterEnabledSeries(d._fullSeries or {}, view.overlayEnabledMetrics)
+    local firstFrom, lastFrom = RenderOverlayTimeline(d.chartInner, visibleSeries, gran, view.overlayScroll, visible, fmtFn)
+    if firstFrom and lastFrom then
+      d.rangeLabel:SetText(string.format(L["OVERLAY_RANGE_FMT"] or "Du %s au %s",
+        OverlayRangeStamp(firstFrom, gran), OverlayRangeStamp(lastFrom, gran)))
+    else
+      d.rangeLabel:SetText("")
+    end
+  end
+
+  -- Configuration de la scroll bar (masquee quand tout l'historique tient dans
+  -- la fenetre visible : rien a faire defiler).
+  if d._maxOffset > 0 then
+    d._suppressScroll = true
+    d.slider:SetMinMaxValues(0, d._maxOffset)
+    d.slider:SetValue(view.overlayScroll)
+    d._suppressScroll = false
+    d.slider:Show()
+  else
+    d.slider:Hide()
+  end
+
+  d._renderWindow()
 
   for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
   for g, b in pairs(d.granButtons) do b:Show() end
+  if d._maxOffset <= 0 then d.slider:Hide() end
 end
 
 local function HideOverlayDetail()
@@ -2240,7 +2471,9 @@ function SX.RefreshDashboard()
     HideDetail()
     HidePvPChartDetail()
     BuildOverlayDetail(mainFrame.content)
-    mainFrame.content:SetHeight(420)
+    -- +50 vs les autres detail : la scroll bar, la plage de dates et la
+    -- legende passent sous le graphique (cf. BuildOverlayDetail).
+    mainFrame.content:SetHeight(470)
   elseif view.detailMetric == "__pvp__" then
     HideOverview()
     HideDetail()
