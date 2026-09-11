@@ -350,7 +350,7 @@ RenTrackerData["MistsOfPandaria"] = {
           npc="Sage Whiteheart / Sage Lotusbloom", coords="Sanctuaire",
           zone="Pandarie",
           rep=3000, type="onetime", questID=nil, mapID=390,
-          tip="Complétez la campagne de la Vallée des Fleurs éternelles pour débloquér l'acces aux Celestiels." },
+          tip="Complétez la campagne de la Vallée des Fleurs éternelles pour débloquer l'acces aux Celestiels." },
       },
     },
     -- ----------------------------------------------------------------

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.5
+- Relecture orthographe/grammaire/ponctuation : remplacement des tirets cadratins restants par une ponctuation standard.
+
 ## 7.1.5.4
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero de version sur l'ensemble de la suite (voir Stats 7.1.5.4 pour le detail : correction d'affichage sur le graphique "Toutes les metriques" - echelle de dates et scroll bar).
 

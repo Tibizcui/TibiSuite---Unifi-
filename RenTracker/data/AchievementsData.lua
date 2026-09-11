@@ -74,7 +74,7 @@ RenTrackerAchievements = {
       { id=916,    name="L'Expédition de la Horde",            faction="Horde" },
       { id=917,    name="La Tribu Taunka",                     faction="Horde" },
       { id=918,    name="Le Front du Nord",                    faction="Alliance" },
-      { id=919,    name="Les Guardiens du Caveau",             faction="Neutre" },
+      { id=919,    name="Les Gardiens du Caveau",              faction="Neutre" },
       { id=920,    name="Les Lances Brisées",                  faction="Neutre" },
       { id=921,    name="Les Oracles",                         faction="Neutre" },
       { id=922,    name="Les Frenzyheart Tribe",               faction="Neutre" },

@@ -1,5 +1,5 @@
--- XPBar.lua v7.1.5.4
--- Barre XP avancée — Tibiscui
+-- XPBar.lua v7.1.5.5
+-- Barre XP avancée - Tibiscui
 -- Maj+Drag pour déplacer | Maj+Clic droit pour les options
 
 local ADDON = "XPBar"
@@ -66,8 +66,8 @@ L.OPT_VTHICK          = L.OPT_VTHICK          or "Epaisseur :"
 L.OPT_VLENGTH         = L.OPT_VLENGTH         or "Longueur :"
 -- Slash / login / debug
 L.SLASH_HIDDEN   = L.SLASH_HIDDEN   or "Masqué. /xpbar show pour ré-afficher."
-L.SLASH_HELP     = L.SLASH_HELP     or " /xpbar — options  |  /xpbar hide/show  |  /xpbar session  |  /xpbar reset"
-L.SLASH_HELP_DBG = L.SLASH_HELP_DBG or "  /xpbar debug — identifier les frames XP natifs"
+L.SLASH_HELP     = L.SLASH_HELP     or " /xpbar - options  |  /xpbar hide/show  |  /xpbar session  |  /xpbar reset"
+L.SLASH_HELP_DBG = L.SLASH_HELP_DBG or "  /xpbar debug - identifier les frames XP natifs"
 L.LOGIN_LOADED   = L.LOGIN_LOADED   or "chargé -- tapez"
 L.LOGIN_TO_OPEN  = L.LOGIN_TO_OPEN  or "pour les options."
 L.DEBUG_HEADER   = L.DEBUG_HEADER   or "Frames XP détectés :"
@@ -115,11 +115,11 @@ local DEFAULTS = {
     hideInCombat         = false,
     hideInVehicle        = false,
     mouseoverOnly        = false,
-    sessionStartTime     = 0,      -- epoch (time()) du début de session — persiste entre /reload
-    sessionXPGained      = 0,      -- XP cumulée depuis sessionStartTime — persiste entre /reload
+    sessionStartTime     = 0,      -- epoch (time()) du début de session, persiste entre /reload
+    sessionXPGained      = 0,      -- XP cumulée depuis sessionStartTime, persiste entre /reload
     sessionLevels        = 0,      -- niveaux gagnés dans la session
     sessionQuests        = 0,      -- quêtes rendues dans la session
-    lastLogout           = 0,      -- epoch de la dernière déconnexion — distingue /reload et vraie session
+    lastLogout           = 0,      -- epoch de la dernière déconnexion, distingue /reload et vraie session
     bgA        = 0.85,             -- opacité du fond sombre
     fontSize   = 0,                -- 0 = taille par défaut du modèle
     barR = 0.55, barG = 0.27, barB = 0.80, barA = 1.0,
@@ -168,7 +168,7 @@ local function FormatTime(seconds)
 end
 
 -- Durée de session en secondes, basée sur l'horloge réelle (time()) pour
--- survivre aux /reload — contrairement à GetTime() qui repart de zéro.
+-- survivre aux /reload, contrairement à GetTime() qui repart de zéro.
 local function GetSessionElapsed()
     if not db or not db.sessionStartTime or db.sessionStartTime == 0 then return 0 end
     return time() - db.sessionStartTime
@@ -688,7 +688,7 @@ UpdateBar = function()
 end
 
 -- ══════════════════════════════════════════════════
--- PANEL D'OPTIONS — widgets réutilisables
+-- PANEL D'OPTIONS - widgets réutilisables
 -- ══════════════════════════════════════════════════
 local function MakeCheckbox(parent, lbl, x, y, getF, setF)
     local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
@@ -1137,7 +1137,7 @@ evFrame:SetScript("OnEvent", function(self, event, arg1, arg2)
         PushXPSample()   -- point de départ pour l'XP/h glissant
         if RequestTimePlayed then RequestTimePlayed() end
         UpdateBar()
-        print("|cFFBC38FAXPBar|r v7.1.5.4 " .. L.LOGIN_LOADED .. " |cFFFFD700/xpbar|r " .. L.LOGIN_TO_OPEN)
+        print("|cFFBC38FAXPBar|r v7.1.5.5 " .. L.LOGIN_LOADED .. " |cFFFFD700/xpbar|r " .. L.LOGIN_TO_OPEN)
 
     elseif event == "PLAYER_LOGOUT" then
         -- Déclenché aussi par /reload : horodate la déconnexion pour permettre,

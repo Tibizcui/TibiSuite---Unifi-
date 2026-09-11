@@ -14,7 +14,7 @@ DgnTrackerData["TheWarWithin"] = {
      tomtom={mapID=2248, x=67.2, y=25.8}},
     {name="Cité des Fils",               type="dungeon", zone="Azj-Kahet", region="Khaz Algar", sector="Azj-Kahet",
      mapID=2255, coords={x=56.6,y=24.6}, accessMapID=2255,
-     access={both="Portail vers Dornogal, puis portail vers Azj-Kahet (The Fissure de Dornogal)."},
+     access={both="Portail vers Dornogal, puis portail vers Azj-Kahet (Fissure de Dornogal)."},
      path="Azj-Kahet, nord. Cité des Fils, grande arche de la cité Nérubienne.",
      tomtom={mapID=2255, x=56.6, y=24.6}},
     {name="Ara-Kara, Cité des Échos",    type="dungeon", zone="Hallowfall", region="Khaz Algar", sector="Halles de la Fabrication",

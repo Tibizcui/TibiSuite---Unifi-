@@ -38,7 +38,7 @@ ns:AddLocale("frFR", {
     DETAIL_API_PENDING    = "En attente des donnees de la Saison 2",
 
     -- Demarrage / minimap
-    LOGIN_LOADED          = "%s charge. %d active, %d en attente de la Saison 2. Tape /wc pour ouvrir.",
+    LOGIN_LOADED          = "%s charge. %d actives, %d en attente de la Saison 2. Tape /wc pour ouvrir.",
     MINIMAP_HINT_TOGGLE   = "Clic gauche : ouvrir / fermer le tableau",
     MINIMAP_HINT_DRAG     = "Glisser : deplacer autour de la minicarte",
 

@@ -4,7 +4,7 @@
 ## Notes: Leveling & farming session tracker - TibiSuite
 ## Notes-frFR: Suivi de sessions leveling & farming - TibiSuite
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.4
+## Version: 7.1.5.5
 ## X-Curse-Project-ID: 1563422
 ## IconTexture: Interface\AddOns\LvlHistory\Media\TibiSuiteIcon
 

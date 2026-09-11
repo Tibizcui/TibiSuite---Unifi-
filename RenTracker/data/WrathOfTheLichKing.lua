@@ -101,7 +101,7 @@ RenTrackerData["WrathOfTheLichKing"] = {
           zone="Rainspeaker Canopy, Bassin de Sholazar",
           rep=1000, type="daily", questID=nil, mapID=394,
           tip="~4 quetes quotidiennes disponibles apres avoir choisi les Oracles. ~1000 rep/jour. ATTENTION : exclusif avec Frenzyheart Tribe." },
-        { name="Oeuf myserieux (Hebdo)",
+        { name="Oeuf mysterieux (Hebdo)",
           npc="Achat chez Geen", coords="51.2, 75.0",
           zone="Rainspeaker Canopy",
           rep=0, type="weekly", questID=nil, mapID=394,

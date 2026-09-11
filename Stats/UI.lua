@@ -435,7 +435,16 @@ local function RenderChart(container, series, style, color, series2, color2, sho
           local dx, dy = x - prevX, y - prevY
           local len = math.sqrt(dx * dx + dy * dy)
           seg:SetSize(math.max(len, 0.01), 2)
-          seg:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", prevX, labelH + prevY - 1)
+          -- SetRotation pivote autour du CENTRE de la texture, pas de son
+          -- point d'ancrage : ancrer BOTTOMLEFT sur le point de DEPART (comme
+          -- avant) place le pivot au mauvais endroit des qu'un segment n'est
+          -- pas horizontal, et le segment tourne autour d'un centre qui n'est
+          -- pas le vrai milieu prevX/prevY <-> x/y - erreur d'autant plus
+          -- visible que la pente est forte (un saut de valeur brutal peut
+          -- ainsi visuellement s'echapper loin de sa position reelle). Ancrer
+          -- le CENTRE du segment sur le vrai milieu des deux points corrige
+          -- ca quelle que soit la pente.
+          seg:SetPoint("CENTER", container, "BOTTOMLEFT", (prevX + x) / 2, labelH + (prevY + y) / 2)
           seg:SetRotation(math.atan2(dy, dx))
         end
         if showLabels then
@@ -542,7 +551,13 @@ local function RenderOverlayChart(container, seriesList, showLabels, fmtFn, gran
           local dx, dy = x - prevX, y - prevY
           local len = math.sqrt(dx * dx + dy * dy)
           seg:SetSize(math.max(len, 0.01), 1.5)
-          seg:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", prevX, labelH + prevY - 0.75)
+          -- Centre du segment ancre sur le vrai milieu des 2 points, pas son
+          -- coin BOTTOMLEFT de depart : SetRotation pivote autour du CENTRE
+          -- de la texture, donc un ancrage BOTTOMLEFT decale visuellement le
+          -- segment des que la pente n'est pas nulle (constat : une metrique
+          -- passant brutalement de ~0% a ~100% entre 2 annees pouvait
+          -- s'afficher loin de sa vraie position, hors du cadre du graphique).
+          seg:SetPoint("CENTER", container, "BOTTOMLEFT", (prevX + x) / 2, labelH + (prevY + y) / 2)
           seg:SetRotation(math.atan2(dy, dx))
         end
         prevX, prevY = x, y
@@ -667,7 +682,12 @@ local function RenderOverlayTimeline(container, seriesList, gran, offset, visibl
             local dx, dy = x - prevX, y - prevY
             local len = math.sqrt(dx * dx + dy * dy)
             seg:SetSize(math.max(len, 0.01), 1.5)
-            seg:SetPoint("BOTTOMLEFT", container, "BOTTOMLEFT", prevX, labelH + prevY - 0.75)
+            -- Centre du segment sur le vrai milieu des 2 points (pas son coin
+            -- BOTTOMLEFT de depart) : meme correctif que RenderOverlayChart,
+            -- cf. son commentaire (SetRotation pivote autour du CENTRE de la
+            -- texture, un ancrage BOTTOMLEFT desaligne le segment des qu'il
+            -- n'est pas horizontal).
+            seg:SetPoint("CENTER", container, "BOTTOMLEFT", (prevX + x) / 2, labelH + (prevY + y) / 2)
             seg:SetRotation(math.atan2(dy, dx))
           end
           prevX, prevY = x, y
@@ -1897,12 +1917,14 @@ local function BuildDetail(content, metric)
 
   d.title:SetText(CardLabel(metric))
 
-  -- Granularite : verrouille toute unite >= la fenetre affichee
-  local lockMap = { day = { day = false, week = view.period == "day", month = true },
-                     week = { day = false, week = false, month = view.period == "week" },
-                     month = { day = true, week = false, month = false },
-                     year = { day = true, week = true, month = false } }
-  local locks = lockMap[view.period] or {}
+  -- Granularite de CE graphique (view.detailGranularity) : bucketCount se
+  -- calcule uniquement a partir d'elle (cf. plus bas), jamais de view.period
+  -- (le filtre de periode "globale" du dashboard) - un ancien verrouillage
+  -- desactivait pourtant Semaine/Mois des que view.period == "day", sans
+  -- aucun lien avec les donnees reellement affichees ici (bug confirme :
+  -- passer le filtre global sur "Jour" grisait Semaine puis Mois sur ce
+  -- graphique alors que rien ne l'imposait). Retire : les 4 granularites
+  -- restent toujours disponibles.
   local gx = 0
   local leftmostBtn
   for _, g in ipairs(SX.GRANULARITIES) do
@@ -1911,20 +1933,19 @@ local function BuildDetail(content, metric)
     b:SetPoint("TOPRIGHT", content, "TOPRIGHT", -gx, -30)
     gx = gx + 64
     leftmostBtn = b
-    local locked = locks[g]
-    if locked and view.detailGranularity == g then view.detailGranularity = "day" end
-    b:SetEnabled(not locked)
+    b:SetEnabled(true)
     local gLabel = L["GRANULARITY_" .. g:upper()]
+    -- Les 3 granularites non selectionnees restent cliquables (aucun
+    -- verrouillage, cf. commentaire ci-dessus) mais s'affichent grisees pour
+    -- que la granularite active se voie d'un coup d'oeil.
     local labelText
-    if locked then
-      labelText = "|cFF555555" .. gLabel .. "|r"
-    elseif view.detailGranularity == g then
+    if view.detailGranularity == g then
       labelText = UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. gLabel .. "|r"
     else
-      labelText = gLabel
+      labelText = "|cFF555555" .. gLabel .. "|r"
     end
     b._label:SetText(labelText)
-    b:SetScript("OnClick", function() if not locked then view.detailGranularity = g; SX.RefreshDashboard() end end)
+    b:SetScript("OnClick", function() view.detailGranularity = g; SX.RefreshDashboard() end)
   end
   -- Ancre AU BOUT DE LA RANGEE (le dernier bouton positionne = le plus a
   -- gauche, gx croissant) - pas SX.GRANULARITIES[1] ("jour", le plus a
@@ -2047,13 +2068,15 @@ local function BuildOverlayDetail(content)
   end
 
   -- Granularite INDEPENDANTE de detailGranularity (single-metrique) :
-  -- demarre en "semaine", pas "jour" (cf. view.overlayGranularity). Meme
-  -- verrouillage granularite/periode que BuildDetail.
-  local lockMap = { day = { day = false, week = view.period == "day", month = true },
-                     week = { day = false, week = false, month = view.period == "week" },
-                     month = { day = true, week = false, month = false },
-                     year = { day = true, week = true, month = false } }
-  local locks = lockMap[view.period] or {}
+  -- demarre en "semaine", pas "jour" (cf. view.overlayGranularity). Sa
+  -- fenetre de donnees (fullCount/visible) vient uniquement de `gran` et de
+  -- l'historique reel (SX.OverlayBucketCount), jamais de view.period - un
+  -- ancien verrouillage copie de BuildDetail desactivait pourtant
+  -- Semaine/Mois des que le filtre de periode global passait sur "Jour",
+  -- sans aucun lien avec ce graphique (bug confirme : "Jour" grisait
+  -- Semaine puis Mois ici alors que la timeline defile son propre
+  -- historique complet, independant du filtre). Retire : les 4
+  -- granularites restent toujours disponibles.
   local gx = 0
   local leftmostBtn
   for _, g in ipairs(SX.GRANULARITIES) do
@@ -2062,20 +2085,19 @@ local function BuildOverlayDetail(content)
     b:SetPoint("TOPRIGHT", content, "TOPRIGHT", -gx, -30)
     gx = gx + 64
     leftmostBtn = b
-    local locked = locks[g]
-    if locked and view.overlayGranularity == g then view.overlayGranularity = "week" end
-    b:SetEnabled(not locked)
+    b:SetEnabled(true)
     local gLabel = L["GRANULARITY_" .. g:upper()]
+    -- Les 3 granularites non selectionnees restent cliquables (aucun
+    -- verrouillage, cf. commentaire ci-dessus) mais s'affichent grisees pour
+    -- que la granularite active se voie d'un coup d'oeil.
     local labelText
-    if locked then
-      labelText = "|cFF555555" .. gLabel .. "|r"
-    elseif view.overlayGranularity == g then
+    if view.overlayGranularity == g then
       labelText = UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. gLabel .. "|r"
     else
-      labelText = gLabel
+      labelText = "|cFF555555" .. gLabel .. "|r"
     end
     b._label:SetText(labelText)
-    b:SetScript("OnClick", function() if not locked then view.overlayGranularity = g; SX.RefreshDashboard() end end)
+    b:SetScript("OnClick", function() view.overlayGranularity = g; SX.RefreshDashboard() end)
   end
   -- Ancre AU BOUT DE LA RANGEE (le dernier bouton positionne = le plus a
   -- gauche, gx croissant) - pas SX.GRANULARITIES[1] ("jour", le plus a
@@ -2224,7 +2246,7 @@ local function BuildPvPChartDetail(content)
     leftmostBtn = b
     local gLabel = L["GRANULARITY_" .. g:upper()]
     b._label:SetText(view.pvpChartGranularity == g
-      and (UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. gLabel .. "|r") or gLabel)
+      and (UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. gLabel .. "|r") or ("|cFF555555" .. gLabel .. "|r"))
     b:SetScript("OnClick", function() view.pvpChartGranularity = g; SX.RefreshDashboard() end)
   end
   -- Ancre au bout de la rangee (le plus a gauche), pas [1] ("jour", le plus

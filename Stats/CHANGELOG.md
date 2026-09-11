@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.1.5.5
+- Correction : dans "Toutes les metriques" et le detail par metrique, un segment de courbe (granularite Mois/Annee) pouvait s'afficher loin de sa position reelle, jusqu'a sortir du cadre du graphique, des qu'une metrique variait brutalement d'un point a l'autre - mauvais pivot de rotation du segment, corrige.
+- Correction : passer le filtre de periode sur "Jour" grisait a tort les granularites Semaine/Mois de "Toutes les metriques" et du detail par metrique, qui ne dependent pourtant pas de ce filtre (chacun parcourt son propre historique complet).
+- Relecture orthographe/grammaire/ponctuation des textes du module.
+
 ## 7.1.5.4
 - Graphique "Toutes les metriques" : ajout d'une echelle de temps defilable. L'axe affiche desormais les dates (jour 11/09/2026, semaine, mois 09/2026, annee 2026) et une scroll bar horizontale (ou la molette) permet de remonter dans tout l'historique, avec la plage affichee rappelee sous le graphique. Fenetre par defaut calee sur la periode la plus recente : ~1 mois de jours, ~6 mois de semaines, 1 an de mois.
 

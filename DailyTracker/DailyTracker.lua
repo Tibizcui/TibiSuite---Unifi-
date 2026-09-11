@@ -1,5 +1,5 @@
 -- ================================================================
--- DailyTracker v7.1.5.4
+-- DailyTracker v7.1.5.5
 -- Auteur : Tibiscui - Kirin Tor
 -- Pool de frames (anti-fuite) + refresh throttlé
 -- Scroll réel, i18n FR/EN, suivi manuel, timers de reset,
@@ -68,7 +68,7 @@ local FRFR = {
   MM_LEFT         = "Clic gauche : ouvrir / fermer",
   MM_DRAG         = "Glisser : repositionner l'icone",
   COMPART_SUB     = "Activites quotidiennes & hebdomadaires",
-  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.4 - |cFFFFD700/dt|r pour ouvrir.",
+  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.5 - |cFFFFD700/dt|r pour ouvrir.",
   CHECK_HEADER    = "Diagnostic questID (les IDs non resolus sont a verifier) :",
   CHECK_OK        = "OK",
   CHECK_MISSING   = "NON RESOLU",
@@ -117,7 +117,7 @@ local ENUS = {
   MM_LEFT         = "Left click: open / close",
   MM_DRAG         = "Drag: reposition icon",
   COMPART_SUB     = "Daily & weekly activities",
-  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.4 - |cFFFFD700/dt|r to open.",
+  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.5 - |cFFFFD700/dt|r to open.",
   CHECK_HEADER    = "questID diagnostic (unresolved IDs need review):",
   CHECK_OK        = "OK",
   CHECK_MISSING   = "UNRESOLVED",
@@ -166,7 +166,7 @@ local DEDE = {
   MM_LEFT         = "Linksklick: oeffnen / schliessen",
   MM_DRAG         = "Ziehen: Symbol verschieben",
   COMPART_SUB     = "Taegliche & woechentliche Aktivitaeten",
-  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.4 - |cFFFFD700/dt|r zum Oeffnen.",
+  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.5 - |cFFFFD700/dt|r zum Oeffnen.",
   CHECK_HEADER    = "QuestID-Diagnose (nicht aufgeloeste IDs muessen geprueft werden):",
   CHECK_OK        = "OK",
   CHECK_MISSING   = "NICHT AUFGELOEST",
@@ -215,7 +215,7 @@ local ESES = {
   MM_LEFT         = "Clic izquierdo: abrir / cerrar",
   MM_DRAG         = "Arrastrar: reposicionar el icono",
   COMPART_SUB     = "Actividades diarias y semanales",
-  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.4 - |cFFFFD700/dt|r para abrir.",
+  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.5 - |cFFFFD700/dt|r para abrir.",
   CHECK_HEADER    = "Diagnostico de questID (los IDs no resueltos deben revisarse):",
   CHECK_OK        = "OK",
   CHECK_MISSING   = "NO RESUELTO",

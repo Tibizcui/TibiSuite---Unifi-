@@ -1,5 +1,5 @@
 -- ================================================================
--- DgnTracker v7.1.5.4
+-- DgnTracker v7.1.5.5
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
 
@@ -427,7 +427,7 @@ local function BuildUI()
   end
 
   -- Crée les boutons onglets pour TOUS les types possibles
-  -- (dungeon, raid, delve, torghast) — affichés/masqués selon l'extension active
+  -- (dungeon, raid, delve, torghast), affichés/masqués selon l'extension active
   local ALL_POSSIBLE_TABS = {"dungeon","raid","delve","torghast"}
   local ix = 0
   for _, ttype in ipairs(ALL_POSSIBLE_TABS) do
@@ -1096,7 +1096,7 @@ evFrame:SetScript("OnEvent",function(_,event,arg1)
     if minimapBtn then minimapBtn:Hide() end
 
   elseif event=="PLAYER_LOGIN" then
-    print("|cFF4D99FFDgnTracker|r v7.1.5.4 " .. T("LOGIN_LOADED", "chargé --") .. " |cFFFFD700/dg|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+    print("|cFF4D99FFDgnTracker|r v7.1.5.5 " .. T("LOGIN_LOADED", "chargé --") .. " |cFFFFD700/dg|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
   end
 end)
 

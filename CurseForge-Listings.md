@@ -1,24 +1,24 @@
-# TibiSuite — CurseForge Listing Content
+# TibiSuite - CurseForge Listing Content
 
 This file gathers everything needed to publish/update the CurseForge pages for
 **TibiSuite** and its 13 addons. Each entry has:
-- a **Short Summary** (English only — this is the one-liner shown in CurseForge
+- a **Short Summary** (English only, this is the one-liner shown in CurseForge
   search results / addon manager, keep it under ~200 characters),
 - a **Full Description**, written first in **English**, then in **French**.
 
 Every addon works **standalone** (its own minimap button, its own settings) **or**
 as an integrated module of the **TibiSuite** suite (single shared minimap button,
 unified tab bar, load-on-demand). Installing both the standalone addon and
-TibiSuite is safe — they auto-detect each other and never duplicate UI.
+TibiSuite is safe: they auto-detect each other and never duplicate UI.
 
 ---
 
 ## 0. TibiSuite (the Suite)
 
 **Short Summary (English):**
-The unified hub for the whole Tibiscui addon family — one minimap button, one tab bar, load only the modules you check.
+The unified hub for the whole Tibiscui addon family: one minimap button, one tab bar, load only the modules you check.
 
-### Full Description — English
+### Full Description - English
 
 TibiSuite is the shared core that ties every Tibiscui addon together into a
 single, lightweight experience. Instead of a dozen separate minimap buttons
@@ -29,21 +29,21 @@ access to every module you've enabled.
 - Single minimap button + AddonCompartment entry for the whole suite.
 - Unified, movable, lockable tab bar (vertical or horizontal), one accent
   color per module.
-- **Load-on-demand**: only the modules you tick in the options actually load
-  — unchecked ones cost zero memory/CPU.
+- **Load-on-demand**: only the modules you tick in the options actually load.
+  Unchecked ones cost zero memory/CPU.
 - Central options panel to enable/disable every module, reinstall a module's
   saved data, and adjust shared settings (minimap angle, bar scale, lock).
 - Global search bar that queries every loaded module at once.
 - Any standalone Tibiscui addon (DailyTracker, PostBox, Stats, etc.)
   automatically detects TibiSuite if it's installed and merges into the
-  shared bar instead of showing its own separate button — no conflict, no
+  shared bar instead of showing its own separate button: no conflict, no
   duplicate data, ever.
 
 Install TibiSuite first, then tick the modules you want from its options
-panel — or install any module standalone and add TibiSuite later, it will
+panel, or install any module standalone and add TibiSuite later, it will
 pick it up automatically on the next reload.
 
-### Full Description — Français
+### Full Description - Français
 
 TibiSuite est le socle commun qui relie tous les addons Tibiscui en une seule
 expérience légère. Plutôt qu'une dizaine de boutons et de fenêtres séparés,
@@ -56,7 +56,7 @@ unifiée donnant accès à tous les modules activés.
 - Barre d'onglets unifiée, déplaçable, verrouillable (verticale ou
   horizontale), une couleur d'accent par module.
 - **Chargement à la demande** : seuls les modules cochés dans les options se
-  chargent réellement — les autres ne consomment ni mémoire ni CPU.
+  chargent réellement. Les autres ne consomment ni mémoire ni CPU.
 - Panneau d'options central pour activer/désactiver chaque module,
   réinstaller les données d'un module, et régler les paramètres communs
   (angle minicarte, échelle de la barre, verrouillage).
@@ -64,11 +64,11 @@ unifiée donnant accès à tous les modules activés.
   temps.
 - Tout addon Tibiscui installé en standalone (DailyTracker, PostBox, Stats,
   etc.) détecte automatiquement TibiSuite s'il est présent et vient s'ajouter
-  à la barre commune au lieu d'afficher son propre bouton séparé — aucun
+  à la barre commune au lieu d'afficher son propre bouton séparé : aucun
   conflit, aucune donnée dupliquée.
 
 Installez TibiSuite en premier puis cochez les modules voulus dans ses
-options — ou installez n'importe quel module en standalone et ajoutez
+options, ou installez n'importe quel module en standalone et ajoutez
 TibiSuite plus tard, il sera détecté automatiquement au reload suivant.
 
 ---
@@ -78,10 +78,10 @@ TibiSuite plus tard, il sera détecté automatiquement au reload suivant.
 **Short Summary (English):**
 Automatic daily & weekly quest tracker for Midnight and The War Within, with manual entries and reset timers.
 
-### Full Description — English
+### Full Description - English
 
 DailyTracker keeps track of your daily and weekly quests automatically,
-detecting completion straight from `C_QuestLog` — no manual clicking
+detecting completion straight from `C_QuestLog`. No manual clicking is
 required for quests the game already knows about.
 
 **Key features**
@@ -99,10 +99,10 @@ required for quests the game already knows about.
 
 Slash commands: `/dt` or `/daily`.
 
-### Full Description — Français
+### Full Description - Français
 
 DailyTracker suit vos quêtes quotidiennes et hebdomadaires automatiquement,
-en détectant leur validation directement via `C_QuestLog` — aucun clic
+en détectant leur validation directement via `C_QuestLog`. Aucun clic
 manuel n'est nécessaire pour les quêtes déjà connues du jeu.
 
 **Fonctionnalités principales**
@@ -128,10 +128,10 @@ Commandes : `/dt` ou `/daily`.
 **Short Summary (English):**
 Tracks every dungeon, raid, delve and Torghast entrance across all expansions, from Vanilla to Midnight.
 
-### Full Description — English
+### Full Description - English
 
-DgnTracker is your one-stop log of instance entrances — dungeons, raids,
-delves and Torghast — covering **every expansion from Vanilla to Midnight**.
+DgnTracker is your one-stop log of instance entrances: dungeons, raids,
+delves and Torghast, covering **every expansion from Vanilla to Midnight**.
 
 **Key features**
 - Tabs for Dungeons, Raids, Delves, Torghast and Torment content.
@@ -142,10 +142,10 @@ delves and Torghast — covering **every expansion from Vanilla to Midnight**.
 
 Slash commands: `/dg` or `/tibidgn`.
 
-### Full Description — Français
+### Full Description - Français
 
-DgnTracker est votre journal centralisé des entrées d'instances — donjons,
-raids, gouffres et Torghast — couvrant **toutes les extensions, de Vanilla à
+DgnTracker est votre journal centralisé des entrées d'instances : donjons,
+raids, gouffres et Torghast, couvrant **toutes les extensions, de Vanilla à
 Midnight**.
 
 **Fonctionnalités principales**
@@ -163,9 +163,9 @@ Commandes : `/dg` ou `/tibidgn`.
 ## 3. LairLens
 
 **Short Summary (English):**
-Real-time group audit and reward-relevance overlay for Lairs (patch 12.1) — see who's pulling their weight.
+Real-time group audit and reward-relevance overlay for Lairs (patch 12.1): see who's pulling their weight.
 
-### Full Description — English
+### Full Description - English
 
 LairLens brings clarity to group Lair runs: a live audit panel plus a
 history dashboard so you always know what happened and whether the loot was
@@ -182,7 +182,7 @@ worth it.
 
 Slash commands: `/lairlens` or `/ll`.
 
-### Full Description — Français
+### Full Description - Français
 
 LairLens apporte de la clarté à vos runs de groupe en Repaire : un panneau
 d'audit en direct et un tableau de bord d'historique, pour toujours savoir ce
@@ -206,12 +206,12 @@ Commandes : `/lairlens` ou `/ll`.
 ## 4. LegTracker
 
 **Short Summary (English):**
-Account-wide legendary item tracker across every expansion — status, quest chains and components, at a glance.
+Account-wide legendary item tracker across every expansion: status, quest chains and components, at a glance.
 
-### Full Description — English
+### Full Description - English
 
 LegTracker keeps track of every legendary item across every expansion, for
-your **entire account** at once — no more wondering which alt has which
+your **entire account** at once: no more wondering which alt has which
 legendary.
 
 **Key features**
@@ -227,10 +227,10 @@ legendary.
 
 Slash commands: `/lt`.
 
-### Full Description — Français
+### Full Description - Français
 
 LegTracker suit tous les objets légendaires de toutes les extensions, pour
-**l'ensemble de votre compte** en une seule fois — plus besoin de deviner
+**l'ensemble de votre compte** en une seule fois : plus besoin de deviner
 quel personnage détient quelle légendaire.
 
 **Fonctionnalités principales**
@@ -253,9 +253,9 @@ Commandes : `/lt`.
 ## 5. LvlHistory
 
 **Short Summary (English):**
-Session tracker for leveling and farming — XP/hour, zones, dungeon runs, best M+ keys, all logged automatically.
+Session tracker for leveling and farming: XP/hour, zones, dungeon runs, best M+ keys, all logged automatically.
 
-### Full Description — English
+### Full Description - English
 
 LvlHistory logs your leveling and farming sessions in detail, so you can
 look back at exactly how (and how fast) you progressed.
@@ -270,7 +270,7 @@ look back at exactly how (and how fast) you progressed.
 
 Slash commands: `/lvlh`.
 
-### Full Description — Français
+### Full Description - Français
 
 LvlHistory enregistre vos sessions de leveling et de farm en détail, pour
 pouvoir revoir précisément comment (et à quelle vitesse) vous avez progressé.
@@ -290,12 +290,12 @@ Commandes : `/lvlh`.
 ## 6. MiniHub
 
 **Short Summary (English):**
-Gathers every addon's minimap icon into one tidy, collapsible container — a cleaner minimap in one click.
+Gathers every addon's minimap icon into one tidy, collapsible container: a cleaner minimap in one click.
 
-### Full Description — English
+### Full Description - English
 
 MiniHub cleans up your minimap by collecting every third-party addon icon
-into a single, retractable panel — no more icon soup around the minimap.
+into a single, retractable panel: no more icon soup around the minimap.
 
 **Key features**
 - Smart, whitelist-pattern detection of real addon buttons (plus direct
@@ -313,10 +313,10 @@ into a single, retractable panel — no more icon soup around the minimap.
 
 Slash commands: `/minihub` or `/mh`.
 
-### Full Description — Français
+### Full Description - Français
 
 MiniHub nettoie votre minicarte en regroupant toutes les icônes d'addons
-tiers dans un panneau unique et rétractable — fini la soupe d'icônes autour
+tiers dans un panneau unique et rétractable : fini la soupe d'icônes autour
 de la minicarte.
 
 **Fonctionnalités principales**
@@ -346,7 +346,7 @@ Commandes : `/minihub` ou `/mh`.
 **Short Summary (English):**
 Advanced mailbox manager: mass-open everything, bulk delete, a contact book and full mail statistics.
 
-### Full Description — English
+### Full Description - English
 
 PostBox is a full rewrite of the mailbox experience: open everything in one
 click, manage your contacts, and track exactly how much gold moves through
@@ -367,7 +367,7 @@ your mailbox.
 
 Slash commands: `/postbox` or `/pb`.
 
-### Full Description — Français
+### Full Description - Français
 
 PostBox est une réécriture complète de la gestion du courrier : tout ouvrir
 en un clic, gérer vos contacts, et suivre précisément l'or qui transite par
@@ -397,10 +397,10 @@ Commandes : `/postbox` ou `/pb`.
 **Short Summary (English):**
 Reputation tracker spanning 13 expansions, from Vanilla to Midnight, with auto zone-based tracking.
 
-### Full Description — English
+### Full Description - English
 
 RenTracker follows every faction reputation you care about, across **13
-expansions** — from Vanilla all the way to Midnight.
+expansions**, from Vanilla all the way to Midnight.
 
 **Key features**
 - Collapsible groups: Main, Secondary and PvP factions.
@@ -410,10 +410,10 @@ expansions** — from Vanilla all the way to Midnight.
 
 Slash commands: `/rt`.
 
-### Full Description — Français
+### Full Description - Français
 
 RenTracker suit toutes les réputations de faction qui vous intéressent, sur
-**13 extensions** — de Vanilla jusqu'à Midnight.
+**13 extensions**, de Vanilla jusqu'à Midnight.
 
 **Fonctionnalités principales**
 - Groupes repliables : factions Principales, Secondaires et JcJ.
@@ -432,7 +432,7 @@ Commandes : `/rt`.
 **Short Summary (English):**
 A smarter reputation bar that replaces the native one and auto-switches faction by zone and on quest turn-in.
 
-### Full Description — English
+### Full Description - English
 
 RepBar replaces Blizzard's native reputation bar with one that actually
 follows what you're doing: it switches faction automatically based on your
@@ -446,7 +446,7 @@ zone (via RenTracker) and whenever you turn in a quest.
 
 Slash commands: `/repbar`.
 
-### Full Description — Français
+### Full Description - Français
 
 RepBar remplace la barre de réputation native de Blizzard par une barre qui
 suit vraiment ce que vous faites : elle change de faction automatiquement
@@ -469,7 +469,7 @@ Commandes : `/repbar`.
 **Short Summary (English):**
 Tracks profession progress per expansion for every character on your account, current tier or the full picture.
 
-### Full Description — English
+### Full Description - English
 
 SkillTracker follows your professions expansion by expansion, for **every
 character** on your account, so you always know exactly what's left to max
@@ -486,7 +486,7 @@ out.
 
 Slash commands: `/skilltracker` or `/skt`.
 
-### Full Description — Français
+### Full Description - Français
 
 SkillTracker suit vos métiers extension par extension, pour **tous les
 personnages** de votre compte, afin de toujours savoir précisément ce qu'il
@@ -508,16 +508,16 @@ Commandes : `/skilltracker` ou `/skt`.
 ## 11. Stats
 
 **Short Summary (English):**
-Autonomous per-character daily tracker — quests, gold, dungeons, playtime — with a full dashboard and web export.
+Autonomous per-character daily tracker: quests, gold, dungeons, playtime, with a full dashboard and web export.
 
-### Full Description — English
+### Full Description - English
 
 Stats quietly records your activity every day, per character: quests
 completed, gold gained/spent, dungeons & Mythic+ runs, and time played. It
 then turns that history into a real dashboard, not just a number.
 
 **Key features**
-- Fully autonomous event-driven tracker — nothing to configure, it just
+- Fully autonomous event-driven tracker: nothing to configure, it just
   works from the moment it's loaded.
 - Dashboard with an overview grid, a detailed per-metric view (with
   min/max/average), and character-vs-character comparison.
@@ -525,15 +525,15 @@ then turns that history into a real dashboard, not just a number.
   who contributed what.
 - Weekly gold aligned to the actual raid reset, not the calendar week.
 - **One-click, account-wide export code**: generates a single code covering
-  every character on your account — no need to log into each alt separately
+  every character on your account: no need to log into each alt separately
   to build your web dashboard.
 - Paste that code on [tibiscui.fr/Dashboard.html](https://tibiscui.fr) for a
-  full browser-based dashboard — nothing is ever sent to a server, the code
+  full browser-based dashboard: nothing is ever sent to a server, the code
   is decoded and rendered entirely in your own browser.
 
 Slash commands: `/stats` (or `/ts stats` through TibiSuite).
 
-### Full Description — Français
+### Full Description - Français
 
 Stats enregistre discrètement votre activité chaque jour, par personnage :
 quêtes terminées, or gagné/dépensé, donjons & Mythique+, et temps de jeu.
@@ -541,7 +541,7 @@ Cet historique devient ensuite un vrai tableau de bord, pas juste un
 chiffre.
 
 **Fonctionnalités principales**
-- Suivi entièrement autonome, piloté par les événements du jeu — rien à
+- Suivi entièrement autonome, piloté par les événements du jeu : rien à
   configurer, ça fonctionne dès le chargement.
 - Tableau de bord avec vue d'ensemble en grille, vue détaillée par
   métrique (avec min/max/moyenne), et comparaison entre personnages.
@@ -550,10 +550,10 @@ chiffre.
 - Or hebdomadaire calé sur le vrai reset des raids, pas sur la semaine
   calendaire.
 - **Code d'export compte en un clic** : génère un seul code couvrant tous
-  les personnages de votre compte — plus besoin de se reconnecter sur
+  les personnages de votre compte : plus besoin de se reconnecter sur
   chaque personnage pour construire son tableau de bord web.
 - Collez ce code sur [tibiscui.fr/Dashboard.html](https://tibiscui.fr) pour
-  un tableau de bord complet dans le navigateur — rien n'est jamais envoyé à
+  un tableau de bord complet dans le navigateur : rien n'est jamais envoyé à
   un serveur, le code est décodé et affiché entièrement dans votre propre
   navigateur.
 
@@ -566,10 +566,10 @@ Commandes : `/stats` (ou `/ts stats` via TibiSuite).
 **Short Summary (English):**
 One unified weekly dashboard showing exactly what's left to do to maximize your weekly rewards.
 
-### Full Description — English
+### Full Description - English
 
 WeeklyCompass answers one question at a glance: "what do I still need to do
-this week?" — across every system that matters, for every character on your
+this week?" It covers every system that matters, for every character on your
 account.
 
 **Key features**
@@ -579,10 +579,10 @@ account.
 
 Slash commands: `/wc` or `/weeklycompass`.
 
-### Full Description — Français
+### Full Description - Français
 
 WeeklyCompass répond à une seule question en un coup d'œil : "que me
-reste-t-il à faire cette semaine ?" — pour tous les systèmes qui comptent,
+reste-t-il à faire cette semaine ?" Elle couvre tous les systèmes qui comptent,
 sur tous les personnages de votre compte.
 
 **Fonctionnalités principales**
@@ -602,7 +602,7 @@ Commandes : `/wc` ou `/weeklycompass`.
 **Short Summary (English):**
 Advanced XP bar with rested XP, session stats, XP/hour and a time-to-level estimate.
 
-### Full Description — English
+### Full Description - English
 
 XPBar replaces the default Blizzard XP bar with one that actually tells you
 something useful about how your leveling session is going.
@@ -615,7 +615,7 @@ something useful about how your leveling session is going.
 
 Slash commands: `/xpbar`.
 
-### Full Description — Français
+### Full Description - Français
 
 XPBar remplace la barre d'XP par défaut de Blizzard par une barre qui vous
 donne vraiment des informations utiles sur le déroulement de votre session

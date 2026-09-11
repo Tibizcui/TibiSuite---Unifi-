@@ -4,10 +4,10 @@ DgnTrackerData = DgnTrackerData or {}
 DgnTrackerData["WarlordsOfDraenor"] = {
   label="Warlords of Draenor", color={r=0.85,g=0.50,b=0.10},
   instances = {
-    {name="Auchindoun (Draenor)", type="dungeon", zone="Flèches de Arak", region="Draenor", sector="Flèches d'Arak",
+    {name="Auchindoun (Draenor)", type="dungeon", zone="Flèches d'Arak", region="Draenor", sector="Flèches d'Arak",
      mapID=543, coords={x=40.5,y=34.5}, accessMapID=543,
-     access={both="Vol vers Flèches de Arak (#543). Auchindoun central."},
-     path="Flèches de Arak, centre. Auchindoun reconstruite sur Draenor.",
+     access={both="Vol vers Flèches d'Arak (#543). Auchindoun central."},
+     path="Flèches d'Arak, centre. Auchindoun reconstruite sur Draenor.",
      tomtom={mapID=543, x=40.5, y=34.5}},
     {name="La Forge des Âmes (Shadowmoon)", type="dungeon", zone="Shadowmoon Valley", region="Draenor", sector="Ombrelune",
      mapID=539, coords={x=36.0,y=54.5}, accessMapID=539,

@@ -11,7 +11,7 @@ local function Loc(key, default) return L[key] or default end
 -- ─────────────────────────────────────────────
 -- Constantes
 -- ─────────────────────────────────────────────
-local ADDON_VERSION = "7.1.5.4"
+local ADDON_VERSION = "7.1.5.5"
 local SAVE_INTERVAL = 300  -- sauvegarde incrémentale toutes les 5 minutes
 
 -- Structure par défaut d'un personnage
@@ -281,7 +281,7 @@ coreFrame:SetScript("OnEvent", function(self, event, ...)
             AccruePlayTime()
         end)
 
-        T.Utils.Log("v%s chargé — %s — Mode: %s", ADDON_VERSION, T.charKey, db.mode)
+        T.Utils.Log("v%s chargé - %s - Mode: %s", ADDON_VERSION, T.charKey, db.mode)
         -- T.Utils.Log() ci-dessus est reduit au mode debug (voir Utils.lua) - le
         -- message de connexion uniforme de la suite doit rester visible pour
         -- tout le monde, d'ou ce print() simple en plus.
@@ -308,7 +308,7 @@ coreFrame:SetScript("OnEvent", function(self, event, ...)
 
             if LvlHistoryDB.settings.sessionAlert then
                 print(T.Utils.Colorize("[LvlHistory]", "F0B429")
-                    .. " " .. Loc("MAX_LEVEL_REACHED", "Niveau maximum atteint — passage en mode FARMING"))
+                    .. " " .. Loc("MAX_LEVEL_REACHED", "Niveau maximum atteint : passage en mode FARMING"))
             end
         end
     end

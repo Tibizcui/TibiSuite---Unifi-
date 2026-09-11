@@ -1,6 +1,6 @@
 -- ================================================================
 --  SkillTracker  -  UI.lua
---  Panneau principal (liinnere emeraude #00FF98), barres de progression
+--  Panneau principal (liseré émeraude #00FF98), barres de progression
 --  regroupees par metier puis par extension, tooltip enrichi multi-perso,
 --  panneau recapitulatif du compte, bouton minimap, options, export/import.
 --

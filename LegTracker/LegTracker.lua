@@ -1,5 +1,5 @@
 -- ================================================================
--- LegTracker v7.1.5.4
+-- LegTracker v7.1.5.5
 -- Suivi des objets legendaires de toutes les extensions WoW
 -- Auteur : Tibiscui - Kirin Tor
 -- Design & architecture propre a LegTracker
@@ -596,7 +596,7 @@ local function RefreshDetail(item)
                 item._qDone or 0, item._qTotal or 0,
                 item._tDone or 0, item._tTotal or 0)
   elseif status == "UNAVAILABLE" then
-    sLabel = COL_GREY .. T("RESERVED_LABEL", "Reservé : ") .. COL_RESET .. GetClassesText(item)
+    sLabel = COL_GREY .. T("RESERVED_LABEL", "Reserve : ") .. COL_RESET .. GetClassesText(item)
   else
     sLabel = COL_RED .. T("TAG_NOT_OBTAINED", "[Non obtenu]") .. COL_RESET
   end
@@ -1709,7 +1709,7 @@ SlashCmdList["LEGTRACKER"] = function(msg)
   end
   if msg == "reset" then
     if LegTrackerDB then LegTrackerDB.accountData = {} end
-    print(COL_BLUE .. "LegTracker" .. COL_RESET .. " " .. T("ACCOUNT_DATA_RESET", "Donnees de compte reinitialises."))
+    print(COL_BLUE .. "LegTracker" .. COL_RESET .. " " .. T("ACCOUNT_DATA_RESET", "Donnees de compte reinitialisees."))
     return
   end
   if msg == "options" or msg == "config" then
@@ -1819,7 +1819,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
     end
 
-    print(COL_BLUE .. "LegTracker v7.1.5.4" .. COL_RESET
+    print(COL_BLUE .. "LegTracker v7.1.5.5" .. COL_RESET
           .. " " .. T("LOGIN_LOADED", "chargé -- tapez") .. " " .. COL_GOLD .. "/lt" .. COL_RESET .. " " .. T("LOGIN_TO_OPEN", "pour ouvrir.")
           .. " |cFF888888" .. T("LOGIN_SUBCMDS", "(/lt scan = forcer scan, /lt reset = reinit donnees compte)") .. "|r")
 

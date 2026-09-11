@@ -86,7 +86,7 @@ end
 
 --- Formate un XP/h pour affichage
 function U.FormatXPH(xph)
-    if not xph or xph == 0 then return "— XP/h" end
+    if not xph or xph == 0 then return "-- XP/h" end
     xph = math.floor(xph)
     if xph >= 1000000 then
         return string.format("%.1f M XP/h", xph / 1000000)

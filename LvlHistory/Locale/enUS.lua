@@ -21,7 +21,7 @@ L["ERROR_PREFIX"] = "ERROR:"
 -- Core.lua
 L["LOGIN_LOADED"]       = "loaded -- type"
 L["LOGIN_TO_OPEN"]      = "to open."
-L["MAX_LEVEL_REACHED"]  = "Max level reached — switching to FARMING mode"
+L["MAX_LEVEL_REACHED"]  = "Max level reached: switching to FARMING mode"
 L["RESET_CONFIRM_HINT"] = "Type |cffFFFFFF/lvlh reset confirm|r to confirm."
 L["DATA_RESET_DONE"]    = "Data reset. Reload (/reload)."
 L["SLASH_HELP"]         = "Commands: /lvlh | /lvlh options | /lvlh minimap | /lvlh debug | /lvlh reset"
@@ -40,7 +40,7 @@ L["TT_REPOSITION"]   = "Reposition"
 L["MENU_TOGGLE"]     = "Open / Close"
 L["MENU_DEBUG"]      = "Debug"
 L["MENU_HIDE_BUTTON"]= "Hide the button"
-L["BUTTON_HIDDEN_LOG"]= "Button hidden — /lvlh minimap to show it again"
+L["BUTTON_HIDDEN_LOG"]= "Button hidden - /lvlh minimap to show it again"
 L["MENU_RESET_CHAR"] = "Reset this character"
 
 -- UI.lua

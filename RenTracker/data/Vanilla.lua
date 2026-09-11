@@ -100,7 +100,7 @@ RenTrackerData["Vanilla"] = {
           npc="Duke Hydraxis", coords="80.8, 24.4",
           zone="Brande de Feu, Azshara",
           rep=5000, type="onetime", questID=nil, mapID=nil,
-          tip="Complétez la longue chaine de quetes de Duke Hydraxis pour atteindre Honore et débloquér l'acces." },
+          tip="Complétez la longue chaine de quetes de Duke Hydraxis pour atteindre Honore et débloquer l'acces." },
         { name="Raid Molten Core - Tuer les Ancients (Hebdo)",
           npc="Boss du Molten Core", coords="Blackrock Mountain",
           zone="Molten Core",
@@ -501,7 +501,7 @@ RenTrackerData["Vanilla"] = {
       qm_zone  = "Refuge du Cercle d'Or, Arathi",
       color    = {r=0.90, g=0.75, b=0.25},
       quests   = {
-        { name="Gainer des ressources en AB (Quotidien)",
+        { name="Gagner des ressources en AB (Quotidien)",
           npc="Samuel Hawke", coords="37.4, 39.0",
           zone="Bassin d'Arathi",
           rep=10, type="daily", questID=nil, mapID=nil,
@@ -576,7 +576,7 @@ RenTrackerData["Vanilla"] = {
       qm_zone  = "Refuge des Profanateurs, Arathi (Horde)",
       color    = {r=0.80, g=0.20, b=0.10},
       quests   = {
-        { name="Gainer des ressources en AB (Quotidien)",
+        { name="Gagner des ressources en AB (Quotidien)",
           npc="Rutherford Twing", coords="74.2, 91.0",
           zone="Bassin d'Arathi",
           rep=10, type="daily", questID=nil, mapID=nil,

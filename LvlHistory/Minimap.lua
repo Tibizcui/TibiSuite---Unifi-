@@ -240,7 +240,7 @@ function MM.ShowContextMenu(anchor)
                     LvlHistoryDB.settings.minimapButton = false
                 end
                 CloseDropDownMenus()
-                LvlHistory.Utils.Log(Loc("BUTTON_HIDDEN_LOG", "Bouton masqué — /lvlh minimap pour réafficher"))
+                LvlHistory.Utils.Log(Loc("BUTTON_HIDDEN_LOG", "Bouton masqué - /lvlh minimap pour réafficher"))
             end,
         },
         { text = " ", notCheckable = true, disabled = true },

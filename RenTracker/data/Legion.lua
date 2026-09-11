@@ -101,7 +101,7 @@ RenTrackerData["Legion"] = {
           zone="Légionchute",
           rep=300, type="daily", questID=nil, mapID=1,
           tip="~10 quetes quotidiennes disponibles a Légionchute (patch 7.2). Certaines sont de groupe." },
-        { name="Construction du Base de Légionchute (Progression)",
+        { name="Construction de la Base de Légionchute (Progression)",
           npc="Warmage Kath'leen", coords="44.2, 52.8",
           zone="Légionchute",
           rep=500, type="weekly", questID=nil, mapID=1,

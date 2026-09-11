@@ -75,7 +75,7 @@ RenTrackerData["Cataclysme"] = {
           npc="Deloran Flamme-Brulee", coords="35.0, 62.0",
           zone="Sulfer Flats, Terres de Feu",
           rep=250, type="weekly", questID=nil, mapID=720,
-          tip="Patch 4.2 : participez aux Terres de Feu pour débloquér les Avengers d'Hyjal, une faction distincte." },
+          tip="Patch 4.2 : participez aux Terres de Feu pour débloquer les Avengers d'Hyjal, une faction distincte." },
       },
     },
     -- ----------------------------------------------------------------

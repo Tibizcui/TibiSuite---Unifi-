@@ -898,7 +898,7 @@ function UI.RefreshTab3()
         local infoLbl = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         infoLbl:SetPoint("TOPLEFT", row, "TOPLEFT", 44, -22)
         infoLbl:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
-        infoLbl:SetText(string.format("%s  —  %s",
+        infoLbl:SetText(string.format("%s  -  %s",
             mode == "farming" and Loc("MODE_FARMING", "Farming") or Loc("MODE_LEVELING", "Leveling"),
             totalT > 0 and LvlHistory.Utils.FormatTime(totalT, true) or "--"))
 
@@ -1481,7 +1481,7 @@ function UI.RefreshTab5()
         s5.rec.avgXPH:SetText(cntXPH > 0
             and U.FormatXPH(math.floor(totalXPH / cntXPH)) or "--")
         s5.rec.sessions:SetText(#sessions > 0
-            and string.format("%d  —  " .. Loc("AVG_PREFIX_FMT", "moy. %s"), #sessions,
+            and string.format("%d  -  " .. Loc("AVG_PREFIX_FMT", "moy. %s"), #sessions,
                 U.FormatTime(math.floor(totalT / #sessions), true))
             or "--")
         s5.rec.bestSess:SetText(bestDur > 0 and U.FormatTime(bestDur, true) or "--")
