@@ -11,6 +11,7 @@
   - Temps joue : repartition par activite (donjon, raid, gouffre, monde) en plus du total existant.
   - Points de metier gagnes : detail par metier.
 - Ces nouveaux journaux ne couvrent que les evenements enregistres a partir de cette version : rien n'est reconstitue retroactivement pour les jours deja enregistres.
+- Correction : le palier d'un gouffre pouvait ne jamais s'enregistrer dans son detail evenement (colonne vide) - le palier est desormais aussi lu en continu pendant le gouffre, pas seulement a la toute fin, ou le jeu semble parfois avoir deja referme le contexte necessaire pour le lire.
 
 ## 7.1.5.5
 - Correction : dans "Toutes les metriques" et le detail par metrique, un segment de courbe (granularite Mois/Annee) pouvait s'afficher loin de sa position reelle, jusqu'a sortir du cadre du graphique, des qu'une metrique variait brutalement d'un point a l'autre - mauvais pivot de rotation du segment, corrige.

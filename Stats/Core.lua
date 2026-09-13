@@ -842,6 +842,17 @@ end
 -- une extension future en ajoute davantage.
 SX.DELVE_MAX_TIER = 8
 
+-- Palier du gouffre actif, rafraichi en continu PENDANT le gouffre (cf.
+-- CurrentPlaytimeActivity plus bas, meme detection HasActiveDelve/IsInLair).
+-- Sert de repli pour OnScenarioCompleted ci-dessous : lire
+-- C_DelvesUI.GetActiveDelveTier() SEULEMENT au moment ou le scenario se
+-- termine echoue trop souvent en pratique (constat utilisateur du
+-- 2026-09-13 : palier 11 jamais capture, ni a l'instant T ni via le reessai
+-- a 2s - le contexte "gouffre actif" semble deja se refermer). En le lisant
+-- aussi PENDANT le gouffre (zone deja chargee, bien avant la fin), la valeur
+-- est disponible plus tot et plus fiablement.
+local cachedDelveTier = nil
+
 -- Applique un palier lu (immediatement ou via le repli retarde ci-dessous)
 -- au record : tuile "Palier max" (global) ET entree du gouffre nomme
 -- concerne (tableau "Detail par gouffre").
@@ -867,6 +878,9 @@ local function OnScenarioCompleted()
     local ok, t = pcall(C_DelvesUI.GetActiveDelveTier)
     if ok and type(t) == "number" then tier = t end
   end
+  -- Repli immediat sur la derniere lecture reussie PENDANT le gouffre (cf.
+  -- cachedDelveTier ci-dessus) avant meme d'essayer le reessai a 2s plus bas.
+  tier = tier or cachedDelveTier
   local rec = SX.EnsureChar(SX.CurrentCharKey())
   local d = SX.EnsureDay(rec, SX.TodayKey())
   d.delves = (d.delves or 0) + 1
@@ -889,13 +903,17 @@ local function OnScenarioCompleted()
   -- zone, palier pas toujours dispo a l'instant T) - patchee par reference par
   -- le reessai ci-dessous si le palier arrive apres coup.
   local delveLogEntry = SX.AppendDayEvent(d.delveLog, { ts = time(), name = delveName, tier = tier })
+  -- Consomme le cache : evite qu'un gouffre suivant, lance tres vite apres
+  -- celui-ci, ne reutilise par erreur un palier perime.
+  cachedDelveTier = nil
 
-  -- Repli : GetActiveDelveTier() peut ne pas encore repondre a l'instant
-  -- precis de SCENARIO_COMPLETED (meme constat deja fait ailleurs dans ce
-  -- fichier sur d'autres API Blizzard, cf. PVP_MATCH_COMPLETE) - explique le
-  -- "Palier max" reste a 0 malgre un gouffre bien compte (constat
-  -- utilisateur). Un seul reessai, 2s plus tard, si le palier n'a pas ete lu
-  -- du premier coup.
+  -- Dernier repli : GetActiveDelveTier() peut ne pas encore repondre a
+  -- l'instant precis de SCENARIO_COMPLETED (meme constat deja fait ailleurs
+  -- dans ce fichier sur d'autres API Blizzard, cf. PVP_MATCH_COMPLETE) ET le
+  -- cache ci-dessus peut ne jamais avoir ete rempli (gouffre commence avant
+  -- le premier PLAYER_ENTERING_WORLD/ZONE_CHANGED_NEW_AREA suivant le
+  -- /reload, par exemple). Un seul reessai, 2s plus tard, si le palier n'a
+  -- toujours pas ete lu.
   if not tier and C_DelvesUI.GetActiveDelveTier then
     local charKey = SX.CurrentCharKey()
     C_Timer.After(2, function()
@@ -1684,6 +1702,13 @@ local playtimeEnteredAt = nil
 local function CurrentPlaytimeActivity()
   if C_DelvesUI and ((C_DelvesUI.HasActiveDelve and C_DelvesUI.HasActiveDelve())
       or (C_DelvesUI.IsInLair and C_DelvesUI.IsInLair())) then
+    -- Rafraichit cachedDelveTier (cf. section GOUFFRES plus haut) tant que le
+    -- gouffre est actif, pour qu'OnScenarioCompleted ait deja une valeur
+    -- disponible au moment ou le gouffre se termine.
+    if C_DelvesUI.GetActiveDelveTier then
+      local ok, t = pcall(C_DelvesUI.GetActiveDelveTier)
+      if ok and type(t) == "number" then cachedDelveTier = t end
+    end
     return "delve"
   end
   if instanceSession then
