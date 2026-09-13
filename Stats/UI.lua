@@ -218,6 +218,17 @@ local function AcquireBar(c)
     c._pool[c._used] = t
   end
   t:Show()
+  -- Reinitialise TOUJOURS la rotation ici (pas seulement sur certains sites
+  -- d'appel) : ce pool est partage entre le style "barre" et le style
+  -- "ligne" (segments diagonaux via SetRotation) sur le MEME container -
+  -- constat utilisateur du 2026-09-13 (barres visiblement deformees sur
+  -- "Heures jouees" et d'autres cartes) : basculer Semaine/Mois (ligne) puis
+  -- revenir a Jour (barre) recyclait une texture qui gardait la rotation
+  -- d'un ancien segment diagonal. Un site d'appel qui veut une rotation
+  -- (les segments diagonaux du style "ligne") l'applique de toute facon
+  -- juste apres via son propre SetRotation, donc ce reset ne change rien
+  -- pour eux.
+  t:SetRotation(0)
   return t
 end
 
@@ -977,6 +988,13 @@ local function BuildOverview(content)
       if CARD_ICONS[metric] then card.icon:SetTexture(CARD_ICONS[metric]) end
       card.title = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
       card.title:SetPoint("TOPLEFT", 34, -12)
+      -- Largeur contrainte (cf. refresh ci-dessous) : a l'etroit (grille 4
+      -- colonnes, fenetre a sa taille min), un titre long ("Reputation
+      -- gagnee", "Points de metier gagnes") debordait sous le bouton
+      -- Detail - constat utilisateur du 2026-09-13, disparaissait en
+      -- elargissant la fenetre. SetWordWrap(false) : troncature plutot que
+      -- retour a la ligne (qui pousserait le chiffre en dessous).
+      card.title:SetWordWrap(false)
       card.value = card:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
       card.value:SetPoint("TOPLEFT", 14, -34)
       card.delta = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -1022,6 +1040,9 @@ local function BuildOverview(content)
     card:ClearAllPoints()
     card:SetPoint("TOPLEFT", content, "TOPLEFT", col * (cardW + gap), gridTop - row * (cardH + gap))
     card:SetSize(cardW, cardH)
+    -- Laisse la place au bouton Detail (74 de large + marge) a droite, pour
+    -- que le titre se tronque plutot que de passer dessous.
+    card.title:SetWidth(math.max(20, cardW - 34 - 92))
     card.title:SetText(CardLabel(metric))
 
     local from, to, pFrom, pTo
