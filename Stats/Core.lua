@@ -876,16 +876,16 @@ local function OnScenarioCompleted()
   local tier
   if C_DelvesUI.GetActiveDelveTier then
     local ok, t = pcall(C_DelvesUI.GetActiveDelveTier)
-    if ok and type(t) == "number" then tier = t end
-    -- DEBUG TEMPORAIRE (a retirer une fois la cause du bug de palier
-    -- identifiee) : GetActiveDelveTier() ne semble jamais renvoyer le
-    -- palier reel (constat 2026-09-13, meme apres lecture continue pendant
-    -- le gouffre) - affiche ce que l'API renvoie vraiment pour diagnostiquer
-    -- sans deviner une autre fonction a l'aveugle.
-    print(string.format("|cFFFFCC00[Stats DEBUG]|r delve tier: exists=oui ok=%s t=%s cachedDelveTier=%s",
-      tostring(ok), tostring(t), tostring(cachedDelveTier)))
-  else
-    print("|cFFFFCC00[Stats DEBUG]|r delve tier: C_DelvesUI.GetActiveDelveTier n'existe pas (nil)")
+    if ok and type(t) == "number" then
+      tier = t
+    elseif ok and type(t) == "table" then
+      -- DEBUG TEMPORAIRE : confirme le 2026-09-13 que GetActiveDelveTier()
+      -- renvoie une TABLE, pas un nombre (mauvaise hypothese initiale) -
+      -- affiche son contenu pour trouver le bon champ plutot que deviner.
+      local parts = {}
+      for k, v in pairs(t) do parts[#parts + 1] = tostring(k) .. "=" .. tostring(v) end
+      print("|cFFFFCC00[Stats DEBUG]|r delve tier table (fin) : " .. table.concat(parts, ", "))
+    end
   end
   -- Repli immediat sur la derniere lecture reussie PENDANT le gouffre (cf.
   -- cachedDelveTier ci-dessus) avant meme d'essayer le reessai a 2s plus bas.
@@ -1716,10 +1716,13 @@ local function CurrentPlaytimeActivity()
     -- disponible au moment ou le gouffre se termine.
     if C_DelvesUI.GetActiveDelveTier then
       local ok, t = pcall(C_DelvesUI.GetActiveDelveTier)
-      if ok and type(t) == "number" then cachedDelveTier = t end
-      -- DEBUG TEMPORAIRE (a retirer, cf. OnScenarioCompleted ci-dessus) :
-      -- confirme si la lecture PENDANT le gouffre reussit mieux qu'a la fin.
-      print(string.format("|cFFFFCC00[Stats DEBUG]|r delve tier (pendant) : ok=%s t=%s", tostring(ok), tostring(t)))
+      if ok and type(t) == "number" then
+        cachedDelveTier = t
+      elseif ok and type(t) == "table" then
+        local parts = {}
+        for k, v in pairs(t) do parts[#parts + 1] = tostring(k) .. "=" .. tostring(v) end
+        print("|cFFFFCC00[Stats DEBUG]|r delve tier table (pendant) : " .. table.concat(parts, ", "))
+      end
     end
     return "delve"
   end
