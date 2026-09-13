@@ -829,6 +829,20 @@ local PVP_OVERLAY_COLORS = {
   arenaPlayedGained = { 1.000, 0.706, 0.329 }, arenaWonGained = { 0.702, 0.537, 0.957 },
 }
 
+-- Identite couleur des 4 sections repliables du bas (BuildSummaryTiles et
+-- ses 5 panneaux de detail) - demande utilisateur du 2026-09-13 ("plus
+-- premium/sexy") : chaque section reprend une couleur au lieu de l'or
+-- uniforme partout, meme principe que les cartes du haut. Reutilise
+-- OVERLAY_COLORS (deja la meme identite que la carte "Gouffres"/"Reputation
+-- gagnee"/"Points de metier gagnes" en haut) ; PVP reprend la teinte rose de
+-- PVP_OVERLAY_COLORS.pvpKillsGained (pas de carte PVP dans CARD_METRICS).
+local SECTION_ACCENTS = {
+  pvp = PVP_OVERLAY_COLORS.pvpKillsGained,
+  delves = OVERLAY_COLORS.delves,
+  reputations = OVERLAY_COLORS.repGained,
+  professions = OVERLAY_COLORS.profGained,
+}
+
 local function CardLabel(metric)
   if metric == "quests" then return L["CARD_QUESTS"]
   elseif metric == "gold" then
@@ -1220,9 +1234,15 @@ local PVP_BRACKET_LABEL_KEYS = {
 
 -- Petit "chip" statistique (libelle discret en haut, valeur mise en avant en
 -- dessous, sur 2 lignes dans une seule FontString).
-local function SetChip(fs, label, value)
+-- valueColor optionnel (repli sur l'or) : les tuiles/panneaux de section
+-- (PVP, Gouffres+Tourments, Reputations, Metiers) passent desormais leur
+-- propre couleur d'accent pour donner a chaque section une identite propre
+-- au lieu d'un or uniforme partout - meme palette que les cartes du haut
+-- (OVERLAY_COLORS).
+local function SetChip(fs, label, value, valueColor)
+  valueColor = valueColor or UI.C.GOLD
   fs:SetText(UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. label .. "|r\n"
-    .. UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. tostring(value) .. "|r")
+    .. UI.Hex(valueColor[1], valueColor[2], valueColor[3]) .. tostring(value) .. "|r")
 end
 
 local function PctText(wins, total)
@@ -1248,13 +1268,24 @@ local SUMMARY_TILE_H = 96
 
 -- Bouton (pas juste un Frame) : ces tuiles sont desormais cliquables pour
 -- deplier/replier leur detail (cf. BuildSummaryTiles, view.summaryExpanded)
--- - repond au constat utilisateur "ca ne fait rien au clic".
-local function BuildTile(parent, title)
+-- - repond au constat utilisateur "ca ne fait rien au clic". accent/icon
+-- optionnels (demande utilisateur du 2026-09-13, "plus premium/sexy") :
+-- meme traitement que les cartes du haut (bordure coloree + icone), repli
+-- sur l'accent global si absent.
+local function BuildTile(parent, title, accent, icon)
+  accent = accent or ACCENT
   local tile = CreateFrame("Button", nil, parent, "BackdropTemplate")
-  UI.SkinFrame(tile, ACCENT, UI.C.PANEL)
+  UI.SkinFrame(tile, accent, UI.C.PANEL)
+  if icon then
+    tile.icon = tile:CreateTexture(nil, "ARTWORK")
+    tile.icon:SetSize(16, 16)
+    tile.icon:SetPoint("TOPLEFT", 12, -12)
+    tile.icon:SetTexture(icon)
+  end
   tile.title = tile:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  tile.title:SetPoint("TOPLEFT", 14, -12)
+  tile.title:SetPoint("TOPLEFT", icon and 34 or 14, -12)
   tile.title:SetText(title)
+  tile.title:SetTextColor(accent[1], accent[2], accent[3])
   -- Indicateur deplie/replie (ASCII, pas de glyphe Unicode - meme piege deja
   -- documente ailleurs dans ce fichier pour la police WoW par defaut).
   -- Texte/couleur mis a jour par BuildSummaryTiles (qui seul connait l'etat
@@ -1312,10 +1343,10 @@ local SUMMARY_ROWS = {
 local function BuildSummaryTiles(content, top)
   if not summaryTiles then
     summaryTiles = {
-      pvp = BuildTile(content, L["PVP_SECTION_TITLE"]),
-      delves = BuildTile(content, L["DELVES_TORGHAST_SECTION_TITLE"]),
-      reputations = BuildTile(content, L["REPUTATION_SECTION_TITLE"]),
-      professions = BuildTile(content, L["PROFESSIONS_SECTION_TITLE"]),
+      pvp = BuildTile(content, L["PVP_SECTION_TITLE"], SECTION_ACCENTS.pvp, "Interface\\Icons\\INV_BannerPVP_02"),
+      delves = BuildTile(content, L["DELVES_TORGHAST_SECTION_TITLE"], SECTION_ACCENTS.delves, CARD_ICONS.delves),
+      reputations = BuildTile(content, L["REPUTATION_SECTION_TITLE"], SECTION_ACCENTS.reputations, CARD_ICONS.repGained),
+      professions = BuildTile(content, L["PROFESSIONS_SECTION_TITLE"], SECTION_ACCENTS.professions, CARD_ICONS.profGained),
     }
     for key, tile in pairs(summaryTiles) do
       tile:SetScript("OnClick", function()
@@ -1330,11 +1361,12 @@ local function BuildSummaryTiles(content, top)
   for r, row in ipairs(SUMMARY_ROWS) do
     for c, key in ipairs(row) do
       local tile = summaryTiles[key]
+      local sectionAccent = SECTION_ACCENTS[key] or ACCENT
       tile:ClearAllPoints()
       tile:SetPoint("TOPLEFT", content, "TOPLEFT", (c - 1) * (tileW + gap), top - (r - 1) * (SUMMARY_TILE_H + gap))
       tile:SetSize(tileW, SUMMARY_TILE_H)
       tile.expandIcon:SetText(view.summaryExpanded[key]
-        and (UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. "- " .. L["SUMMARY_COLLAPSE"] .. "|r")
+        and (UI.Hex(sectionAccent[1], sectionAccent[2], sectionAccent[3]) .. "- " .. L["SUMMARY_COLLAPSE"] .. "|r")
         or (UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. "+ " .. L["SUMMARY_EXPAND"] .. "|r"))
       local statW = (tileW - 28) / 3
       for s = 1, 3 do
@@ -1363,16 +1395,16 @@ local function BuildSummaryTiles(content, top)
   -- passent dans la ligne du dessous (extras), faute de place, plutot que
   -- de disparaitre de l'interface (toujours visibles une fois depliee de
   -- toute facon, cf. BuildDelveDetail/BuildTorghastDetail).
-  SetChip(summaryTiles.delves.stats[1], L["DELVES_TOTAL"], delveTotal)
-  SetChip(summaryTiles.delves.stats[2], L["TILE_TIER_DELVE"], (rec and rec.delveHighestTier) or "-")
-  SetChip(summaryTiles.delves.stats[3], L["TILE_TIER_TORGHAST"], (t and t.highestLayer) or "-")
+  SetChip(summaryTiles.delves.stats[1], L["DELVES_TOTAL"], delveTotal, SECTION_ACCENTS.delves)
+  SetChip(summaryTiles.delves.stats[2], L["TILE_TIER_DELVE"], (rec and rec.delveHighestTier) or "-", SECTION_ACCENTS.delves)
+  SetChip(summaryTiles.delves.stats[3], L["TILE_TIER_TORGHAST"], (t and t.highestLayer) or "-", SECTION_ACCENTS.delves)
   local delveAchID = rec and rec.delveTierAchievementID
   local delveAchName = rec and rec.delveTierAchievementName
   local hasTorghastData = t and (t.highestLayer or t.soulAsh or t.soulCinders)
   if delveAchName then
-    summaryTiles.delves.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. delveAchName .. "|r")
+    summaryTiles.delves.sub:SetText(UI.Hex(SECTION_ACCENTS.delves[1], SECTION_ACCENTS.delves[2], SECTION_ACCENTS.delves[3]) .. delveAchName .. "|r")
   elseif rec and SX.DelveAllMaxed(rec) then
-    summaryTiles.delves.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. L["DELVE_ALL_MAXED"] .. "|r")
+    summaryTiles.delves.sub:SetText(UI.Hex(SECTION_ACCENTS.delves[1], SECTION_ACCENTS.delves[2], SECTION_ACCENTS.delves[3]) .. L["DELVE_ALL_MAXED"] .. "|r")
   elseif delveTotal == 0 and not hasTorghastData then
     summaryTiles.delves.sub:SetText(L["DELVE_TYPES_NO_DATA"])
   else
@@ -1385,20 +1417,20 @@ local function BuildSummaryTiles(content, top)
   summaryTiles.delves.subHit.achievementID = delveAchID
 
   local pvp = rec and rec.pvp
-  SetChip(summaryTiles.pvp.stats[1], L["TILE_KILLS"], pvp and pvp.honorableKills or 0)
-  SetChip(summaryTiles.pvp.stats[2], L["PVP_HONOR"], pvp and pvp.honor or 0)
-  SetChip(summaryTiles.pvp.stats[3], L["PVP_CONQUEST"], pvp and pvp.conquest or 0)
+  SetChip(summaryTiles.pvp.stats[1], L["TILE_KILLS"], pvp and pvp.honorableKills or 0, SECTION_ACCENTS.pvp)
+  SetChip(summaryTiles.pvp.stats[2], L["PVP_HONOR"], pvp and pvp.honor or 0, SECTION_ACCENTS.pvp)
+  SetChip(summaryTiles.pvp.stats[3], L["PVP_CONQUEST"], pvp and pvp.conquest or 0, SECTION_ACCENTS.pvp)
   summaryTiles.pvp.sub:SetText((pvp and pvp.brackets and next(pvp.brackets)) and "" or L["PVP_NO_DATA"])
 
   local repSummary = rec and rec.reputations and rec.reputations.summary
-  SetChip(summaryTiles.reputations.stats[1], L["REP_TRACKED"], (repSummary and repSummary.tracked) or 0)
-  SetChip(summaryTiles.reputations.stats[2], L["REP_MAX_RANK"], (repSummary and repSummary.highestRenownRank) or "-")
-  SetChip(summaryTiles.reputations.stats[3], L["REP_MAXED"], (repSummary and repSummary.maxedCount) or 0)
+  SetChip(summaryTiles.reputations.stats[1], L["REP_TRACKED"], (repSummary and repSummary.tracked) or 0, SECTION_ACCENTS.reputations)
+  SetChip(summaryTiles.reputations.stats[2], L["REP_MAX_RANK"], (repSummary and repSummary.highestRenownRank) or "-", SECTION_ACCENTS.reputations)
+  SetChip(summaryTiles.reputations.stats[3], L["REP_MAXED"], (repSummary and repSummary.maxedCount) or 0, SECTION_ACCENTS.reputations)
   if repSummary and repSummary.paragonReady and repSummary.paragonReady > 0 then
-    summaryTiles.reputations.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3])
+    summaryTiles.reputations.sub:SetText(UI.Hex(SECTION_ACCENTS.reputations[1], SECTION_ACCENTS.reputations[2], SECTION_ACCENTS.reputations[3])
       .. string.format(L["REP_PARAGON_FMT"], repSummary.paragonReady) .. "|r")
   elseif repSummary and repSummary.tracked > 0 and repSummary.maxedCount == repSummary.tracked then
-    summaryTiles.reputations.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. L["REP_ALL_MAXED"] .. "|r")
+    summaryTiles.reputations.sub:SetText(UI.Hex(SECTION_ACCENTS.reputations[1], SECTION_ACCENTS.reputations[2], SECTION_ACCENTS.reputations[3]) .. L["REP_ALL_MAXED"] .. "|r")
   elseif not repSummary or repSummary.tracked == 0 then
     summaryTiles.reputations.sub:SetText(L["REP_NO_DATA"])
   else
@@ -1407,9 +1439,9 @@ local function BuildSummaryTiles(content, top)
 
   local profSummary = rec and rec.professionsNative and rec.professionsNative.summary
   local profInProgress = profSummary and (profSummary.tracked - profSummary.maxedCount) or 0
-  SetChip(summaryTiles.professions.stats[1], L["PROF_TRACKED"], (profSummary and profSummary.tracked) or 0)
-  SetChip(summaryTiles.professions.stats[2], L["PROF_MAXED"], (profSummary and profSummary.maxedCount) or 0)
-  SetChip(summaryTiles.professions.stats[3], L["PROF_IN_PROGRESS"], profInProgress)
+  SetChip(summaryTiles.professions.stats[1], L["PROF_TRACKED"], (profSummary and profSummary.tracked) or 0, SECTION_ACCENTS.professions)
+  SetChip(summaryTiles.professions.stats[2], L["PROF_MAXED"], (profSummary and profSummary.maxedCount) or 0, SECTION_ACCENTS.professions)
+  SetChip(summaryTiles.professions.stats[3], L["PROF_IN_PROGRESS"], profInProgress, SECTION_ACCENTS.professions)
   -- Ligne : nom du metier le plus recemment progresse (le plus recent parmi
   -- ceux non-maxes), sinon tous au max, sinon aucun metier suivi.
   local mostRecentProf, mostRecentAt
@@ -1422,9 +1454,9 @@ local function BuildSummaryTiles(content, top)
     end
   end
   if mostRecentProf then
-    summaryTiles.professions.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. mostRecentProf .. "|r")
+    summaryTiles.professions.sub:SetText(UI.Hex(SECTION_ACCENTS.professions[1], SECTION_ACCENTS.professions[2], SECTION_ACCENTS.professions[3]) .. mostRecentProf .. "|r")
   elseif profSummary and profSummary.tracked > 0 and profSummary.maxedCount == profSummary.tracked then
-    summaryTiles.professions.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. L["PROF_ALL_MAXED"] .. "|r")
+    summaryTiles.professions.sub:SetText(UI.Hex(SECTION_ACCENTS.professions[1], SECTION_ACCENTS.professions[2], SECTION_ACCENTS.professions[3]) .. L["PROF_ALL_MAXED"] .. "|r")
   elseif not profSummary or profSummary.tracked == 0 then
     summaryTiles.professions.sub:SetText(L["PROF_NO_DATA"])
   else
@@ -1456,10 +1488,11 @@ local function BuildPvPDetail(content, top)
   end
   if not pvpDetailPanel then
     pvpDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
-    UI.SkinFrame(pvpDetailPanel, ACCENT, UI.C.PANEL)
+    UI.SkinFrame(pvpDetailPanel, SECTION_ACCENTS.pvp, UI.C.PANEL)
     pvpDetailPanel.title = pvpDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     pvpDetailPanel.title:SetPoint("TOPLEFT", 14, -12)
     pvpDetailPanel.title:SetText(L["PVP_SECTION_TITLE"])
+    pvpDetailPanel.title:SetTextColor(SECTION_ACCENTS.pvp[1], SECTION_ACCENTS.pvp[2], SECTION_ACCENTS.pvp[3])
 
     -- Ouvre le graphique PVP dedie (adversaires tues + champs de bataille +
     -- arenes dans le temps). A VERIFIER EN JEU : place juste a droite du
@@ -1493,6 +1526,14 @@ local function BuildPvPDetail(content, top)
     for i = 1, #PVP_BRACKET_ORDER do
       local row = {}
       for key in pairs(PVP_COLS) do row[key] = pvpDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") end
+      -- Separateur discret sous chaque ligne (blanc 10%, UI.C.SEP) - meme
+      -- traitement "premium" que les tableaux d'evenements des cartes du
+      -- haut. Positionne dans la boucle de rendu plus bas ; deja pris en
+      -- charge par les boucles generiques for _, fs in pairs(row) existantes
+      -- (Texture repond aussi a Show/Hide).
+      row.sep = pvpDetailPanel:CreateTexture(nil, "ARTWORK")
+      row.sep:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
+      row.sep:SetHeight(1)
       pvpDetailPanel.bracketRows[i] = row
     end
     pvpDetailPanel.noData = pvpDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -1509,6 +1550,9 @@ local function BuildPvPDetail(content, top)
     for i = 1, PVP_MAX_BG_ROWS do
       local row = {}
       for key in pairs(BG_COLS) do row[key] = pvpDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") end
+      row.sep = pvpDetailPanel:CreateTexture(nil, "ARTWORK")
+      row.sep:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
+      row.sep:SetHeight(1)
       pvpDetailPanel.bgRows[i] = row
     end
     pvpDetailPanel.bgNoData = pvpDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -1522,14 +1566,14 @@ local function BuildPvPDetail(content, top)
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
   local pvp = rec and rec.pvp
 
-  SetChip(pvpDetailPanel.deathsEnemyChip, L["PVP_DEATHS_BY_ENEMY"], pvp and pvp.deathsByEnemyFaction or 0)
-  SetChip(pvpDetailPanel.deathsPlayersChip, L["PVP_DEATHS_BY_PLAYERS"], pvp and pvp.deathsByPlayers or 0)
+  SetChip(pvpDetailPanel.deathsEnemyChip, L["PVP_DEATHS_BY_ENEMY"], pvp and pvp.deathsByEnemyFaction or 0, SECTION_ACCENTS.pvp)
+  SetChip(pvpDetailPanel.deathsPlayersChip, L["PVP_DEATHS_BY_PLAYERS"], pvp and pvp.deathsByPlayers or 0, SECTION_ACCENTS.pvp)
 
   local arena = pvp and pvp.arena
-  pvpDetailPanel.arenaLine:SetText(UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. L["PVP_ARENA_TITLE"] .. "|r  "
+  pvpDetailPanel.arenaLine:SetText(UI.Hex(SECTION_ACCENTS.pvp[1], SECTION_ACCENTS.pvp[2], SECTION_ACCENTS.pvp[3]) .. L["PVP_ARENA_TITLE"] .. "|r  "
     .. (arena and string.format(L["PVP_ARENA_SUMMARY_FMT"], arena.played or 0, arena.won or 0, PctText(arena.won or 0, arena.played or 0)) or "-"))
   local bgParticipation = pvp and pvp.bgParticipation
-  pvpDetailPanel.bgLine:SetText(UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. L["PVP_BG_TITLE"] .. "|r  "
+  pvpDetailPanel.bgLine:SetText(UI.Hex(SECTION_ACCENTS.pvp[1], SECTION_ACCENTS.pvp[2], SECTION_ACCENTS.pvp[3]) .. L["PVP_BG_TITLE"] .. "|r  "
     .. ((bgParticipation and bgParticipation > 0) and string.format(L["PVP_BG_SUMMARY_FMT"], bgParticipation, (pvp and pvp.bgWinsTotal) or 0, PctText((pvp and pvp.bgWinsTotal) or 0, bgParticipation)) or "-"))
 
   local headY = -66
@@ -1554,11 +1598,14 @@ local function BuildPvPDetail(content, top)
         PlaceCol(row.name, PVP_COLS.name, y, "LEFT")
         row.name:SetText(L[PVP_BRACKET_LABEL_KEYS[key]])
         PlaceCol(row.rating, PVP_COLS.rating, y, "RIGHT")
-        row.rating:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. tostring(b.rating or 0) .. "|r")
+        row.rating:SetText(UI.Hex(SECTION_ACCENTS.pvp[1], SECTION_ACCENTS.pvp[2], SECTION_ACCENTS.pvp[3]) .. tostring(b.rating or 0) .. "|r")
         PlaceCol(row.best, PVP_COLS.best, y, "RIGHT")
         row.best:SetText(tostring(b.seasonBest or b.rating or 0))
         PlaceCol(row.record, PVP_COLS.record, y, "RIGHT")
         row.record:SetText(string.format(L["PVP_RECORD_FMT"], wins, losses, PctText(wins, wins + losses)))
+        row.sep:ClearAllPoints()
+        row.sep:SetPoint("TOPLEFT", PVP_COLS.name.x, y - 18)
+        row.sep:SetPoint("TOPRIGHT", -14, y - 18)
         for _, fs in pairs(row) do fs:Show() end
       end
     end
@@ -1601,8 +1648,12 @@ local function BuildPvPDetail(content, top)
       row.name:SetText(sortedBg[i].name)
       PlaceCol(row.wins, BG_COLS.wins, y, "RIGHT")
       row.wins:SetText(tostring(sortedBg[i].wins))
+      row.sep:ClearAllPoints()
+      row.sep:SetPoint("TOPLEFT", BG_COLS.name.x, y - 18)
+      row.sep:SetPoint("TOPRIGHT", -14, y - 18)
       row.name:Show()
       row.wins:Show()
+      row.sep:Show()
     end
     bottomDepth = bgHeadY - 20 - bgShown * 22
   else
@@ -1614,6 +1665,7 @@ local function BuildPvPDetail(content, top)
   for i = bgShown + 1, PVP_MAX_BG_ROWS do
     pvpDetailPanel.bgRows[i].name:Hide()
     pvpDetailPanel.bgRows[i].wins:Hide()
+    pvpDetailPanel.bgRows[i].sep:Hide()
   end
   pvpDetailPanel.bgNoData:SetShown(bgShown == 0)
 
@@ -1644,10 +1696,11 @@ local function BuildDelveDetail(content, top)
   end
   if not delveDetailPanel then
     delveDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
-    UI.SkinFrame(delveDetailPanel, ACCENT, UI.C.PANEL)
+    UI.SkinFrame(delveDetailPanel, SECTION_ACCENTS.delves, UI.C.PANEL)
     delveDetailPanel.title = delveDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     delveDetailPanel.title:SetPoint("TOPLEFT", 14, -12)
     delveDetailPanel.title:SetText(L["DELVE_TYPES_TITLE"])
+    delveDetailPanel.title:SetTextColor(SECTION_ACCENTS.delves[1], SECTION_ACCENTS.delves[2], SECTION_ACCENTS.delves[3])
     delveDetailPanel.head = {}
     for key in pairs(DELVE_COLS) do
       delveDetailPanel.head[key] = delveDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -1656,6 +1709,9 @@ local function BuildDelveDetail(content, top)
     for i = 1, DELVE_MAX_TYPE_ROWS do
       local row = {}
       for key in pairs(DELVE_COLS) do row[key] = delveDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") end
+      row.sep = delveDetailPanel:CreateTexture(nil, "ARTWORK")
+      row.sep:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
+      row.sep:SetHeight(1)
       delveDetailPanel.rows[i] = row
     end
     delveDetailPanel.noData = delveDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -1695,7 +1751,10 @@ local function BuildDelveDetail(content, top)
     PlaceCol(row.count, DELVE_COLS.count, y, "RIGHT")
     row.count:SetText(tostring(sorted[i].count or 0))
     PlaceCol(row.tier, DELVE_COLS.tier, y, "RIGHT")
-    row.tier:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. tostring(sorted[i].tier or 0) .. "|r")
+    row.tier:SetText(UI.Hex(SECTION_ACCENTS.delves[1], SECTION_ACCENTS.delves[2], SECTION_ACCENTS.delves[3]) .. tostring(sorted[i].tier or 0) .. "|r")
+    row.sep:ClearAllPoints()
+    row.sep:SetPoint("TOPLEFT", DELVE_COLS.name.x, y - 18)
+    row.sep:SetPoint("TOPRIGHT", -14, y - 18)
     for _, fs in pairs(row) do fs:Show() end
   end
   for i = shown + 1, DELVE_MAX_TYPE_ROWS do
@@ -1736,10 +1795,11 @@ local function BuildTorghastDetail(content, top)
   end
   if not torghastDetailPanel then
     torghastDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
-    UI.SkinFrame(torghastDetailPanel, ACCENT, UI.C.PANEL)
+    UI.SkinFrame(torghastDetailPanel, SECTION_ACCENTS.delves, UI.C.PANEL)
     torghastDetailPanel.title = torghastDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     torghastDetailPanel.title:SetPoint("TOPLEFT", 14, -12)
     torghastDetailPanel.title:SetText(L["TORGHAST_TYPES_TITLE"])
+    torghastDetailPanel.title:SetTextColor(SECTION_ACCENTS.delves[1], SECTION_ACCENTS.delves[2], SECTION_ACCENTS.delves[3])
     torghastDetailPanel.head = {}
     for key in pairs(TORGHAST_COLS) do
       torghastDetailPanel.head[key] = torghastDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -1771,6 +1831,9 @@ local function BuildTorghastDetail(content, top)
         end)
       end)
       row.hit = hit
+      row.sep = torghastDetailPanel:CreateTexture(nil, "ARTWORK")
+      row.sep:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
+      row.sep:SetHeight(1)
       torghastDetailPanel.rows[i] = row
     end
     torghastDetailPanel.noData = torghastDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -1812,12 +1875,12 @@ local function BuildTorghastDetail(content, top)
     PlaceCol(row.count, TORGHAST_COLS.count, y, "RIGHT")
     row.count:SetText(tostring(sorted[i].count or 0))
     PlaceCol(row.echelon, TORGHAST_COLS.echelon, y, "RIGHT")
-    row.echelon:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. tostring(sorted[i].echelon or 0) .. "|r")
+    row.echelon:SetText(UI.Hex(SECTION_ACCENTS.delves[1], SECTION_ACCENTS.delves[2], SECTION_ACCENTS.delves[3]) .. tostring(sorted[i].echelon or 0) .. "|r")
     PlaceCol(row.achievement, TORGHAST_COLS.achievement, y, "LEFT")
     local achID = sorted[i].achievementID
     local achName = sorted[i].achievementName
     if achName then
-      row.achievement:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. achName .. "|r")
+      row.achievement:SetText(UI.Hex(SECTION_ACCENTS.delves[1], SECTION_ACCENTS.delves[2], SECTION_ACCENTS.delves[3]) .. achName .. "|r")
     else
       row.achievement:SetText("")
     end
@@ -1825,6 +1888,9 @@ local function BuildTorghastDetail(content, top)
     row.hit:SetPoint("TOPLEFT", TORGHAST_COLS.echelon.x, y)
     row.hit:SetSize((TORGHAST_COLS.achievement.x + TORGHAST_COLS.achievement.w) - TORGHAST_COLS.echelon.x, 20)
     row.hit.achievementID = achID
+    row.sep:ClearAllPoints()
+    row.sep:SetPoint("TOPLEFT", TORGHAST_COLS.name.x, y - 18)
+    row.sep:SetPoint("TOPRIGHT", -14, y - 18)
     for _, fs in pairs(row) do fs:Show() end
   end
   for i = shown + 1, TORGHAST_MAX_TYPE_ROWS do
@@ -1863,10 +1929,11 @@ local function BuildReputationDetail(content, top)
   end
   if not reputationDetailPanel then
     reputationDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
-    UI.SkinFrame(reputationDetailPanel, ACCENT, UI.C.PANEL)
+    UI.SkinFrame(reputationDetailPanel, SECTION_ACCENTS.reputations, UI.C.PANEL)
     reputationDetailPanel.title = reputationDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     reputationDetailPanel.title:SetPoint("TOPLEFT", 14, -12)
     reputationDetailPanel.title:SetText(L["REP_TYPES_TITLE"])
+    reputationDetailPanel.title:SetTextColor(SECTION_ACCENTS.reputations[1], SECTION_ACCENTS.reputations[2], SECTION_ACCENTS.reputations[3])
     reputationDetailPanel.head = {}
     for key in pairs(REP_COLS) do
       reputationDetailPanel.head[key] = reputationDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -1875,6 +1942,9 @@ local function BuildReputationDetail(content, top)
     for i = 1, REP_MAX_ROWS do
       local row = {}
       for key in pairs(REP_COLS) do row[key] = reputationDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") end
+      row.sep = reputationDetailPanel:CreateTexture(nil, "ARTWORK")
+      row.sep:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
+      row.sep:SetHeight(1)
       reputationDetailPanel.rows[i] = row
     end
     reputationDetailPanel.noData = reputationDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -1922,7 +1992,10 @@ local function BuildReputationDetail(content, top)
     row.system:SetText(RepSystemLabel(info))
     PlaceCol(row.progress, REP_COLS.progress, y, "RIGHT")
     local pctText = tostring(math.floor((info.pct or 0) * 100 + 0.5)) .. "%"
-    row.progress:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. pctText .. "|r")
+    row.progress:SetText(UI.Hex(SECTION_ACCENTS.reputations[1], SECTION_ACCENTS.reputations[2], SECTION_ACCENTS.reputations[3]) .. pctText .. "|r")
+    row.sep:ClearAllPoints()
+    row.sep:SetPoint("TOPLEFT", REP_COLS.name.x, y - 18)
+    row.sep:SetPoint("TOPRIGHT", -14, y - 18)
     for _, fs in pairs(row) do fs:Show() end
   end
   for i = shown + 1, REP_MAX_ROWS do
@@ -1956,10 +2029,11 @@ local function BuildProfessionDetail(content, top)
   end
   if not professionDetailPanel then
     professionDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
-    UI.SkinFrame(professionDetailPanel, ACCENT, UI.C.PANEL)
+    UI.SkinFrame(professionDetailPanel, SECTION_ACCENTS.professions, UI.C.PANEL)
     professionDetailPanel.title = professionDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     professionDetailPanel.title:SetPoint("TOPLEFT", 14, -12)
     professionDetailPanel.title:SetText(L["PROF_TYPES_TITLE"])
+    professionDetailPanel.title:SetTextColor(SECTION_ACCENTS.professions[1], SECTION_ACCENTS.professions[2], SECTION_ACCENTS.professions[3])
     professionDetailPanel.head = {}
     for key in pairs(PROF_COLS) do
       professionDetailPanel.head[key] = professionDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -1968,6 +2042,9 @@ local function BuildProfessionDetail(content, top)
     for i = 1, PROF_MAX_ROWS do
       local row = {}
       for key in pairs(PROF_COLS) do row[key] = professionDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") end
+      row.sep = professionDetailPanel:CreateTexture(nil, "ARTWORK")
+      row.sep:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
+      row.sep:SetHeight(1)
       professionDetailPanel.rows[i] = row
     end
     professionDetailPanel.noData = professionDetailPanel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
@@ -2010,7 +2087,10 @@ local function BuildProfessionDetail(content, top)
     PlaceCol(row.progress, PROF_COLS.progress, y, "RIGHT")
     -- Plafonne a 100% (jamais au-dela), meme si cur venait a depasser max.
     local pctText = tostring(math.min(100, math.floor((info.pct or 0) * 100 + 0.5))) .. "%"
-    row.progress:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. pctText .. "|r")
+    row.progress:SetText(UI.Hex(SECTION_ACCENTS.professions[1], SECTION_ACCENTS.professions[2], SECTION_ACCENTS.professions[3]) .. pctText .. "|r")
+    row.sep:ClearAllPoints()
+    row.sep:SetPoint("TOPLEFT", PROF_COLS.name.x, y - 18)
+    row.sep:SetPoint("TOPRIGHT", -14, y - 18)
     for _, fs in pairs(row) do fs:Show() end
   end
   for i = shown + 1, PROF_MAX_ROWS do
