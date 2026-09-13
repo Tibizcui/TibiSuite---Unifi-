@@ -1091,8 +1091,15 @@ local function BuildOverview(content)
       card.cumulBreakdown:Hide()
     end
 
-    local granularity = (view.period == "day") and "day" or (view.period == "week" and "day" or (view.period == "month" and "week" or "month"))
-    local bucketCount = (view.period == "day") and 7 or (view.period == "week" and 7 or (view.period == "month" and 5 or 12))
+    -- "Semaine" pointait vers exactement le meme graphique que "Jour" (meme
+    -- granularite "day", meme bucketCount 7) - constat utilisateur du
+    -- 2026-09-13 : les deux boutons donnaient une carte visuellement
+    -- identique, seuls le total/pourcentage du haut differaient. "Semaine"
+    -- affiche desormais une tendance par semaines (8 semaines), distincte de
+    -- la vue "Jour" (7 jours) comme "Mois" (5 semaines) et "Annee" (12 mois)
+    -- le sont deja l'une de l'autre.
+    local granularity = (view.period == "day") and "day" or (view.period == "week" and "week" or (view.period == "month" and "week" or "month"))
+    local bucketCount = (view.period == "day") and 7 or (view.period == "week" and 8 or (view.period == "month" and 5 or 12))
     -- Retour a SX.BuildSeries pour l'Or aussi (demande explicite : le meme
     -- comportement que les 3 autres cartes) - le calage sur le reset
     -- hebdomadaire rendait la carte Or coherente avec son propre total, mais
