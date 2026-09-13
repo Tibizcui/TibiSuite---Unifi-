@@ -1376,10 +1376,22 @@ local function BuildSummaryTiles(content, top, rowKeys)
       local tile = summaryTiles[key]
       local sectionAccent = SECTION_ACCENTS[key] or ACCENT
       local expanded = view.summaryExpanded[key]
+      -- Grisage juge trop subtil a l'alpha seul (fond deja tres sombre, une
+      -- couleur vive a 55% d'opacite reste vive) - constat utilisateur du
+      -- 2026-09-13. Desature vraiment la tuile repliee : bordure/titre
+      -- passent en gris neutre (UI.C.MUTED) au lieu de la couleur de
+      -- section, icone desaturee (SetDesaturated, meme technique que les
+      -- sorts indisponibles sur les barres d'action), en plus d'une alpha
+      -- plus marquee.
+      local dimmed = anyExpanded and not expanded
+      local borderColor = dimmed and UI.C.MUTED or sectionAccent
       tile:ClearAllPoints()
       tile:SetPoint("TOPLEFT", content, "TOPLEFT", (c - 1) * (tileW + gap), top)
       tile:SetSize(tileW, SUMMARY_TILE_H)
-      tile:SetAlpha((anyExpanded and not expanded) and 0.55 or 1)
+      tile:SetAlpha(dimmed and 0.6 or 1)
+      UI.SkinFrame(tile, borderColor, UI.C.PANEL)
+      tile.title:SetTextColor(borderColor[1], borderColor[2], borderColor[3])
+      if tile.icon then tile.icon:SetDesaturated(dimmed) end
       tile.expandIcon:SetText(expanded
         and (UI.Hex(sectionAccent[1], sectionAccent[2], sectionAccent[3]) .. "- " .. L["SUMMARY_COLLAPSE"] .. "|r")
         or (UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. "+ " .. L["SUMMARY_EXPAND"] .. "|r"))
