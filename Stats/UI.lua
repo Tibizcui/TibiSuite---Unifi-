@@ -1340,7 +1340,16 @@ local SUMMARY_ROWS = {
   { "reputations", "professions" },
 }
 
-local function BuildSummaryTiles(content, top)
+-- Positionne UNE seule ligne de tuiles (rowKeys, ex. SUMMARY_ROWS[1]) a la
+-- hauteur `top` - appelee une fois par ligne par SX.RefreshDashboard, pas
+-- pour toute la grille d'un coup, pour pouvoir intercaler le detail deplie
+-- d'une tuile juste apres SA propre ligne plutot qu'apres les 2 lignes
+-- (demande utilisateur du 2026-09-13 : "remonter PVP avant reputation et
+-- metiers" - PVP est en ligne 1, son detail restait pousse tout en bas,
+-- apres la ligne 2, quel que soit ce qui y etait deplie). Les donnees
+-- (chips/sub) de TOUTES les tuiles sont recalculees a chaque appel (simple
+-- et bon marche, pas de raison de les separer par ligne).
+local function BuildSummaryTiles(content, top, rowKeys)
   if not summaryTiles then
     summaryTiles = {
       pvp = BuildTile(content, L["PVP_SECTION_TITLE"], SECTION_ACCENTS.pvp, "Interface\\Icons\\INV_BannerPVP_02"),
@@ -1358,14 +1367,20 @@ local function BuildSummaryTiles(content, top)
 
   local gap = 14
   local tileW = (content:GetWidth() - gap) / 2
-  for r, row in ipairs(SUMMARY_ROWS) do
-    for c, key in ipairs(row) do
+  -- Grise legerement les tuiles repliees des qu'AU MOINS une est depliee -
+  -- demande utilisateur du 2026-09-13, met en valeur la section active sans
+  -- masquer completement les autres (toujours cliquables, juste attenuees).
+  local anyExpanded = false
+  for _, v in pairs(view.summaryExpanded) do if v then anyExpanded = true break end end
+  for c, key in ipairs(rowKeys) do
       local tile = summaryTiles[key]
       local sectionAccent = SECTION_ACCENTS[key] or ACCENT
+      local expanded = view.summaryExpanded[key]
       tile:ClearAllPoints()
-      tile:SetPoint("TOPLEFT", content, "TOPLEFT", (c - 1) * (tileW + gap), top - (r - 1) * (SUMMARY_TILE_H + gap))
+      tile:SetPoint("TOPLEFT", content, "TOPLEFT", (c - 1) * (tileW + gap), top)
       tile:SetSize(tileW, SUMMARY_TILE_H)
-      tile.expandIcon:SetText(view.summaryExpanded[key]
+      tile:SetAlpha((anyExpanded and not expanded) and 0.55 or 1)
+      tile.expandIcon:SetText(expanded
         and (UI.Hex(sectionAccent[1], sectionAccent[2], sectionAccent[3]) .. "- " .. L["SUMMARY_COLLAPSE"] .. "|r")
         or (UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. "+ " .. L["SUMMARY_EXPAND"] .. "|r"))
       local statW = (tileW - 28) / 3
@@ -1375,7 +1390,6 @@ local function BuildSummaryTiles(content, top)
         tile.stats[s]:SetWidth(statW)
       end
       tile:Show()
-    end
   end
 
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
@@ -1463,7 +1477,7 @@ local function BuildSummaryTiles(content, top)
     summaryTiles.professions.sub:SetText("")
   end
 
-  return 2 * SUMMARY_TILE_H + gap
+  return SUMMARY_TILE_H
 end
 
 local function HideSummaryTiles()
@@ -2161,6 +2175,14 @@ local function BuildDetail(content, metric)
 
   d.title:SetText(CardLabel(metric))
 
+  -- Meme couleur que la carte d'origine (OVERLAY_COLORS) au lieu de l'or
+  -- generique - demande utilisateur du 2026-09-13 ("Raids est en orange,
+  -- puis le detail en jaune"). d.chart est un widget PARTAGE entre toutes
+  -- les metriques (pas un par carte) : son liseré doit donc etre repeint a
+  -- chaque appel, pas seulement a la creation.
+  local metricAccent = OVERLAY_COLORS[metric] or ACCENT
+  UI.SkinFrame(d.chart, metricAccent, UI.C.PANEL)
+
   -- Granularite de CE graphique (view.detailGranularity) : bucketCount se
   -- calcule uniquement a partir d'elle (cf. plus bas), jamais de view.period
   -- (le filtre de periode "globale" du dashboard) - un ancien verrouillage
@@ -2184,7 +2206,7 @@ local function BuildDetail(content, metric)
     -- que la granularite active se voie d'un coup d'oeil.
     local labelText
     if view.detailGranularity == g then
-      labelText = UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. gLabel .. "|r"
+      labelText = UI.Hex(metricAccent[1], metricAccent[2], metricAccent[3]) .. gLabel .. "|r"
     else
       labelText = "|cFF555555" .. gLabel .. "|r"
     end
@@ -2208,13 +2230,13 @@ local function BuildDetail(content, metric)
     series2 = nil
   end
   local style = (view.detailGranularity == "day") and "bar" or "line"
-  local fmtFn = function(p) return p.label .. "\n" .. UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. fmtMetric(metric, p.value) .. "|r" end
-  RenderChart(d.chartInner, series, style, ACCENT, series2, SX.COMPARE_ACCENT, true, fmtFn)
+  local fmtFn = function(p) return p.label .. "\n" .. UI.Hex(metricAccent[1], metricAccent[2], metricAccent[3]) .. fmtMetric(metric, p.value) .. "|r" end
+  RenderChart(d.chartInner, series, style, metricAccent, series2, SX.COMPARE_ACCENT, true, fmtFn)
 
   local minV, maxV, avgV = SX.MinMaxAvg(series)
-  d.minLbl:SetText(L["DETAIL_MIN"] .. " " .. UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. fmtMetric(metric, minV) .. "|r")
-  d.maxLbl:SetText(L["DETAIL_MAX"] .. " " .. UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. fmtMetric(metric, maxV) .. "|r")
-  d.avgLbl:SetText(L["DETAIL_AVG"] .. " " .. UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. fmtMetric(metric, avgV) .. "|r")
+  d.minLbl:SetText(L["DETAIL_MIN"] .. " " .. UI.Hex(metricAccent[1], metricAccent[2], metricAccent[3]) .. fmtMetric(metric, minV) .. "|r")
+  d.maxLbl:SetText(L["DETAIL_MAX"] .. " " .. UI.Hex(metricAccent[1], metricAccent[2], metricAccent[3]) .. fmtMetric(metric, maxV) .. "|r")
+  d.avgLbl:SetText(L["DETAIL_AVG"] .. " " .. UI.Hex(metricAccent[1], metricAccent[2], metricAccent[3]) .. fmtMetric(metric, avgV) .. "|r")
 
   for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
   for g, b in pairs(d.granButtons) do b:Show() end
@@ -2381,9 +2403,12 @@ end
 -- Couleur d'un en-tete de colonne : accent (dore) si c'est la colonne triee,
 -- attenue sinon - meme intention que .dash-table th (gris attenue) / le tri
 -- actif en dore sur Tibiscui.fr (dashboard-shared.js, EVENT_LOG_COLS).
-local function SetEventHeaderColor(fs, isActive)
+-- activeColor optionnel (repli sur l'or) : meme couleur que la carte
+-- d'origine (OVERLAY_COLORS), cf. BuildEventListDetail.
+local function SetEventHeaderColor(fs, isActive, activeColor)
   if isActive then
-    fs:SetTextColor(ACCENT[1], ACCENT[2], ACCENT[3])
+    activeColor = activeColor or ACCENT
+    fs:SetTextColor(activeColor[1], activeColor[2], activeColor[3])
   else
     fs:SetTextColor(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3])
   end
@@ -2446,6 +2471,11 @@ local function BuildEventListDetail(content, metric)
 
   d.title:SetText(string.format(L["EVENTS_TITLE_FMT"], CardLabel(metric) or ""))
 
+  -- Meme couleur que la carte d'origine (cf. BuildDetail) - d.panel est
+  -- partage entre metriques, repeint a chaque appel.
+  local metricAccent = OVERLAY_COLORS[metric] or ACCENT
+  UI.SkinFrame(d.panel, metricAccent, UI.C.PANEL)
+
   local cols = EVENT_LIST_COLS[metric] or {}
   local dateCol = { x = 4, w = 100 }
   local x = dateCol.x + dateCol.w + 10
@@ -2468,10 +2498,10 @@ local function BuildEventListDetail(content, metric)
   d.dateHead:SetJustifyH("LEFT")
   local dateActive = (sortKey == "date")
   d.dateHead:SetText(L["EVENTS_COL_DATE"] .. (dateActive and sortArrow or ""))
-  SetEventHeaderColor(d.dateHead, dateActive)
+  SetEventHeaderColor(d.dateHead, dateActive, metricAccent)
   d.dateHeadBtn:SetScript("OnClick", function() ToggleEventSort("date") end)
-  d.dateHeadBtn:SetScript("OnEnter", function() SetEventHeaderColor(d.dateHead, true) end)
-  d.dateHeadBtn:SetScript("OnLeave", function() SetEventHeaderColor(d.dateHead, dateActive) end)
+  d.dateHeadBtn:SetScript("OnEnter", function() SetEventHeaderColor(d.dateHead, true, metricAccent) end)
+  d.dateHeadBtn:SetScript("OnLeave", function() SetEventHeaderColor(d.dateHead, dateActive, metricAccent) end)
   d.dateHead:Show()
 
   for i, c in ipairs(cols) do
@@ -2493,10 +2523,10 @@ local function BuildEventListDetail(content, metric)
     local colKey = "c" .. i
     local colActive = (sortKey == colKey)
     fs:SetText((L[c.label] or c.label) .. (colActive and sortArrow or ""))
-    SetEventHeaderColor(fs, colActive)
+    SetEventHeaderColor(fs, colActive, metricAccent)
     btn:SetScript("OnClick", function() ToggleEventSort(colKey) end)
-    btn:SetScript("OnEnter", function() SetEventHeaderColor(fs, true) end)
-    btn:SetScript("OnLeave", function() SetEventHeaderColor(fs, colActive) end)
+    btn:SetScript("OnEnter", function() SetEventHeaderColor(fs, true, metricAccent) end)
+    btn:SetScript("OnLeave", function() SetEventHeaderColor(fs, colActive, metricAccent) end)
     fs:Show()
   end
   for i = #cols + 1, #d.headCols do d.headCols[i]:Hide() end
@@ -3166,13 +3196,32 @@ function SX.RefreshDashboard()
     BuildOverview(mainFrame.content)
     local gridRows = math.ceil(#CARD_METRICS / CARD_GRID_COLS)
     local gridDepth = gridRows * 190 + (gridRows - 1) * 16 + 10
-    local tilesHeight = BuildSummaryTiles(mainFrame.content, -(gridDepth + 6))
-    local pvpHeight = BuildPvPDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16))
-    local delveHeight = BuildDelveDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16))
-    local torghastDetailHeight = BuildTorghastDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16))
-    local reputationDetailHeight = BuildReputationDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16 + torghastDetailHeight + 16))
-    local professionDetailHeight = BuildProfessionDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16 + torghastDetailHeight + 16 + reputationDetailHeight + 16))
-    mainFrame.content:SetHeight(gridDepth + 16 + tilesHeight + 16 + pvpHeight + 16 + delveHeight + 16 + torghastDetailHeight + 16 + reputationDetailHeight + 16 + professionDetailHeight + 10)
+    local depth = gridDepth + 6
+
+    -- Ligne 1 (PVP, Gouffres+Tourments) : le detail deplie d'une tuile
+    -- apparait desormais juste apres SA PROPRE ligne, pas apres les 2 lignes
+    -- de tuiles - demande utilisateur du 2026-09-13 ("remonter PVP avant
+    -- reputation et metiers"). Le gap de 16 n'est ajoute qu'apres une
+    -- section reellement visible (hauteur > 0), pas de trou vide pour une
+    -- section repliee.
+    local row1Height = BuildSummaryTiles(mainFrame.content, -depth, SUMMARY_ROWS[1])
+    depth = depth + row1Height + 16
+    local pvpHeight = BuildPvPDetail(mainFrame.content, -depth)
+    if pvpHeight > 0 then depth = depth + pvpHeight + 16 end
+    local delveHeight = BuildDelveDetail(mainFrame.content, -depth)
+    if delveHeight > 0 then depth = depth + delveHeight + 16 end
+    local torghastDetailHeight = BuildTorghastDetail(mainFrame.content, -depth)
+    if torghastDetailHeight > 0 then depth = depth + torghastDetailHeight + 16 end
+
+    -- Ligne 2 (Reputations, Metiers), meme principe.
+    local row2Height = BuildSummaryTiles(mainFrame.content, -depth, SUMMARY_ROWS[2])
+    depth = depth + row2Height + 16
+    local reputationDetailHeight = BuildReputationDetail(mainFrame.content, -depth)
+    if reputationDetailHeight > 0 then depth = depth + reputationDetailHeight + 16 end
+    local professionDetailHeight = BuildProfessionDetail(mainFrame.content, -depth)
+    if professionDetailHeight > 0 then depth = depth + professionDetailHeight + 16 end
+
+    mainFrame.content:SetHeight(depth + 10)
   end
 end
 
