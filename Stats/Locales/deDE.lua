@@ -8,6 +8,7 @@ if GetLocale() ~= "deDE" then return end
 local L = SX.L
 
 L["WINDOW_TITLE"]        = "Stats"
+L["RESIZE_HINT"]        = "Fenster ziehen"
 
 L["CHAR_ACCOUNT"]        = "Account (alle Charaktere)"
 L["PERIOD_DAY"]          = "Tag"

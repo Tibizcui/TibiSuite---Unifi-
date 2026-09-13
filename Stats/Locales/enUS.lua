@@ -12,6 +12,7 @@ SX.L = setmetatable({}, {
 local L = SX.L
 
 L["WINDOW_TITLE"]        = "Stats"
+L["RESIZE_HINT"]        = "Resize window"
 
 -- Filtre personnage / periode
 L["CHAR_ACCOUNT"]        = "Account (all characters)"

@@ -15,6 +15,7 @@
 - Style : les tableaux de detail par evenement se rapprochent desormais de ceux de Tibi Companion/Tibiscui.fr - en-tetes de colonnes cliquables pour trier (avec indicateur de sens), fine ligne de separation sous les en-tetes et entre chaque ligne, decompte du nombre d'evenements affiches.
 - Correction : le mini-graphique des cartes de la vue d'ensemble affichait exactement le meme contenu (7 jours) pour les periodes "Jour" et "Semaine" - "Semaine" affiche desormais une tendance par semaines, distincte de "Jour".
 - Refonte visuelle de la vue d'ensemble (demande utilisateur) : "Temps joue" passe en premiere carte, grille sur 4 colonnes au lieu de 2 (cartes plus etroites), chaque carte reprend sa propre couleur (meme palette que le graphique "Toutes les metriques") pour la bordure/le chiffre/le mini-graphique au lieu d'un or uniforme, plus une icone devant chaque titre. Icones choisies parmi des textures Blizzard tres anciennes/stables mais jamais verifiees dans ce client precis - a signaler si l'une d'elles s'affiche en carre rouge "?".
+- Nouveau : la fenetre est desormais redimensionnable (poignee en bas a droite, meme mecanisme que LegTracker) - la taille choisie est memorisee d'une ouverture a l'autre.
 
 ## 7.1.5.5
 - Correction : dans "Toutes les metriques" et le detail par metrique, un segment de courbe (granularite Mois/Annee) pouvait s'afficher loin de sa position reelle, jusqu'a sortir du cadre du graphique, des qu'une metrique variait brutalement d'un point a l'autre - mauvais pivot de rotation du segment, corrige.

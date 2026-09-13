@@ -8,6 +8,7 @@ if GetLocale() ~= "esES" and GetLocale() ~= "esMX" then return end
 local L = SX.L
 
 L["WINDOW_TITLE"]        = "Stats"
+L["RESIZE_HINT"]        = "Redimensionar ventana"
 
 L["CHAR_ACCOUNT"]        = "Cuenta (todos los personajes)"
 L["PERIOD_DAY"]          = "Dia"

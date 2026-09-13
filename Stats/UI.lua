@@ -956,7 +956,7 @@ end
 local function BuildOverview(content)
   local gridTop = -10
   local gap = 16
-  local cardW, cardH = (W - 60 - (CARD_GRID_COLS - 1) * gap) / CARD_GRID_COLS, 190
+  local cardW, cardH = (content:GetWidth() - (CARD_GRID_COLS - 1) * gap) / CARD_GRID_COLS, 190
   -- Couleurs de classe des 2 personnages compares - calculees une fois pour
   -- les 4 cartes (pas de raison qu'elles different d'une carte a l'autre).
   local pColor = SeriesColor(view.char, ACCENT)
@@ -1278,7 +1278,7 @@ local function BuildSummaryTiles(content, top)
   end
 
   local gap = 14
-  local tileW = (W - 60 - 2 * gap) / 3
+  local tileW = (content:GetWidth() - 2 * gap) / 3
   for r, row in ipairs(SUMMARY_ROWS) do
     for c, key in ipairs(row) do
       local tile = summaryTiles[key]
@@ -1454,7 +1454,7 @@ local function BuildPvPDetail(content, top)
 
   pvpDetailPanel:ClearAllPoints()
   pvpDetailPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
-  pvpDetailPanel:SetWidth(W - 60)
+  pvpDetailPanel:SetWidth(content:GetWidth())
 
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
   local pvp = rec and rec.pvp
@@ -1595,7 +1595,7 @@ local function BuildDelveDetail(content, top)
 
   delveDetailPanel:ClearAllPoints()
   delveDetailPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
-  delveDetailPanel:SetWidth(W - 60)
+  delveDetailPanel:SetWidth(content:GetWidth())
 
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
   local types = rec and rec.delveTypes
@@ -1704,7 +1704,7 @@ local function BuildTorghastDetail(content, top)
 
   torghastDetailPanel:ClearAllPoints()
   torghastDetailPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
-  torghastDetailPanel:SetWidth(W - 60)
+  torghastDetailPanel:SetWidth(content:GetWidth())
 
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
   local types = rec and rec.torghastByDungeon
@@ -1804,7 +1804,7 @@ local function BuildReputationDetail(content, top)
 
   reputationDetailPanel:ClearAllPoints()
   reputationDetailPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
-  reputationDetailPanel:SetWidth(W - 60)
+  reputationDetailPanel:SetWidth(content:GetWidth())
 
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
   local list = rec and rec.reputations and rec.reputations.list
@@ -1893,7 +1893,7 @@ local function BuildProfessionDetail(content, top)
 
   professionDetailPanel:ClearAllPoints()
   professionDetailPanel:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
-  professionDetailPanel:SetWidth(W - 60)
+  professionDetailPanel:SetWidth(content:GetWidth())
 
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
   local list = rec and rec.professionsNative and rec.professionsNative.list
@@ -1980,7 +1980,7 @@ local function BuildDetail(content, metric)
     d.chart = CreateFrame("Frame", nil, content, "BackdropTemplate")
     UI.SkinFrame(d.chart, ACCENT, UI.C.PANEL)
     d.chart:SetPoint("TOPLEFT", 0, -66)
-    d.chart:SetSize(W - 60, 300)
+    d.chart:SetSize(content:GetWidth(), 300)
     d.chartInner = CreateFrame("Frame", nil, d.chart)
     d.chartInner:SetPoint("TOPLEFT", 16, -16)
     d.chartInner:SetPoint("BOTTOMRIGHT", -16, 30)
@@ -2240,7 +2240,7 @@ local function BuildEventListDetail(content, metric)
     d.panel = CreateFrame("Frame", nil, content, "BackdropTemplate")
     UI.SkinFrame(d.panel, ACCENT, UI.C.PANEL)
     d.panel:SetPoint("TOPLEFT", 0, -66)
-    d.panel:SetSize(W - 60, 300)
+    d.panel:SetSize(content:GetWidth(), 300)
 
     -- En-tetes cliquables (tri, cf. ToggleEventSort) : un Button par colonne
     -- sert de zone cliquable/survolable, sa police enfant porte le texte -
@@ -2263,7 +2263,7 @@ local function BuildEventListDetail(content, metric)
     d.scroll:SetPoint("TOPLEFT", 12, -34)
     d.scroll:SetPoint("BOTTOMRIGHT", -28, 10)
     d.scrollContent = CreateFrame("Frame", nil, d.scroll)
-    d.scrollContent:SetSize(W - 60 - 50, 10)
+    d.scrollContent:SetSize(content:GetWidth() - 50, 10)
     d.scroll:SetScrollChild(d.scrollContent)
 
     d.rows = {}
@@ -2443,7 +2443,7 @@ local function BuildOverlayDetail(content)
     d.chart = CreateFrame("Frame", nil, content, "BackdropTemplate")
     UI.SkinFrame(d.chart, ACCENT, UI.C.PANEL)
     d.chart:SetPoint("TOPLEFT", 0, -66)
-    d.chart:SetSize(W - 60, 300)
+    d.chart:SetSize(content:GetWidth(), 300)
     d.chartInner = CreateFrame("Frame", nil, d.chart)
     d.chartInner:SetPoint("TOPLEFT", 16, -16)
     d.chartInner:SetPoint("BOTTOMRIGHT", -16, 30)
@@ -2647,7 +2647,7 @@ local function BuildPvPChartDetail(content)
     d.chart = CreateFrame("Frame", nil, content, "BackdropTemplate")
     UI.SkinFrame(d.chart, ACCENT, UI.C.PANEL)
     d.chart:SetPoint("TOPLEFT", 0, -66)
-    d.chart:SetSize(W - 60, 300)
+    d.chart:SetSize(content:GetWidth(), 300)
     d.chartInner = CreateFrame("Frame", nil, d.chart)
     d.chartInner:SetPoint("TOPLEFT", 16, -16)
     d.chartInner:SetPoint("BOTTOMRIGHT", -16, 30)
@@ -2731,10 +2731,24 @@ end
 -- ============================================================================
 local function BuildMainFrame()
   mainFrame = CreateFrame("Frame", "StatsMainFrame", UIParent, "BackdropTemplate")
-  mainFrame:SetSize(W, H)
+  -- Taille sauvegardee (redimensionnement manuel, cf. resizeBtn plus bas) si
+  -- presente, sinon la taille par defaut W x H - meme motif que LegTracker
+  -- (LegTrackerDB.width/height).
+  mainFrame:SetSize(StatsDB.width or W, StatsDB.height or H)
   mainFrame:SetPoint("CENTER")
   mainFrame:SetFrameStrata("HIGH")
   mainFrame:SetMovable(true)
+  mainFrame:SetResizable(true)
+  -- Bornes : 760 de large garde 4 colonnes de cartes lisibles, 1400/1000
+  -- reprennent les memes ordres de grandeur que LegTracker (borne max deja
+  -- eprouvee dans la suite). API moderne avec repli, meme motif que
+  -- LegTracker.lua.
+  if mainFrame.SetResizeBounds then
+    mainFrame:SetResizeBounds(760, 520, 1400, 1000)
+  elseif mainFrame.SetMinResize then
+    mainFrame:SetMinResize(760, 520)
+    mainFrame:SetMaxResize(1400, 1000)
+  end
   mainFrame:EnableMouse(true)
   mainFrame:RegisterForDrag("LeftButton")
   mainFrame:SetScript("OnDragStart", mainFrame.StartMoving)
@@ -2857,6 +2871,42 @@ local function BuildMainFrame()
   content:SetSize(W - 60, 10)
   scroll:SetScrollChild(content)
   mainFrame.content = content
+  -- scroll est ancre en etirement (TOPLEFT/BOTTOMRIGHT relatifs a mainFrame,
+  -- ci-dessus) : sa largeur reflete deja la taille reelle de la fenetre a
+  -- tout instant, resize ou pas. content (l'enfant scrollable) avait une
+  -- largeur figee a la creation (W - 60) - la resynchroniser ici, y compris
+  -- pendant le drag interactif de la poignee (pas seulement au relachement),
+  -- meme principe que LegTracker.lua (self.listScroll:GetWidth() lu en
+  -- direct dans RefreshContent plutot qu'une constante).
+  scroll:SetScript("OnSizeChanged", function(self) content:SetWidth(self:GetWidth()) end)
+
+  -- Poignee de redimensionnement (bas droite) - meme pattern que
+  -- LegTracker.lua (resizeBtn) : textures stock Blizzard du redimensionneur
+  -- de la fenetre de chat, deja utilisees depuis toujours, aucun risque de
+  -- texture manquante.
+  local resizeBtn = CreateFrame("Button", nil, mainFrame)
+  resizeBtn:SetSize(16, 16)
+  resizeBtn:SetPoint("BOTTOMRIGHT", -6, 6)
+  resizeBtn:SetFrameLevel(mainFrame:GetFrameLevel() + 5)
+  resizeBtn:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+  resizeBtn:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+  resizeBtn:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+  resizeBtn:SetScript("OnMouseDown", function() mainFrame:StartSizing("BOTTOMRIGHT") end)
+  resizeBtn:SetScript("OnMouseUp", function()
+    mainFrame:StopMovingOrSizing()
+    -- Scalaires plats au premier niveau de StatsDB (jamais une sous-table) :
+    -- SX.GetCharKeys() filtre StatsDB par type(v) == "table" pour lister les
+    -- personnages, meme precaution que postboxAHBaselineDay/Amount.
+    StatsDB.width = math.floor(mainFrame:GetWidth())
+    StatsDB.height = math.floor(mainFrame:GetHeight())
+    SX.RefreshDashboard()
+  end)
+  resizeBtn:SetScript("OnEnter", function(s)
+    GameTooltip:SetOwner(s, "ANCHOR_LEFT")
+    GameTooltip:AddLine(L["RESIZE_HINT"], 0.95, 0.78, 0.35)
+    GameTooltip:Show()
+  end)
+  resizeBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
   UI.AddHeaderControls(mainFrame, { accent = ACCENT, onOptions = function() if SX.OpenOptions then SX.OpenOptions() end end })
 
