@@ -61,6 +61,19 @@ local function fmtHours(seconds)
   return string.format("%dh%02d", h, m)
 end
 
+-- Duree d'un run (M+ ou donjon normal), plus courte typiquement qu'une
+-- session de jeu totale (fmtHours) - "Ym Ss" sous l'heure, "Xh YYm" au-dela.
+local function fmtDuration(seconds)
+  if not seconds then return "-" end
+  seconds = math.floor(seconds)
+  if seconds <= 0 then return "-" end
+  local h = math.floor(seconds / 3600)
+  local m = math.floor((seconds % 3600) / 60)
+  local s = seconds % 60
+  if h > 0 then return string.format("%dh%02d", h, m) end
+  return string.format("%dm%02d", m, s)
+end
+
 local function fmtMetric(metric, value)
   if metric == "gold" then return fmtGold(value) end
   if metric == "played" then return fmtHours(value) end
@@ -744,7 +757,7 @@ end
 -- PVP (adversaires tues/champs de bataille/arenes) vit dans son propre
 -- graphique dedie (bouton "Graphique PVP" du panneau PVP) plutot qu'ici -
 -- cf. PVP_CHART_METRICS plus bas.
-local CARD_METRICS = { "quests", "gold", "played", "dungeons", "delves", "repGained", "profGained" }
+local CARD_METRICS = { "quests", "gold", "played", "dungeons", "raids", "delves", "repGained", "profGained" }
 local cards = {}
 
 -- Couleurs fixes pour la superposition multi-metriques (graphique "Toutes les
@@ -753,7 +766,7 @@ local cards = {}
 -- coherent entre les deux interfaces.
 local OVERLAY_COLORS = {
   quests = { 0.310, 0.816, 0.773 }, gold = { 0.957, 0.839, 0.541 }, played = { 0.486, 0.620, 1.000 },
-  dungeons = { 1.000, 0.541, 0.541 }, delves = { 0.702, 0.537, 0.957 },
+  dungeons = { 1.000, 0.541, 0.541 }, raids = { 0.878, 0.592, 0.361 }, delves = { 0.702, 0.537, 0.957 },
   repGained = { 0.431, 0.906, 0.718 }, profGained = { 1.000, 0.706, 0.329 },
 }
 
@@ -771,6 +784,7 @@ local function CardLabel(metric)
   elseif metric == "gold" then
     return (view.period == "week") and L["CARD_GOLD_WEEK"] or L["CARD_GOLD"]
   elseif metric == "dungeons" then return L["CARD_DUNGEONS"]
+  elseif metric == "raids" then return L["CARD_RAIDS"]
   elseif metric == "played" then return L["CARD_PLAYED"]
   elseif metric == "delves" then return L["CARD_DELVES"]
   elseif metric == "repGained" then return L["CARD_REP_GAINED"]
@@ -948,11 +962,22 @@ local function BuildOverview(content)
       card.chart:SetPoint("BOTTOMLEFT", 14, 14)
       card.chart:SetPoint("BOTTOMRIGHT", -14, 14)
       card.chart:SetHeight(90)
-      card:SetScript("OnClick", function()
+      local function OpenCardDetail()
         view.detailMetric = metric
         view.detailGranularity = (view.period == "day") and "day" or view.detailGranularity
         SX.RefreshDashboard()
-      end)
+      end
+      card:SetScript("OnClick", OpenCardDetail)
+      -- Bouton explicite en plus du clic sur la carte entiere : la moitie
+      -- basse de la carte est couverte par card.chart (mini-graphique), dont
+      -- les zones de survol (AcquireHit, pour l'infobulle) sont des Button
+      -- qui interceptent le clic avant qu'il n'atteigne la carte - seule la
+      -- moitie haute (titre/valeur) reagissait au clic (constat utilisateur,
+      -- teste en jeu). Le bouton est ancre en zone haute, hors de la zone
+      -- couverte par le mini-graphique, donc toujours fiable.
+      card.detailsBtn = UI.MakeButton(card, 74, 20, L["CARD_DETAILS_BUTTON"])
+      card.detailsBtn:SetPoint("TOPRIGHT", -10, -10)
+      card.detailsBtn:SetScript("OnClick", OpenCardDetail)
       cards[metric] = card
     end
     card:ClearAllPoints()
@@ -1878,12 +1903,21 @@ end
 -- ============================================================================
 local detailWidgets = {}
 
+-- Metriques pour lesquelles un journal d'evenements detailles existe (cf.
+-- Stats/Core.lua : questLog/dungeonLog+mplus/delveLog/repLog/raidLog/
+-- goldLog/playtimeLog/profLog). Les 8 cartes ont desormais toutes un journal.
+local EVENT_LIST_METRICS = { quests = true, dungeons = true, raids = true, delves = true, repGained = true,
+                              gold = true, played = true, profGained = true }
+
 local function BuildDetail(content, metric)
   local d = detailWidgets
   if not d.built then
     d.back = UI.MakeButton(content, 160, 22, L["DETAIL_BACK"])
     d.back:SetPoint("TOPLEFT", 0, 0)
     d.back:SetScript("OnClick", function() view.detailMetric = nil; SX.RefreshDashboard() end)
+
+    d.eventsBtn = UI.MakeButton(content, 200, 22, L["DETAIL_EVENTS_BUTTON"])
+    d.eventsBtn:SetPoint("LEFT", d.back, "RIGHT", 8, 0)
 
     d.title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     d.title:SetPoint("TOPLEFT", 0, -34)
@@ -1974,6 +2008,12 @@ local function BuildDetail(content, metric)
 
   for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
   for g, b in pairs(d.granButtons) do b:Show() end
+
+  -- Apres la boucle generique ci-dessus (qui force :Show() sur tous les
+  -- widgets de d, dont eventsBtn) : n'afficher le bouton "voir le detail"
+  -- que pour les metriques qui ont un journal d'evenements (Core.lua).
+  d.eventsBtn:SetShown(EVENT_LIST_METRICS[metric] and true or false)
+  d.eventsBtn:SetScript("OnClick", function() view.detailMetric = "__events__" .. metric; SX.RefreshDashboard() end)
 end
 
 local function HideDetail()
@@ -1981,6 +2021,239 @@ local function HideDetail()
   if not d.built then return end
   for _, w in pairs(d) do if type(w) == "table" and w.Hide then w:Hide() end end
   for g, b in pairs(d.granButtons) do b:Hide() end
+end
+
+-- ============================================================================
+-- VUE DETAIL (liste d'evenements) : accessible depuis BuildDetail via le
+-- bouton "Voir le detail des evenements" (EVENT_LIST_METRICS/Core.lua). Les
+-- tableaux a capacite fixe du reste du fichier (BuildDelveDetail etc., 6-10
+-- lignes max, sans scroll) ne passent pas a l'echelle ici : une session de
+-- quetes/reputation peut produire des dizaines d'entrees. Meme patron de
+-- ScrollFrame que BuildFlatDropdown (popup de selection) plutot qu'un pool
+-- de lignes fixe. Liste mono-personnage (pas d'entrelacement compareChar/
+-- cumulative) - simplification phase 1 assumee.
+-- ============================================================================
+local EVENT_LIST_MAX_ROWS = 300
+
+-- Colonnes par metrique APRES la colonne Date (toujours presente, en premier).
+-- {key, label = cle L[], w = largeur, justify}. key indexe les champs des
+-- entrees de journal cote Core.lua (questLog/mplus+dungeonLog/delveLog/repLog).
+local EVENT_LIST_COLS = {
+  quests = {
+    { key = "quest", label = "EVENTS_COL_QUEST", w = 320 },
+    { key = "zone", label = "EVENTS_COL_ZONE", w = 220 },
+    { key = "xp", label = "EVENTS_COL_XP", w = 100, justify = "RIGHT" },
+  },
+  dungeons = {
+    { key = "name", label = "TABLE_NAME", w = 240 },
+    { key = "level", label = "TABLE_LEVEL", w = 100, justify = "RIGHT" },
+    { key = "spec", label = "EVENTS_COL_SPEC", w = 140 },
+    { key = "time", label = "EVENTS_COL_TIME", w = 100, justify = "RIGHT" },
+  },
+  raids = {
+    { key = "name", label = "TABLE_NAME", w = 280 },
+    { key = "spec", label = "EVENTS_COL_SPEC", w = 140 },
+    { key = "bossKills", label = "EVENTS_COL_BOSSKILLS", w = 100, justify = "RIGHT" },
+    { key = "time", label = "EVENTS_COL_TIME", w = 100, justify = "RIGHT" },
+  },
+  delves = {
+    { key = "name", label = "TABLE_NAME", w = 340 },
+    { key = "tier", label = "TILE_TIER", w = 120, justify = "RIGHT" },
+  },
+  repGained = {
+    { key = "faction", label = "EVENTS_COL_FACTION", w = 340 },
+    { key = "amount", label = "EVENTS_COL_GAIN", w = 120, justify = "RIGHT" },
+  },
+  gold = {
+    { key = "source", label = "EVENTS_COL_SOURCE", w = 220 },
+    { key = "amount", label = "EVENTS_COL_AMOUNT", w = 180, justify = "RIGHT", fmt = "gold" },
+  },
+  played = {
+    { key = "activity", label = "EVENTS_COL_ACTIVITY", w = 220 },
+    { key = "time", label = "EVENTS_COL_TIME", w = 160, justify = "RIGHT" },
+  },
+  profGained = {
+    { key = "profession", label = "EVENTS_COL_PROFESSION", w = 300 },
+    { key = "amount", label = "EVENTS_COL_GAIN", w = 160, justify = "RIGHT" },
+  },
+}
+
+-- Aplatit et trie par ts decroissant les evenements d'une metrique pour le
+-- personnage et la periode COURANTS (view.char, CurrentRange(0)).
+local function CollectEventRows(metric)
+  local from, to = CurrentRange(0)
+  local agg = SX.AggregateFor(view.char, from, to)
+  local rows = {}
+  if metric == "quests" then
+    rows = agg.questLog
+  elseif metric == "dungeons" then
+    -- Union M+ (a "level"/"done", table.insert deja fait par SX.Aggregate
+    -- dans agg.mplusList) et donjons normaux (dungeonLog, pas de "level") -
+    -- meme fusion que documentee cote Core.lua.
+    for _, e in ipairs(agg.mplusList) do rows[#rows + 1] = e end
+    for _, e in ipairs(agg.dungeonLog) do rows[#rows + 1] = e end
+  elseif metric == "raids" then
+    rows = agg.raidLog
+  elseif metric == "delves" then
+    rows = agg.delveLog
+  elseif metric == "repGained" then
+    rows = agg.repLog
+  elseif metric == "gold" then
+    rows = agg.goldLog
+  elseif metric == "played" then
+    rows = agg.playtimeLog
+  elseif metric == "profGained" then
+    rows = agg.profLog
+  end
+  table.sort(rows, function(a, b) return (a.ts or 0) > (b.ts or 0) end)
+  return rows
+end
+
+-- Traduction des valeurs BRUTES stockees par Core.lua (source de l'or,
+-- activite de temps joue) vers un libelle localise.
+local GOLD_SOURCE_LABELS = { quest = "EVENTS_SOURCE_QUEST", vendor = "EVENTS_SOURCE_VENDOR",
+                              ah = "EVENTS_SOURCE_AH", other = "EVENTS_SOURCE_OTHER" }
+local PLAYTIME_ACTIVITY_LABELS = { dungeon = "EVENTS_ACTIVITY_DUNGEON", raid = "EVENTS_ACTIVITY_RAID",
+                                    delve = "EVENTS_ACTIVITY_DELVE", world = "EVENTS_ACTIVITY_WORLD" }
+
+-- Valeur affichee pour une colonne : "?" si absente (donnee jamais capturee,
+-- ex. vieux mplus sans ts, ou API renvoyant nil - cf. "A VERIFIER EN JEU"
+-- dans Core.lua) plutot que planter sur une concatenation avec nil. Prend la
+-- colonne ENTIERE (pas juste sa cle) : le champ "amount" est reutilise par
+-- l'or (copper, formatage fmtGold via col.fmt) ET la reputation/les metiers
+-- (entier simple) - la seule cle ne suffit plus a les distinguer.
+local function EventCellText(row, col)
+  local key = col.key
+  local v = row[key]
+  -- Donjon normal (pas de niveau M+) ou duree non calculable (enteredAt
+  -- absent, ex. addon charge en cours de run) : "-", pas "?" - ce n'est pas
+  -- une donnee manquante par erreur, juste une donnee qui n'existe pas pour
+  -- ce type de run/cet evenement.
+  if key == "level" and v == nil then return "-" end
+  if key == "time" then return fmtDuration(v) end
+  if key == "source" then return v and (L[GOLD_SOURCE_LABELS[v]] or v) or "|cFF555555?|r" end
+  if key == "activity" then return v and (L[PLAYTIME_ACTIVITY_LABELS[v]] or v) or "|cFF555555?|r" end
+  if v == nil or v == "" then return "|cFF555555?|r" end
+  if col.fmt == "gold" then return fmtGold(v) end
+  if key == "xp" or key == "amount" then return tostring(math.floor(v + 0.5)) end
+  return tostring(v)
+end
+
+local eventListWidgets = {}
+
+local function BuildEventListDetail(content, metric)
+  local d = eventListWidgets
+  if not d.built then
+    d.back = UI.MakeButton(content, 160, 22, L["DETAIL_BACK"])
+    d.back:SetPoint("TOPLEFT", 0, 0)
+    d.back:SetScript("OnClick", function() view.detailMetric = nil; SX.RefreshDashboard() end)
+
+    d.title = content:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    d.title:SetPoint("TOPLEFT", 0, -34)
+
+    d.panel = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    UI.SkinFrame(d.panel, ACCENT, UI.C.PANEL)
+    d.panel:SetPoint("TOPLEFT", 0, -66)
+    d.panel:SetSize(W - 60, 300)
+
+    d.dateHead = d.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    d.headCols = {}
+
+    d.scroll = CreateFrame("ScrollFrame", nil, d.panel, "UIPanelScrollFrameTemplate")
+    d.scroll:SetPoint("TOPLEFT", 12, -34)
+    d.scroll:SetPoint("BOTTOMRIGHT", -28, 10)
+    d.scrollContent = CreateFrame("Frame", nil, d.scroll)
+    d.scrollContent:SetSize(W - 60 - 50, 10)
+    d.scroll:SetScrollChild(d.scrollContent)
+
+    d.rows = {}
+    d.noData = d.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    d.noData:SetPoint("TOPLEFT", 12, -34)
+    d.noData:SetText(L["EVENTS_NO_DATA"])
+
+    d.truncNote = d.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    d.truncNote:SetPoint("BOTTOMLEFT", d.panel, "TOPLEFT", 12, 4)
+
+    d.built = true
+  end
+
+  d.title:SetText(string.format(L["EVENTS_TITLE_FMT"], CardLabel(metric) or ""))
+
+  local cols = EVENT_LIST_COLS[metric] or {}
+  local dateCol = { x = 4, w = 100 }
+  local x = dateCol.x + dateCol.w + 10
+  local colX = {}
+  for i, c in ipairs(cols) do
+    colX[i] = { x = x, w = c.w }
+    x = x + c.w + 10
+  end
+
+  PlaceCol(d.dateHead, dateCol, -12, "LEFT")
+  d.dateHead:SetText(L["EVENTS_COL_DATE"])
+  d.dateHead:Show()
+  for i, c in ipairs(cols) do
+    local fs = d.headCols[i]
+    if not fs then
+      fs = d.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+      d.headCols[i] = fs
+    end
+    PlaceCol(fs, colX[i], -12, c.justify or "LEFT")
+    fs:SetText(L[c.label] or c.label)
+    fs:Show()
+  end
+  for i = #cols + 1, #d.headCols do d.headCols[i]:Hide() end
+
+  local allRows = CollectEventRows(metric)
+  local shown = math.min(#allRows, EVENT_LIST_MAX_ROWS)
+
+  for i = 1, shown do
+    local row = d.rows[i]
+    if not row then
+      row = { date = d.scrollContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") }
+      d.rows[i] = row
+    end
+    local y = -4 - 20 * (i - 1)
+    local entry = allRows[i]
+    PlaceCol(row.date, dateCol, y, "LEFT")
+    row.date:SetText(entry.ts and date("%d/%m %H:%M", entry.ts) or "|cFF555555?|r")
+    row.date:Show()
+    for ci, c in ipairs(cols) do
+      local fs = row[ci]
+      if not fs then
+        fs = d.scrollContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        row[ci] = fs
+      end
+      PlaceCol(fs, colX[ci], y, c.justify or "LEFT")
+      fs:SetText(EventCellText(entry, c))
+      fs:Show()
+    end
+    for ci = #cols + 1, #row do
+      if type(row[ci]) == "table" and row[ci].Hide then row[ci]:Hide() end
+    end
+  end
+  for i = shown + 1, #d.rows do
+    local row = d.rows[i]
+    row.date:Hide()
+    for ci = 1, #row do if type(row[ci]) == "table" and row[ci].Hide then row[ci]:Hide() end end
+  end
+
+  d.scrollContent:SetHeight(math.max(shown * 20 + 10, 10))
+  if #allRows > EVENT_LIST_MAX_ROWS then
+    d.truncNote:SetText(string.format(L["EVENTS_TRUNCATED_FMT"], EVENT_LIST_MAX_ROWS))
+  end
+
+  -- La boucle generique ci-dessous force :Show() sur tous les widgets de d -
+  -- noData/scroll/truncNote sont donc explicitement re-bascules APRES elle.
+  for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
+  d.noData:SetShown(shown == 0)
+  d.scroll:SetShown(shown > 0)
+  d.truncNote:SetShown(#allRows > EVENT_LIST_MAX_ROWS)
+end
+
+local function HideEventListDetail()
+  local d = eventListWidgets
+  if not d.built then return end
+  for _, w in pairs(d) do if type(w) == "table" and w.Hide then w:Hide() end end
 end
 
 -- ============================================================================
@@ -2492,6 +2765,7 @@ function SX.RefreshDashboard()
     HideOverview()
     HideDetail()
     HidePvPChartDetail()
+    HideEventListDetail()
     BuildOverlayDetail(mainFrame.content)
     -- +50 vs les autres detail : la scroll bar, la plage de dates et la
     -- legende passent sous le graphique (cf. BuildOverlayDetail).
@@ -2500,18 +2774,29 @@ function SX.RefreshDashboard()
     HideOverview()
     HideDetail()
     HideOverlayDetail()
+    HideEventListDetail()
     BuildPvPChartDetail(mainFrame.content)
+    mainFrame.content:SetHeight(420)
+  elseif view.detailMetric and view.detailMetric:match("^__events__") then
+    local baseMetric = view.detailMetric:match("^__events__(.+)$")
+    HideOverview()
+    HideDetail()
+    HideOverlayDetail()
+    HidePvPChartDetail()
+    BuildEventListDetail(mainFrame.content, baseMetric)
     mainFrame.content:SetHeight(420)
   elseif view.detailMetric then
     HideOverview()
     HideOverlayDetail()
     HidePvPChartDetail()
+    HideEventListDetail()
     BuildDetail(mainFrame.content, view.detailMetric)
     mainFrame.content:SetHeight(420)
   else
     HideDetail()
     HideOverlayDetail()
     HidePvPChartDetail()
+    HideEventListDetail()
     BuildOverview(mainFrame.content)
     local gridRows = math.ceil(#CARD_METRICS / 2)
     local gridDepth = gridRows * 190 + (gridRows - 1) * 16 + 10

@@ -106,12 +106,36 @@ end
 function SX.EnsureDay(rec, dayKey)
   local d = rec.days[dayKey]
   if not d then
-    d = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, repGained = 0, pvpKillsGained = 0, profGained = 0,
-          bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0 }
+    d = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, raids = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
+          bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0,
+          questLog = {}, dungeonLog = {}, delveLog = {}, repLog = {}, raidLog = {},
+          goldLog = {}, playtimeLog = {}, profLog = {} }
     rec.days[dayKey] = d
   end
   d.mplus = d.mplus or {}
+  d.questLog = d.questLog or {}
+  d.dungeonLog = d.dungeonLog or {}
+  d.delveLog = d.delveLog or {}
+  d.repLog = d.repLog or {}
+  d.raidLog = d.raidLog or {}
+  d.goldLog = d.goldLog or {}
+  d.playtimeLog = d.playtimeLog or {}
+  d.profLog = d.profLog or {}
   return d
+end
+
+-- Ajoute un evenement detaille a un journal (mplus/questLog/dungeonLog/delveLog/
+-- repLog) en plafonnant sa taille journaliere (SX.HISTORY_MAX_EVENTS_PER_DAY) :
+-- au-dela, le plus ancien evenement DE CE JOUR est ecrase, jamais le jour lui-meme
+-- (SX.PurgeOldDays reste seul responsable de la retention long terme par jour).
+-- Renvoie l'entree inseree (utile pour la patcher plus tard par reference, ex.
+-- le retry de palier de gouffre qui corrige le tier apres coup).
+function SX.AppendDayEvent(list, entry)
+  table.insert(list, entry)
+  if #list > SX.HISTORY_MAX_EVENTS_PER_DAY then
+    table.remove(list, 1)
+  end
+  return entry
 end
 
 -- Purge les jours les plus anciens au-dela du plafond (borne la taille des
@@ -402,9 +426,22 @@ end
 -- ============================================================================
 -- AGREGATION
 -- ============================================================================
+-- Aplatit un journal d'evenements (mplus/questLog/dungeonLog/delveLog/repLog)
+-- present dans plusieurs jours vers une seule liste - meme principe que
+-- mplus/mplusList ci-dessous, factorise pour les 4 nouveaux journaux.
+local function FlattenDayLog(d, key, out)
+  local list = d[key]
+  if not list then return end
+  for _, entry in ipairs(list) do
+    out[#out + 1] = entry
+  end
+end
+
 function SX.Aggregate(charKey, from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
-                bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0 }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, raids = 0, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
+                bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0,
+                questLog = {}, dungeonLog = {}, delveLog = {}, repLog = {}, raidLog = {},
+                goldLog = {}, playtimeLog = {}, profLog = {} }
   local rec = StatsDB[charKey]
   if not rec or not rec.days then return agg end
   for dayKey, d in pairs(rec.days) do
@@ -415,6 +452,7 @@ function SX.Aggregate(charKey, from, to)
       agg.goldSpent = agg.goldSpent + (d.goldSpent or 0)
       agg.played    = agg.played + (d.played or 0)
       agg.dungeons  = agg.dungeons + (d.dungeons or 0)
+      agg.raids     = agg.raids + (d.raids or 0)
       agg.delves    = agg.delves + (d.delves or 0)
       agg.repGained = agg.repGained + (d.repGained or 0)
       agg.pvpKillsGained = agg.pvpKillsGained + (d.pvpKillsGained or 0)
@@ -429,14 +467,24 @@ function SX.Aggregate(charKey, from, to)
           agg.mplusList[#agg.mplusList + 1] = run
         end
       end
+      FlattenDayLog(d, "questLog", agg.questLog)
+      FlattenDayLog(d, "dungeonLog", agg.dungeonLog)
+      FlattenDayLog(d, "delveLog", agg.delveLog)
+      FlattenDayLog(d, "repLog", agg.repLog)
+      FlattenDayLog(d, "raidLog", agg.raidLog)
+      FlattenDayLog(d, "goldLog", agg.goldLog)
+      FlattenDayLog(d, "playtimeLog", agg.playtimeLog)
+      FlattenDayLog(d, "profLog", agg.profLog)
     end
   end
   return agg
 end
 
 function SX.AggregateAccount(from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
-                bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0 }
+  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, raids = 0, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
+                bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0,
+                questLog = {}, dungeonLog = {}, delveLog = {}, repLog = {}, raidLog = {},
+                goldLog = {}, playtimeLog = {}, profLog = {} }
   -- SX.GetCharKeys() plutot que pairs(StatsDB) direct : ecarte StatsDB.export
   -- / StatsDB.exportedAt (cf. son commentaire) qui feraient planter
   -- SX.Aggregate en tentant de lire ".days" sur une chaine ou un nombre.
@@ -448,6 +496,7 @@ function SX.AggregateAccount(from, to)
     agg.played    = agg.played + a.played
     agg.dungeons  = agg.dungeons + a.dungeons
     agg.mplusCount = agg.mplusCount + a.mplusCount
+    agg.raids     = agg.raids + a.raids
     agg.delves    = agg.delves + a.delves
     agg.repGained = agg.repGained + a.repGained
     agg.pvpKillsGained = agg.pvpKillsGained + a.pvpKillsGained
@@ -456,6 +505,15 @@ function SX.AggregateAccount(from, to)
     agg.bgWonGained = agg.bgWonGained + a.bgWonGained
     agg.arenaPlayedGained = agg.arenaPlayedGained + a.arenaPlayedGained
     agg.arenaWonGained = agg.arenaWonGained + a.arenaWonGained
+    for _, run in ipairs(a.mplusList) do agg.mplusList[#agg.mplusList + 1] = run end
+    for _, e in ipairs(a.questLog) do agg.questLog[#agg.questLog + 1] = e end
+    for _, e in ipairs(a.dungeonLog) do agg.dungeonLog[#agg.dungeonLog + 1] = e end
+    for _, e in ipairs(a.delveLog) do agg.delveLog[#agg.delveLog + 1] = e end
+    for _, e in ipairs(a.repLog) do agg.repLog[#agg.repLog + 1] = e end
+    for _, e in ipairs(a.raidLog) do agg.raidLog[#agg.raidLog + 1] = e end
+    for _, e in ipairs(a.goldLog) do agg.goldLog[#agg.goldLog + 1] = e end
+    for _, e in ipairs(a.playtimeLog) do agg.playtimeLog[#agg.playtimeLog + 1] = e end
+    for _, e in ipairs(a.profLog) do agg.profLog[#agg.profLog + 1] = e end
   end
   return agg
 end
@@ -469,6 +527,7 @@ function SX.MetricValue(agg, metric)
   if metric == "quests" then return agg.quests
   elseif metric == "gold" then return agg.goldGain - agg.goldSpent
   elseif metric == "dungeons" then return agg.dungeons + agg.mplusCount
+  elseif metric == "raids" then return agg.raids
   elseif metric == "played" then return agg.played
   elseif metric == "delves" then return agg.delves
   elseif metric == "repGained" then return agg.repGained
@@ -612,6 +671,80 @@ end
 -- ============================================================================
 local lastMoney = nil
 
+-- Detail par source (d.goldLog, en plus du total d.goldGain/d.goldSpent
+-- inchange ci-dessus) : seuls les GAINS sont detailles, pas les depenses.
+-- 3 sources reconnues + 1 fourre-tout "autre", reconciliees sans double
+-- comptage (cf. FlushGoldSourceBucket) :
+--  - quete : exact, gratuit (moneyReward de QUEST_TURNED_IN, deja disponible
+--    en parametre mais jamais lu jusqu'ici).
+--  - marchand : heuristique - MerchantFrame ouvert au moment du gain. Peut se
+--    tromper si un autre gain (butin, etc.) tombe par coincidence pendant que
+--    la fenetre marchand est ouverte - accepte, pas verifiable sans jeu.
+--  - hotel des ventes : les ventes HV arrivent toujours par courrier, jamais
+--    en direct via PLAYER_MONEY - lu depuis PostBoxDB (module soeur) si
+--    present, cf. SX.ReadPostBoxAHDeltaToday ci-dessous. Degrade a 0 si
+--    PostBox n'est pas installe (meme principe que le cross-read SkillTrackerDB
+--    des metiers, Export.lua).
+--  - autre : le reste (butin, quete mondiale, bonus, tout ce qui n'est ni
+--    marchand ni identifie comme venant de l'hotel des ventes ou d'une quete).
+local pendingQuestGold = 0
+local pendingVendorDelta = 0
+local pendingOtherDelta = 0
+local goldBucketPending = false
+
+-- Lit le delta de vente HV du jour depuis PostBoxDB (cross-read en lecture
+-- seule, jamais ecrit) contre une baseline SAUVEGARDEE (pas en memoire : un
+-- baseline en memoire serait perdu au /reload, ce qui recompterait tout le
+-- total du jour comme "nouveau" a chaque reload). Baseline stockee en 2 cles
+-- SCALAIRES de premier niveau de StatsDB (pas une sous-table) pour ne pas
+-- perturber SX.GetCharKeys(), qui filtre StatsDB par type(v)=="table" pour
+-- ecarter StatsDB.export/exportedAt (cf. son propre commentaire) - une
+-- baseline en sous-table serait a tort traitee comme un personnage.
+-- A VERIFIER EN JEU : jamais teste avec PostBox reellement installe.
+function SX.ReadPostBoxAHDeltaToday()
+  if not _G.PostBoxDB then return 0 end
+  local ok, delta = pcall(function()
+    local today = SX.TodayKey()
+    local history = _G.PostBoxDB.stats and _G.PostBoxDB.stats.history
+    local soldToday = (history and history[today] and history[today].auctionSold) or 0
+    local sameDay = StatsDB.postboxAHBaselineDay == today
+    local baseline = sameDay and StatsDB.postboxAHBaselineAmount or 0
+    StatsDB.postboxAHBaselineDay = today
+    StatsDB.postboxAHBaselineAmount = soldToday
+    return math.max(0, soldToday - baseline)
+  end)
+  if ok and type(delta) == "number" then return delta end
+  return 0
+end
+
+local function FlushGoldSourceBucket()
+  goldBucketPending = false
+  local vendorAmt, otherAmt = pendingVendorDelta, pendingOtherDelta
+  pendingVendorDelta, pendingOtherDelta = 0, 0
+
+  -- Le delta HV est RETRANCHE de "autre" (jamais ajoute a part) : il fait
+  -- deja partie du delta PLAYER_MONEY brut compte plus haut dans goldGain,
+  -- on ne fait que le RECLASSER hors du fourre-tout. Une course rare (signal
+  -- PostBox arrivant hors de cette fenetre de 0.5s) fait juste perdre cette
+  -- fraction dans "autre" au lieu de la compter en double - accepte.
+  local ahAmt = SX.ReadPostBoxAHDeltaToday()
+  otherAmt = math.max(0, otherAmt - ahAmt)
+
+  -- L'or de quete a deja sa propre entree (OnQuestTurnedIn, avec nom/zone) -
+  -- ici on ne fait que le SOUSTRAIRE du fourre-tout pour ne pas le compter
+  -- deux fois, jamais une deuxieme entree.
+  local fromQuest = math.min(pendingQuestGold, otherAmt)
+  pendingQuestGold = pendingQuestGold - fromQuest
+  otherAmt = otherAmt - fromQuest
+
+  local rec = SX.EnsureChar(SX.CurrentCharKey())
+  local d = SX.EnsureDay(rec, SX.TodayKey())
+  local now = time()
+  if vendorAmt > 0 then SX.AppendDayEvent(d.goldLog, { ts = now, source = "vendor", amount = vendorAmt }) end
+  if ahAmt > 0 then SX.AppendDayEvent(d.goldLog, { ts = now, source = "ah", amount = ahAmt }) end
+  if otherAmt > 0 then SX.AppendDayEvent(d.goldLog, { ts = now, source = "other", amount = otherAmt }) end
+end
+
 local function OnPlayerMoney()
   local now = GetMoney()
   if lastMoney ~= nil then
@@ -619,7 +752,17 @@ local function OnPlayerMoney()
     if delta ~= 0 then
       local rec = SX.EnsureChar(SX.CurrentCharKey())
       local d = SX.EnsureDay(rec, SX.TodayKey())
-      if delta > 0 then d.goldGain = (d.goldGain or 0) + delta
+      if delta > 0 then
+        d.goldGain = (d.goldGain or 0) + delta
+        if MerchantFrame and MerchantFrame:IsShown() then
+          pendingVendorDelta = pendingVendorDelta + delta
+        else
+          pendingOtherDelta = pendingOtherDelta + delta
+        end
+        if not goldBucketPending then
+          goldBucketPending = true
+          C_Timer.After(0.5, FlushGoldSourceBucket)
+        end
       else d.goldSpent = (d.goldSpent or 0) + (-delta) end
     end
   end
@@ -629,10 +772,35 @@ end
 -- ============================================================================
 -- ENREGISTREUR : QUETES
 -- ============================================================================
-local function OnQuestTurnedIn()
+-- Spe active du joueur, meme paire d'appels que SX.RefreshCharMeta - factorisee
+-- ici car reutilisee par les enregistreurs quete/donjon/M+.
+local function CurrentSpecName()
+  local specIndex = GetSpecialization and GetSpecialization()
+  if not specIndex then return nil end
+  local _, specName = GetSpecializationInfo(specIndex)
+  return specName
+end
+
+-- A VERIFIER EN JEU : QUEST_TURNED_IN est suppose fournir (questID, xpReward,
+-- moneyReward) sur le client retail actuel - jamais exerce dans ce fichier
+-- jusqu'ici (aucun de ces arguments n'etait lu, juste un compteur incremente).
+-- GetTitleForQuestID peut renvoyer nil si la quete est deja purgee du log au
+-- moment ou l'event se declenche - traite en nil-safe cote UI (affiche "?").
+local function OnQuestTurnedIn(questID, xpReward, moneyReward)
   local rec = SX.EnsureChar(SX.CurrentCharKey())
   local d = SX.EnsureDay(rec, SX.TodayKey())
   d.quests = (d.quests or 0) + 1
+  local questName = questID and C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(questID)
+  local zone = GetSubZoneText()
+  if not zone or zone == "" then zone = GetZoneText() end
+  SX.AppendDayEvent(d.questLog, { ts = time(), quest = questName, zone = zone, xp = xpReward })
+  -- L'or de recompense de quete est deja compte dans d.goldGain via le delta
+  -- PLAYER_MONEY correspondant - ici on l'accumule seulement pour que
+  -- FlushGoldSourceBucket (ENREGISTREUR : OR ci-dessus) le retranche du
+  -- fourre-tout "autre" et lui donne sa propre entree source="quest".
+  if moneyReward and moneyReward > 0 then
+    pendingQuestGold = pendingQuestGold + moneyReward
+  end
 end
 
 -- ============================================================================
@@ -649,8 +817,12 @@ local function OnChallengeModeCompleted()
   end
   local rec = SX.EnsureChar(SX.CurrentCharKey())
   local d = SX.EnsureDay(rec, SX.TodayKey())
-  d.mplus = d.mplus or {}
-  table.insert(d.mplus, { map = mapName, level = level, time = time_, done = onTime and true or false })
+  -- time_ (GetCompletionInfo) est en MILLISECONDES (API Blizzard) - converti
+  -- en secondes ici pour rester dans la meme unite que dungeonLog.time
+  -- (calcule via time(), Core.lua plus bas) : rien d'autre dans ce depot ne
+  -- lit mplus[].time (verifie), donc ce changement d'unite est sans risque.
+  SX.AppendDayEvent(d.mplus, { map = mapName, level = level, time = math.floor((time_ or 0) / 1000), done = onTime and true or false,
+                                ts = time(), spec = CurrentSpecName() })
 end
 
 -- ============================================================================
@@ -713,6 +885,10 @@ local function OnScenarioCompleted()
     rec.delveTypes[delveName].count = rec.delveTypes[delveName].count + 1
   end
   ApplyDelveTier(rec, delveName, tier)
+  -- Herite des deux incertitudes documentees ci-dessus (nom = repli zone/sous-
+  -- zone, palier pas toujours dispo a l'instant T) - patchee par reference par
+  -- le reessai ci-dessous si le palier arrive apres coup.
+  local delveLogEntry = SX.AppendDayEvent(d.delveLog, { ts = time(), name = delveName, tier = tier })
 
   -- Repli : GetActiveDelveTier() peut ne pas encore repondre a l'instant
   -- precis de SCENARIO_COMPLETED (meme constat deja fait ailleurs dans ce
@@ -726,6 +902,7 @@ local function OnScenarioCompleted()
       local ok2, t2 = pcall(C_DelvesUI.GetActiveDelveTier)
       if ok2 and type(t2) == "number" then
         ApplyDelveTier(SX.EnsureChar(charKey), delveName, t2)
+        delveLogEntry.tier = t2
       end
     end)
   end
@@ -1329,12 +1506,15 @@ local function DoFactionRescan()
   local now = time()
   local ids = CollectKnownFactionIDs()
   local totalGain = 0
+  local gains = {}
   for _, id in ipairs(ids) do
     local info = ReadReputationInfo(id)
     if info and info.cur and info.max then
       local base = repBaseline[id]
       if base and base.max == info.max and info.cur > base.cur then
-        totalGain = totalGain + (info.cur - base.cur)
+        local delta = info.cur - base.cur
+        totalGain = totalGain + delta
+        gains[#gains + 1] = { faction = info.name, amount = delta }
         rec.repRecentGain[id] = now
       end
       repBaseline[id] = { cur = info.cur, max = info.max }
@@ -1343,6 +1523,12 @@ local function DoFactionRescan()
   if totalGain > 0 then
     local d = SX.EnsureDay(rec, SX.TodayKey())
     d.repGained = (d.repGained or 0) + totalGain
+    -- Le debounce de 1s ci-dessous (OnFactionUpdate) regroupe une salve de
+    -- gains sur la meme faction en une seule ligne, pas une ligne par quete
+    -- rendue - acceptable, pas un bug si une ligne semble "trop grosse".
+    for _, g in ipairs(gains) do
+      SX.AppendDayEvent(d.repLog, { ts = now, faction = g.faction, amount = g.amount })
+    end
   end
   SX.CollectReputationSnapshot(rec)
 end
@@ -1411,13 +1597,16 @@ local function DoProfessionRescan()
   local now = time()
   local indices = { GetProfessions() }
   local totalGain = 0
+  local gains = {}
   for _, index in ipairs(indices) do
     if index then
       local name, _, cur, max = GetProfessionInfo(index)
       if name and name ~= "" and type(cur) == "number" and type(max) == "number" then
         local base = profBaseline[name]
         if base and base.max == max and cur > base.cur then
-          totalGain = totalGain + (cur - base.cur)
+          local delta = cur - base.cur
+          totalGain = totalGain + delta
+          gains[#gains + 1] = { profession = name, amount = delta }
           rec.profRecentGain[name] = now
         end
         profBaseline[name] = { cur = cur, max = max }
@@ -1427,6 +1616,9 @@ local function DoProfessionRescan()
   if totalGain > 0 then
     local d = SX.EnsureDay(rec, SX.TodayKey())
     d.profGained = (d.profGained or 0) + totalGain
+    for _, g in ipairs(gains) do
+      SX.AppendDayEvent(d.profLog, { ts = now, profession = g.profession, amount = g.amount })
+    end
   end
   SX.CollectProfessionSnapshot(rec)
 end
@@ -1442,20 +1634,80 @@ local function OnSkillLinesChanged()
 end
 
 -- ============================================================================
--- ENREGISTREUR : DONJONS NORMAUX (heuristique zone + boss)
+-- ENREGISTREUR : DONJONS NORMAUX ET RAIDS (heuristique zone + boss)
 -- ---------------------------------------------------------------------------
--- Pas d'evenement Blizzard "donjon termine" fiable pour les groupes hors
--- Recherche de groupe. Heuristique : a la sortie d'une instance de type
--- "party", si le DERNIER combat de boss reussi (ENCOUNTER_END, success=1)
--- correspond au DERNIER encounter connu du Bestiaire (C_EncounterJournal)
--- pour cette instance, on compte un donjon termine. Resolution dynamique du
--- "boss final" - pas de table a maintenir a la main.
+-- Pas d'evenement Blizzard "donjon/raid termine" fiable pour les groupes hors
+-- Recherche de groupe. A la sortie d'une instance de type "party" ou "raid",
+-- deux heuristiques DIFFERENTES selon le type (EvaluateDungeonCompletion) :
+--   - DONJON : exige que le DERNIER combat de boss reussi (ENCOUNTER_END,
+--     success=1) corresponde au DERNIER encounter connu du Bestiaire
+--     (C_EncounterJournal) - un donjon est quasi toujours clear en entier en
+--     une seule fois, cette exigence colle a l'usage reel.
+--   - RAID : un seul boss tue pendant la session suffit (bossKillCount > 0),
+--     PAS d'exigence de dernier boss. CORRECTIF (constat utilisateur,
+--     2026-09-13) : la version initiale exigeait le dernier boss du raid
+--     comme pour un donjon, ce qui laissait la carte "Raids" vide en
+--     pratique - une soiree de raid tue tres souvent seulement une partie
+--     des boss (farm, split, verrou hebdomadaire), rarement un clear complet
+--     a chaque fois.
+-- Resolution dynamique du "boss final" (donjons uniquement) - pas de table a
+-- maintenir a la main.
 -- A VERIFIER EN JEU : noms de fonctions C_EncounterJournal / EJ_* contre
--- l'API Midnight en cours (non exerce dans le reste du depot). Toute la
--- resolution est protegee par pcall : en cas d'API differente, on echoue
--- proprement (le compteur "donjons" reste simplement a 0, sans erreur).
+-- l'API Midnight en cours (non exerce dans le reste du depot, concerne
+-- uniquement le volet donjon). Toute la resolution est protegee par pcall :
+-- en cas d'API differente, on echoue proprement (le compteur reste
+-- simplement a 0, sans erreur).
 -- ============================================================================
-local instanceSession = nil  -- { mapID = , lastEncounterID = }
+local instanceSession = nil  -- { mapID = , name = , enteredAt = , lastEncounterID = , instanceType = , bossKillCount = }
+
+-- ============================================================================
+-- ENREGISTREUR : TEMPS DE JEU PAR ACTIVITE (d.playtimeLog)
+-- ---------------------------------------------------------------------------
+-- MECANISME DIFFERENT de d.played (le scalaire ticker 60s plus bas dans ce
+-- fichier) : bascule sur changement d'activite, horloge murale time() - les
+-- totaux des deux ne sont PAS garantis identiques a la seconde pres, ce n'est
+-- pas un bug si un ecart existe. Place ici (avant OnEnteringWorld) car cette
+-- derniere doit pouvoir appeler OnPlaytimeActivityCheck ci-dessous, et lit
+-- deja instanceSession juste au-dessus - meme portee lexicale, pas de
+-- plomberie supplementaire necessaire.
+-- Pas de detection AFK (aucune API native utilisee nulle part dans ce depot) :
+-- le temps immobile reste compte dans le bucket d'activite en cours, meme
+-- simplification deja acceptee pour la duree des donjons/raids ci-dessus.
+-- ============================================================================
+local playtimeActivity = nil
+local playtimeEnteredAt = nil
+
+-- A VERIFIER EN JEU : le gouffre est verifie EN PREMIER, avant instanceSession -
+-- rien ne confirme que IsInInstance() renvoie un instanceType different de
+-- "party" a l'interieur d'un gouffre ; sans cette priorite, un gouffre
+-- pourrait etre classe "donjon" par erreur.
+local function CurrentPlaytimeActivity()
+  if C_DelvesUI and ((C_DelvesUI.HasActiveDelve and C_DelvesUI.HasActiveDelve())
+      or (C_DelvesUI.IsInLair and C_DelvesUI.IsInLair())) then
+    return "delve"
+  end
+  if instanceSession then
+    if instanceSession.instanceType == "raid" then return "raid" end
+    if instanceSession.instanceType == "party" then return "dungeon" end
+  end
+  return "world"
+end
+
+local function CloseOutPlaytimeBucket()
+  if not playtimeActivity or not playtimeEnteredAt then return end
+  local elapsed = math.max(0, time() - playtimeEnteredAt)
+  if elapsed <= 0 then return end
+  local rec = SX.EnsureChar(SX.CurrentCharKey())
+  local d = SX.EnsureDay(rec, SX.TodayKey())
+  SX.AppendDayEvent(d.playtimeLog, { ts = time(), activity = playtimeActivity, time = elapsed })
+end
+
+local function OnPlaytimeActivityCheck()
+  local activity = CurrentPlaytimeActivity()
+  if activity == playtimeActivity then return end
+  CloseOutPlaytimeBucket()
+  playtimeActivity, playtimeEnteredAt = activity, time()
+end
 
 local function ResolveFinalEncounterID(mapID)
   if not (mapID and C_EncounterJournal) then return nil end
@@ -1482,23 +1734,50 @@ local function ResolveFinalEncounterID(mapID)
 end
 
 local function EvaluateDungeonCompletion(session)
-  if not session or not session.lastEncounterID then return end
+  if not session then return end
+  -- Duree = temps ecoule entre l'entree dans l'instance et la sortie/le
+  -- dernier boss tue - contrairement au temps M+ (chrono precis de
+  -- Blizzard), ceci inclut tout temps mort (AFK, discussion, wipes et
+  -- reessais) : un temps "brut" de session, pas un temps de run pur.
+  local duration = session.enteredAt and math.max(0, time() - session.enteredAt) or nil
+
+  if session.instanceType == "raid" then
+    -- RAID : contrairement a un donjon (quasi toujours clear en entier en une
+    -- fois), une soiree de raid tue tres souvent seulement UNE PARTIE des
+    -- boss (farm, split, verrou hebdomadaire) - exiger le DERNIER boss du
+    -- raid (comme pour les donjons ci-dessous) laissait la carte "Raids"
+    -- vide en pratique (constat utilisateur : raid sur plusieurs boss non
+    -- comptabilise). Ici, un seul boss tue pendant la session suffit.
+    if session.bossKillCount and session.bossKillCount > 0 then
+      local rec = SX.EnsureChar(SX.CurrentCharKey())
+      local d = SX.EnsureDay(rec, SX.TodayKey())
+      d.raids = (d.raids or 0) + 1
+      SX.AppendDayEvent(d.raidLog, { ts = time(), name = session.name, spec = CurrentSpecName(),
+                                      time = duration, bossKills = session.bossKillCount })
+    end
+    return
+  end
+
+  -- Donjon normal : inchange, exige le DERNIER boss du Bestiaire (quasi
+  -- toujours le comportement reel d'un run de donjon).
+  if not session.lastEncounterID then return end
   local finalID = ResolveFinalEncounterID(session.mapID)
   if finalID and finalID == session.lastEncounterID then
     local rec = SX.EnsureChar(SX.CurrentCharKey())
     local d = SX.EnsureDay(rec, SX.TodayKey())
     d.dungeons = (d.dungeons or 0) + 1
+    SX.AppendDayEvent(d.dungeonLog, { ts = time(), name = session.name, spec = CurrentSpecName(), time = duration })
   end
 end
 
 local function OnEnteringWorld()
   local inInstance, instanceType = IsInInstance()
-  if inInstance and instanceType == "party" then
-    local _, _, _, _, _, _, _, mapID = GetInstanceInfo()
+  if inInstance and (instanceType == "party" or instanceType == "raid") then
+    local name, _, _, _, _, _, _, mapID = GetInstanceInfo()
     if not instanceSession or instanceSession.mapID ~= mapID then
       -- Nouvelle session : evalue l'ancienne (si on vient d'une autre instance) puis ouvre la nouvelle
       if instanceSession then EvaluateDungeonCompletion(instanceSession) end
-      instanceSession = { mapID = mapID, lastEncounterID = nil }
+      instanceSession = { mapID = mapID, name = name, enteredAt = time(), lastEncounterID = nil, instanceType = instanceType, bossKillCount = 0 }
     end
   else
     if instanceSession then
@@ -1506,11 +1785,13 @@ local function OnEnteringWorld()
       instanceSession = nil
     end
   end
+  OnPlaytimeActivityCheck()
 end
 
 local function OnEncounterEnd(encounterID, _, _, _, success)
   if instanceSession and success == 1 then
     instanceSession.lastEncounterID = encounterID
+    instanceSession.bossKillCount = (instanceSession.bossKillCount or 0) + 1
   end
 end
 
@@ -1562,6 +1843,7 @@ evFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
 evFrame:RegisterEvent("UPDATE_FACTION")
 evFrame:RegisterEvent("PLAYER_PVP_KILLS_CHANGED")
 evFrame:RegisterEvent("SKILL_LINES_CHANGED")
+evFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 
 evFrame:SetScript("OnEvent", function(_, event, ...)
   if event == "ADDON_LOADED" then
@@ -1572,6 +1854,7 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
   elseif event == "PLAYER_LOGIN" then
     lastMoney = GetMoney()
     lastFlush = GetTime()
+    playtimeActivity, playtimeEnteredAt = CurrentPlaytimeActivity(), time()
     SX.RefreshCharMeta()
     local rec = SX.EnsureChar(SX.CurrentCharKey())
     SX.PurgeOldDays(rec)
@@ -1590,7 +1873,7 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
     OnPlayerMoney()
 
   elseif event == "QUEST_TURNED_IN" then
-    OnQuestTurnedIn()
+    OnQuestTurnedIn(...)
 
   elseif event == "CHALLENGE_MODE_COMPLETED" then
     OnChallengeModeCompleted()
@@ -1601,8 +1884,12 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
   elseif event == "ENCOUNTER_END" then
     OnEncounterEnd(...)
 
+  elseif event == "ZONE_CHANGED_NEW_AREA" then
+    OnPlaytimeActivityCheck()
+
   elseif event == "PLAYER_LOGOUT" then
     FlushPlayed()
+    CloseOutPlaytimeBucket()
     -- Auto-persistance de l'export (companion Dashboard-Tibi) : ecrit le
     -- dernier code d'export dans StatsDB pour que le fichier Stats.lua
     -- contienne toujours la derniere version, lisible meme le jeu ferme.

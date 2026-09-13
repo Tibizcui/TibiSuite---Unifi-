@@ -155,6 +155,13 @@ function SX.CollectExportData()
         professionsNative = rec.professionsNative,
       }
     end
+    -- days est copie tel quel : chaque entree days[dateKey] porte, en plus
+    -- des compteurs agreges (quests/goldGain/...), 9 journaux d'evenements
+    -- detailles (mplus, questLog, dungeonLog, delveLog, repLog, raidLog,
+    -- goldLog, playtimeLog, profLog - voir SX.EnsureDay/SX.AppendDayEvent
+    -- dans Core.lua). Ajout purement additif : aucun changement de schema
+    -- necessaire ici, ces champs traversent automatiquement l'export sans
+    -- code dedie.
     chars[key] = {
       char = charInfo,
       days = rec.days or {},

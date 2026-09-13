@@ -22,6 +22,15 @@ SX.SCHEMA_VERSION = 2
 -- meme principe que PostBox : purge des plus anciens au-dela).
 SX.HISTORY_MAX_DAYS = 400
 
+-- Plafond d'evenements detailles par jour et par journal (mplus, questLog,
+-- dungeonLog, delveLog, repLog, raidLog, goldLog, playtimeLog, profLog) :
+-- au-dela, le plus ancien de la journee est ecrase
+-- (SX.AppendDayEvent, Core.lua). Une grosse session de farm/quete peut generer
+-- bien plus d'evenements par jour qu'un M+ classique ; ce plafond evite de faire
+-- exploser la taille de l'export sans jamais faire perdre les journees passees
+-- (SX.PurgeOldDays reste le seul garant de la retention long terme).
+SX.HISTORY_MAX_EVENTS_PER_DAY = 200
+
 SX.PERIODS = { "day", "week", "month", "year" }
 SX.GRANULARITIES = { "day", "week", "month", "year" }
 

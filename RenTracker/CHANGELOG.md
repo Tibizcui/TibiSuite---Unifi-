@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.6
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.6 pour le detail : nouveau detail par evenement sur les cartes Quetes/Or/Temps joue/Donjons/Raids/Gouffres/Reputation/Metiers, plus une nouvelle carte Raids).
+
 ## 7.1.5.5
 - Relecture orthographe/grammaire/ponctuation : correction de plusieurs fautes dans les noms et descriptions de quetes/hauts faits/zones (ex : Gardiens du Caveau, Ravenholdt, Oeuf mysterieux, Gagner des ressources...), d'un mot duplique et d'un accord de genre.
 

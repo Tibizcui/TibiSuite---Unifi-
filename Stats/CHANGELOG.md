@@ -1,5 +1,17 @@
 # Changelog
 
+## 7.1.5.6
+- Nouveau : les 7 cartes de la vue d'ensemble (Quetes, Or, Temps joue, Donjons & M+, Gouffres, Reputation gagnee, Points de metier gagnes) affichent desormais un detail evenement par evenement en plus du total journalier, via un nouveau bouton "Detail" sur chaque carte :
+  - Quetes : nom, zone, XP gagne par quete.
+  - Donjons & M+ : nom, niveau (M+), specialisation jouee, duree.
+  - **Raids** : nouvelle carte dediee (le suivi ne portait avant que sur les donjons de type "Recherche de groupe"), meme detail que les donjons plus le nombre de boss tues - compte des qu'au moins un boss est tue dans la session, sans exiger un clear complet (une soiree de raid ne clot que rarement l'instance en entier).
+  - Gouffres : nom, palier.
+  - Reputation gagnee : detail par faction.
+  - Or : source du gain (quete, marchand, hotel des ventes si le module PostBox est installe, ou autre).
+  - Temps joue : repartition par activite (donjon, raid, gouffre, monde) en plus du total existant.
+  - Points de metier gagnes : detail par metier.
+- Ces nouveaux journaux ne couvrent que les evenements enregistres a partir de cette version : rien n'est reconstitue retroactivement pour les jours deja enregistres.
+
 ## 7.1.5.5
 - Correction : dans "Toutes les metriques" et le detail par metrique, un segment de courbe (granularite Mois/Annee) pouvait s'afficher loin de sa position reelle, jusqu'a sortir du cadre du graphique, des qu'une metrique variait brutalement d'un point a l'autre - mauvais pivot de rotation du segment, corrige.
 - Correction : passer le filtre de periode sur "Jour" grisait a tort les granularites Semaine/Mois de "Toutes les metriques" et du detail par metrique, qui ne dependent pourtant pas de ce filtre (chacun parcourt son propre historique complet).

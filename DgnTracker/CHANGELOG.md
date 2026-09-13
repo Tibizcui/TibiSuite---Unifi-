@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.6
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.6 pour le detail : nouveau detail par evenement sur les cartes Quetes/Or/Temps joue/Donjons/Raids/Gouffres/Reputation/Metiers, plus une nouvelle carte Raids).
+
 ## 7.1.5.5
 - Relecture orthographe/grammaire/ponctuation : correction de fautes dans les donnees de zones/donjons (nom de zone incomplet, majuscule manquante sur un nom propre, elision manquante, melange anglais/francais) et remplacement des tirets cadratins restants par une ponctuation standard.
 
