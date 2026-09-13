@@ -47,6 +47,13 @@ local view = {
   -- meme simplification que le site web). Partage entre toutes les
   -- metriques, jamais reinitialise au changement de carte (idem site web).
   eventSort = { key = "date", dir = "desc" },
+  -- Sections repliables du bas (PVP/Gouffres+Tourments/Reputations/Metiers,
+  -- cf. BuildSummaryTiles) : cle -> true si depliee. Repliees par defaut
+  -- (demande utilisateur du 2026-09-13 : les detail restaient TOUJOURS
+  -- affiches sous une tuile resume qui, elle, ne faisait rien au clic -
+  -- confusion "carte en double"/"ca ne fait rien"). Jamais persistee, comme
+  -- le reste de `view`.
+  summaryExpanded = {},
   -- Timeline defilable de "Toutes les metriques" : decalage (en buckets,
   -- depuis le plus ancien) du bord GAUCHE de la fenetre visible. nil = pas
   -- encore calcule -> BuildOverlayDetail le cale sur la periode la plus
@@ -1239,12 +1246,21 @@ end
 local summaryTiles
 local SUMMARY_TILE_H = 96
 
+-- Bouton (pas juste un Frame) : ces tuiles sont desormais cliquables pour
+-- deplier/replier leur detail (cf. BuildSummaryTiles, view.summaryExpanded)
+-- - repond au constat utilisateur "ca ne fait rien au clic".
 local function BuildTile(parent, title)
-  local tile = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+  local tile = CreateFrame("Button", nil, parent, "BackdropTemplate")
   UI.SkinFrame(tile, ACCENT, UI.C.PANEL)
   tile.title = tile:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   tile.title:SetPoint("TOPLEFT", 14, -12)
   tile.title:SetText(title)
+  -- Indicateur deplie/replie (ASCII, pas de glyphe Unicode - meme piege deja
+  -- documente ailleurs dans ce fichier pour la police WoW par defaut).
+  -- Texte/couleur mis a jour par BuildSummaryTiles (qui seul connait l'etat
+  -- deplie/replie de CETTE tuile precise).
+  tile.expandIcon = tile:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  tile.expandIcon:SetPoint("TOPRIGHT", -14, -12)
   tile.stats = {}
   for i = 1, 3 do
     tile.stats[i] = tile:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -1278,34 +1294,48 @@ local function BuildTile(parent, title)
   return tile
 end
 
--- 5 tuiles, disposees en 2 lignes (3 puis 2) plutot que 5 en largeur -
--- une seule ligne de 5 rendrait chaque tuile trop etroite pour ses 3
--- chiffres (retour utilisateur sur les Metiers : ne pas re-tomber dans
--- "tout est melange" en serrant trop d'elements sur une meme ligne).
+-- 4 tuiles, disposees en grille 2x2 - Gouffres et Tourments partagent
+-- desormais UNE seule tuile/un seul depliage (demande utilisateur du
+-- 2026-09-13 : "regroupe Tourments et gouffres dans une section", les deux
+-- systemes de contenu solo scalable). Chaque tuile est repliee par defaut ;
+-- cliquer dessus (cf. OnClick plus bas) deplie son detail complet
+-- (BuildPvPDetail/BuildDelveDetail+BuildTorghastDetail/BuildReputationDetail/
+-- BuildProfessionDetail, gates sur view.summaryExpanded) au lieu de
+-- l'afficher en permanence - repond aussi a "les cartes ne font rien" et
+-- "carte en double" (Reputations/Metiers avaient une tuile ET un tableau
+-- toujours visible en dessous, sans lien entre les deux).
 local SUMMARY_ROWS = {
-  { "delves", "pvp", "torghast" },
+  { "pvp", "delves" },
   { "reputations", "professions" },
 }
 
 local function BuildSummaryTiles(content, top)
   if not summaryTiles then
     summaryTiles = {
-      delves = BuildTile(content, L["CARD_DELVES"]),
       pvp = BuildTile(content, L["PVP_SECTION_TITLE"]),
-      torghast = BuildTile(content, L["TORGHAST_SECTION_TITLE"]),
+      delves = BuildTile(content, L["DELVES_TORGHAST_SECTION_TITLE"]),
       reputations = BuildTile(content, L["REPUTATION_SECTION_TITLE"]),
       professions = BuildTile(content, L["PROFESSIONS_SECTION_TITLE"]),
     }
+    for key, tile in pairs(summaryTiles) do
+      tile:SetScript("OnClick", function()
+        view.summaryExpanded[key] = not view.summaryExpanded[key]
+        SX.RefreshDashboard()
+      end)
+    end
   end
 
   local gap = 14
-  local tileW = (content:GetWidth() - 2 * gap) / 3
+  local tileW = (content:GetWidth() - gap) / 2
   for r, row in ipairs(SUMMARY_ROWS) do
     for c, key in ipairs(row) do
       local tile = summaryTiles[key]
       tile:ClearAllPoints()
       tile:SetPoint("TOPLEFT", content, "TOPLEFT", (c - 1) * (tileW + gap), top - (r - 1) * (SUMMARY_TILE_H + gap))
       tile:SetSize(tileW, SUMMARY_TILE_H)
+      tile.expandIcon:SetText(view.summaryExpanded[key]
+        and (UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. "- " .. L["SUMMARY_COLLAPSE"] .. "|r")
+        or (UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. "+ " .. L["SUMMARY_EXPAND"] .. "|r"))
       local statW = (tileW - 28) / 3
       for s = 1, 3 do
         tile.stats[s]:ClearAllPoints()
@@ -1327,19 +1357,30 @@ local function BuildSummaryTiles(content, top)
   -- saisons) et peut donc etre superieur - on prend toujours le plus grand
   -- des deux pour ne jamais afficher un total qui recule.
   local delveTotal = math.max(delveTypesTotal, (rec and rec.delveCompletedLifetime) or 0)
+  local t = rec and rec.torghast
+  -- Tuile combinee Gouffres+Tourments (cf. SUMMARY_ROWS) : 3 chips au lieu
+  -- de 6 (2x3), priorite aux totaux/paliers - Compagnon/Cendres/Noires
+  -- passent dans la ligne du dessous (extras), faute de place, plutot que
+  -- de disparaitre de l'interface (toujours visibles une fois depliee de
+  -- toute facon, cf. BuildDelveDetail/BuildTorghastDetail).
   SetChip(summaryTiles.delves.stats[1], L["DELVES_TOTAL"], delveTotal)
-  SetChip(summaryTiles.delves.stats[2], L["TILE_TIER"], (rec and rec.delveHighestTier) or "-")
-  SetChip(summaryTiles.delves.stats[3], L["TILE_COMPANION"], (rec and rec.delveCompanionLevel) or "-")
+  SetChip(summaryTiles.delves.stats[2], L["TILE_TIER_DELVE"], (rec and rec.delveHighestTier) or "-")
+  SetChip(summaryTiles.delves.stats[3], L["TILE_TIER_TORGHAST"], (t and t.highestLayer) or "-")
   local delveAchID = rec and rec.delveTierAchievementID
   local delveAchName = rec and rec.delveTierAchievementName
+  local hasTorghastData = t and (t.highestLayer or t.soulAsh or t.soulCinders)
   if delveAchName then
     summaryTiles.delves.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. delveAchName .. "|r")
   elseif rec and SX.DelveAllMaxed(rec) then
     summaryTiles.delves.sub:SetText(UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. L["DELVE_ALL_MAXED"] .. "|r")
-  elseif delveTotal == 0 then
+  elseif delveTotal == 0 and not hasTorghastData then
     summaryTiles.delves.sub:SetText(L["DELVE_TYPES_NO_DATA"])
   else
-    summaryTiles.delves.sub:SetText("")
+    local extras = {}
+    if rec and rec.delveCompanionLevel then extras[#extras + 1] = L["TILE_COMPANION"] .. " " .. rec.delveCompanionLevel end
+    if t and t.soulAsh then extras[#extras + 1] = L["TILE_ASH"] .. " " .. t.soulAsh end
+    if t and t.soulCinders then extras[#extras + 1] = L["TILE_CINDERS"] .. " " .. t.soulCinders end
+    summaryTiles.delves.sub:SetText(table.concat(extras, "  -  "))
   end
   summaryTiles.delves.subHit.achievementID = delveAchID
 
@@ -1348,12 +1389,6 @@ local function BuildSummaryTiles(content, top)
   SetChip(summaryTiles.pvp.stats[2], L["PVP_HONOR"], pvp and pvp.honor or 0)
   SetChip(summaryTiles.pvp.stats[3], L["PVP_CONQUEST"], pvp and pvp.conquest or 0)
   summaryTiles.pvp.sub:SetText((pvp and pvp.brackets and next(pvp.brackets)) and "" or L["PVP_NO_DATA"])
-
-  local t = rec and rec.torghast
-  SetChip(summaryTiles.torghast.stats[1], L["TILE_TIER"], (t and t.highestLayer) or "-")
-  SetChip(summaryTiles.torghast.stats[2], L["TILE_ASH"], (t and t.soulAsh) or 0)
-  SetChip(summaryTiles.torghast.stats[3], L["TILE_CINDERS"], (t and t.soulCinders) or 0)
-  summaryTiles.torghast.sub:SetText((t and (t.highestLayer or t.soulAsh or t.soulCinders)) and "" or L["TORGHAST_NO_DATA"])
 
   local repSummary = rec and rec.reputations and rec.reputations.summary
   SetChip(summaryTiles.reputations.stats[1], L["REP_TRACKED"], (repSummary and repSummary.tracked) or 0)
@@ -1412,6 +1447,13 @@ local PVP_COLS = { name = { x = 14, w = 210 }, rating = { x = 224, w = 90 }, bes
 local BG_COLS = { name = { x = 14, w = 600 }, wins = { x = 614, w = 252 } }
 
 local function BuildPvPDetail(content, top)
+  -- Repliee par defaut (cf. view.summaryExpanded, tuile PVP) : ne construit
+  -- meme pas le panneau tant qu'on n'a jamais deplie (pvpDetailPanel reste
+  -- nil, rien a cacher), et le masque simplement s'il existe deja.
+  if not view.summaryExpanded.pvp then
+    if pvpDetailPanel then pvpDetailPanel:Hide() end
+    return 0
+  end
   if not pvpDetailPanel then
     pvpDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
     UI.SkinFrame(pvpDetailPanel, ACCENT, UI.C.PANEL)
@@ -1593,6 +1635,13 @@ local DELVE_MAX_TYPE_ROWS = 8
 local DELVE_COLS = { name = { x = 14, w = 440 }, count = { x = 454, w = 210 }, tier = { x = 664, w = 202 } }
 
 local function BuildDelveDetail(content, top)
+  -- Partage le meme etat deplie/repliee que la tuile combinee "Gouffres &
+  -- Tourments" (cf. BuildTorghastDetail ci-dessous, meme cle) - un seul clic
+  -- deplie les deux tableaux ensemble.
+  if not view.summaryExpanded.delves then
+    if delveDetailPanel then delveDetailPanel:Hide() end
+    return 0
+  end
   if not delveDetailPanel then
     delveDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
     UI.SkinFrame(delveDetailPanel, ACCENT, UI.C.PANEL)
@@ -1679,6 +1728,12 @@ local TORGHAST_COLS = {
 }
 
 local function BuildTorghastDetail(content, top)
+  -- Meme cle de depliage que BuildDelveDetail (tuile combinee, cf. son
+  -- commentaire) - pas "torghast" separement, la tuile dediee a disparu.
+  if not view.summaryExpanded.delves then
+    if torghastDetailPanel then torghastDetailPanel:Hide() end
+    return 0
+  end
   if not torghastDetailPanel then
     torghastDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
     UI.SkinFrame(torghastDetailPanel, ACCENT, UI.C.PANEL)
@@ -1802,6 +1857,10 @@ local function RepSystemLabel(info)
 end
 
 local function BuildReputationDetail(content, top)
+  if not view.summaryExpanded.reputations then
+    if reputationDetailPanel then reputationDetailPanel:Hide() end
+    return 0
+  end
   if not reputationDetailPanel then
     reputationDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
     UI.SkinFrame(reputationDetailPanel, ACCENT, UI.C.PANEL)
@@ -1891,6 +1950,10 @@ local PROF_MAX_ROWS = 10
 local PROF_COLS = { name = { x = 14, w = 440 }, level = { x = 454, w = 210 }, progress = { x = 664, w = 202 } }
 
 local function BuildProfessionDetail(content, top)
+  if not view.summaryExpanded.professions then
+    if professionDetailPanel then professionDetailPanel:Hide() end
+    return 0
+  end
   if not professionDetailPanel then
     professionDetailPanel = CreateFrame("Frame", nil, content, "BackdropTemplate")
     UI.SkinFrame(professionDetailPanel, ACCENT, UI.C.PANEL)

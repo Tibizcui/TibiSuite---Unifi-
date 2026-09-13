@@ -18,6 +18,7 @@
 - Nouveau : la fenetre est desormais redimensionnable (poignee en bas a droite, meme mecanisme que LegTracker) - la taille choisie est memorisee d'une ouverture a l'autre.
 - Correction : a l'etroit (fenetre a sa taille minimale), le titre d'une carte pouvait deborder sous son bouton "Detail" (ex. "Reputation gagnee", "Points de metier gagnes") - le titre se tronque desormais proprement au lieu de chevaucher le bouton.
 - Correction : des barres pouvaient s'afficher deformees (en parallelogramme) sur n'importe quelle carte, notamment "Heures jouees" - une texture de barre recyclee gardait parfois la rotation d'un ancien segment de courbe (bascule entre granularites "ligne" et "barre" sur le meme graphique). La reinitialisation de rotation est desormais systematique.
+- Refonte des sections du bas (demande utilisateur) : PVP, Gouffres+Tourments (desormais une seule section combinee), Reputations et Metiers sont repliees par defaut - cliquer sur la tuile deplie son detail complet. Corrige "ca ne fait rien au clic" (Metiers, Reputations) et la sensation de carte en double (une tuile resume ET un tableau toujours affiche en dessous, sans lien entre les deux).
 
 ## 7.1.5.5
 - Correction : dans "Toutes les metriques" et le detail par metrique, un segment de courbe (granularite Mois/Annee) pouvait s'afficher loin de sa position reelle, jusqu'a sortir du cadre du graphique, des qu'une metrique variait brutalement d'un point a l'autre - mauvais pivot de rotation du segment, corrige.
