@@ -1,7 +1,7 @@
 # Changelog
 
-## 7.1.5.6
-- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.6 pour le detail : nouveau detail par evenement sur les cartes Quetes/Or/Temps joue/Donjons/Raids/Gouffres/Reputation/Metiers, plus une nouvelle carte Raids).
+## 7.1.5.7
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.7 pour le detail : refonte de l'interface Stats (grille de cartes couleurs/icones, fenetre redimensionnable, sections PVP/Gouffres+Tourments/Reputations/Metiers repliables), plus le miroir des memes couleurs sur le dashboard Tibiscui.fr/Tibi Companion).
 
 ## 7.1.5.5
 - Relecture orthographe/grammaire/ponctuation : correction d'une faute de frappe ("liinnere" -> "liseré").

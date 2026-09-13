@@ -1,6 +1,6 @@
 # Changelog
 
-## 7.1.5.6
+## 7.1.5.7
 - Nouveau : les 7 cartes de la vue d'ensemble (Quetes, Or, Temps joue, Donjons & M+, Gouffres, Reputation gagnee, Points de metier gagnes) affichent desormais un detail evenement par evenement en plus du total journalier, via un nouveau bouton "Detail" sur chaque carte :
   - Quetes : nom, zone, XP gagne par quete.
   - Donjons & M+ : nom, niveau (M+), specialisation jouee, duree.
