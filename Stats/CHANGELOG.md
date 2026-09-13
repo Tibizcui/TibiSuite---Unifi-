@@ -12,6 +12,7 @@
   - Points de metier gagnes : detail par metier.
 - Ces nouveaux journaux ne couvrent que les evenements enregistres a partir de cette version : rien n'est reconstitue retroactivement pour les jours deja enregistres.
 - Correction : le palier d'un gouffre pouvait ne jamais s'enregistrer dans son detail evenement (colonne vide) - le palier est desormais aussi lu en continu pendant le gouffre, pas seulement a la toute fin, ou le jeu semble parfois avoir deja referme le contexte necessaire pour le lire.
+- Style : les tableaux de detail par evenement se rapprochent desormais de ceux de Tibi Companion/Tibiscui.fr - en-tetes de colonnes cliquables pour trier (avec indicateur de sens), fine ligne de separation sous les en-tetes et entre chaque ligne, decompte du nombre d'evenements affiches.
 
 ## 7.1.5.5
 - Correction : dans "Toutes les metriques" et le detail par metrique, un segment de courbe (granularite Mois/Annee) pouvait s'afficher loin de sa position reelle, jusqu'a sortir du cadre du graphique, des qu'une metrique variait brutalement d'un point a l'autre - mauvais pivot de rotation du segment, corrige.

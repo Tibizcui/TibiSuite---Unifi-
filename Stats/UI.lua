@@ -40,6 +40,13 @@ local view = {
   -- laisser choisir lesquelles afficher regle le probleme a la racine.
   overlayEnabledMetrics = {},
   pvpEnabledMetrics = {},
+  -- Tri courant de la liste d'evenements (BuildEventListDetail) : "date" ou
+  -- "c" .. index de colonne (position dans EVENT_LIST_COLS[metric], pas une
+  -- cle de champ - une metrique differente peut reutiliser le meme index
+  -- avec un sens different, comme cote dashboard-shared.js : c'est voulu,
+  -- meme simplification que le site web). Partage entre toutes les
+  -- metriques, jamais reinitialise au changement de carte (idem site web).
+  eventSort = { key = "date", dir = "desc" },
   -- Timeline defilable de "Toutes les metriques" : decalage (en buckets,
   -- depuis le plus ancien) du bord GAUCHE de la fenetre visible. nil = pas
   -- encore calcule -> BuildOverlayDetail le cale sur la periode la plus
@@ -2105,8 +2112,37 @@ local function CollectEventRows(metric)
   elseif metric == "profGained" then
     rows = agg.profLog
   end
-  table.sort(rows, function(a, b) return (a.ts or 0) > (b.ts or 0) end)
+  -- Pas de tri ici : applique par le tri courant (view.eventSort) dans
+  -- BuildEventListDetail, clic sur un en-tete pour changer de colonne/sens.
   return rows
+end
+
+-- Valeur de comparaison pour une ligne selon la cle de tri courante
+-- (view.eventSort.key) : "date" -> ts brut, "cN" -> valeur brute de la
+-- Nieme colonne de la metrique affichee (nombre pour une colonne numerique/
+-- duree/or, texte sinon). Meme principe que les sorters de
+-- dashboard-shared.js (index de colonne, pas cle de champ).
+local function EventSortValue(row, cols, sortKey)
+  if sortKey == "date" then return row.ts or 0 end
+  local idx = tonumber(sortKey:match("^c(%d+)$"))
+  local col = idx and cols[idx]
+  if not col then return 0 end
+  local v = row[col.key]
+  if col.fmt == "gold" or col.key == "xp" or col.key == "amount" or col.key == "time"
+      or col.key == "bossKills" or col.key == "tier" or col.key == "level" then
+    return tonumber(v) or -1
+  end
+  return tostring(v or "")
+end
+
+local function ToggleEventSort(key)
+  local es = view.eventSort
+  if es.key == key then
+    es.dir = (es.dir == "asc") and "desc" or "asc"
+  else
+    view.eventSort = { key = key, dir = "desc" }
+  end
+  SX.RefreshDashboard()
 end
 
 -- Traduction des valeurs BRUTES stockees par Core.lua (source de l'or,
@@ -2139,6 +2175,17 @@ local function EventCellText(row, col)
   return tostring(v)
 end
 
+-- Couleur d'un en-tete de colonne : accent (dore) si c'est la colonne triee,
+-- attenue sinon - meme intention que .dash-table th (gris attenue) / le tri
+-- actif en dore sur Tibiscui.fr (dashboard-shared.js, EVENT_LOG_COLS).
+local function SetEventHeaderColor(fs, isActive)
+  if isActive then
+    fs:SetTextColor(ACCENT[1], ACCENT[2], ACCENT[3])
+  else
+    fs:SetTextColor(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3])
+  end
+end
+
 local eventListWidgets = {}
 
 local function BuildEventListDetail(content, metric)
@@ -2156,8 +2203,22 @@ local function BuildEventListDetail(content, metric)
     d.panel:SetPoint("TOPLEFT", 0, -66)
     d.panel:SetSize(W - 60, 300)
 
-    d.dateHead = d.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    -- En-tetes cliquables (tri, cf. ToggleEventSort) : un Button par colonne
+    -- sert de zone cliquable/survolable, sa police enfant porte le texte -
+    -- meme role que <button class="dash-sort-btn"> cote site web.
+    d.dateHeadBtn = CreateFrame("Button", nil, d.panel)
+    d.dateHead = d.dateHeadBtn:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    d.dateHead:SetAllPoints(d.dateHeadBtn)
+    d.headBtns = {}
     d.headCols = {}
+
+    -- Ligne de separation sous les en-tetes, blanc 10% (UI.C.SEP) - meme
+    -- traitement que .dash-table th{border-bottom} cote site web.
+    d.headLine = d.panel:CreateTexture(nil, "ARTWORK")
+    d.headLine:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
+    d.headLine:SetHeight(1)
+    d.headLine:SetPoint("TOPLEFT", 12, -28)
+    d.headLine:SetPoint("TOPRIGHT", -16, -28)
 
     d.scroll = CreateFrame("ScrollFrame", nil, d.panel, "UIPanelScrollFrameTemplate")
     d.scroll:SetPoint("TOPLEFT", 12, -34)
@@ -2171,8 +2232,11 @@ local function BuildEventListDetail(content, metric)
     d.noData:SetPoint("TOPLEFT", 12, -34)
     d.noData:SetText(L["EVENTS_NO_DATA"])
 
-    d.truncNote = d.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    d.truncNote:SetPoint("BOTTOMLEFT", d.panel, "TOPLEFT", 12, 4)
+    -- Une seule note en bas (nombre d'evenements + rappel du tri + mention de
+    -- troncature si besoin) - meme regroupement que le <p class="dash-note">
+    -- du site web plutot que deux textes separes.
+    d.countNote = d.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    d.countNote:SetPoint("BOTTOMLEFT", d.panel, "TOPLEFT", 12, 4)
 
     d.built = true
   end
@@ -2188,28 +2252,67 @@ local function BuildEventListDetail(content, metric)
     x = x + c.w + 10
   end
 
-  PlaceCol(d.dateHead, dateCol, -12, "LEFT")
-  d.dateHead:SetText(L["EVENTS_COL_DATE"])
+  local sortKey, sortDir = view.eventSort.key, view.eventSort.dir
+  local sortArrow = (sortDir == "asc") and " ^" or " v"
+
+  -- d.dateHead est un enfant de d.dateHeadBtn (cf. init ci-dessus) : ancrer
+  -- via SetAllPoints APRES avoir positionne le bouton (pas PlaceCol, qui
+  -- ancrerait relativement au bouton et cumulerait les deux decalages).
+  d.dateHeadBtn:ClearAllPoints()
+  d.dateHeadBtn:SetPoint("TOPLEFT", dateCol.x, -12)
+  d.dateHeadBtn:SetSize(dateCol.w, 14)
+  d.dateHead:SetAllPoints(d.dateHeadBtn)
+  d.dateHead:SetJustifyH("LEFT")
+  local dateActive = (sortKey == "date")
+  d.dateHead:SetText(L["EVENTS_COL_DATE"] .. (dateActive and sortArrow or ""))
+  SetEventHeaderColor(d.dateHead, dateActive)
+  d.dateHeadBtn:SetScript("OnClick", function() ToggleEventSort("date") end)
+  d.dateHeadBtn:SetScript("OnEnter", function() SetEventHeaderColor(d.dateHead, true) end)
+  d.dateHeadBtn:SetScript("OnLeave", function() SetEventHeaderColor(d.dateHead, dateActive) end)
   d.dateHead:Show()
+
   for i, c in ipairs(cols) do
     local fs = d.headCols[i]
+    local btn = d.headBtns[i]
     if not fs then
-      fs = d.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+      btn = CreateFrame("Button", nil, d.panel)
+      fs = btn:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
       d.headCols[i] = fs
+      d.headBtns[i] = btn
     end
-    PlaceCol(fs, colX[i], -12, c.justify or "LEFT")
-    fs:SetText(L[c.label] or c.label)
+    -- Meme remarque que d.dateHead ci-dessus : SetAllPoints (pas PlaceCol)
+    -- car fs est un enfant de btn, pas de d.panel.
+    btn:ClearAllPoints()
+    btn:SetPoint("TOPLEFT", colX[i].x, -12)
+    btn:SetSize(colX[i].w, 14)
+    fs:SetAllPoints(btn)
+    fs:SetJustifyH(c.justify or "LEFT")
+    local colKey = "c" .. i
+    local colActive = (sortKey == colKey)
+    fs:SetText((L[c.label] or c.label) .. (colActive and sortArrow or ""))
+    SetEventHeaderColor(fs, colActive)
+    btn:SetScript("OnClick", function() ToggleEventSort(colKey) end)
+    btn:SetScript("OnEnter", function() SetEventHeaderColor(fs, true) end)
+    btn:SetScript("OnLeave", function() SetEventHeaderColor(fs, colActive) end)
     fs:Show()
   end
   for i = #cols + 1, #d.headCols do d.headCols[i]:Hide() end
 
   local allRows = CollectEventRows(metric)
+  table.sort(allRows, function(a, b)
+    local va, vb = EventSortValue(a, cols, sortKey), EventSortValue(b, cols, sortKey)
+    if va == vb then return (a.ts or 0) > (b.ts or 0) end
+    if sortDir == "asc" then return va < vb else return va > vb end
+  end)
   local shown = math.min(#allRows, EVENT_LIST_MAX_ROWS)
 
   for i = 1, shown do
     local row = d.rows[i]
     if not row then
-      row = { date = d.scrollContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall") }
+      row = { date = d.scrollContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"),
+              sep = d.scrollContent:CreateTexture(nil, "ARTWORK") }
+      row.sep:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
+      row.sep:SetHeight(1)
       d.rows[i] = row
     end
     local y = -4 - 20 * (i - 1)
@@ -2217,6 +2320,12 @@ local function BuildEventListDetail(content, metric)
     PlaceCol(row.date, dateCol, y, "LEFT")
     row.date:SetText(entry.ts and date("%d/%m %H:%M", entry.ts) or "|cFF555555?|r")
     row.date:Show()
+    -- Separateur discret sous chaque ligne, blanc 10% - meme traitement que
+    -- .dash-table td{border-bottom:1px solid var(--line)} cote site web.
+    row.sep:ClearAllPoints()
+    row.sep:SetPoint("TOPLEFT", 4, y - 16)
+    row.sep:SetPoint("TOPRIGHT", -4, y - 16)
+    row.sep:Show()
     for ci, c in ipairs(cols) do
       local fs = row[ci]
       if not fs then
@@ -2234,20 +2343,24 @@ local function BuildEventListDetail(content, metric)
   for i = shown + 1, #d.rows do
     local row = d.rows[i]
     row.date:Hide()
+    row.sep:Hide()
     for ci = 1, #row do if type(row[ci]) == "table" and row[ci].Hide then row[ci]:Hide() end end
   end
 
   d.scrollContent:SetHeight(math.max(shown * 20 + 10, 10))
+  local noteText = string.format(L["EVENTS_COUNT_FMT"], #allRows)
   if #allRows > EVENT_LIST_MAX_ROWS then
-    d.truncNote:SetText(string.format(L["EVENTS_TRUNCATED_FMT"], EVENT_LIST_MAX_ROWS))
+    noteText = noteText .. " " .. string.format(L["EVENTS_TRUNCATED_FMT"], EVENT_LIST_MAX_ROWS)
   end
+  noteText = noteText .. " " .. L["EVENTS_SORT_HINT"]
+  d.countNote:SetText(noteText)
 
   -- La boucle generique ci-dessous force :Show() sur tous les widgets de d -
-  -- noData/scroll/truncNote sont donc explicitement re-bascules APRES elle.
+  -- noData/scroll/countNote sont donc explicitement re-bascules APRES elle.
   for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
   d.noData:SetShown(shown == 0)
   d.scroll:SetShown(shown > 0)
-  d.truncNote:SetShown(#allRows > EVENT_LIST_MAX_ROWS)
+  d.countNote:SetShown(shown > 0)
 end
 
 local function HideEventListDetail()
