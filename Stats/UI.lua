@@ -764,8 +764,33 @@ end
 -- PVP (adversaires tues/champs de bataille/arenes) vit dans son propre
 -- graphique dedie (bouton "Graphique PVP" du panneau PVP) plutot qu'ici -
 -- cf. PVP_CHART_METRICS plus bas.
-local CARD_METRICS = { "quests", "gold", "played", "dungeons", "raids", "delves", "repGained", "profGained" }
+-- Temps joue en premier (demande utilisateur du 2026-09-13, priorite visuelle
+-- a la mesure la plus consultee), le reste dans son ordre precedent.
+local CARD_METRICS = { "played", "quests", "gold", "dungeons", "raids", "delves", "repGained", "profGained" }
 local cards = {}
+
+-- Grille 4 colonnes (au lieu de 2) pour des cartes plus etroites - demande
+-- utilisateur du 2026-09-13. Un seul point de verite : BuildOverview ET le
+-- calcul de hauteur du contenu scrollable (SX.RefreshDashboard) doivent
+-- rester en phase, d'ou la constante partagee plutot que 2 valeurs codees en
+-- dur separement.
+local CARD_GRID_COLS = 4
+
+-- Icone Blizzard par metrique, purement decorative (a cote du titre de
+-- chaque carte) - demande utilisateur du 2026-09-13. Textures choisies pour
+-- leur presence tres ancienne/stable dans le jeu, mais jamais verifiees dans
+-- ce client precis : A VERIFIER EN JEU, remplacer immediatement toute icone
+-- qui s'affiche en carre rouge "?" (texture introuvable).
+local CARD_ICONS = {
+  played = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+  quests = "Interface\\GossipFrame\\AvailableQuestIcon",
+  gold = "Interface\\Icons\\INV_Misc_Coin_01",
+  dungeons = "Interface\\Icons\\INV_Misc_Map_01",
+  raids = "Interface\\Icons\\INV_Misc_Head_Dragon_01",
+  delves = "Interface\\Icons\\INV_Misc_Gem_01",
+  repGained = "Interface\\Icons\\Achievement_Reputation_01",
+  profGained = "Interface\\Icons\\INV_Misc_Wrench_01",
+}
 
 -- Couleurs fixes pour la superposition multi-metriques (graphique "Toutes les
 -- metriques") - une couleur par entree de CARD_METRICS, memes teintes que le
@@ -930,21 +955,28 @@ end
 
 local function BuildOverview(content)
   local gridTop = -10
-  local cardW, cardH = (W - 60) / 2, 190
   local gap = 16
+  local cardW, cardH = (W - 60 - (CARD_GRID_COLS - 1) * gap) / CARD_GRID_COLS, 190
   -- Couleurs de classe des 2 personnages compares - calculees une fois pour
   -- les 4 cartes (pas de raison qu'elles different d'une carte a l'autre).
   local pColor = SeriesColor(view.char, ACCENT)
   local cColor = view.compareChar and SeriesColor(view.compareChar, SX.COMPARE_ACCENT) or SX.COMPARE_ACCENT
   for i, metric in ipairs(CARD_METRICS) do
-    local col = (i - 1) % 2
-    local row = math.floor((i - 1) / 2)
+    local col = (i - 1) % CARD_GRID_COLS
+    local row = math.floor((i - 1) / CARD_GRID_COLS)
+    local cardAccent = OVERLAY_COLORS[metric] or ACCENT
     local card = cards[metric]
     if not card then
       card = CreateFrame("Button", nil, content, "BackdropTemplate")
-      UI.SkinFrame(card, ACCENT, UI.C.PANEL)
+      UI.SkinFrame(card, cardAccent, UI.C.PANEL)
+      -- Icone decorative devant le titre (cf. CARD_ICONS) - le titre demarre
+      -- plus a droite (34 au lieu de 14) pour lui laisser la place.
+      card.icon = card:CreateTexture(nil, "ARTWORK")
+      card.icon:SetSize(16, 16)
+      card.icon:SetPoint("TOPLEFT", 12, -12)
+      if CARD_ICONS[metric] then card.icon:SetTexture(CARD_ICONS[metric]) end
       card.title = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-      card.title:SetPoint("TOPLEFT", 14, -12)
+      card.title:SetPoint("TOPLEFT", 34, -12)
       card.value = card:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
       card.value:SetPoint("TOPLEFT", 14, -34)
       card.delta = card:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -1023,7 +1055,7 @@ local function BuildOverview(content)
     if view.compareChar and not view.cumulative then
       card.value:SetTextColor(pColor[1], pColor[2], pColor[3])
     else
-      card.value:SetTextColor(ACCENT[1], ACCENT[2], ACCENT[3])
+      card.value:SetTextColor(cardAccent[1], cardAccent[2], cardAccent[3])
     end
     if metric == "dungeons" then
       card.sub:SetText(agg.dungeons .. " " .. L["DUNGEONS_NORMAL"] .. "  /  " .. agg.mplusCount .. " " .. L["DUNGEONS_MPLUS"])
@@ -1083,9 +1115,9 @@ local function BuildOverview(content)
       local val2 = SX.MetricValue(SX.AggregateFor(view.compareChar, from, to), metric)
       local pName, cName = CharDisplayName(view.char), CharDisplayName(view.compareChar)
       card.cumulBreakdown:SetText(
-        UI.Hex(pColor[1], pColor[2], pColor[3]) .. pName .. "|r " .. UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. fmtMetric(metric, val1) .. "|r"
+        UI.Hex(pColor[1], pColor[2], pColor[3]) .. pName .. "|r " .. UI.Hex(cardAccent[1], cardAccent[2], cardAccent[3]) .. fmtMetric(metric, val1) .. "|r"
         .. "  +  "
-        .. UI.Hex(cColor[1], cColor[2], cColor[3]) .. cName .. "|r " .. UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. fmtMetric(metric, val2) .. "|r")
+        .. UI.Hex(cColor[1], cColor[2], cColor[3]) .. cName .. "|r " .. UI.Hex(cardAccent[1], cardAccent[2], cardAccent[3]) .. fmtMetric(metric, val2) .. "|r")
       card.cumulBreakdown:Show()
     else
       card.cumulBreakdown:Hide()
@@ -1118,8 +1150,8 @@ local function BuildOverview(content)
     -- Couleurs de classe des qu'on compare ; le chiffre au-dessus de la
     -- colonne repasse en or (neutre) des qu'elle est empilee puisqu'il
     -- affiche alors le TOTAL des deux, pas la part d'un seul.
-    local chartColor1 = view.compareChar and pColor or ACCENT
-    local labelColor = stacked and ACCENT or chartColor1
+    local chartColor1 = view.compareChar and pColor or cardAccent
+    local labelColor = stacked and cardAccent or chartColor1
     -- Infobulle : detail par personnage quand la colonne est empilee (le nom
     -- de chacun, dans sa couleur de classe, avec sa propre part du total ce
     -- jour-la) plutot que le seul total - WoW ne permet pas de mettre juste
@@ -1130,7 +1162,7 @@ local function BuildOverview(content)
     if stacked then
       local pName, cName = CharDisplayName(view.char), CharDisplayName(view.compareChar)
       fmtFn = function(p)
-        return p.label .. "\n" .. UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. fmtMetric(metric, p.value) .. "|r"
+        return p.label .. "\n" .. UI.Hex(cardAccent[1], cardAccent[2], cardAccent[3]) .. fmtMetric(metric, p.value) .. "|r"
           .. "\n" .. UI.Hex(pColor[1], pColor[2], pColor[3]) .. pName .. "|r " .. fmtMetric(metric, p.v1 or 0)
           .. "\n" .. UI.Hex(cColor[1], cColor[2], cColor[3]) .. cName .. "|r " .. fmtMetric(metric, p.v2 or 0)
       end
@@ -2918,7 +2950,7 @@ function SX.RefreshDashboard()
     HidePvPChartDetail()
     HideEventListDetail()
     BuildOverview(mainFrame.content)
-    local gridRows = math.ceil(#CARD_METRICS / 2)
+    local gridRows = math.ceil(#CARD_METRICS / CARD_GRID_COLS)
     local gridDepth = gridRows * 190 + (gridRows - 1) * 16 + 10
     local tilesHeight = BuildSummaryTiles(mainFrame.content, -(gridDepth + 6))
     local pvpHeight = BuildPvPDetail(mainFrame.content, -(gridDepth + 6 + tilesHeight + 16))
