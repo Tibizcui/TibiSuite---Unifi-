@@ -877,6 +877,15 @@ local function OnScenarioCompleted()
   if C_DelvesUI.GetActiveDelveTier then
     local ok, t = pcall(C_DelvesUI.GetActiveDelveTier)
     if ok and type(t) == "number" then tier = t end
+    -- DEBUG TEMPORAIRE (a retirer une fois la cause du bug de palier
+    -- identifiee) : GetActiveDelveTier() ne semble jamais renvoyer le
+    -- palier reel (constat 2026-09-13, meme apres lecture continue pendant
+    -- le gouffre) - affiche ce que l'API renvoie vraiment pour diagnostiquer
+    -- sans deviner une autre fonction a l'aveugle.
+    print(string.format("|cFFFFCC00[Stats DEBUG]|r delve tier: exists=oui ok=%s t=%s cachedDelveTier=%s",
+      tostring(ok), tostring(t), tostring(cachedDelveTier)))
+  else
+    print("|cFFFFCC00[Stats DEBUG]|r delve tier: C_DelvesUI.GetActiveDelveTier n'existe pas (nil)")
   end
   -- Repli immediat sur la derniere lecture reussie PENDANT le gouffre (cf.
   -- cachedDelveTier ci-dessus) avant meme d'essayer le reessai a 2s plus bas.
@@ -1708,6 +1717,9 @@ local function CurrentPlaytimeActivity()
     if C_DelvesUI.GetActiveDelveTier then
       local ok, t = pcall(C_DelvesUI.GetActiveDelveTier)
       if ok and type(t) == "number" then cachedDelveTier = t end
+      -- DEBUG TEMPORAIRE (a retirer, cf. OnScenarioCompleted ci-dessus) :
+      -- confirme si la lecture PENDANT le gouffre reussit mieux qu'a la fin.
+      print(string.format("|cFFFFCC00[Stats DEBUG]|r delve tier (pendant) : ok=%s t=%s", tostring(ok), tostring(t)))
     end
     return "delve"
   end
