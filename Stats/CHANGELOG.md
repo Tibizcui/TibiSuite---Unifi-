@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.8
+- Correction : les listes de detail evenement de Or, Temps joue, Reputation gagnee et Points de metier gagnes pouvaient accumuler des dizaines de micro-evenements par jour (chaque tick de reputation, chaque petit gain d'or, chaque segment "Monde" recoupe par un /reload), illisibles en liste plate. Ces 4 listes regroupent desormais les evenements par jour et par source/faction/activite/metier, avec une colonne "Nb" indiquant le nombre d'evenements regroupes. Quetes/Donjons & M+/Raids/Gouffres restent en detail evenement par evenement (chaque ligne porte des colonnes non additives comme le niveau ou la duree).
+
 ## 7.1.5.7
 - Nouveau : les 7 cartes de la vue d'ensemble (Quetes, Or, Temps joue, Donjons & M+, Gouffres, Reputation gagnee, Points de metier gagnes) affichent desormais un detail evenement par evenement en plus du total journalier, via un nouveau bouton "Detail" sur chaque carte :
   - Quetes : nom, zone, XP gagne par quete.

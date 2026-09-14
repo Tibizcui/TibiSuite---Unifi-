@@ -2304,23 +2304,66 @@ local EVENT_LIST_COLS = {
     { key = "name", label = "TABLE_NAME", w = 340 },
     { key = "tier", label = "TILE_TIER", w = 120, justify = "RIGHT" },
   },
+  -- repGained/gold/played/profGained : regroupes par jour+dimension (cf.
+  -- GROUPED_METRICS/GroupEventRows plus bas), d'ou la colonne "Nb" en plus -
+  -- ces journaux peuvent accumuler des dizaines de micro-evenements par jour
+  -- (chaque tick de reputation, chaque petit gain d'or, chaque segment
+  -- "Monde" recoupe par un /reload), illisibles un par un (constat
+  -- utilisateur, capture d'ecran en jeu du 2026-09-14).
   repGained = {
-    { key = "faction", label = "EVENTS_COL_FACTION", w = 340 },
+    { key = "faction", label = "EVENTS_COL_FACTION", w = 300 },
+    { key = "count", label = "EVENTS_COL_COUNT", w = 80, justify = "RIGHT" },
     { key = "amount", label = "EVENTS_COL_GAIN", w = 120, justify = "RIGHT" },
   },
   gold = {
-    { key = "source", label = "EVENTS_COL_SOURCE", w = 220 },
+    { key = "source", label = "EVENTS_COL_SOURCE", w = 180 },
+    { key = "count", label = "EVENTS_COL_COUNT", w = 80, justify = "RIGHT" },
     { key = "amount", label = "EVENTS_COL_AMOUNT", w = 180, justify = "RIGHT", fmt = "gold" },
   },
   played = {
-    { key = "activity", label = "EVENTS_COL_ACTIVITY", w = 220 },
+    { key = "activity", label = "EVENTS_COL_ACTIVITY", w = 180 },
+    { key = "count", label = "EVENTS_COL_COUNT", w = 80, justify = "RIGHT" },
     { key = "time", label = "EVENTS_COL_TIME", w = 160, justify = "RIGHT" },
   },
   profGained = {
-    { key = "profession", label = "EVENTS_COL_PROFESSION", w = 300 },
+    { key = "profession", label = "EVENTS_COL_PROFESSION", w = 260 },
+    { key = "count", label = "EVENTS_COL_COUNT", w = 80, justify = "RIGHT" },
     { key = "amount", label = "EVENTS_COL_GAIN", w = 160, justify = "RIGHT" },
   },
 }
+
+-- Metriques regroupees par jour+dimension avant affichage (cle du champ
+-- servant de dimension) - toutes celles dont chaque evenement se resume a
+-- {dimension, montant/duree} sans autre colonne distinctive (pas de niveau/
+-- spe/duree/palier a preserver comme pour quetes/donjons/raids/gouffres, qui
+-- restent en detail evenement par evenement).
+local GROUPED_METRICS = { gold = "source", played = "activity", repGained = "faction", profGained = "profession" }
+
+-- Regroupe une liste d'evenements par jour + valeur de `dimKey` (source de
+-- l'or, faction, activite, metier) en une seule ligne par groupe : compte
+-- (count) + somme du champ numerique (amount, ou time pour "played"). ts
+-- retenu = le plus recent du groupe (sert uniquement au tri/affichage de la
+-- colonne Date, approximatif par nature des lors qu'un groupe fusionne
+-- plusieurs evenements).
+local function GroupEventRows(rows, dimKey)
+  local order, byKey = {}, {}
+  for _, row in ipairs(rows) do
+    local dayKey = row.ts and date("%Y-%m-%d", row.ts) or "?"
+    local dim = row[dimKey]
+    local gKey = dayKey .. "\1" .. tostring(dim)
+    local g = byKey[gKey]
+    if not g then
+      g = { [dimKey] = dim, ts = row.ts, count = 0, amount = 0, time = 0 }
+      byKey[gKey] = g
+      order[#order + 1] = g
+    end
+    g.count = g.count + 1
+    g.amount = g.amount + (row.amount or 0)
+    g.time = g.time + (row.time or 0)
+    if row.ts and row.ts > (g.ts or 0) then g.ts = row.ts end
+  end
+  return order
+end
 
 -- Aplatit et trie par ts decroissant les evenements d'une metrique pour le
 -- personnage et la periode COURANTS (view.char, CurrentRange(0)).
@@ -2349,6 +2392,7 @@ local function CollectEventRows(metric)
   elseif metric == "profGained" then
     rows = agg.profLog
   end
+  if GROUPED_METRICS[metric] then rows = GroupEventRows(rows, GROUPED_METRICS[metric]) end
   -- Pas de tri ici : applique par le tri courant (view.eventSort) dans
   -- BuildEventListDetail, clic sur un en-tete pour changer de colonne/sens.
   return rows
@@ -2366,7 +2410,7 @@ local function EventSortValue(row, cols, sortKey)
   if not col then return 0 end
   local v = row[col.key]
   if col.fmt == "gold" or col.key == "xp" or col.key == "amount" or col.key == "time"
-      or col.key == "bossKills" or col.key == "tier" or col.key == "level" then
+      or col.key == "bossKills" or col.key == "tier" or col.key == "level" or col.key == "count" then
     return tonumber(v) or -1
   end
   return tostring(v or "")
