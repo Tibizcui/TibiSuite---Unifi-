@@ -183,10 +183,26 @@ local function BuildFlatDropdown(parent, width, getFn, setFn)
       end)
       row:Show()
       y = y - 28
+      -- Separateur dore apres "Compte" (toujours 1ere entree), avant la
+      -- liste des personnages - distingue visuellement l'agregat du reste
+      -- (demande utilisateur, harmonise avec le separateur du Dashboard).
+      if i == 1 and #choices > 1 then
+        if not p.acctSep then
+          p.acctSep = p.content:CreateTexture(nil, "ARTWORK")
+          p.acctSep:SetColorTexture(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3], 0.5)
+        end
+        p.acctSep:ClearAllPoints()
+        p.acctSep:SetPoint("TOPLEFT", p.content, "TOPLEFT", 8, y)
+        p.acctSep:SetPoint("RIGHT", p.content, "RIGHT", -8, 0)
+        p.acctSep:SetHeight(1)
+        p.acctSep:Show()
+        y = y - 6
+      end
     end
+    if p.acctSep and #choices <= 1 then p.acctSep:Hide() end
     for i = #choices + 1, #rows do rows[i]:Hide() end
     p.content:SetHeight(math.max(-y + 4, 10))
-    p:SetHeight(math.min(math.max(#choices, 1) * 28 + 10, 280))
+    p:SetHeight(math.min(-y + 14, 280))
   end
 
   btn:SetScript("OnClick", function()
