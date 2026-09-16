@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.1.5.8
+-- TibiSuiteCore v7.1.5.9
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.1.5.8"
+local VERSION = "7.1.5.9"
 
 -- ================================================================
 -- LOCALISATION

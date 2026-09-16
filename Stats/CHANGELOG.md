@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.9
+- Correction : un donjon normal ("Recherche de groupe") pouvait ne jamais compter dans la carte "Donjons & M+" meme entierement termine (constat utilisateur : Scholomance fait a trois avec Tibiscui/Tibizcui/Tibispike, absent des trois dashboards). La version precedente exigeait, pour valider un donjon, que le DERNIER combat de boss reussi corresponde au dernier encounter connu du Bestiaire (C_EncounterJournal) - resolution qui echoue silencieusement sur certains donjons (route de boss non lineaire, mappage Bestiaire different sur un donjon classique remanie), bloquant le compteur a 0 pour tout le monde sur ce donjon. Le donjon compte desormais des qu'au moins un boss est tue pendant la session, meme regle deja appliquee aux Raids depuis la 7.1.5.7. Les runs deja effectues avant cette mise a jour ne peuvent pas etre retrouves retroactivement (rien n'avait ete enregistre au moment ou ils ont eu lieu) : seuls les prochains donjons remonteront correctement.
+
 ## 7.1.5.8
 - Correction : les listes de detail evenement de Or, Temps joue, Reputation gagnee et Points de metier gagnes pouvaient accumuler des dizaines de micro-evenements par jour (chaque tick de reputation, chaque petit gain d'or, chaque segment "Monde" recoupe par un /reload), illisibles en liste plate. Ces 4 listes regroupent desormais les evenements par jour et par source/faction/activite/metier, avec une colonne "Nb" indiquant le nombre d'evenements regroupes. Quetes/Donjons & M+/Raids/Gouffres restent en detail evenement par evenement (chaque ligne porte des colonnes non additives comme le niveau ou la duree).
 

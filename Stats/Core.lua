@@ -1661,31 +1661,27 @@ local function OnSkillLinesChanged()
 end
 
 -- ============================================================================
--- ENREGISTREUR : DONJONS NORMAUX ET RAIDS (heuristique zone + boss)
+-- ENREGISTREUR : DONJONS NORMAUX ET RAIDS (heuristique boss tue)
 -- ---------------------------------------------------------------------------
 -- Pas d'evenement Blizzard "donjon/raid termine" fiable pour les groupes hors
 -- Recherche de groupe. A la sortie d'une instance de type "party" ou "raid",
--- deux heuristiques DIFFERENTES selon le type (EvaluateDungeonCompletion) :
---   - DONJON : exige que le DERNIER combat de boss reussi (ENCOUNTER_END,
---     success=1) corresponde au DERNIER encounter connu du Bestiaire
---     (C_EncounterJournal) - un donjon est quasi toujours clear en entier en
---     une seule fois, cette exigence colle a l'usage reel.
---   - RAID : un seul boss tue pendant la session suffit (bossKillCount > 0),
---     PAS d'exigence de dernier boss. CORRECTIF (constat utilisateur,
---     2026-09-13) : la version initiale exigeait le dernier boss du raid
---     comme pour un donjon, ce qui laissait la carte "Raids" vide en
---     pratique - une soiree de raid tue tres souvent seulement une partie
---     des boss (farm, split, verrou hebdomadaire), rarement un clear complet
---     a chaque fois.
--- Resolution dynamique du "boss final" (donjons uniquement) - pas de table a
--- maintenir a la main.
--- A VERIFIER EN JEU : noms de fonctions C_EncounterJournal / EJ_* contre
--- l'API Midnight en cours (non exerce dans le reste du depot, concerne
--- uniquement le volet donjon). Toute la resolution est protegee par pcall :
--- en cas d'API differente, on echoue proprement (le compteur reste
--- simplement a 0, sans erreur).
+-- MEME heuristique pour les deux types (EvaluateDungeonCompletion) : un seul
+-- boss tue pendant la session suffit (bossKillCount > 0).
+-- CORRECTIF (constat utilisateur, 2026-09-16) : Scholomance fait a trois
+-- (Tibiscui/Tibizcui/Tibispike) ne remontait dans aucun dashboard. La
+-- version precedente exigeait, pour un DONJON specifiquement, que le
+-- DERNIER combat de boss reussi corresponde au DERNIER encounter du
+-- Bestiaire (C_EncounterJournal/EJ_GetEncounterInfoByIndex) - resolution qui
+-- echoue silencieusement (finalID nil, cf. ResolveFinalEncounterID
+-- supprimee) sur les donjons classiques remanies comme Scholomance (route de
+-- boss non lineaire, pas forcement mappe pareil dans le Bestiaire retail) :
+-- le compteur restait alors bloque a 0 pour TOUT le monde sur ce donjon,
+-- meme donjon termine. Meme probleme de fond, et meme correctif, que celui
+-- deja applique aux Raids le 2026-09-13 (une soiree de raid/donjon peut ne
+-- tuer qu'une partie des boss listes au Bestiaire sans que ce soit un signe
+-- d'echec du suivi).
 -- ============================================================================
-local instanceSession = nil  -- { mapID = , name = , enteredAt = , lastEncounterID = , instanceType = , bossKillCount = }
+local instanceSession = nil  -- { mapID = , name = , enteredAt = , instanceType = , bossKillCount = }
 
 -- ============================================================================
 -- ENREGISTREUR : TEMPS DE JEU PAR ACTIVITE (d.playtimeLog)
@@ -1749,62 +1745,21 @@ local function OnPlaytimeActivityCheck()
   playtimeActivity, playtimeEnteredAt = activity, time()
 end
 
-local function ResolveFinalEncounterID(mapID)
-  if not (mapID and C_EncounterJournal) then return nil end
-  local ok, result = pcall(function()
-    local journalInstanceID
-    if C_EncounterJournal.GetInstanceForGameMapID then
-      journalInstanceID = C_EncounterJournal.GetInstanceForGameMapID(mapID)
-    end
-    if not journalInstanceID then return nil end
-    if EJ_SelectInstance then EJ_SelectInstance(journalInstanceID) end
-    local lastID
-    local i = 1
-    while true do
-      local name, _, encounterID = EJ_GetEncounterInfoByIndex(i, journalInstanceID)
-      if not name then break end
-      lastID = encounterID
-      i = i + 1
-      if i > 40 then break end -- garde-fou
-    end
-    return lastID
-  end)
-  if ok then return result end
-  return nil
-end
-
 local function EvaluateDungeonCompletion(session)
   if not session then return end
+  if not (session.bossKillCount and session.bossKillCount > 0) then return end
   -- Duree = temps ecoule entre l'entree dans l'instance et la sortie/le
   -- dernier boss tue - contrairement au temps M+ (chrono precis de
   -- Blizzard), ceci inclut tout temps mort (AFK, discussion, wipes et
   -- reessais) : un temps "brut" de session, pas un temps de run pur.
   local duration = session.enteredAt and math.max(0, time() - session.enteredAt) or nil
-
+  local rec = SX.EnsureChar(SX.CurrentCharKey())
+  local d = SX.EnsureDay(rec, SX.TodayKey())
   if session.instanceType == "raid" then
-    -- RAID : contrairement a un donjon (quasi toujours clear en entier en une
-    -- fois), une soiree de raid tue tres souvent seulement UNE PARTIE des
-    -- boss (farm, split, verrou hebdomadaire) - exiger le DERNIER boss du
-    -- raid (comme pour les donjons ci-dessous) laissait la carte "Raids"
-    -- vide en pratique (constat utilisateur : raid sur plusieurs boss non
-    -- comptabilise). Ici, un seul boss tue pendant la session suffit.
-    if session.bossKillCount and session.bossKillCount > 0 then
-      local rec = SX.EnsureChar(SX.CurrentCharKey())
-      local d = SX.EnsureDay(rec, SX.TodayKey())
-      d.raids = (d.raids or 0) + 1
-      SX.AppendDayEvent(d.raidLog, { ts = time(), name = session.name, spec = CurrentSpecName(),
-                                      time = duration, bossKills = session.bossKillCount })
-    end
-    return
-  end
-
-  -- Donjon normal : inchange, exige le DERNIER boss du Bestiaire (quasi
-  -- toujours le comportement reel d'un run de donjon).
-  if not session.lastEncounterID then return end
-  local finalID = ResolveFinalEncounterID(session.mapID)
-  if finalID and finalID == session.lastEncounterID then
-    local rec = SX.EnsureChar(SX.CurrentCharKey())
-    local d = SX.EnsureDay(rec, SX.TodayKey())
+    d.raids = (d.raids or 0) + 1
+    SX.AppendDayEvent(d.raidLog, { ts = time(), name = session.name, spec = CurrentSpecName(),
+                                    time = duration, bossKills = session.bossKillCount })
+  else
     d.dungeons = (d.dungeons or 0) + 1
     SX.AppendDayEvent(d.dungeonLog, { ts = time(), name = session.name, spec = CurrentSpecName(), time = duration })
   end
@@ -1817,7 +1772,7 @@ local function OnEnteringWorld()
     if not instanceSession or instanceSession.mapID ~= mapID then
       -- Nouvelle session : evalue l'ancienne (si on vient d'une autre instance) puis ouvre la nouvelle
       if instanceSession then EvaluateDungeonCompletion(instanceSession) end
-      instanceSession = { mapID = mapID, name = name, enteredAt = time(), lastEncounterID = nil, instanceType = instanceType, bossKillCount = 0 }
+      instanceSession = { mapID = mapID, name = name, enteredAt = time(), instanceType = instanceType, bossKillCount = 0 }
     end
   else
     if instanceSession then
@@ -1830,7 +1785,6 @@ end
 
 local function OnEncounterEnd(encounterID, _, _, _, success)
   if instanceSession and success == 1 then
-    instanceSession.lastEncounterID = encounterID
     instanceSession.bossKillCount = (instanceSession.bossKillCount or 0) + 1
   end
 end
