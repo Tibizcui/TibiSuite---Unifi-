@@ -124,7 +124,7 @@ end
 -- Selecteur de personnage "maison", au theme plat de la suite (pas le
 -- dropdown natif Blizzard, dont le chrome orne tranche avec le reste de la
 -- fenetre) : un bouton qui ouvre une liste flottante juste en dessous.
-local function BuildFlatDropdown(parent, width, getFn, setFn)
+local function BuildFlatDropdown(parent, width, getFn, setFn, reorderable)
   local btn = UI.MakeButton(parent, width, 24, "")
   btn._label:ClearAllPoints()
   btn._label:SetPoint("LEFT", 10, 0)
@@ -182,6 +182,40 @@ local function BuildFlatDropdown(parent, width, getFn, setFn)
         p:Hide()
       end)
       row:Show()
+
+      -- Fleches monter/descendre (demande utilisateur 2026-09-17) : seulement
+      -- sur le selecteur principal (reorderable), jamais sur "Compte" (i==1,
+      -- toujours en tete par construction) ni sur le picker de comparaison
+      -- (reorderable absent la, cf. site d'appel) - reordonner depuis ce
+      -- second selecteur reordonnerait silencieusement AUSSI le principal
+      -- (meme StatsDB.charOrder), source de confusion.
+      if reorderable and key ~= "__account__" then
+        row._label:SetPoint("RIGHT", -54, 0)
+        if not row._upBtn then
+          row._upBtn = UI.HeaderIcon(row, "|cFFCCCCCC^|r", L["CHAR_MOVE_UP"])
+          row._upBtn:SetPoint("RIGHT", -26, 0)
+          row._downBtn = UI.HeaderIcon(row, "|cFFCCCCCCv|r", L["CHAR_MOVE_DOWN"])
+          row._downBtn:SetPoint("RIGHT", -4, 0)
+        end
+        local isFirstChar, isLastChar = (i == 2), (i == #choices)
+        row._upBtn:SetAlpha(isFirstChar and 0.25 or 1)
+        row._upBtn:SetScript("OnClick", function()
+          if isFirstChar then return end
+          SX.MoveCharKey(key, -1)
+          rebuild()
+        end)
+        row._downBtn:SetAlpha(isLastChar and 0.25 or 1)
+        row._downBtn:SetScript("OnClick", function()
+          if isLastChar then return end
+          SX.MoveCharKey(key, 1)
+          rebuild()
+        end)
+        row._upBtn:Show()
+        row._downBtn:Show()
+      else
+        row._label:SetPoint("RIGHT", -8, 0)
+        if row._upBtn then row._upBtn:Hide(); row._downBtn:Hide() end
+      end
       y = y - 28
       -- Separateur dore apres "Compte" (toujours 1ere entree), avant la
       -- liste des personnages - distingue visuellement l'agregat du reste
@@ -3037,7 +3071,8 @@ local function BuildMainFrame()
   -- Ligne 1 : selecteur personnage principal (gauche) + periode (droite)
   mainFrame.charDD = BuildFlatDropdown(mainFrame, 260,
     function() return view.char end,
-    function(key) view.char = key; SX.RefreshDashboard() end)
+    function(key) view.char = key; SX.RefreshDashboard() end,
+    true)
   mainFrame.charDD:SetPoint("TOPLEFT", 16, -62)
 
   -- Selecteur de periode

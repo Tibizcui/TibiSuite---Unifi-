@@ -11,6 +11,8 @@ L["WINDOW_TITLE"]        = "Stats"
 L["RESIZE_HINT"]        = "Etirer la fenetre"
 
 L["CHAR_ACCOUNT"]        = "Compte (tous personnages)"
+L["CHAR_MOVE_UP"]        = "Monter"
+L["CHAR_MOVE_DOWN"]      = "Descendre"
 L["PERIOD_DAY"]          = "Jour"
 L["PERIOD_WEEK"]         = "Semaine"
 L["PERIOD_MONTH"]        = "Mois"

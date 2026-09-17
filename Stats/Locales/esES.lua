@@ -11,6 +11,8 @@ L["WINDOW_TITLE"]        = "Stats"
 L["RESIZE_HINT"]        = "Redimensionar ventana"
 
 L["CHAR_ACCOUNT"]        = "Cuenta (todos los personajes)"
+L["CHAR_MOVE_UP"]        = "Subir"
+L["CHAR_MOVE_DOWN"]      = "Bajar"
 L["PERIOD_DAY"]          = "Dia"
 L["PERIOD_WEEK"]         = "Semana"
 L["PERIOD_MONTH"]        = "Mes"

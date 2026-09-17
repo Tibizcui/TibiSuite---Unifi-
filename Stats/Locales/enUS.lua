@@ -16,6 +16,8 @@ L["RESIZE_HINT"]        = "Resize window"
 
 -- Filtre personnage / periode
 L["CHAR_ACCOUNT"]        = "Account (all characters)"
+L["CHAR_MOVE_UP"]        = "Move up"
+L["CHAR_MOVE_DOWN"]      = "Move down"
 L["PERIOD_DAY"]          = "Day"
 L["PERIOD_WEEK"]         = "Week"
 L["PERIOD_MONTH"]        = "Month"

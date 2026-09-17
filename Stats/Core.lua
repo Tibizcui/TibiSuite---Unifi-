@@ -155,13 +155,51 @@ end
 -- personnages. Un personnage est TOUJOURS une table ; on ne garde donc que
 -- ca, ce qui ecarte ces deux cles (et toute future cle non-personnage) sans
 -- avoir a les nommer en dur.
+-- Ordre personnalise (fleches haut/bas sur le selecteur, demande utilisateur
+-- 2026-09-17) : StatsDB.charOrder est une liste persistee de cles "Nom-
+-- Royaume". Un personnage absent de charOrder (jamais reordonne, ou nouveau
+-- personnage detecte depuis) est ajoute a la fin par ordre alphabetique -
+-- jamais perdu, juste pas encore positionne manuellement. Sans charOrder
+-- (installation neuve ou jamais touchee), comportement inchange : purement
+-- alphabetique.
 function SX.GetCharKeys()
-  local keys = {}
+  local existing, known = {}, {}
   for k, v in pairs(StatsDB) do
-    if type(v) == "table" then keys[#keys + 1] = k end
+    if type(v) == "table" then existing[#existing + 1] = k; known[k] = true end
   end
-  table.sort(keys)
+  table.sort(existing)
+
+  local order = StatsDB.charOrder
+  if not order then return existing end
+
+  local keys, seen = {}, {}
+  for _, k in ipairs(order) do
+    if known[k] and not seen[k] then
+      keys[#keys + 1] = k
+      seen[k] = true
+    end
+  end
+  for _, k in ipairs(existing) do
+    if not seen[k] then keys[#keys + 1] = k end
+  end
   return keys
+end
+
+-- Echange un personnage avec son voisin immediat dans l'ordre courant
+-- (direction = -1 pour monter, +1 pour descendre) et persiste le resultat
+-- dans StatsDB.charOrder (initialise a l'ordre courant au premier appel).
+-- No-op silencieux en butee (deja premier/dernier) ou si key est introuvable.
+function SX.MoveCharKey(key, direction)
+  local keys = SX.GetCharKeys()
+  local idx
+  for i, k in ipairs(keys) do
+    if k == key then idx = i break end
+  end
+  if not idx then return end
+  local swapWith = idx + direction
+  if swapWith < 1 or swapWith > #keys then return end
+  keys[idx], keys[swapWith] = keys[swapWith], keys[idx]
+  StatsDB.charOrder = keys
 end
 
 -- Bandeau perso (tache 2) : donnees stockees, mises a jour a chaque login/
