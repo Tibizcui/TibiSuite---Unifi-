@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.10
+- Nouveau : le selecteur de personnage principal permet desormais de reordonner ses personnages, via deux fleches (monter/descendre) a cote de chaque nom dans la liste deroulante. L'ordre choisi est memorise (StatsDB.charOrder) et remplace le tri alphabetique par defaut ; tout nouveau personnage detecte apparait en fin de liste tant qu'il n'a pas ete range manuellement. Absent du second selecteur (picker de comparaison), qui reste alphabetique pour eviter de reordonner silencieusement la liste principale par megarde.
+- Cote Tibi Companion/Tibiscui.fr : meme fonctionnalite sur les "chips" de personnages du dashboard, avec un ordre memorise localement (independant de celui choisi en jeu, car l'export JSON du compte reste trie alphabetiquement pour un checksum stable).
+
 ## 7.1.5.9
 - Correction : un donjon normal ("Recherche de groupe") pouvait ne jamais compter dans la carte "Donjons & M+" meme entierement termine (constat utilisateur : Scholomance fait a trois avec Tibiscui/Tibizcui/Tibispike, absent des trois dashboards). La version precedente exigeait, pour valider un donjon, que le DERNIER combat de boss reussi corresponde au dernier encounter connu du Bestiaire (C_EncounterJournal) - resolution qui echoue silencieusement sur certains donjons (route de boss non lineaire, mappage Bestiaire different sur un donjon classique remanie), bloquant le compteur a 0 pour tout le monde sur ce donjon. Le donjon compte desormais des qu'au moins un boss est tue pendant la session, meme regle deja appliquee aux Raids depuis la 7.1.5.7. Les runs deja effectues avant cette mise a jour ne peuvent pas etre retrouves retroactivement (rien n'avait ete enregistre au moment ou ils ont eu lieu) : seuls les prochains donjons remonteront correctement.
 
