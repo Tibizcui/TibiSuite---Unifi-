@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.11
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.11 pour le detail : correction d'un personnage fantome "charOrder" dans le selecteur et l'export).
+
 ## 7.1.5.10
 - Nouveau : le selecteur de personnage principal permet desormais de reordonner ses personnages, via deux fleches (monter/descendre) a cote de chaque nom dans la liste deroulante. L'ordre choisi est memorise (StatsDB.charOrder) et remplace le tri alphabetique par defaut ; tout nouveau personnage detecte apparait en fin de liste tant qu'il n'a pas ete range manuellement. Absent du second selecteur (picker de comparaison), qui reste alphabetique pour eviter de reordonner silencieusement la liste principale par megarde.
 - Cote Tibi Companion/Tibiscui.fr : meme fonctionnalite sur les "chips" de personnages du dashboard, avec un ordre memorise localement (independant de celui choisi en jeu, car l'export JSON du compte reste trie alphabetiquement pour un checksum stable).

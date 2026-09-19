@@ -165,7 +165,12 @@ end
 function SX.GetCharKeys()
   local existing, known = {}, {}
   for k, v in pairs(StatsDB) do
-    if type(v) == "table" then existing[#existing + 1] = k; known[k] = true end
+    -- StatsDB.charOrder est lui aussi une table (liste de cles) : sans le test
+    -- sur le tiret, il etait pris pour un personnage fantome (export, selecteur).
+    -- Une cle de personnage est toujours "Nom-Royaume".
+    if type(v) == "table" and type(k) == "string" and k:find("-", 1, true) then
+      existing[#existing + 1] = k; known[k] = true
+    end
   end
   table.sort(existing)
 
