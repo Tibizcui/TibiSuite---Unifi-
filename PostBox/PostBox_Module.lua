@@ -258,7 +258,7 @@ local function Init()
     P.SetMailboxOpen(true)
   end
 
-  print("|cFFB87838PostBox|r v7.1.5.12 chargé -- tapez |cFFFFD700/pb|r pour ouvrir.")
+  print("|cFFB87838PostBox|r v7.1.5.13 chargé -- tapez |cFFFFD700/pb|r pour ouvrir.")
 
   -- Le courrier ouvert par le systeme au login (frere du perso) reste geree
   -- par Blizzard ; on rafraichit juste notre cache si la fenetre est deja

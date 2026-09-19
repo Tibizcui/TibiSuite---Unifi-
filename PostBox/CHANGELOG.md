@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.13
+- Correction : la pastille rouge de courriers non lus pouvait rester affichee ("1") alors que la boite aux lettres etait vide. Le cache de la boite n'est qu'un instantane pris a la boite : hors de la boite, plus rien ne le rafraichissait, donc un courrier deja traite restait compte indefiniment. Le compteur exact n'est desormais affiche que boite ouverte ; boite fermee, seule la pastille "!" du core (HasNewMail, comme l'icone de courrier Blizzard) signale un nouveau courrier. Nouveau : /pb badge affiche l'etat vu par PostBox et par Blizzard (aide au diagnostic).
+
 ## 7.1.5.12
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.12 pour le detail : correctifs d'affichage du dashboard Tibi Companion/Tibiscui.fr).
 

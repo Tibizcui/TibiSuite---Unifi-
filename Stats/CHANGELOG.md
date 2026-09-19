@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.13
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir PostBox 7.1.5.13 pour le detail : correction de la pastille de courriers non lus fantome).
+
 ## 7.1.5.12
 - Aucun changement fonctionnel dans l'addon : bump de version pour aligner le numero sur l'ensemble de la suite. Correctifs d'affichage cote Tibi Companion/Tibiscui.fr : icones sur les cartes (memes que l'addon), plus de "[?]" sur le profil Compte, glisser-deposer des personnages annonce par une astuce (fleches retirees).
 
