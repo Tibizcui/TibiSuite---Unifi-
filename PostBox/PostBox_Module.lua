@@ -194,14 +194,17 @@ mailEvtFrame:SetScript("OnEvent", function(_, event, arg1)
   if not IsEnabledByCore() then return end  -- module desactive via le core : reste silencieux
   if event == "MAIL_SHOW" then
     if PostBoxDB and PostBoxDB.replaceNativeMailbox then P.SetNativeMailVisible(false) end
+    if P.SetMailboxOpen then P.SetMailboxOpen(true) end
     if P.OpenWindow then P.OpenWindow() end
     if P.RefreshCache then P.RefreshCache() end
   elseif event == "MAIL_CLOSED" then
     P.SetNativeMailVisible(true)
+    if P.SetMailboxOpen then P.SetMailboxOpen(false) end
     ClosePostBoxWindow()
   elseif event == "PLAYER_INTERACTION_MANAGER_FRAME_HIDE" then
     if Enum.PlayerInteractionType and arg1 == Enum.PlayerInteractionType.MailInfo then
       P.SetNativeMailVisible(true)
+      if P.SetMailboxOpen then P.SetMailboxOpen(false) end
       ClosePostBoxWindow()
     end
   end
@@ -238,7 +241,21 @@ local function Init()
   SlashCmdList["POSTBOX"] = function(msg)
     msg = strtrim((msg or ""):lower())
     if msg == "options" then PostBox_OpenOptions()
+    elseif msg == "badge" then
+      -- Diagnostic : compare ce que voit PostBox avec l'API Blizzard.
+      local unread = 0
+      for _, e in ipairs(P.cache) do if not e.wasRead then unread = unread + 1 end end
+      local num, total = GetInboxNumItems()
+      print(string.format("|cFFB87838PostBox|r badge : boite ouverte=%s, HasNewMail=%s, GetInboxNumItems=%s/%s, cache=%d, non lus=%d",
+        tostring(P.mailboxOpen), tostring(HasNewMail and HasNewMail()), tostring(num), tostring(total), #P.cache, unread))
     else PostBox_Toggle() end
+  end
+
+  -- Rechargement (/reload) pendant que la boite est deja ouverte : MAIL_SHOW
+  -- ne se redeclenche pas, sans ceci le compteur resterait a 0 jusqu'a la
+  -- prochaine ouverture.
+  if P.SetMailboxOpen and _G.MailFrame and _G.MailFrame:IsShown() then
+    P.SetMailboxOpen(true)
   end
 
   print("|cFFB87838PostBox|r v7.1.5.12 chargé -- tapez |cFFFFD700/pb|r pour ouvrir.")

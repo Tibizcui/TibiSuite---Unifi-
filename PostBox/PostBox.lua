@@ -1027,10 +1027,27 @@ end
 -- mais pas encore ramasse (or/objet toujours en attente) ne re-notifie pas
 -- indefiniment - seul un VRAI nouveau courrier fait remonter le compteur.
 -- ============================================================================
+-- CORRECTIF (constat utilisateur, 2026-09-19) : pastille "1" affichee alors que
+-- la boite aux lettres etait vide. P.cache n'est qu'un INSTANTANE pris quand
+-- le joueur est a la boite : hors de la boite, GetInboxNumItems() ne bouge
+-- plus et rien ne rafraichit le cache, donc un courrier lu/vide/expire depuis
+-- (ou dont la mise a jour serveur finale n'est jamais arrivee, joueur parti
+-- trop tot apres "Tout ouvrir") restait compte a vie. Le compte exact n'a de
+-- sens que boite ouverte ; boite fermee on le vide et on laisse la pastille
+-- "!" du core (HasNewMail(), l'API de l'icone minicarte Blizzard) signaler un
+-- nouveau courrier, seule source fiable hors de la boite.
+P.mailboxOpen = false
+function P.SetMailboxOpen(open)
+  P.mailboxOpen = open and true or false
+  if P.UpdateBadges then P.UpdateBadges() end
+end
+
 function P.UpdateBadges()
   local n = 0
-  for _, e in ipairs(P.cache) do
-    if not e.wasRead then n = n + 1 end
+  if P.mailboxOpen then
+    for _, e in ipairs(P.cache) do
+      if not e.wasRead then n = n + 1 end
+    end
   end
   if _G.TibiSuite then
     if TibiSuite.SetTabBadge then TibiSuite.SetTabBadge("Post", n) end
