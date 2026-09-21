@@ -514,18 +514,63 @@ function P.OpenAll(opts)
         ShowRecap()
         return
       end
-      log("traite [%d] %s | pieces=%s or=%s", target.index,
-        tostring(target.subject), tostring(target.hasItem), tostring(target.money))
-      P.openAll.cursor = target.index
-      local did, reason = ProcessOne(target)
-      if reason == "bagsfull" then
-        P.openAll.active = false
-        print(string.format(L.MSG_OPENALL_BAGSFULL_FMT, PostBoxDB.reserveSlots or 0))
-        ShowRecap()
-        return
+      -- REFONTE 3 (trace utilisateur : un courrier a 2 pieces jointes garde
+      -- objets=2 mais son emplacement 1 est vide, donc une piece n'a jamais ete
+      -- prise) : le serveur n'accepte qu'UNE prise a la fois, les suivantes,
+      -- envoyees dans la meme frame, sont ignorees. On prend donc UNE piece
+      -- jointe (ou l'or) par tick, en restant sur le meme courrier tant qu'un
+      -- emplacement contient encore un objet. Les emplacements sont lus en
+      -- direct (GetInboxItemLink), pas via l'en-tete qui n'est pas rafraichi.
+      local cur = P.openAll.cur
+      if not cur or cur.index ~= target.index then
+        cur = { index = target.index, tries = {} }
+        P.openAll.cur = cur
+      end
+      local action
+      if (target.money or 0) > 0 and not cur.moneyDone then
+        cur.moneyDone = true
+        TakeInboxMoney(target.index)
+        TrackReceivedGold(target.money, target.sender)
+        if target.category == "sold" or target.category == "won" then TrackAuction(target.category, target.money) end
+        P.openAll.gold = P.openAll.gold + target.money
+        action = "or"
+      elseif not cur.returned then
+        for a = 1, (ATTACHMENTS_MAX_RECEIVE or 16) do
+          local link = SafeGetItemLink(target.index, a)
+          if link and (cur.tries[a] or 0) < 3 then
+            if PostBoxDB.autoReturnDNW and P.IsDoNotWant(link) then
+              cur.returned = true
+              ReturnInboxItem(target.index)
+              P.openAll.returned = P.openAll.returned + 1
+              action = "retour"
+            elseif P.GetFreeBagSlots() <= (PostBoxDB.reserveSlots or 0) then
+              P.openAll.active = false
+              print(string.format(L.MSG_OPENALL_BAGSFULL_FMT, PostBoxDB.reserveSlots or 0))
+              ShowRecap()
+              return
+            else
+              cur.tries[a] = (cur.tries[a] or 0) + 1
+              TakeInboxItem(target.index, a)
+              if cur.tries[a] == 1 then
+                AddLoot(link, 1)
+                P.openAll.itemsTaken = P.openAll.itemsTaken + 1
+              end
+              action = "emplacement " .. a
+            end
+            break
+          end
+        end
+      end
+      log("[%d] %s | en-tete pieces=%s or=%s | action=%s", target.index,
+        tostring(target.subject), tostring(target.hasItem), tostring(target.money), tostring(action))
+      if action then
+        P.openAll.cursor = target.index + 1   -- reste sur ce courrier
+      else
+        P.openAll.cursor = target.index       -- termine : passe au precedent
+        P.openAll.cur = nil
       end
       if openAllTimeout then openAllTimeout:Cancel() end
-      openAllTimeout = C_Timer.NewTimer(0.6, step)
+      openAllTimeout = C_Timer.NewTimer(action and 0.6 or 0.05, step)
     end)
     if not ok then
       P.openAll.active = false
