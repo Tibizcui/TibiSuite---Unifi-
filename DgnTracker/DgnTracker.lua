@@ -63,17 +63,16 @@ local TYPE_COLORS = {
   torghast = {r=0.70, g=0.25, b=0.90},   -- violet
   tourment = {r=0.70, g=0.25, b=0.90},   -- violet
 }
-local TYPE_LABELS = {
-  dungeon="Donjon", raid="Raid", delve="Gouffre", torghast="Tourment", tourment="Tourment",
-}
-
 -- Onglets internes globaux (Tourment uniquement dans Shadowlands via onglet Torghast)
-local INNER_TABS = {"dungeon","raid","delve"}
 local INNER_TAB_LABELS = {
   dungeon="Donjon", raid="Raid", delve="Gouffre",
 }
 
 local function hex(c) return math.floor((c or 0)*255) end
+
+-- Cle d'accordeon : le nom seul collisionne entre extensions (Naxxramas existe
+-- en Vanilla ET en Wrath) - deplier l'un depliait aussi l'autre.
+local function InstKey(extKey, inst) return (extKey or "") .. "\31" .. (inst.name or "") end
 
 -- atan2 sécurisé (math.atan2 est déprécié sur les clients récents ;
 -- math.atan(y,x) est la forme moderne). On garde une compat sans risque.
@@ -203,45 +202,9 @@ local function BuildUI()
   -- ================================================================
   -- TITRE
   -- ================================================================
-  local titleBg = CreateFrame("Frame",nil,mainFrame,"BackdropTemplate")
-  titleBg:SetPoint("TOP",mainFrame,"TOP",0,14)
-  titleBg:SetSize(430,44)
-  titleBg:SetFrameLevel(mainFrame:GetFrameLevel()+2)
-  titleBg:SetBackdrop({
-    bgFile="Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
-    edgeFile="Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile=true, tileSize=32, edgeSize=20,
-    insets={left=7,right=7,top=7,bottom=7},
-  })
-  titleBg:SetBackdropColor(0.04,0.02,0.06,0.97)
-  titleBg:SetBackdropBorderColor(0.72,0.60,0.28,1.0)
-
-  local logoL = titleBg:CreateTexture(nil,"OVERLAY")
-  logoL:SetSize(22,22)
-  logoL:SetTexture("Interface\\AddOns\\DgnTracker\\medias\\DgnTracker")
-  local logoR = titleBg:CreateTexture(nil,"OVERLAY")
-  logoR:SetSize(22,22)
-  logoR:SetTexture("Interface\\AddOns\\DgnTracker\\medias\\DgnTracker")
-
-  local titleStr = titleBg:CreateFontString(nil,"OVERLAY")
-  titleStr:SetFont("Fonts\\FRIZQT__.TTF",12,"OUTLINE")
-  titleStr:SetPoint("CENTER",titleBg,"CENTER",0,5)
-  titleStr:SetText("|cFFFFD700Dgn Tracker|r  |cFF9480FFInstances & Raids|r")
-  logoL:SetPoint("RIGHT",titleStr,"LEFT",-6,0)
-  logoR:SetPoint("LEFT",titleStr,"RIGHT",6,0)
-
-  local byLine = titleBg:CreateFontString(nil,"OVERLAY")
-  byLine:SetFont("Fonts\\FRIZQT__.TTF",9,"OUTLINE")
-  byLine:SetPoint("TOP",titleStr,"BOTTOM",0,0)
-  byLine:SetText("|cFFF58CBAby Tibiscui|r")
-
-  -- TibiSuite : en-tête comme WeeklyCompass (titre à l'intérieur, haut-gauche)
-  logoL:Hide(); logoR:Hide()
-  byLine:Hide()
-  titleBg:Hide()
-  titleStr:SetParent(mainFrame)
-  titleStr:SetFontObject("GameFontNormalLarge")
-  titleStr:ClearAllPoints()
+  -- (Ancien bandeau titleBg/logos/"by Tibiscui" supprime : il etait construit
+  -- puis aussitot masque par l'habillage TibiSuite.)
+  local titleStr = mainFrame:CreateFontString(nil,"OVERLAY","GameFontNormalLarge")
   titleStr:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 16, -14)
   titleStr:SetText("|cFF0267FCDgnTracker|r")
 
@@ -264,7 +227,6 @@ local function BuildUI()
   -- COLONNE GAUCHE : ONGLETS EXTENSIONS
   -- ================================================================
   -- On calcule la hauteur nécessaire AVANT de créer le frame
-  local totalRows = #EXT_ROW1 + #EXT_ROW2 + 1  -- +1 pour Torghast
   -- Hauteur col : 58 (en-tête) + rangées + séparateurs + torghast + marge bas
   local COL_CONTENT_H = 58
     + #EXT_ROW1 * (TAB_H+TAB_GAP)
@@ -383,9 +345,6 @@ local function BuildUI()
   local innerTabH = 22
   local innerTabGap = 4
   mainFrame.innerTabBtns = {}
-  mainFrame.innerTabFrame = CreateFrame("Frame",nil,mainFrame)
-  mainFrame.innerTabFrame:SetPoint("TOPLEFT",CX,innerTabY)
-  mainFrame.innerTabFrame:SetSize(CTW, innerTabH+2)
 
   local function BuildInnerTab(ttype, xOff)
     local tc   = TYPE_COLORS[ttype] or {r=0.5,g=0.5,b=0.5}
@@ -634,26 +593,26 @@ local function BuildUI()
           DgnSetWaypoint(inst)
           return
         end
-        local nowOpen = not DgnTrackerDB.expandedInst[inst.name]
-        DgnTrackerDB.expandedInst[inst.name] = nowOpen
+        local nowOpen = not DgnTrackerDB.expandedInst[s.instKey]
+        DgnTrackerDB.expandedInst[s.instKey] = nowOpen
         if nowOpen and DgnTrackerDB.mapPins then DgnSetWaypoint(inst) end
         mainFrame:RefreshContent()
       end)
       h:SetScript("OnEnter",function(s)
         local tc = s.tc or {r=0.5,g=0.5,b=0.5}
-        if s.inst and not DgnTrackerDB.expandedInst[s.inst.name] then
+        if s.inst and not DgnTrackerDB.expandedInst[s.instKey] then
           s:SetBackdropBorderColor(tc.r*0.7,tc.g*0.7,tc.b*0.7,0.9)
         end
         if not s.inst then return end
         GameTooltip:SetOwner(s,"ANCHOR_BOTTOMRIGHT")
         GameTooltip:AddLine(s.inst.name,1,0.84,0)
-        GameTooltip:AddLine("|cFFFFD700" .. T("LEFT_CLICK_LABEL", "Clic gauche") .. "|r : "..(DgnTrackerDB.expandedInst[s.inst.name] and T("CLOSE_WORD", "fermer") or T("SHOW_PATH_WORD", "afficher le chemin")),0.7,0.7,0.7)
+        GameTooltip:AddLine("|cFFFFD700" .. T("LEFT_CLICK_LABEL", "Clic gauche") .. "|r : "..(DgnTrackerDB.expandedInst[s.instKey] and T("CLOSE_WORD", "fermer") or T("SHOW_PATH_WORD", "afficher le chemin")),0.7,0.7,0.7)
         GameTooltip:AddLine("|cFFFFD700" .. T("RIGHT_CLICK_LABEL", "Clic droit") .. "|r : " .. T("SET_WAYPOINT_HINT", "poser un point de route (waypoint)"),0.7,0.7,0.7)
         GameTooltip:Show()
       end)
       h:SetScript("OnLeave",function(s)
         local tc = s.tc or {r=0.5,g=0.5,b=0.5}
-        if s.inst and not DgnTrackerDB.expandedInst[s.inst.name] then
+        if s.inst and not DgnTrackerDB.expandedInst[s.instKey] then
           s:SetBackdropBorderColor(tc.r*0.40,tc.g*0.40,tc.b*0.40,0.65)
         end
         GameTooltip:Hide()
@@ -743,12 +702,14 @@ local function BuildUI()
 
     for _, inst in ipairs(instList) do
       local tc    = TYPE_COLORS[inst.type] or {r=0.5,g=0.5,b=0.5}
-      local isOpen= DgnTrackerDB.expandedInst[inst.name] == true
+      local instKey = InstKey(extKey, inst)
+      local isOpen= DgnTrackerDB.expandedInst[instKey] == true
 
       -- ── HEADER ──────────────────────────────────────────────
       hIdx = hIdx + 1
       local hdr = AcquireHeader(hIdx)
       hdr.inst = inst
+      hdr.instKey = instKey
       hdr.tc   = tc
       hdr:ClearAllPoints()
       hdr:SetPoint("TOPLEFT",0,-curY)
@@ -791,7 +752,9 @@ local function BuildUI()
         if CHARS < 30 then CHARS = 60 end
         local function nLines(txt)
           local plain = txt:gsub("|c%x%x%x%x%x%x%x%x",""):gsub("|r",""):gsub("|T[^|]+|t","")
-          return math.max(1, math.ceil(#plain / CHARS))
+          -- Longueur en CARACTERES (pas en octets) : les accents (2 octets en
+          -- UTF-8) faisaient surestimer le nombre de lignes et la hauteur.
+          return math.max(1, math.ceil((strlenutf8 and strlenutf8(plain) or #plain) / CHARS))
         end
         local lA = nLines(accessText)
         local lP = nLines(pathText)
@@ -971,26 +934,6 @@ local function BuildMinimapButton()
 end
 
 -- ================================================================
--- ADDON COMPARTMENT
--- ================================================================
-function DgnTracker_OnAddonCompartmentClick()
-  if mainFrame:IsShown() then
-    mainFrame:Hide(); DgnTrackerDB.open=false
-  else
-    mainFrame:Show(); mainFrame:RefreshContent(); DgnTrackerDB.open=true
-  end
-end
-function DgnTracker_OnAddonCompartmentEnter(btn)
-  GameTooltip:SetOwner(btn,"ANCHOR_LEFT")
-  GameTooltip:AddLine("DgnTracker",0.30,0.70,1.0)
-  GameTooltip:AddLine(T("MM_TT_SUBTITLE", "Tracker des instances & raids"),0.9,0.9,0.9)
-  GameTooltip:AddLine(" ")
-  GameTooltip:AddLine("|cFFFFD700" .. T("CLICK_LABEL", "Clic") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"),0.7,0.7,0.7)
-  GameTooltip:Show()
-end
-function DgnTracker_OnAddonCompartmentLeave() GameTooltip:Hide() end
-
--- ================================================================
 -- COMMANDES SLASH
 -- ================================================================
 SLASH_DGNTRACKER1 = "/dg"
@@ -1025,7 +968,7 @@ SlashCmdList["DGNTRACKER"] = function(msg)
     local ed = DgnTrackerData[ext]
     if ed and ed.instances then
       for _, inst in ipairs(ed.instances) do
-        DgnTrackerDB.expandedInst[inst.name] = true
+        DgnTrackerDB.expandedInst[InstKey(ext, inst)] = true
       end
     end
     if not mainFrame:IsShown() then mainFrame:Show(); DgnTrackerDB.open=true end
@@ -1081,6 +1024,11 @@ evFrame:SetScript("OnEvent",function(_,event,arg1)
     -- S'assure que l'onglet par défaut est "donjon"
     DgnTrackerDB.activeTab = DgnTrackerDB.activeTab or "dungeon"
     DgnTrackerDB.expandedInst = DgnTrackerDB.expandedInst or {}
+    -- Purge des anciennes cles (nom seul, avant InstKey) : elles ne
+    -- correspondent plus a rien et ne feraient que grossir la sauvegarde.
+    for k in pairs(DgnTrackerDB.expandedInst) do
+      if not tostring(k):find("\31", 1, true) then DgnTrackerDB.expandedInst[k] = nil end
+    end
     BuildUI()
     BuildMinimapButton()
     local p = DgnTrackerDB.pos

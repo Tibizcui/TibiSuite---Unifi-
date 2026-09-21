@@ -15,7 +15,6 @@
 
 local FRAME  = "DGNMainFrame"
 local ACCENT = { 0.008, 0.404, 0.988 }   -- bleu (logo #0267FC)
-local LOGO   = "Interface\\AddOns\\DgnTracker\\medias\\DgnTracker"
 local KEY    = "Dgn"
 local L      = DgnTrackerL or {}
 local function T(key, default) return L[key] or default end
@@ -43,47 +42,13 @@ local function IsEnabledByCore()
   return TibiSuiteDB.enabledModules[KEY] == true
 end
 
--- ---------------------------------------------------------------- Recherche
--- Provider identique a celui de _Suite.lua. Ici il sert uniquement a alimenter
--- la loupe de l'en-tete de la fenetre (habillage). L'inscription au registre
--- global de recherche reste faite par _Suite.lua : on ne la double pas.
+-- Recherche et habillage : le code vit dans DgnTracker_Suite.lua (charge juste
+-- avant ce fichier) et est expose en global - on ne le duplique plus ici.
 local function provider(q)
-  local out, ui = {}, GetUI()
-  local data = _G.DgnTrackerData
-  if not ui or type(data) ~= "table" then return out end
-  for extKey, ext in pairs(data) do
-    if type(ext) == "table" and ext.instances then
-      for _, inst in ipairs(ext.instances) do
-        local hay = (inst.name or "") .. " " .. (inst.zone or "") .. " " .. (inst.region or "")
-        if ui.Match(hay, q) then
-          out[#out + 1] = {
-            text = (inst.name or "?") .. "  |cff808080" .. (inst.zone or tostring(extKey)) .. "|r",
-            onClick = function()
-              local f = _G[FRAME]
-              if _G.DgnTracker_Toggle and (not f or not f:IsShown()) then _G.DgnTracker_Toggle() end
-            end }
-          if #out >= 60 then return out end
-        end
-      end
-    end
-  end
-  return out
+  return _G.DgnTracker_SearchProvider and _G.DgnTracker_SearchProvider(q) or {}
 end
-
--- ---------------------------------------------------------- Habillage fenetre
 local function Decorate()
-  local ui = GetUI(); local f = _G[FRAME]
-  if not (ui and f) then return end
-  if not f._tibiSkinned then
-    ui.SkinFrame(f, ACCENT)
-    f._tibiSkinned = true
-  end
-  if f._tibiControls then return end
-  ui.AddHeaderControls(f, {
-    accent = ACCENT,
-    onOptions = function() if _G.DgnTracker_OpenOptions then _G.DgnTracker_OpenOptions() end end,
-    provider = provider,
-  })
+  if _G.DgnTracker_Decorate then _G.DgnTracker_Decorate() end
 end
 
 -- Un seul bouton minimap pour la suite EN MODE MODULE seulement : on masque

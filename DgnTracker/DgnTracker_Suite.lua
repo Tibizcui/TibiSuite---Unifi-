@@ -7,7 +7,6 @@ local FRAME    = "DGNMainFrame"
 local ACCENT   = { 0.008, 0.404, 0.988 }   -- bleu (logo #0267FC)
 local LOGO     = "Interface\\AddOns\\DgnTracker\\medias\\DgnTracker"
 local KEY      = "Dgn"
-local FULLSKIN = false
 local L        = DgnTrackerL or {}
 local function T(key, default) return L[key] or default end
 
@@ -82,7 +81,7 @@ local function OpenSearch()
   if not searchPopup then
     searchPopup = ui.CreateSearchPopup({
       name = "DgnTrackerSearchPopup",
-      title = "|cFF9480FFDgnTracker|r  " .. T("SEARCH_TITLE", "Recherche"), accent = ACCENT, logo = LOGO, provider = provider })
+      title = "|cFF0267FCDgnTracker|r  " .. T("SEARCH_TITLE", "Recherche"), accent = ACCENT, logo = LOGO, provider = provider })
   end
   searchPopup.Toggle()
 end
@@ -102,6 +101,10 @@ local function Decorate()
     provider = provider,
   })
 end
+
+-- Exposes pour DgnTracker_Module.lua (meme code, plus de doublon a maintenir)
+_G.DgnTracker_SearchProvider = provider
+_G.DgnTracker_Decorate = Decorate
 
 -- Inscription immediate au registre de recherche globale
 -- (le provider lit les donnees a la volee ; plus fiable que PLAYER_LOGIN seul)
