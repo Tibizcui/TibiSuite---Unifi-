@@ -376,6 +376,8 @@ local function ResetRecap()
   P.openAll.seen = {}
   P.openAll.failed = {}
   P.openAll.pending = nil
+  P.openAll.cursor = nil
+  P.openAll.passes = 1
 end
 
 -- Cle "raisonnablement stable" d'un courrier a travers plusieurs scans de la
@@ -480,85 +482,41 @@ function P.OpenAll(opts)
     -- de P.openAll.active dans TOUS les cas, erreur comprise.
     local ok, err = pcall(function()
       P.RefreshCache()
-      -- CORRECTIF : traiter TOUS les courriers eligibles du cache dans la
-      -- meme boucle synchrone (comme avant) les faisait echouer en cascade
-      -- au-dela du premier - TakeInboxMoney/TakeInboxItem sont asynchrones et
-      -- semblent refuser toute nouvelle demande tant que la precedente n'est
-      -- pas confirmee par le serveur, exactement comme DeleteInboxItem (cf.
-      -- P.DeleteSelected plus haut) - confirme en jeu ("Tout ouvrir n'ouvre
-      -- qu'un mail sur 33"). On ne traite plus qu'UN SEUL courrier par appel
-      -- de step(), le rappel via C_Timer 0.6s plus bas se charge d'avancer
-      -- au suivant une fois la reponse serveur du precedent digeree.
-      -- "seen" retient l'heure et le nombre de passages par cle : un courrier
-      -- deja traite est ignore 3 s (le temps que le serveur confirme), puis
-      -- retente (3 fois au plus) s'il porte encore quelque chose - ce qui
-      -- couvre aussi deux courriers vraiment identiques.
-      -- REFONTE : on ne se fie plus a une cle de courrier (deux courriers
-      -- identiques la faisaient collisionner). On mesure la PROGRESSION de la
-      -- boite : "signature" = nombre total de pieces jointes + courriers avec
-      -- or restants parmi les eligibles. Apres chaque prise, on attend que
-      -- cette signature baisse (le serveur a confirme) avant de passer au
-      -- suivant. Sans baisse au bout de 3 s : une relance, puis le courrier
-      -- est abandonne (liste "failed") et on continue avec les autres.
-      local now = GetTime()
-      local sig, first = 0, nil
+      -- REFONTE 2 (trace utilisateur : la ligne garde hasItem=2 apres la prise,
+      -- l'en-tete de la boite n'est PAS rafraichi tant qu'elle reste ouverte, donc
+      -- aucune "progression" n'est observable). On parcourt donc les courriers du
+      -- DERNIER au PREMIER (les suppressions cote serveur ne decalent alors pas
+      -- les index restants), un seul passage par courrier, un courrier par tick.
       local function log(fmt, ...)
         if P.debugOpenAll then print("|cFF9DA5FFPostBox openall|r " .. string.format(fmt, ...)) end
       end
+      local cursor = P.openAll.cursor or math.huge
+      local target
       for _, entry in ipairs(P.cache) do
-        if (entry.money and entry.money > 0) or (entry.hasItem and entry.hasItem > 0) then
-          if IsEligible(entry, opts) then
-            sig = sig + (entry.hasItem or 0) + ((entry.money or 0) > 0 and 1 or 0)
-            if not first and not P.openAll.failed[EntryKey(entry)] then first = entry end
-          end
+        if entry.index < cursor and ((entry.money and entry.money > 0) or (entry.hasItem and entry.hasItem > 0))
+          and IsEligible(entry, opts) and (not target or entry.index > target.index) then
+          target = entry
         end
       end
-      local pend = P.openAll.pending
-      if pend then
-        if sig < pend.sig then
-          log("progres : signature %d -> %d", pend.sig, sig)
-          P.openAll.pending = nil
-        elseif now - pend.t < 3 then
-          if openAllTimeout then openAllTimeout:Cancel() end
-          openAllTimeout = C_Timer.NewTimer(0.4, step)
-          return
-        elseif pend.tries < 2 then
-          pend.tries = pend.tries + 1
-          pend.t = now
-          log("relance de %s (signature toujours %d)", tostring(pend.key), sig)
-          for _, entry in ipairs(P.cache) do
-            if EntryKey(entry) == pend.key then ProcessOne(entry); break end
-          end
-          if openAllTimeout then openAllTimeout:Cancel() end
-          openAllTimeout = C_Timer.NewTimer(0.4, step)
-          return
-        else
-          log("abandon de %s", tostring(pend.key))
-          P.openAll.failed[pend.key] = true
-          P.openAll.pending = nil
-          first = nil
-          for _, entry in ipairs(P.cache) do
-            if ((entry.money and entry.money > 0) or (entry.hasItem and entry.hasItem > 0))
-              and IsEligible(entry, opts) and not P.openAll.failed[EntryKey(entry)] then
-              first = entry; break
-            end
-          end
-        end
-      end
-      local target = first
       if not target then
-        P.openAll.active = false
-        local nFailed = 0
-        for _ in pairs(P.openAll.failed) do nFailed = nFailed + 1 end
-        if nFailed > 0 then
-          print(string.format("|cFFFF5555PostBox|r : %d courrier(s) n'ont pas pu etre vides (refus du serveur).", nFailed))
+        -- Plus de 50 courriers : le client n'en montre que 50 a la fois, on
+        -- refait un tour une fois la boite rafraichie (5 tours au plus).
+        local num, total = GetInboxNumItems()
+        if (total or 0) > (num or 0) and (P.openAll.passes or 1) < 5 then
+          P.openAll.passes = (P.openAll.passes or 1) + 1
+          P.openAll.cursor = nil
+          log("nouveau tour (%s/%s)", tostring(num), tostring(total))
+          if openAllTimeout then openAllTimeout:Cancel() end
+          openAllTimeout = C_Timer.NewTimer(1.5, step)
+          return
         end
+        P.openAll.active = false
         ShowRecap()
         return
       end
-      log("traite [%d] %s | pieces=%s or=%s | signature=%d", target.index,
-        tostring(target.subject), tostring(target.hasItem), tostring(target.money), sig)
-      P.openAll.pending = { key = EntryKey(target), sig = sig, t = now, tries = 1 }
+      log("traite [%d] %s | pieces=%s or=%s", target.index,
+        tostring(target.subject), tostring(target.hasItem), tostring(target.money))
+      P.openAll.cursor = target.index
       local did, reason = ProcessOne(target)
       if reason == "bagsfull" then
         P.openAll.active = false
@@ -567,7 +525,7 @@ function P.OpenAll(opts)
         return
       end
       if openAllTimeout then openAllTimeout:Cancel() end
-      openAllTimeout = C_Timer.NewTimer(0.4, step)
+      openAllTimeout = C_Timer.NewTimer(0.6, step)
     end)
     if not ok then
       P.openAll.active = false
