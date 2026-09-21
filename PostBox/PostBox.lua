@@ -382,9 +382,15 @@ end
 -- apparaitre dans P.cache et se faire retraiter, l'or comptabilise plusieurs
 -- fois pour une seule prise reelle - confirme en jeu). L'index, lui, se
 -- decale des qu'un courrier disparait de la boite : pas fiable ici.
+-- CORRECTIF (constat utilisateur, 2026-09-21 : "Tout ouvrir n'ouvre que le
+-- premier message") : la cle ne contenait ni le nombre de pieces jointes ni
+-- l'objet. Tous les courriers "Objet trouve" du Maitre de poste (meme
+-- expediteur, meme sujet, 0 or, meme duree restante) partageaient donc UNE
+-- seule cle : le premier traite marquait tous les autres comme deja faits.
 local function EntryKey(entry)
   return (entry.sender or "") .. "\30" .. (entry.subject or "") .. "\30"
     .. tostring(entry.money or 0) .. "\30" .. tostring(entry.daysLeft or 0)
+    .. "\30" .. tostring(entry.hasItem or 0) .. "\30" .. (entry.itemLink or "")
 end
 
 local function AddLoot(itemLink, count)
@@ -481,21 +487,44 @@ function P.OpenAll(opts)
       -- qu'un mail sur 33"). On ne traite plus qu'UN SEUL courrier par appel
       -- de step(), le rappel via C_Timer 0.6s plus bas se charge d'avancer
       -- au suivant une fois la reponse serveur du precedent digeree.
-      local target
+      -- "seen" retient l'heure et le nombre de passages par cle : un courrier
+      -- deja traite est ignore 3 s (le temps que le serveur confirme), puis
+      -- retente (3 fois au plus) s'il porte encore quelque chose - ce qui
+      -- couvre aussi deux courriers vraiment identiques.
+      local target, waiting
+      local now = GetTime()
       for _, entry in ipairs(P.cache) do
         if (entry.money and entry.money > 0) or (entry.hasItem and entry.hasItem > 0) then
-          if IsEligible(entry, opts) and not P.openAll.seen[EntryKey(entry)] then
-            target = entry
-            break
+          if IsEligible(entry, opts) then
+            local seen = P.openAll.seen[EntryKey(entry)]
+            if not seen then
+              target = entry
+              break
+            elseif seen.n < 3 then
+              if now - seen.t >= 3 then target = entry; break end
+              waiting = true
+            end
           end
         end
       end
       if not target then
+        if waiting then
+          if openAllTimeout then openAllTimeout:Cancel() end
+          openAllTimeout = C_Timer.NewTimer(0.6, step)
+          return
+        end
         P.openAll.active = false
         ShowRecap()
         return
       end
-      P.openAll.seen[EntryKey(target)] = true
+      local targetKey = EntryKey(target)
+      local seenTarget = P.openAll.seen[targetKey]
+      if seenTarget then
+        seenTarget.n = seenTarget.n + 1
+        seenTarget.t = now
+      else
+        P.openAll.seen[targetKey] = { n = 1, t = now }
+      end
       local did, reason = ProcessOne(target)
       if reason == "bagsfull" then
         P.openAll.active = false
