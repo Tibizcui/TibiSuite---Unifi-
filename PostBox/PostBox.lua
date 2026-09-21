@@ -747,6 +747,11 @@ function P.DeleteSelected()
         keys[#keys + 1] = EntryKey(entry)
       else
         skipped = skipped + 1
+        if P.debugOpenAll then
+          print(string.format("|cFF9DA5FFPostBox suppr|r ignore [%d] %s - %s | or=%s objets=%s lien=%s",
+            entry.index, tostring(entry.sender), tostring(entry.subject),
+            tostring(entry.money), tostring(entry.hasItem), tostring(entry.itemLink)))
+        end
       end
     end
   end
