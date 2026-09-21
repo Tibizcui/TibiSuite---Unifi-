@@ -798,7 +798,17 @@ function P.DeleteSelected()
       return nextStep()
     end
     local before = InboxCount()
-    local delOk, delErr = pcall(DeleteInboxItem, target.index)
+    -- Le serveur refuse de supprimer un courrier a texte tant qu'il n'a pas ete
+    -- "ouvert" (lu) : l'interface Blizzard appelle GetInboxText avant
+    -- DeleteInboxItem. On fait de meme (non verifie en jeu).
+    pcall(GetInboxText, target.index)
+    local delFn = (C_Mail and C_Mail.DeleteInboxItem) or DeleteInboxItem
+    if P.debugOpenAll then
+      print(string.format("|cFF9DA5FFPostBox suppr|r [%d] %s | lu=%s or=%s objets=%s | count=%s",
+        target.index, tostring(target.subject), tostring(target.wasRead),
+        tostring(target.money), tostring(target.hasItem), tostring(before)))
+    end
+    local delOk, delErr = pcall(delFn, target.index)
     if not delOk then
       deleteQueue.failed = deleteQueue.failed + 1
       deleteQueue.failures[#deleteQueue.failures + 1] = string.format("%s - %s : %s",
