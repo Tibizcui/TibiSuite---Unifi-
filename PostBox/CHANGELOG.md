@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.1.5.14
+- Correction : "Tout ouvrir" ne traitait qu'un courrier (ou une seule piece jointe par courrier). Cause : les courriers "Objet trouve" du Maitre de poste, tous identiques, partageaient une meme cle, et le serveur n'accepte qu'UNE prise a la fois (les suivantes, envoyees dans la meme frame, sont ignorees). La boite est maintenant parcourue du dernier au premier courrier, une piece jointe (ou l'or) par tick de 0,6 s, en lisant les emplacements en direct puisque les en-tetes ne sont pas rafraichis boite ouverte. Un emplacement est retente 3 fois au plus.
+- Correction : la suppression verifie que le courrier disparait vraiment (retente une fois, puis affiche la raison du refus dans le chat), lit le courrier avant de le supprimer et utilise C_Mail.DeleteInboxItem si disponible.
+- Nouveau : /pb debug active une trace de Tout ouvrir et de la suppression (une ligne par courrier), desactivee par defaut.
+
 ## 7.1.5.13
 - Correction : la pastille rouge de courriers non lus pouvait rester affichee ("1") alors que la boite aux lettres etait vide. Le cache de la boite n'est qu'un instantane pris a la boite : hors de la boite, plus rien ne le rafraichissait, donc un courrier deja traite restait compte indefiniment. Le compteur exact n'est desormais affiche que boite ouverte ; boite fermee, seule la pastille "!" du core (HasNewMail, comme l'icone de courrier Blizzard) signale un nouveau courrier. Nouveau : /pb badge affiche l'etat vu par PostBox et par Blizzard (aide au diagnostic).
 
