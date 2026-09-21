@@ -703,6 +703,20 @@ end
 local deleteQueue = nil
 local deleteTimeout
 
+-- Nombre de courriers selon le CLIENT (pas P.cache) : sert a verifier qu'une
+-- suppression a reellement ete confirmee par le serveur.
+local function InboxCount()
+  return (GetInboxNumItems and (GetInboxNumItems())) or 0
+end
+
+-- CORRECTIF (constat utilisateur, 2026-09-21 : "impossible de supprimer de
+-- vieux courriers deja ouverts") : la file comptait un courrier comme
+-- "supprime" des que l'appel DeleteInboxItem ne levait pas d'erreur Lua, or un
+-- refus du serveur ne leve AUCUNE erreur - le message annoncait donc des
+-- suppressions qui n'avaient pas eu lieu, et un refus reel restait invisible.
+-- On verifie maintenant que le nombre de courriers du client diminue
+-- (jusqu'a ~2,4 s), on retente une fois, puis on signale l'echec avec la
+-- raison connue (InboxItemCanDelete, or/objet restant).
 function P.DeleteSelected()
   if deleteQueue then return end -- suppression deja en cours
   local keys, skipped = {}, 0
@@ -721,51 +735,93 @@ function P.DeleteSelected()
     return
   end
 
-  deleteQueue = { keys = keys, i = 0, deleted = 0, failed = 0, skipped = skipped }
+  deleteQueue = { keys = keys, i = 0, deleted = 0, failed = 0, skipped = skipped, failures = {} }
 
-  local function step()
+  local step
+
+  local function finish()
+    local q = deleteQueue
+    deleteQueue = nil
+    if q.failed > 0 then
+      print(string.format(L.MSG_DELETE_RESULT_FAILED_FMT, q.deleted, q.failed))
+      for n, line in ipairs(q.failures) do
+        if n > 3 then break end
+        print(string.format(L.MSG_DELETE_FAIL_DETAIL_FMT, line))
+      end
+    elseif q.skipped > 0 then
+      print(string.format(L.MSG_DELETE_RESULT_SKIPPED_FMT, q.deleted, q.skipped))
+    else
+      print(string.format(L.MSG_DELETE_RESULT_FMT, q.deleted))
+    end
+    P.RefreshCache()
+  end
+
+  local function nextStep()
+    if deleteTimeout then deleteTimeout:Cancel() end
+    deleteTimeout = C_Timer.NewTimer(0.3, step)
+  end
+
+  -- Retrouve le courrier visee dans le cache frais (cle stable, pas l'index).
+  local function findTarget(key)
+    for _, entry in ipairs(P.cache) do
+      if EntryKey(entry) == key then return entry end
+    end
+  end
+
+  local function attempt(key, retried)
+    P.RefreshCache()
+    local target = findTarget(key)
+    if not target then
+      -- Deja absent (supprime entre-temps par un autre moyen) : c'est fait.
+      deleteQueue.deleted = deleteQueue.deleted + 1
+      return nextStep()
+    end
+    local before = InboxCount()
+    local delOk, delErr = pcall(DeleteInboxItem, target.index)
+    if not delOk then
+      deleteQueue.failed = deleteQueue.failed + 1
+      deleteQueue.failures[#deleteQueue.failures + 1] = string.format("%s - %s : %s",
+        target.sender or "?", target.subject or "", tostring(delErr))
+      return nextStep()
+    end
+    local tries = 0
+    local function confirm()
+      if InboxCount() < before then
+        deleteQueue.deleted = deleteQueue.deleted + 1
+        return nextStep()
+      end
+      tries = tries + 1
+      if tries < 8 then
+        C_Timer.After(0.3, confirm)
+      elseif not retried then
+        attempt(key, true)
+      else
+        local canDelete = "?"
+        if InboxItemCanDelete then
+          local okc, can = pcall(InboxItemCanDelete, target.index)
+          if okc then canDelete = tostring(can) end
+        end
+        deleteQueue.failed = deleteQueue.failed + 1
+        deleteQueue.failures[#deleteQueue.failures + 1] = string.format(
+          "%s - %s (InboxItemCanDelete=%s, or=%s, objets=%s, lu=%s)",
+          target.sender or "?", target.subject or "", canDelete,
+          tostring(target.money or 0), tostring(target.hasItem or 0), tostring(target.wasRead))
+        nextStep()
+      end
+    end
+    C_Timer.After(0.3, confirm)
+  end
+
+  step = function()
     local q = deleteQueue
     q.i = q.i + 1
-    if q.i > #q.keys then
-      deleteQueue = nil
-      if q.failed > 0 then
-        print(string.format(L.MSG_DELETE_RESULT_FAILED_FMT, q.deleted, q.failed))
-      elseif q.skipped > 0 then
-        print(string.format(L.MSG_DELETE_RESULT_SKIPPED_FMT, q.deleted, q.skipped))
-      else
-        print(string.format(L.MSG_DELETE_RESULT_FMT, q.deleted))
-      end
-      P.RefreshCache()
-      return
-    end
-
-    local ok, err = pcall(function()
-      P.RefreshCache()
-      local target
-      for _, entry in ipairs(P.cache) do
-        if EntryKey(entry) == q.keys[q.i] then target = entry; break end
-      end
-      if target then
-        local delOk, delErr = pcall(DeleteInboxItem, target.index)
-        if delOk then
-          q.deleted = q.deleted + 1
-        else
-          q.failed = q.failed + 1
-          print("|cFFFF5555PostBox|r : " .. tostring(delErr))
-        end
-      else
-        -- Deja absent du cache (courrier supprime entre-temps par un autre
-        -- moyen) : on considere que c'est fait plutot que de le compter en echec.
-        q.deleted = q.deleted + 1
-      end
-    end)
+    if q.i > #q.keys then return finish() end
+    local ok, err = pcall(attempt, q.keys[q.i], false)
     if not ok then
       q.failed = q.failed + 1
-      print("|cFFFF5555PostBox|r : " .. tostring(err))
+      q.failures[#q.failures + 1] = tostring(err)
+      nextStep()
     end
-
-    if deleteTimeout then deleteTimeout:Cancel() end
-    deleteTimeout = C_Timer.NewTimer(0.6, step)
   end
   step()
 end
