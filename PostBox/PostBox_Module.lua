@@ -248,6 +248,10 @@ local function Init()
       local num, total = GetInboxNumItems()
       print(string.format("|cFFB87838PostBox|r badge : boite ouverte=%s, HasNewMail=%s, GetInboxNumItems=%s/%s, cache=%d, non lus=%d",
         tostring(P.mailboxOpen), tostring(HasNewMail and HasNewMail()), tostring(num), tostring(total), #P.cache, unread))
+    elseif msg == "debug" then
+      -- Trace de "Tout ouvrir" : une ligne par courrier traite, relance ou abandon.
+      P.debugOpenAll = not P.debugOpenAll
+      print("|cFFB87838PostBox|r trace Tout ouvrir : " .. (P.debugOpenAll and "activee" or "desactivee"))
     else PostBox_Toggle() end
   end
 

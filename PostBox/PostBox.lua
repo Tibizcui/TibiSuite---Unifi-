@@ -374,6 +374,8 @@ local function ResetRecap()
   -- Cles des courriers deja traites CETTE session "Tout ouvrir" (voir
   -- EntryKey plus bas) - empeche le double comptage.
   P.openAll.seen = {}
+  P.openAll.failed = {}
+  P.openAll.pending = nil
 end
 
 -- Cle "raisonnablement stable" d'un courrier a travers plusieurs scans de la
@@ -491,40 +493,72 @@ function P.OpenAll(opts)
       -- deja traite est ignore 3 s (le temps que le serveur confirme), puis
       -- retente (3 fois au plus) s'il porte encore quelque chose - ce qui
       -- couvre aussi deux courriers vraiment identiques.
-      local target, waiting
+      -- REFONTE : on ne se fie plus a une cle de courrier (deux courriers
+      -- identiques la faisaient collisionner). On mesure la PROGRESSION de la
+      -- boite : "signature" = nombre total de pieces jointes + courriers avec
+      -- or restants parmi les eligibles. Apres chaque prise, on attend que
+      -- cette signature baisse (le serveur a confirme) avant de passer au
+      -- suivant. Sans baisse au bout de 3 s : une relance, puis le courrier
+      -- est abandonne (liste "failed") et on continue avec les autres.
       local now = GetTime()
+      local sig, first = 0, nil
+      local function log(fmt, ...)
+        if P.debugOpenAll then print("|cFF9DA5FFPostBox openall|r " .. string.format(fmt, ...)) end
+      end
       for _, entry in ipairs(P.cache) do
         if (entry.money and entry.money > 0) or (entry.hasItem and entry.hasItem > 0) then
           if IsEligible(entry, opts) then
-            local seen = P.openAll.seen[EntryKey(entry)]
-            if not seen then
-              target = entry
-              break
-            elseif seen.n < 3 then
-              if now - seen.t >= 3 then target = entry; break end
-              waiting = true
+            sig = sig + (entry.hasItem or 0) + ((entry.money or 0) > 0 and 1 or 0)
+            if not first and not P.openAll.failed[EntryKey(entry)] then first = entry end
+          end
+        end
+      end
+      local pend = P.openAll.pending
+      if pend then
+        if sig < pend.sig then
+          log("progres : signature %d -> %d", pend.sig, sig)
+          P.openAll.pending = nil
+        elseif now - pend.t < 3 then
+          if openAllTimeout then openAllTimeout:Cancel() end
+          openAllTimeout = C_Timer.NewTimer(0.4, step)
+          return
+        elseif pend.tries < 2 then
+          pend.tries = pend.tries + 1
+          pend.t = now
+          log("relance de %s (signature toujours %d)", tostring(pend.key), sig)
+          for _, entry in ipairs(P.cache) do
+            if EntryKey(entry) == pend.key then ProcessOne(entry); break end
+          end
+          if openAllTimeout then openAllTimeout:Cancel() end
+          openAllTimeout = C_Timer.NewTimer(0.4, step)
+          return
+        else
+          log("abandon de %s", tostring(pend.key))
+          P.openAll.failed[pend.key] = true
+          P.openAll.pending = nil
+          first = nil
+          for _, entry in ipairs(P.cache) do
+            if ((entry.money and entry.money > 0) or (entry.hasItem and entry.hasItem > 0))
+              and IsEligible(entry, opts) and not P.openAll.failed[EntryKey(entry)] then
+              first = entry; break
             end
           end
         end
       end
+      local target = first
       if not target then
-        if waiting then
-          if openAllTimeout then openAllTimeout:Cancel() end
-          openAllTimeout = C_Timer.NewTimer(0.6, step)
-          return
-        end
         P.openAll.active = false
+        local nFailed = 0
+        for _ in pairs(P.openAll.failed) do nFailed = nFailed + 1 end
+        if nFailed > 0 then
+          print(string.format("|cFFFF5555PostBox|r : %d courrier(s) n'ont pas pu etre vides (refus du serveur).", nFailed))
+        end
         ShowRecap()
         return
       end
-      local targetKey = EntryKey(target)
-      local seenTarget = P.openAll.seen[targetKey]
-      if seenTarget then
-        seenTarget.n = seenTarget.n + 1
-        seenTarget.t = now
-      else
-        P.openAll.seen[targetKey] = { n = 1, t = now }
-      end
+      log("traite [%d] %s | pieces=%s or=%s | signature=%d", target.index,
+        tostring(target.subject), tostring(target.hasItem), tostring(target.money), sig)
+      P.openAll.pending = { key = EntryKey(target), sig = sig, t = now, tries = 1 }
       local did, reason = ProcessOne(target)
       if reason == "bagsfull" then
         P.openAll.active = false
@@ -533,7 +567,7 @@ function P.OpenAll(opts)
         return
       end
       if openAllTimeout then openAllTimeout:Cancel() end
-      openAllTimeout = C_Timer.NewTimer(0.6, step)
+      openAllTimeout = C_Timer.NewTimer(0.4, step)
     end)
     if not ok then
       P.openAll.active = false
