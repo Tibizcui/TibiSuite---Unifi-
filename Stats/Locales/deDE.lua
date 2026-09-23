@@ -25,6 +25,7 @@ L["GRANULARITY_MONTH"]   = "Monat"
 L["GRANULARITY_YEAR"]    = "Jahr"
 
 L["CARD_QUESTS"]         = "Quests"
+L["CARD_WORLD_QUESTS"]   = "Weltquests"
 L["CARD_GOLD"]           = "Gold"
 L["CARD_GOLD_WEEK"]      = "Gold (Woche)"
 L["CARD_DUNGEONS"]       = "Dungeons & M+"

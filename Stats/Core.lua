@@ -106,7 +106,7 @@ end
 function SX.EnsureDay(rec, dayKey)
   local d = rec.days[dayKey]
   if not d then
-    d = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, raids = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
+    d = { quests = 0, worldQuests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, raids = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
           bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0,
           questLog = {}, dungeonLog = {}, delveLog = {}, repLog = {}, raidLog = {},
           goldLog = {}, playtimeLog = {}, profLog = {} }
@@ -481,7 +481,7 @@ local function FlattenDayLog(d, key, out)
 end
 
 function SX.Aggregate(charKey, from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, raids = 0, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
+  local agg = { quests = 0, worldQuests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, raids = 0, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
                 bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0,
                 questLog = {}, dungeonLog = {}, delveLog = {}, repLog = {}, raidLog = {},
                 goldLog = {}, playtimeLog = {}, profLog = {} }
@@ -491,6 +491,7 @@ function SX.Aggregate(charKey, from, to)
     local t = SX.ParseDayKey(dayKey)
     if t and t >= from and t <= to then
       agg.quests    = agg.quests + (d.quests or 0)
+      agg.worldQuests = agg.worldQuests + (d.worldQuests or 0)
       agg.goldGain  = agg.goldGain + (d.goldGain or 0)
       agg.goldSpent = agg.goldSpent + (d.goldSpent or 0)
       agg.played    = agg.played + (d.played or 0)
@@ -524,7 +525,7 @@ function SX.Aggregate(charKey, from, to)
 end
 
 function SX.AggregateAccount(from, to)
-  local agg = { quests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, raids = 0, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
+  local agg = { quests = 0, worldQuests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, raids = 0, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
                 bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0,
                 questLog = {}, dungeonLog = {}, delveLog = {}, repLog = {}, raidLog = {},
                 goldLog = {}, playtimeLog = {}, profLog = {} }
@@ -534,6 +535,7 @@ function SX.AggregateAccount(from, to)
   for _, key in ipairs(SX.GetCharKeys()) do
     local a = SX.Aggregate(key, from, to)
     agg.quests    = agg.quests + a.quests
+    agg.worldQuests = agg.worldQuests + a.worldQuests
     agg.goldGain  = agg.goldGain + a.goldGain
     agg.goldSpent = agg.goldSpent + a.goldSpent
     agg.played    = agg.played + a.played
@@ -568,6 +570,7 @@ end
 
 function SX.MetricValue(agg, metric)
   if metric == "quests" then return agg.quests
+  elseif metric == "worldQuests" then return agg.worldQuests
   elseif metric == "gold" then return agg.goldGain - agg.goldSpent
   elseif metric == "dungeons" then return agg.dungeons + agg.mplusCount
   elseif metric == "raids" then return agg.raids
@@ -829,14 +832,39 @@ end
 -- jusqu'ici (aucun de ces arguments n'etait lu, juste un compteur incremente).
 -- GetTitleForQuestID peut renvoyer nil si la quete est deja purgee du log au
 -- moment ou l'event se declenche - traite en nil-safe cote UI (affiche "?").
+-- Expeditions (= World Quests, nom du client francais) : A VERIFIER EN JEU.
+-- C_QuestLog.IsWorldQuest lit le type de la quete (donnee statique par
+-- questID), suppose donc encore valide au moment de QUEST_TURNED_IN alors
+-- que la quete vient de quitter le journal. Repli sur GetQuestTagInfo
+-- (worldQuestType renseigne uniquement pour une expedition).
+local function IsWorldQuestID(questID)
+  if not (questID and C_QuestLog) then return false end
+  if C_QuestLog.IsWorldQuest then
+    local ok, isWQ = pcall(C_QuestLog.IsWorldQuest, questID)
+    if ok and isWQ then return true end
+  end
+  if C_QuestLog.GetQuestTagInfo then
+    local ok, info = pcall(C_QuestLog.GetQuestTagInfo, questID)
+    if ok and type(info) == "table" and info.worldQuestType then return true end
+  end
+  return false
+end
+
 local function OnQuestTurnedIn(questID, xpReward, moneyReward)
   local rec = SX.EnsureChar(SX.CurrentCharKey())
   local d = SX.EnsureDay(rec, SX.TodayKey())
   d.quests = (d.quests or 0) + 1
+  -- Une expedition reste AUSSI comptee dans "Quetes" (c'est une quete) :
+  -- la carte Expeditions en est un sous-ensemble, pas une categorie a part.
+  local isWQ = IsWorldQuestID(questID)
+  if isWQ then d.worldQuests = (d.worldQuests or 0) + 1 end
   local questName = questID and C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(questID)
   local zone = GetSubZoneText()
   if not zone or zone == "" then zone = GetZoneText() end
-  SX.AppendDayEvent(d.questLog, { ts = time(), quest = questName, zone = zone, xp = xpReward })
+  -- wq = true seulement pour une expedition (champ absent sinon, pour ne pas
+  -- alourdir l'export) : le detail de la carte Expeditions filtre questLog
+  -- sur ce drapeau au lieu d'un journal dedie en double.
+  SX.AppendDayEvent(d.questLog, { ts = time(), quest = questName, zone = zone, xp = xpReward, wq = isWQ or nil })
   -- L'or de recompense de quete est deja compte dans d.goldGain via le delta
   -- PLAYER_MONEY correspondant - ici on l'accumule seulement pour que
   -- FlushGoldSourceBucket (ENREGISTREUR : OR ci-dessus) le retranche du

@@ -31,6 +31,7 @@ L["GRANULARITY_YEAR"]    = "year"
 
 -- Cartes de la vue d'ensemble
 L["CARD_QUESTS"]         = "Quests"
+L["CARD_WORLD_QUESTS"]   = "World Quests"
 L["CARD_GOLD"]           = "Gold"
 L["CARD_GOLD_WEEK"]      = "Gold (week)"
 L["CARD_DUNGEONS"]       = "Dungeons & M+"

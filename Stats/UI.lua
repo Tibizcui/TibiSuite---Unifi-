@@ -834,7 +834,9 @@ end
 -- cf. PVP_CHART_METRICS plus bas.
 -- Temps joue en premier (demande utilisateur du 2026-09-13, priorite visuelle
 -- a la mesure la plus consultee), le reste dans son ordre precedent.
-local CARD_METRICS = { "played", "quests", "gold", "dungeons", "raids", "delves", "repGained", "profGained" }
+-- Expeditions (World Quests) juste apres Quetes dont elles sont un
+-- sous-ensemble (demande utilisateur du 2026-09-23).
+local CARD_METRICS = { "played", "quests", "worldQuests", "gold", "dungeons", "raids", "delves", "repGained", "profGained" }
 local cards = {}
 
 -- Grille 4 colonnes (au lieu de 2) pour des cartes plus etroites - demande
@@ -852,6 +854,7 @@ local CARD_GRID_COLS = 4
 local CARD_ICONS = {
   played = "Interface\\Icons\\INV_Misc_PocketWatch_01",
   quests = "Interface\\GossipFrame\\AvailableQuestIcon",
+  worldQuests = "Interface\\Icons\\INV_Misc_Spyglass_03",
   gold = "Interface\\Icons\\INV_Misc_Coin_01",
   dungeons = "Interface\\Icons\\INV_Misc_Map_01",
   raids = "Interface\\Icons\\INV_Misc_Head_Dragon_01",
@@ -868,6 +871,7 @@ local OVERLAY_COLORS = {
   quests = { 0.310, 0.816, 0.773 }, gold = { 0.957, 0.839, 0.541 }, played = { 0.486, 0.620, 1.000 },
   dungeons = { 1.000, 0.541, 0.541 }, raids = { 0.878, 0.592, 0.361 }, delves = { 0.702, 0.537, 0.957 },
   repGained = { 0.431, 0.906, 0.718 }, profGained = { 1.000, 0.706, 0.329 },
+  worldQuests = { 0.639, 0.902, 0.208 },
 }
 
 -- Graphique PVP dedie ("Graphique PVP") : adversaires tues + champs de
@@ -895,6 +899,7 @@ local SECTION_ACCENTS = {
 
 local function CardLabel(metric)
   if metric == "quests" then return L["CARD_QUESTS"]
+  elseif metric == "worldQuests" then return L["CARD_WORLD_QUESTS"]
   elseif metric == "gold" then
     return (view.period == "week") and L["CARD_GOLD_WEEK"] or L["CARD_GOLD"]
   elseif metric == "dungeons" then return L["CARD_DUNGEONS"]
@@ -2192,7 +2197,7 @@ local detailWidgets = {}
 -- Metriques pour lesquelles un journal d'evenements detailles existe (cf.
 -- Stats/Core.lua : questLog/dungeonLog+mplus/delveLog/repLog/raidLog/
 -- goldLog/playtimeLog/profLog). Les 8 cartes ont desormais toutes un journal.
-local EVENT_LIST_METRICS = { quests = true, dungeons = true, raids = true, delves = true, repGained = true,
+local EVENT_LIST_METRICS = { quests = true, worldQuests = true, dungeons = true, raids = true, delves = true, repGained = true,
                               gold = true, played = true, profGained = true }
 
 local function BuildDetail(content, metric)
@@ -2338,6 +2343,12 @@ local EVENT_LIST_COLS = {
     { key = "zone", label = "EVENTS_COL_ZONE", w = 220 },
     { key = "xp", label = "EVENTS_COL_XP", w = 100, justify = "RIGHT" },
   },
+  -- Memes entrees que quests (questLog filtre sur wq, cf. CollectEventRows).
+  worldQuests = {
+    { key = "quest", label = "EVENTS_COL_QUEST", w = 320 },
+    { key = "zone", label = "EVENTS_COL_ZONE", w = 220 },
+    { key = "xp", label = "EVENTS_COL_XP", w = 100, justify = "RIGHT" },
+  },
   dungeons = {
     { key = "name", label = "TABLE_NAME", w = 240 },
     { key = "level", label = "TABLE_LEVEL", w = 100, justify = "RIGHT" },
@@ -2423,6 +2434,10 @@ local function CollectEventRows(metric)
   local rows = {}
   if metric == "quests" then
     rows = agg.questLog
+  elseif metric == "worldQuests" then
+    for _, e in ipairs(agg.questLog) do
+      if e.wq then rows[#rows + 1] = e end
+    end
   elseif metric == "dungeons" then
     -- Union M+ (a "level"/"done", table.insert deja fait par SX.Aggregate
     -- dans agg.mplusList) et donjons normaux (dungeonLog, pas de "level") -
