@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.15
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.15 pour le detail : nouvelle carte Expeditions).
+
 ## 7.1.5.14
 - Correction : "Tout ouvrir" ne traitait qu'un courrier (ou une seule piece jointe par courrier). Cause : les courriers "Objet trouve" du Maitre de poste, tous identiques, partageaient une meme cle, et le serveur n'accepte qu'UNE prise a la fois (les suivantes, envoyees dans la meme frame, sont ignorees). La boite est maintenant parcourue du dernier au premier courrier, une piece jointe (ou l'or) par tick de 0,6 s, en lisant les emplacements en direct puisque les en-tetes ne sont pas rafraichis boite ouverte. Un emplacement est retente 3 fois au plus.
 - Correction : la suppression verifie que le courrier disparait vraiment (retente une fois, puis affiche la raison du refus dans le chat), lit le courrier avant de le supprimer et utilise C_Mail.DeleteInboxItem si disponible.

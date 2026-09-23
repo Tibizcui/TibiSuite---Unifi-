@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.15
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.15 pour le detail : nouvelle carte Expeditions).
+
 ## 7.1.5.14
 - Correction : deplier une instance depliait aussi celle du meme nom d'une autre extension (Naxxramas existe en Vanilla et en Wrath) ; la cle d'accordeon inclut maintenant l'extension. Hauteur des lignes calculee en caracteres et non en octets (accents). Titre en bleu DgnTracker. Nettoyage du code mort (bandeau masque, compartiment d'addons inutilise, code de recherche duplique entre Suite et Module).
 

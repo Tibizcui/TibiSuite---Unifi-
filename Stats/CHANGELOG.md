@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.15
+- Nouvelle carte Expeditions (World Quests) : compte les expeditions terminees par jour, toutes extensions depuis Legion, avec courbe et detail au clic (expedition, zone, XP). Le compteur demarre a l'installation de cette version : aucune statistique Blizzard ne permet de reprendre l'historique. Egalement affichee dans Tibi Companion et sur le Dashboard-Tibi.
+
 ## 7.1.5.14
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir PostBox 7.1.5.14 pour le detail : correctifs de Tout ouvrir et de la suppression de courriers).
 
