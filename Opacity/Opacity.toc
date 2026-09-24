@@ -5,6 +5,7 @@
 ## Notes-frFR: Transparence de toutes les fenetres : Blizzard, TibiSuite et vos autres addons. Fondu au survol, profils par contexte (combat, instance, raid, monture, ABS), prereglages, curseur maitre, pipette, export / import de profil.
 ## Author: Tibizcui - Kirin Tor
 ## Version: 7.1.5.15
+## X-Curse-Project-ID: 1709422
 ## IconTexture: Interface\AddOns\Opacity\medias\TibiSuiteIcon
 
 # ----------------------------------------------------------------

@@ -6,7 +6,7 @@ name: Release to CurseForge
 #    pour valider qu'un module se zippe correctement SANS rien pousser sur CurseForge.
 #
 # NB monorepo : BigWigsMods/packager exige un ".git" a la racine du dossier
-# passe a "-t" (1 repo = 1 addon dans son usage normal). Ce repo contient 14
+# passe a "-t" (1 repo = 1 addon dans son usage normal). Ce repo contient 15
 # addons dans un seul depot Git, donc chaque job copie d'abord le dossier du
 # module dans un repertoire temporaire du runner et y cree un mini-checkout
 # Git jetable (git init + commit + tag + remote "origin" pointant vers ce
@@ -70,6 +70,7 @@ jobs:
           - LegTracker
           - LvlHistory
           - MiniHub
+          - Opacity
           - PostBox
           - RenTracker
           - RepBar
