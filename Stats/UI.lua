@@ -913,6 +913,7 @@ local function CardLabel(metric)
   elseif metric == "bgWonGained" then return L["CARD_BG_WON_GAINED"]
   elseif metric == "arenaPlayedGained" then return L["CARD_ARENA_PLAYED_GAINED"]
   elseif metric == "arenaWonGained" then return L["CARD_ARENA_WON_GAINED"]
+  elseif metric == "pvpMatches" then return L["CARD_PVP_MATCHES"]
   end
 end
 
@@ -1583,6 +1584,14 @@ local function BuildPvPDetail(content, top)
     pvpDetailPanel.chartBtn:SetPoint("LEFT", pvpDetailPanel.title, "RIGHT", 16, 0)
     pvpDetailPanel.chartBtn:SetScript("OnClick", function()
       view.detailMetric = "__pvp__"
+      SX.RefreshDashboard()
+    end)
+    -- Journal des parties (d.pvpLog, une ligne par match) : meme liste
+    -- triable/filtrable que le detail des cartes du haut.
+    pvpDetailPanel.matchesBtn = UI.MakeButton(pvpDetailPanel, 150, 20, L["PVP_MATCHES_BUTTON"])
+    pvpDetailPanel.matchesBtn:SetPoint("LEFT", pvpDetailPanel.chartBtn, "RIGHT", 8, 0)
+    pvpDetailPanel.matchesBtn:SetScript("OnClick", function()
+      view.detailMetric = "__events__pvpMatches"
       SX.RefreshDashboard()
     end)
 
@@ -2337,33 +2346,53 @@ local EVENT_LIST_MAX_ROWS = 300
 -- Colonnes par metrique APRES la colonne Date (toujours presente, en premier).
 -- {key, label = cle L[], w = largeur, justify}. key indexe les champs des
 -- entrees de journal cote Core.lua (questLog/mplus+dungeonLog/delveLog/repLog).
+-- Colonne "exp" (Extension, champ ecrit par Core.lua au moment de
+-- l'evenement, cf. SX.ExpansionFor*) : toujours en DERNIER, 130 de large.
+-- Largeurs resserrees pour la faire tenir dans les 880 px de contenu
+-- (colonne Date comprise). Sa presence active aussi le filtre par extension
+-- (cf. HasExpColumn / BuildEventListDetail).
+local EXP_COL = { key = "exp", label = "EVENTS_COL_EXPANSION", w = 130 }
 local EVENT_LIST_COLS = {
   quests = {
-    { key = "quest", label = "EVENTS_COL_QUEST", w = 320 },
-    { key = "zone", label = "EVENTS_COL_ZONE", w = 220 },
-    { key = "xp", label = "EVENTS_COL_XP", w = 100, justify = "RIGHT" },
+    { key = "quest", label = "EVENTS_COL_QUEST", w = 250 },
+    { key = "zone", label = "EVENTS_COL_ZONE", w = 180 },
+    { key = "xp", label = "EVENTS_COL_XP", w = 80, justify = "RIGHT" },
+    EXP_COL,
   },
   -- Memes entrees que quests (questLog filtre sur wq, cf. CollectEventRows).
   worldQuests = {
-    { key = "quest", label = "EVENTS_COL_QUEST", w = 320 },
-    { key = "zone", label = "EVENTS_COL_ZONE", w = 220 },
-    { key = "xp", label = "EVENTS_COL_XP", w = 100, justify = "RIGHT" },
+    { key = "quest", label = "EVENTS_COL_QUEST", w = 250 },
+    { key = "zone", label = "EVENTS_COL_ZONE", w = 180 },
+    { key = "xp", label = "EVENTS_COL_XP", w = 80, justify = "RIGHT" },
+    EXP_COL,
   },
   dungeons = {
-    { key = "name", label = "TABLE_NAME", w = 240 },
-    { key = "level", label = "TABLE_LEVEL", w = 100, justify = "RIGHT" },
-    { key = "spec", label = "EVENTS_COL_SPEC", w = 140 },
-    { key = "time", label = "EVENTS_COL_TIME", w = 100, justify = "RIGHT" },
+    { key = "name", label = "TABLE_NAME", w = 220 },
+    { key = "level", label = "TABLE_LEVEL", w = 60, justify = "RIGHT" },
+    { key = "spec", label = "EVENTS_COL_SPEC", w = 120 },
+    { key = "time", label = "EVENTS_COL_TIME", w = 80, justify = "RIGHT" },
+    EXP_COL,
   },
   raids = {
-    { key = "name", label = "TABLE_NAME", w = 280 },
-    { key = "spec", label = "EVENTS_COL_SPEC", w = 140 },
-    { key = "bossKills", label = "EVENTS_COL_BOSSKILLS", w = 100, justify = "RIGHT" },
-    { key = "time", label = "EVENTS_COL_TIME", w = 100, justify = "RIGHT" },
+    { key = "name", label = "TABLE_NAME", w = 210 },
+    { key = "spec", label = "EVENTS_COL_SPEC", w = 110 },
+    { key = "bossKills", label = "EVENTS_COL_BOSSKILLS", w = 80, justify = "RIGHT" },
+    { key = "time", label = "EVENTS_COL_TIME", w = 80, justify = "RIGHT" },
+    EXP_COL,
   },
   delves = {
-    { key = "name", label = "TABLE_NAME", w = 340 },
-    { key = "tier", label = "TILE_TIER", w = 120, justify = "RIGHT" },
+    { key = "name", label = "TABLE_NAME", w = 300 },
+    { key = "tier", label = "TILE_TIER", w = 90, justify = "RIGHT" },
+    EXP_COL,
+  },
+  -- Journal JcJ (d.pvpLog, une ligne par partie) - ouvert depuis le bouton
+  -- "Journal des parties" du panneau JcJ (pas de carte dans CARD_METRICS).
+  pvpMatches = {
+    { key = "map", label = "EVENTS_COL_MAP", w = 210 },
+    { key = "kind", label = "EVENTS_COL_KIND", w = 130 },
+    { key = "won", label = "EVENTS_COL_RESULT", w = 90 },
+    { key = "time", label = "EVENTS_COL_TIME", w = 80, justify = "RIGHT" },
+    EXP_COL,
   },
   -- repGained/gold/played/profGained : regroupes par jour+dimension (cf.
   -- GROUPED_METRICS/GroupEventRows plus bas), d'ou la colonne "Nb" en plus -
@@ -2372,9 +2401,10 @@ local EVENT_LIST_COLS = {
   -- "Monde" recoupe par un /reload), illisibles un par un (constat
   -- utilisateur, capture d'ecran en jeu du 2026-09-14).
   repGained = {
-    { key = "faction", label = "EVENTS_COL_FACTION", w = 300 },
-    { key = "count", label = "EVENTS_COL_COUNT", w = 80, justify = "RIGHT" },
-    { key = "amount", label = "EVENTS_COL_GAIN", w = 120, justify = "RIGHT" },
+    { key = "faction", label = "EVENTS_COL_FACTION", w = 260 },
+    { key = "count", label = "EVENTS_COL_COUNT", w = 60, justify = "RIGHT" },
+    { key = "amount", label = "EVENTS_COL_GAIN", w = 100, justify = "RIGHT" },
+    EXP_COL,
   },
   gold = {
     { key = "source", label = "EVENTS_COL_SOURCE", w = 180 },
@@ -2387,11 +2417,32 @@ local EVENT_LIST_COLS = {
     { key = "time", label = "EVENTS_COL_TIME", w = 160, justify = "RIGHT" },
   },
   profGained = {
-    { key = "profession", label = "EVENTS_COL_PROFESSION", w = 260 },
-    { key = "count", label = "EVENTS_COL_COUNT", w = 80, justify = "RIGHT" },
-    { key = "amount", label = "EVENTS_COL_GAIN", w = 160, justify = "RIGHT" },
+    { key = "profession", label = "EVENTS_COL_PROFESSION", w = 220 },
+    { key = "count", label = "EVENTS_COL_COUNT", w = 60, justify = "RIGHT" },
+    { key = "amount", label = "EVENTS_COL_GAIN", w = 100, justify = "RIGHT" },
+    EXP_COL,
   },
 }
+
+local function HasExpColumn(metric)
+  for _, c in ipairs(EVENT_LIST_COLS[metric] or {}) do
+    if c.key == "exp" then return true end
+  end
+  return false
+end
+
+-- Libelle court d'une extension (colonne etroite) : table localisee
+-- L["EXP_SHORT_n"], repli sur le nom Blizzard EXPANSION_NAMEn pour une
+-- extension future pas encore listee. Meme table miroir dans
+-- dashboard-shared.js (EXPANSION_SHORT).
+local function ExpansionLabel(n)
+  if n == nil then return nil end
+  local key = "EXP_SHORT_" .. tostring(n)
+  if L[key] and L[key] ~= key then return L[key] end
+  local g = _G["EXPANSION_NAME" .. tostring(n)]
+  if type(g) == "string" and g ~= "" then return g end
+  return "#" .. tostring(n)
+end
 
 -- Metriques regroupees par jour+dimension avant affichage (cle du champ
 -- servant de dimension) - toutes celles dont chaque evenement se resume a
@@ -2411,10 +2462,12 @@ local function GroupEventRows(rows, dimKey)
   for _, row in ipairs(rows) do
     local dayKey = row.ts and date("%Y-%m-%d", row.ts) or "?"
     local dim = row[dimKey]
-    local gKey = dayKey .. "\1" .. tostring(dim)
+    -- exp dans la cle : une ligne ancienne (sans exp) et une nouvelle du meme
+    -- jour/de la meme faction restent separees plutot que de perdre l'info.
+    local gKey = dayKey .. "\1" .. tostring(dim) .. "\1" .. tostring(row.exp)
     local g = byKey[gKey]
     if not g then
-      g = { [dimKey] = dim, ts = row.ts, count = 0, amount = 0, time = 0 }
+      g = { [dimKey] = dim, ts = row.ts, count = 0, amount = 0, time = 0, exp = row.exp }
       byKey[gKey] = g
       order[#order + 1] = g
     end
@@ -2456,6 +2509,8 @@ local function CollectEventRows(metric)
     rows = agg.playtimeLog
   elseif metric == "profGained" then
     rows = agg.profLog
+  elseif metric == "pvpMatches" then
+    rows = agg.pvpLog
   end
   if GROUPED_METRICS[metric] then rows = GroupEventRows(rows, GROUPED_METRICS[metric]) end
   -- Pas de tri ici : applique par le tri courant (view.eventSort) dans
@@ -2474,7 +2529,11 @@ local function EventSortValue(row, cols, sortKey)
   local col = idx and cols[idx]
   if not col then return 0 end
   local v = row[col.key]
-  if col.fmt == "gold" or col.key == "xp" or col.key == "amount" or col.key == "time"
+  if col.key == "won" then
+    if v == true then return 1 elseif v == false then return 0 end
+    return -1
+  end
+  if col.fmt == "gold" or col.key == "exp" or col.key == "xp" or col.key == "amount" or col.key == "time"
       or col.key == "bossKills" or col.key == "tier" or col.key == "level" or col.key == "count" then
     return tonumber(v) or -1
   end
@@ -2512,6 +2571,15 @@ local function EventCellText(row, col)
   -- une donnee manquante par erreur, juste une donnee qui n'existe pas pour
   -- ce type de run/cet evenement.
   if key == "level" and v == nil then return "-" end
+  -- Extension absente = evenement enregistre avant l'ajout de la colonne (ou
+  -- API muette) : "-" comme une donnee qui n'existe pas, pas "?".
+  if key == "exp" then return ExpansionLabel(v) or "-" end
+  if key == "won" then
+    if v == true then return "|cFF6EE7B7" .. L["PVP_RESULT_WIN"] .. "|r" end
+    if v == false then return "|cFFFF6B6B" .. L["PVP_RESULT_LOSS"] .. "|r" end
+    return "-"
+  end
+  if key == "kind" then return v and (L["PVP_KIND_" .. tostring(v):upper()] or v) or "|cFF555555?|r" end
   if key == "time" then return fmtDuration(v) end
   if key == "source" then return v and (L[GOLD_SOURCE_LABELS[v]] or v) or "|cFF555555?|r" end
   if key == "activity" then return v and (L[PLAYTIME_ACTIVITY_LABELS[v]] or v) or "|cFF555555?|r" end
@@ -2536,6 +2604,66 @@ local function SetEventHeaderColor(fs, isActive, activeColor)
 end
 
 local eventListWidgets = {}
+
+-- Filtre par extension de la liste d'evenements : nil = toutes, un numero
+-- d'extension, ou "none" (evenements sans extension connue). Partage entre
+-- metriques comme view.eventSort, jamais persiste.
+local expFilterPopup, expFilterRows = nil, {}
+local expFilterChoices = {}
+
+local function ExpFilterLabel(f)
+  if f == nil then return L["EVENTS_FILTER_ALL"] end
+  if f == "none" then return L["EVENTS_FILTER_NONE"] end
+  return ExpansionLabel(f) or "-"
+end
+
+local function OpenExpFilterPopup(anchor)
+  if not expFilterPopup then
+    expFilterPopup = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    expFilterPopup:SetFrameStrata("FULLSCREEN_DIALOG")
+    expFilterPopup:SetToplevel(true)
+    UI.SkinFrame(expFilterPopup, ACCENT, UI.C.PANEL)
+    expFilterPopup:Hide()
+  end
+  local p = expFilterPopup
+  local width = anchor:GetWidth()
+  p:SetWidth(width)
+  local entries = { false }  -- false = "Toutes" (nil ne tient pas dans une liste)
+  for _, c in ipairs(expFilterChoices) do entries[#entries + 1] = c end
+  local y = -4
+  for i, value in ipairs(entries) do
+    local row = expFilterRows[i]
+    if not row then
+      row = UI.MakeButton(p, width - 8, 22, "")
+      row._label:ClearAllPoints()
+      row._label:SetPoint("LEFT", 8, 0)
+      row._label:SetPoint("RIGHT", -8, 0)
+      row._label:SetJustifyH("LEFT")
+      expFilterRows[i] = row
+    end
+    local f = (value ~= false) and value or nil
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", p, "TOPLEFT", 4, y)
+    local label = ExpFilterLabel(f)
+    if f == view.eventExpFilter then label = UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. label .. "|r" end
+    row._label:SetText(label)
+    row:SetScript("OnClick", function()
+      view.eventExpFilter = f
+      p:Hide()
+      SX.RefreshDashboard()
+    end)
+    row:Show()
+    y = y - 24
+  end
+  for i = #entries + 1, #expFilterRows do expFilterRows[i]:Hide() end
+  p:SetHeight(-y + 4)
+  p:ClearAllPoints()
+  p:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -2)
+  -- Fenetre Stats fermee (Echap, bouton X) pendant que la liste est ouverte :
+  -- elle est parentee a UIParent, donc on la referme nous-memes.
+  p:SetScript("OnUpdate", function(self) if not anchor:IsVisible() then self:Hide() end end)
+  p:Show()
+end
 
 local function BuildEventListDetail(content, metric)
   local d = eventListWidgets
@@ -2587,14 +2715,25 @@ local function BuildEventListDetail(content, metric)
     d.countNote = d.panel:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     d.countNote:SetPoint("BOTTOMLEFT", d.panel, "TOPLEFT", 12, 4)
 
+    -- Filtre par extension (view.eventExpFilter), en haut a droite, a
+    -- hauteur du titre. Liste flottante hors de `d` (sinon la boucle
+    -- generique :Show() en fin de fonction l'ouvrirait a chaque rafraichissement).
+    d.expBtn = UI.MakeButton(content, 210, 22, "")
+    d.expBtn:SetPoint("TOPRIGHT", content, "TOPRIGHT", 0, -30)
+    d.expBtn:SetScript("OnClick", function(self)
+      if expFilterPopup and expFilterPopup:IsShown() then expFilterPopup:Hide(); return end
+      OpenExpFilterPopup(self)
+    end)
+
     d.built = true
   end
+  if expFilterPopup then expFilterPopup:Hide() end
 
   d.title:SetText(string.format(L["EVENTS_TITLE_FMT"], CardLabel(metric) or ""))
 
   -- Meme couleur que la carte d'origine (cf. BuildDetail) - d.panel est
   -- partage entre metriques, repeint a chaque appel.
-  local metricAccent = OVERLAY_COLORS[metric] or ACCENT
+  local metricAccent = OVERLAY_COLORS[metric] or (metric == "pvpMatches" and SECTION_ACCENTS.pvp) or ACCENT
   UI.SkinFrame(d.panel, metricAccent, UI.C.PANEL)
 
   local cols = EVENT_LIST_COLS[metric] or {}
@@ -2653,6 +2792,32 @@ local function BuildEventListDetail(content, metric)
   for i = #cols + 1, #d.headCols do d.headCols[i]:Hide() end
 
   local allRows = CollectEventRows(metric)
+  local hasExp = HasExpColumn(metric)
+  if hasExp then
+    -- Choix proposes = extensions presentes sur la periode (avant filtrage),
+    -- plus le filtre actif meme s'il ne matche plus rien, pour pouvoir
+    -- revenir a "Toutes" depuis la liste.
+    local seen, choices, hasNone = {}, {}, false
+    for _, r in ipairs(allRows) do
+      if r.exp == nil then hasNone = true
+      elseif not seen[r.exp] then seen[r.exp] = true; choices[#choices + 1] = r.exp end
+    end
+    local f = view.eventExpFilter
+    if type(f) == "number" and not seen[f] then seen[f] = true; choices[#choices + 1] = f end
+    table.sort(choices)
+    if hasNone or f == "none" then choices[#choices + 1] = "none" end
+    expFilterChoices = choices
+
+    if f ~= nil then
+      local filtered = {}
+      for _, r in ipairs(allRows) do
+        if (f == "none" and r.exp == nil) or (f ~= "none" and r.exp == f) then filtered[#filtered + 1] = r end
+      end
+      allRows = filtered
+    end
+    d.expBtn._label:SetText(L["EVENTS_FILTER_EXP"] .. " : " .. UI.Hex(metricAccent[1], metricAccent[2], metricAccent[3])
+      .. ExpFilterLabel(f) .. "|r")
+  end
   table.sort(allRows, function(a, b)
     local va, vb = EventSortValue(a, cols, sortKey), EventSortValue(b, cols, sortKey)
     if va == vb then return (a.ts or 0) > (b.ts or 0) end
@@ -2712,12 +2877,14 @@ local function BuildEventListDetail(content, metric)
   -- La boucle generique ci-dessous force :Show() sur tous les widgets de d -
   -- noData/scroll/countNote sont donc explicitement re-bascules APRES elle.
   for _, w in pairs(d) do if type(w) == "table" and w.Show then w:Show() end end
+  d.expBtn:SetShown(hasExp)
   d.noData:SetShown(shown == 0)
   d.scroll:SetShown(shown > 0)
   d.countNote:SetShown(shown > 0)
 end
 
 local function HideEventListDetail()
+  if expFilterPopup then expFilterPopup:Hide() end
   local d = eventListWidgets
   if not d.built then return end
   for _, w in pairs(d) do if type(w) == "table" and w.Hide then w:Hide() end end

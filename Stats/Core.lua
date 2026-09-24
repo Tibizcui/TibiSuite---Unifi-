@@ -109,7 +109,7 @@ function SX.EnsureDay(rec, dayKey)
     d = { quests = 0, worldQuests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplus = {}, raids = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
           bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0,
           questLog = {}, dungeonLog = {}, delveLog = {}, repLog = {}, raidLog = {},
-          goldLog = {}, playtimeLog = {}, profLog = {} }
+          goldLog = {}, playtimeLog = {}, profLog = {}, pvpLog = {} }
     rec.days[dayKey] = d
   end
   d.mplus = d.mplus or {}
@@ -121,6 +121,7 @@ function SX.EnsureDay(rec, dayKey)
   d.goldLog = d.goldLog or {}
   d.playtimeLog = d.playtimeLog or {}
   d.profLog = d.profLog or {}
+  d.pvpLog = d.pvpLog or {}
   return d
 end
 
@@ -146,6 +147,166 @@ function SX.PurgeOldDays(rec)
   if #keys <= SX.HISTORY_MAX_DAYS then return end
   table.sort(keys)
   for i = 1, #keys - SX.HISTORY_MAX_DAYS do rec.days[keys[i]] = nil end
+end
+
+-- ============================================================================
+-- EXTENSION D'UN EVENEMENT (champ "exp" des journaux)
+-- ----------------------------------------------------------------------------
+-- Numero d'extension Blizzard (0 = Classic, 1 = Burning Crusade, ... 10 = The
+-- War Within, 11 = Midnight), lu AU MOMENT de l'evenement : les journaux ne
+-- gardent ni questID ni instanceID, donc impossible de le retrouver apres
+-- coup. Les evenements anterieurs a cet ajout n'ont pas de champ "exp"
+-- (affiche "-"). Un simple nombre pour ne pas alourdir l'export ; le libelle
+-- est resolu a l'affichage (EXPANSION_NAMEx cote addon, table miroir dans
+-- dashboard-shared.js cote site/Companion).
+-- A VERIFIER EN JEU : aucune des API ci-dessous n'avait ete appelee dans ce
+-- depot avant ce jour (GetQuestExpansion, 10e retour de GetInstanceInfo,
+-- 9e retour de GetLFGDungeonInfo, MajorFactionData.expansionID).
+-- ============================================================================
+local function ValidExp(n)
+  n = tonumber(n)
+  if n and n >= 0 and n <= 30 and n == math.floor(n) then return n end
+  return nil
+end
+
+-- Extension "en cours" du client (sert aux metiers, cf. DoProfessionRescan,
+-- et de repli aux gouffres).
+function SX.CurrentExpansionLevel()
+  for _, fn in ipairs({ _G.GetServerExpansionLevel, _G.GetExpansionLevel }) do
+    if fn then
+      local ok, n = pcall(fn)
+      n = ok and ValidExp(n)
+      if n then return n end
+    end
+  end
+  return nil
+end
+
+function SX.ExpansionForQuest(questID)
+  if not (questID and GetQuestExpansion) then return nil end
+  local ok, n = pcall(GetQuestExpansion, questID)
+  if ok then return ValidExp(n) end
+  return nil
+end
+
+-- Cartes JcJ (instanceID, 8e retour de GetInstanceInfo) -> extension
+-- d'ORIGINE de la carte. Aucune API ne la donne pour un champ de bataille ou
+-- une arene. A VERIFIER EN JEU : IDs ecrits de memoire, une carte absente ou
+-- fausse affiche simplement "-" (jamais bloquant). Pour en ajouter une :
+-- /dump select(8, GetInstanceInfo()) sur place.
+local PVP_MAP_EXP = {
+  -- Classic
+  [30] = 0, [489] = 0, [529] = 0, [1681] = 0, [2106] = 0, [2107] = 0, [2197] = 0,
+  -- Burning Crusade
+  [566] = 1, [968] = 1, [559] = 1, [1505] = 1, [562] = 1, [1672] = 1, [572] = 1,
+  -- Wrath of the Lich King
+  [607] = 2, [628] = 2, [617] = 2, [618] = 2, [2118] = 2,
+  -- Cataclysm
+  [726] = 3, [761] = 3, [980] = 3,
+  -- Mists of Pandaria
+  [727] = 4, [998] = 4, [1105] = 4, [2245] = 4, [1134] = 4,
+  -- Warlords of Draenor
+  [1191] = 5,
+  -- Legion
+  [1504] = 6, [1552] = 6,
+  -- Battle for Azeroth
+  [1803] = 7, [1825] = 7, [1911] = 7, [2167] = 7,
+  -- Shadowlands
+  [2373] = 8, [2509] = 8,
+  -- Dragonflight
+  [2547] = 9, [2563] = 9,
+  -- The War Within
+  [2656] = 10, [2759] = 10,
+}
+
+-- Extension de l'instance ou se trouve le joueur : table JcJ ci-dessus, puis
+-- l'entree de recherche de groupe de l'instance (GetLFGDungeonInfo porte le
+-- niveau d'extension). A appeler PENDANT l'instance (a l'entree, ou a la fin
+-- d'un M+/gouffre/match), jamais apres la sortie.
+function SX.ExpansionForCurrentInstance()
+  if not GetInstanceInfo then return nil end
+  local ok, _, _, _, _, _, _, _, instanceID, _, lfgDungeonID = pcall(GetInstanceInfo)
+  if not ok then return nil end
+  if instanceID and PVP_MAP_EXP[instanceID] then return PVP_MAP_EXP[instanceID] end
+  if lfgDungeonID and lfgDungeonID ~= 0 and GetLFGDungeonInfo then
+    local r = { pcall(GetLFGDungeonInfo, lfgDungeonID) }
+    if r[1] then return ValidExp(r[10]) end
+  end
+  return nil
+end
+
+-- Repli geographique (gouffres) : zone ou continent ancetre connu. A
+-- VERIFIER EN JEU : IDs de carte TWW ecrits de memoire.
+local MAP_EXP = { [2274] = 10, [2346] = 10, [2371] = 10 }  -- Khaz Algar, Terremine, K'aresh
+
+function SX.ExpansionForCurrentMap()
+  if not (C_Map and C_Map.GetBestMapForUnit and C_Map.GetMapInfo) then return nil end
+  local ok, mapID = pcall(C_Map.GetBestMapForUnit, "player")
+  local guard = 0
+  while ok and mapID and mapID ~= 0 and guard < 10 do
+    if MAP_EXP[mapID] then return MAP_EXP[mapID] end
+    local okI, info = pcall(C_Map.GetMapInfo, mapID)
+    if not (okI and info) then break end
+    mapID = info.parentMapID
+    guard = guard + 1
+  end
+  return nil
+end
+
+-- Faction -> extension, par ordre de fiabilite : expansionID des factions a
+-- renom, puis les donnees par extension de RenTracker (si le module est
+-- charge), puis l'en-tete d'extension sous lequel la faction est rangee dans
+-- le panneau Reputation (seuls les en-tetes deplies sont parcourus). Pas de
+-- cache : appele seulement quand un gain de reputation est detecte.
+local RENTRACKER_EXP = {
+  Vanilla = 0, TheBurningCrusade = 1, WrathOfTheLichKing = 2, Cataclysme = 3,
+  MistsOfPandaria = 4, WarlordsOfDraenor = 5, Legion = 6, BattleForAzeroth = 7,
+  Shadowlands = 8, Dragonflight = 9, TheWarWithin = 10, Midnight = 11,
+}
+
+function SX.BuildFactionExpansionMap()
+  local map = {}
+  if type(_G.RenTrackerData) == "table" then
+    for key, ext in pairs(_G.RenTrackerData) do
+      local n = RENTRACKER_EXP[key]
+      if n and type(ext) == "table" and type(ext.factions) == "table" then
+        for _, fac in ipairs(ext.factions) do
+          if fac.id and map[fac.id] == nil then map[fac.id] = n end
+        end
+      end
+    end
+  end
+  if C_Reputation and C_Reputation.GetNumFactions and C_Reputation.GetFactionDataByIndex then
+    local headerExp = {}
+    for i = 0, 30 do
+      local s = _G["EXPANSION_NAME" .. i]
+      if type(s) == "string" and s ~= "" then headerExp[s] = i end
+    end
+    local ok, num = pcall(C_Reputation.GetNumFactions)
+    local current
+    if ok and type(num) == "number" then
+      for i = 1, num do
+        local okD, d = pcall(C_Reputation.GetFactionDataByIndex, i)
+        if okD and d then
+          if d.isHeader and not d.isChild then
+            current = headerExp[d.name]
+          elseif current and d.factionID and d.factionID ~= 0 and map[d.factionID] == nil then
+            map[d.factionID] = current
+          end
+        end
+      end
+    end
+  end
+  return map
+end
+
+function SX.ExpansionForFaction(factionID, expMap)
+  if not factionID then return nil end
+  if C_MajorFactions and C_MajorFactions.GetMajorFactionData then
+    local ok, d = pcall(C_MajorFactions.GetMajorFactionData, factionID)
+    if ok and type(d) == "table" and ValidExp(d.expansionID) then return ValidExp(d.expansionID) end
+  end
+  return expMap and expMap[factionID] or nil
 end
 
 -- CORRECTIF confirme en jeu : StatsDB.export (chaine) et StatsDB.exportedAt
@@ -433,6 +594,76 @@ local function OnBattlegroundComplete()
   end
 end
 
+-- ============================================================================
+-- JOURNAL JCJ (d.pvpLog) : une ligne par partie terminee (champ de bataille,
+-- arene, Blitz, bagarre), pour le detail de la carte JcJ. Les compteurs
+-- existants (bgParticipation, bgWinsByName, arenaPlayedGained...) restent
+-- calcules comme avant, ce journal s'ajoute sans rien remplacer.
+-- A VERIFIER EN JEU :
+--  - PVP_MATCH_COMPLETE est suppose transmettre (winner, duration) ; repli
+--    sur GetBattlefieldWinner() si winner est absent. duration est supposee
+--    en secondes (affichee "-" si absente ou incoherente).
+--  - L'equipe du joueur est lue via GetBattlefieldArenaFaction() (couvre les
+--    champs de bataille inter-factions, ou l'equipe peut differer de la
+--    faction) avec repli sur la faction du personnage.
+--  - Melee solo : pas de vainqueur unique (6 manches), resultat "-".
+--  - C_PvP.IsSoloShuffle/IsRatedArena/IsRatedSoloRBG/IsRatedBattleground/
+--    IsInBrawl : chacune sous pcall, une API absente ne casse rien.
+-- ============================================================================
+local function PvPFlag(fnName)
+  local f = C_PvP and C_PvP[fnName]
+  if not f then return false end
+  local ok, v = pcall(f)
+  return ok and v and true or false
+end
+
+local function PvPMatchKind(instanceType)
+  if PvPFlag("IsInBrawl") then return "brawl" end
+  if instanceType == "arena" then
+    if PvPFlag("IsSoloShuffle") then return "shuffle" end
+    if PvPFlag("IsRatedArena") then return "arena" end
+    return "skirmish"
+  end
+  if PvPFlag("IsRatedSoloRBG") then return "blitz" end
+  if PvPFlag("IsRatedBattleground") then return "rbg" end
+  return "bg"
+end
+
+local function OnPvPMatchLog(eventWinner, eventDuration)
+  local inInstance, instanceType = IsInInstance()
+  if not inInstance or (instanceType ~= "pvp" and instanceType ~= "arena") then return end
+  local name = GetInstanceInfo()
+  local kind = PvPMatchKind(instanceType)
+
+  local winner = eventWinner
+  if winner == nil and GetBattlefieldWinner then
+    local ok, w = pcall(GetBattlefieldWinner)
+    if ok then winner = w end
+  end
+  local myTeam
+  if GetBattlefieldArenaFaction then
+    local ok, t = pcall(GetBattlefieldArenaFaction)
+    if ok and type(t) == "number" then myTeam = t end
+  end
+  if myTeam == nil then
+    local f = UnitFactionGroup("player")
+    myTeam = (f == "Horde") and 0 or (f == "Alliance" and 1 or nil)
+  end
+  local won
+  if kind ~= "shuffle" and type(winner) == "number" and myTeam ~= nil then
+    won = (winner == myTeam)
+  end
+
+  local duration = tonumber(eventDuration)
+  if duration and (duration <= 0 or duration > 6 * 3600) then duration = nil end
+
+  local rec = SX.EnsureChar(SX.CurrentCharKey())
+  local d = SX.EnsureDay(rec, SX.TodayKey())
+  SX.AppendDayEvent(d.pvpLog, { ts = time(), map = name, kind = kind, won = won,
+                                time = duration and math.floor(duration + 0.5) or nil,
+                                exp = SX.ExpansionForCurrentInstance() })
+end
+
 -- Suivi quotidien Arene (parties jouees/gagnees) : pas d'evenement "fin de
 -- partie d'arene" distinct expose simplement cote client - diff entre deux
 -- lectures des compteurs SAISON cumulatifs de GetPersonalRatedInfo (2v2+3v3+
@@ -484,7 +715,7 @@ function SX.Aggregate(charKey, from, to)
   local agg = { quests = 0, worldQuests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, raids = 0, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
                 bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0,
                 questLog = {}, dungeonLog = {}, delveLog = {}, repLog = {}, raidLog = {},
-                goldLog = {}, playtimeLog = {}, profLog = {} }
+                goldLog = {}, playtimeLog = {}, profLog = {}, pvpLog = {} }
   local rec = StatsDB[charKey]
   if not rec or not rec.days then return agg end
   for dayKey, d in pairs(rec.days) do
@@ -519,6 +750,7 @@ function SX.Aggregate(charKey, from, to)
       FlattenDayLog(d, "goldLog", agg.goldLog)
       FlattenDayLog(d, "playtimeLog", agg.playtimeLog)
       FlattenDayLog(d, "profLog", agg.profLog)
+      FlattenDayLog(d, "pvpLog", agg.pvpLog)
     end
   end
   return agg
@@ -528,7 +760,7 @@ function SX.AggregateAccount(from, to)
   local agg = { quests = 0, worldQuests = 0, goldGain = 0, goldSpent = 0, played = 0, dungeons = 0, mplusCount = 0, mplusList = {}, raids = 0, delves = 0, repGained = 0, pvpKillsGained = 0, profGained = 0,
                 bgPlayedGained = 0, bgWonGained = 0, arenaPlayedGained = 0, arenaWonGained = 0,
                 questLog = {}, dungeonLog = {}, delveLog = {}, repLog = {}, raidLog = {},
-                goldLog = {}, playtimeLog = {}, profLog = {} }
+                goldLog = {}, playtimeLog = {}, profLog = {}, pvpLog = {} }
   -- SX.GetCharKeys() plutot que pairs(StatsDB) direct : ecarte StatsDB.export
   -- / StatsDB.exportedAt (cf. son commentaire) qui feraient planter
   -- SX.Aggregate en tentant de lire ".days" sur une chaine ou un nombre.
@@ -559,6 +791,7 @@ function SX.AggregateAccount(from, to)
     for _, e in ipairs(a.goldLog) do agg.goldLog[#agg.goldLog + 1] = e end
     for _, e in ipairs(a.playtimeLog) do agg.playtimeLog[#agg.playtimeLog + 1] = e end
     for _, e in ipairs(a.profLog) do agg.profLog[#agg.profLog + 1] = e end
+    for _, e in ipairs(a.pvpLog) do agg.pvpLog[#agg.pvpLog + 1] = e end
   end
   return agg
 end
@@ -864,7 +1097,8 @@ local function OnQuestTurnedIn(questID, xpReward, moneyReward)
   -- wq = true seulement pour une expedition (champ absent sinon, pour ne pas
   -- alourdir l'export) : le detail de la carte Expeditions filtre questLog
   -- sur ce drapeau au lieu d'un journal dedie en double.
-  SX.AppendDayEvent(d.questLog, { ts = time(), quest = questName, zone = zone, xp = xpReward, wq = isWQ or nil })
+  SX.AppendDayEvent(d.questLog, { ts = time(), quest = questName, zone = zone, xp = xpReward, wq = isWQ or nil,
+                                   exp = SX.ExpansionForQuest(questID) })
   -- L'or de recompense de quete est deja compte dans d.goldGain via le delta
   -- PLAYER_MONEY correspondant - ici on l'accumule seulement pour que
   -- FlushGoldSourceBucket (ENREGISTREUR : OR ci-dessus) le retranche du
@@ -893,7 +1127,7 @@ local function OnChallengeModeCompleted()
   -- (calcule via time(), Core.lua plus bas) : rien d'autre dans ce depot ne
   -- lit mplus[].time (verifie), donc ce changement d'unite est sans risque.
   SX.AppendDayEvent(d.mplus, { map = mapName, level = level, time = math.floor((time_ or 0) / 1000), done = onTime and true or false,
-                                ts = time(), spec = CurrentSpecName() })
+                                ts = time(), spec = CurrentSpecName(), exp = SX.ExpansionForCurrentInstance() })
 end
 
 -- ============================================================================
@@ -982,7 +1216,10 @@ local function OnScenarioCompleted()
   -- Herite des deux incertitudes documentees ci-dessus (nom = repli zone/sous-
   -- zone, palier pas toujours dispo a l'instant T) - patchee par reference par
   -- le reessai ci-dessous si le palier arrive apres coup.
-  local delveLogEntry = SX.AppendDayEvent(d.delveLog, { ts = time(), name = delveName, tier = tier })
+  -- Extension : instance d'abord, puis carte (Khaz Algar...), puis extension
+  -- en cours - les gouffres n'existent que depuis The War Within.
+  local delveExp = SX.ExpansionForCurrentInstance() or SX.ExpansionForCurrentMap() or SX.CurrentExpansionLevel()
+  local delveLogEntry = SX.AppendDayEvent(d.delveLog, { ts = time(), name = delveName, tier = tier, exp = delveExp })
   -- Consomme le cache : evite qu'un gouffre suivant, lance tres vite apres
   -- celui-ci, ne reutilise par erreur un palier perime.
   cachedDelveTier = nil
@@ -1612,7 +1849,7 @@ local function DoFactionRescan()
       if base and base.max == info.max and info.cur > base.cur then
         local delta = info.cur - base.cur
         totalGain = totalGain + delta
-        gains[#gains + 1] = { faction = info.name, amount = delta }
+        gains[#gains + 1] = { faction = info.name, amount = delta, factionID = id }
         rec.repRecentGain[id] = now
       end
       repBaseline[id] = { cur = info.cur, max = info.max }
@@ -1624,8 +1861,10 @@ local function DoFactionRescan()
     -- Le debounce de 1s ci-dessous (OnFactionUpdate) regroupe une salve de
     -- gains sur la meme faction en une seule ligne, pas une ligne par quete
     -- rendue - acceptable, pas un bug si une ligne semble "trop grosse".
+    local expMap = SX.BuildFactionExpansionMap()
     for _, g in ipairs(gains) do
-      SX.AppendDayEvent(d.repLog, { ts = now, faction = g.faction, amount = g.amount })
+      SX.AppendDayEvent(d.repLog, { ts = now, faction = g.faction, amount = g.amount,
+                                    exp = SX.ExpansionForFaction(g.factionID, expMap) })
     end
   end
   SX.CollectReputationSnapshot(rec)
@@ -1714,8 +1953,13 @@ local function DoProfessionRescan()
   if totalGain > 0 then
     local d = SX.EnsureDay(rec, SX.TodayKey())
     d.profGained = (d.profGained or 0) + totalGain
+    -- GetProfessionInfo lit le palier de l'extension EN COURS (celui du
+    -- grimoire depuis Dragonflight) : c'est donc sur ce palier que le gain
+    -- est mesure. Monter un ancien palier chez un maitre ne change pas ce
+    -- niveau-la et n'est de toute facon pas detecte ici.
+    local profExp = SX.CurrentExpansionLevel()
     for _, g in ipairs(gains) do
-      SX.AppendDayEvent(d.profLog, { ts = now, profession = g.profession, amount = g.amount })
+      SX.AppendDayEvent(d.profLog, { ts = now, profession = g.profession, amount = g.amount, exp = profExp })
     end
   end
   SX.CollectProfessionSnapshot(rec)
@@ -1829,10 +2073,10 @@ local function EvaluateDungeonCompletion(session)
   if session.instanceType == "raid" then
     d.raids = (d.raids or 0) + 1
     SX.AppendDayEvent(d.raidLog, { ts = time(), name = session.name, spec = CurrentSpecName(),
-                                    time = duration, bossKills = session.bossKillCount })
+                                    time = duration, bossKills = session.bossKillCount, exp = session.exp })
   else
     d.dungeons = (d.dungeons or 0) + 1
-    SX.AppendDayEvent(d.dungeonLog, { ts = time(), name = session.name, spec = CurrentSpecName(), time = duration })
+    SX.AppendDayEvent(d.dungeonLog, { ts = time(), name = session.name, spec = CurrentSpecName(), time = duration, exp = session.exp })
   end
 end
 
@@ -1843,7 +2087,10 @@ local function OnEnteringWorld()
     if not instanceSession or instanceSession.mapID ~= mapID then
       -- Nouvelle session : evalue l'ancienne (si on vient d'une autre instance) puis ouvre la nouvelle
       if instanceSession then EvaluateDungeonCompletion(instanceSession) end
-      instanceSession = { mapID = mapID, name = name, enteredAt = time(), instanceType = instanceType, bossKillCount = 0 }
+      -- exp lu a l'ENTREE : la session est souvent evaluee apres la sortie
+      -- de l'instance, quand GetInstanceInfo ne la decrit plus.
+      instanceSession = { mapID = mapID, name = name, enteredAt = time(), instanceType = instanceType, bossKillCount = 0,
+                          exp = SX.ExpansionForCurrentInstance() }
     end
   else
     if instanceSession then
@@ -1979,6 +2226,7 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
     -- snapshot (cotes/saison) est retarde car ces compteurs Blizzard ne
     -- semblent pas toujours a jour a l'instant precis de l'evenement
     -- (constat sur d'autres API similaires, pas verifie specifiquement ici).
+    OnPvPMatchLog(...)
     OnBattlegroundComplete()
     C_Timer.After(2, function()
       local rec = SX.EnsureChar(SX.CurrentCharKey())

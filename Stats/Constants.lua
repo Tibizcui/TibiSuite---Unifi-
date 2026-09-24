@@ -23,7 +23,7 @@ SX.SCHEMA_VERSION = 2
 SX.HISTORY_MAX_DAYS = 400
 
 -- Plafond d'evenements detailles par jour et par journal (mplus, questLog,
--- dungeonLog, delveLog, repLog, raidLog, goldLog, playtimeLog, profLog) :
+-- dungeonLog, delveLog, repLog, raidLog, goldLog, playtimeLog, profLog, pvpLog) :
 -- au-dela, le plus ancien de la journee est ecrase
 -- (SX.AppendDayEvent, Core.lua). Une grosse session de farm/quete peut generer
 -- bien plus d'evenements par jour qu'un M+ classique ; ce plafond evite de faire
