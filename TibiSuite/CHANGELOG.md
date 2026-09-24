@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.17
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.17 pour le detail : rattrapage de l'extension des anciens evenements et correction manuelle).
+
 ## 7.1.5.16
 - Update and integration opacity - new addons.
 - Integration du nouveau module Opacity (transparence de toutes les fenetres) : onglet dans la barre unifiee, case dans /ts modules (activee automatiquement une seule fois pour les installations existantes), bouton minimap individuel masque.

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.17
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.17 pour le detail : rattrapage de l'extension des anciens evenements et correction manuelle).
+
 ## 7.1.5.16
 - Update and integration opacity - new addons.
 - Premiere version d'Opacity, nouveau module de la suite TibiSuite : reglez l'opacite de n'importe quelle fenetre du jeu (Blizzard, TibiSuite et vos autres addons).

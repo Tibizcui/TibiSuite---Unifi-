@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.1.5.17
+- Rattrapage de l'extension des evenements enregistres avant la 7.1.5.16 (affiches "-" jusqu'ici). Lance automatiquement une fois apres la mise a jour, puis relancable depuis les options de Stats. Donjons, M+ et raids retrouves via le Guide de l'aventurier, gouffres via la carte, reputations via le panneau de reputation, metiers via la date. Quetes et expeditions : extension estimee d'apres la zone, affichee "~" dans l'addon et "≈" dans Tibi Companion et sur le site ; les capitales (Orgrimmar, Hurlevent...) restent a "-", une zone de capitale ne suffisant pas a savoir de quelle extension vient la quete.
+- Correction manuelle : clic sur une cellule Extension de la liste d'evenements pour choisir l'extension. Le choix s'applique a tous les evenements du meme nom, sur tous les personnages, et remplace une estimation.
+- Aide integree : une bulle au survol de chaque cellule Extension explique un "-" (extension inconnue) ou un "~" (extension estimee), et un rappel sous la liste indique comment choisir l'extension quand il reste des "-".
+- Le rattrapage ne remplit que les evenements sans extension : il n'ecrase jamais une valeur lue en direct ni une correction manuelle. Les sous-zones ne sont reconnues que si le personnage les a explorees.
+
 ## 7.1.5.16
 - Update and integration opacity - new addons.
 - Nouvelle colonne Extension dans le detail des cartes Quetes, Expeditions, Donjons & M+, Raids, Gouffres, Reputation gagnee et Points de metier gagnes (ex. une quete faite a Legion, un raid de Midnight). L'extension est lue au moment de l'evenement : les evenements enregistres avant cette version affichent "-", l'historique ne peut pas etre reconstitue.
