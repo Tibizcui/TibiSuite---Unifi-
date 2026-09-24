@@ -332,7 +332,6 @@ end
 -- Facteur "au repos" (hors survol) d'une entree du profil.
 function OP.RestFactor(entry)
   local p = OP.Profile()
-  if OP.screenshot then return 0 end
   local v = entry.alpha
   local ctx = OP.activeContext
   if ctx and entry.ctx and p.contexts[ctx] and p.contexts[ctx].on then
@@ -462,9 +461,52 @@ function OP.SetEnabled(on)
   if OP.OnRefresh then OP.OnRefresh() end
 end
 
+-- MODE CAPTURE D'ECRAN : masque TOUTE l'interface (alpha de UIParent a 0),
+-- pas seulement les fenetres de la liste (retour en jeu 2026-09-24 : barres,
+-- discussion et compteurs restaient visibles). Rien n'est cache ni detruit :
+-- l'alpha d'origine est memorise et rendu au retour. UIParent est une frame
+-- protegee : on refuse d'entrer en mode capture en combat, et on en sort de
+-- force des l'entree en combat (PLAYER_REGEN_DISABLED), pour ne jamais
+-- risquer une interface invisible impossible a rendre pendant un combat.
+--
+-- Sortie garantie : l'interface invisible masque aussi la fenetre Opacity et
+-- son bouton. Echap reaffiche tout, via UISpecialFrames (mecanisme natif, meme
+-- patron que la pipette : aucun code a nous sur la touche, pas de OnHide).
+local savedUIAlpha
+local shotGuard, shotWatch
+
 function OP.SetScreenshot(on)
-  OP.screenshot = on and true or false
+  on = on and true or false
+  if on == OP.screenshot then return true end
+  if on then
+    if InCombatLockdown() then
+      OP.Print(T("MSG_SHOT_COMBAT", "le mode capture d'écran n'est pas disponible en combat."))
+      return false
+    end
+    if not shotGuard then
+      shotGuard = CreateFrame("Frame", "OpacityShotGuard", UIParent)
+      shotGuard:SetSize(1, 1)
+      shotGuard:Hide()
+      tinsert(UISpecialFrames, "OpacityShotGuard")
+      shotWatch = CreateFrame("Frame")
+      shotWatch:Hide()
+      shotWatch:SetScript("OnUpdate", function(self)
+        if OP.screenshot and not shotGuard:IsShown() then Opacity_ToggleScreenshot() end
+        if not OP.screenshot then self:Hide() end
+      end)
+    end
+    savedUIAlpha = UIParent:GetAlpha() or 1
+    OP.screenshot = true
+    SetAlphaRaw(UIParent, 0)
+    shotGuard:Show(); shotWatch:Show()
+  else
+    OP.screenshot = false
+    if shotGuard then shotGuard:Hide() end
+    SetAlphaRaw(UIParent, savedUIAlpha or 1)
+    savedUIAlpha = nil
+  end
   OP.Refresh()
+  return true
 end
 
 function OP.SetContext(key)
@@ -483,7 +525,7 @@ function Opacity_MasterStep(delta)
 end
 
 function Opacity_ToggleScreenshot()
-  OP.SetScreenshot(not OP.screenshot)
+  if not OP.SetScreenshot(not OP.screenshot) then return end
   OP.Flash(OP.screenshot and T("FLASH_SHOT_ON", "mode capture d'écran activé")
                           or T("FLASH_SHOT_OFF", "mode capture d'écran terminé"))
 end
@@ -501,8 +543,10 @@ local ev = CreateFrame("Frame")
 ev:RegisterEvent("ADDON_LOADED")
 ev:RegisterEvent("PLAYER_LOGIN")
 ev:RegisterEvent("PLAYER_REGEN_ENABLED")
+ev:RegisterEvent("PLAYER_REGEN_DISABLED")
 ev:RegisterEvent("ADDON_ACTION_BLOCKED")
 ev:RegisterEvent("SCREENSHOT_SUCCEEDED")
+ev:RegisterEvent("SCREENSHOT_FAILED")
 
 local pendingTicker
 local function EnsurePendingTicker()
@@ -558,9 +602,13 @@ ev:SetScript("OnEvent", function(_, event, arg1, arg2)
       OP.Push(frame)
     end
 
-  elseif event == "SCREENSHOT_SUCCEEDED" then
-    -- Mode capture : la capture est prise, on reaffiche automatiquement.
-    if OP.screenshot and OpacityDB and OpacityDB.shotAuto then
+  elseif event == "PLAYER_REGEN_DISABLED" then
+    -- Securite : jamais d'interface invisible en combat.
+    if OP.screenshot then OP.SetScreenshot(false) end
+
+  elseif event == "SCREENSHOT_SUCCEEDED" or event == "SCREENSHOT_FAILED" then
+    -- Mode capture : la capture est prise (ou a echoue), on reaffiche.
+    if OP.screenshot and OpacityDB and (OpacityDB.shotAuto or event == "SCREENSHOT_FAILED") then
       C_Timer.After(0.3, function() if OP.screenshot then Opacity_ToggleScreenshot() end end)
     end
   end

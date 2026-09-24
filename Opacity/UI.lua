@@ -3,7 +3,7 @@
   ---------------------------------------------------------------------------
   Fenetre principale (OpacityMainFrame) :
     - en-tete : case Actif, curseur maitre, contexte actif ;
-    - barre d'actions : Pipette, Ajouter, Prereglages, Capture, Exporter,
+    - barre d'actions : Pipette, Reinitialiser, Ajouter, Prereglages, Capture, Exporter,
       Importer, Annuler ;
     - liste des fenetres controlees : opacite, fondu au survol, suit les
       contextes, Forcer (frames d'ElvUI / EllesmereUI), retirer.
@@ -21,7 +21,7 @@ local ACCENT = OP.ACCENT
 local function GetUI() return _G.TibiMidnight end
 
 local main, list, rows = nil, nil, {}
-local ROW_H, LIST_W = 28, 580
+local ROW_H, LIST_W = 28, 678
 local refreshing = false
 
 local function AccentText(s)
@@ -133,14 +133,14 @@ local function MakeRow(i)
 
   r.label = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   r.label:SetPoint("TOPLEFT", 6, -3)
-  r.label:SetWidth(220); r.label:SetJustifyH("LEFT"); r.label:SetWordWrap(false)
+  r.label:SetWidth(328); r.label:SetJustifyH("LEFT"); r.label:SetWordWrap(false)
   r.tag = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   r.tag:SetPoint("TOPLEFT", r.label, "BOTTOMLEFT", 0, -1)
-  r.tag:SetWidth(220); r.tag:SetJustifyH("LEFT"); r.tag:SetWordWrap(false)
+  r.tag:SetWidth(328); r.tag:SetJustifyH("LEFT"); r.tag:SetWordWrap(false)
   r.tag:SetFontObject("GameFontDisableSmall")
 
   r.slider = Slider(r, 150)
-  r.slider:SetPoint("LEFT", r, "LEFT", 236, 0)
+  r.slider:SetPoint("LEFT", r, "LEFT", 344, 0)
   r.value = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   r.value:SetPoint("LEFT", r.slider, "RIGHT", 6, 0)
   r.value:SetWidth(40); r.value:SetJustifyH("LEFT")
@@ -151,21 +151,21 @@ local function MakeRow(i)
   end)
 
   r.hover = Check(r, nil, T("TT_HOVER", "Fondu au survol : la fenêtre repasse à 100 % sous la souris."))
-  r.hover:SetPoint("LEFT", r, "LEFT", 440, 0)
+  r.hover:SetPoint("LEFT", r, "LEFT", 548, 0)
   r.hover:SetScript("OnClick", function(s) if r.name then OP.SetFrameField(r.name, "hover", s:GetChecked()) end end)
 
   r.ctx = Check(r, nil, T("TT_CTX", "Suit les contextes (combat, raid, monture...). Décoché : garde toujours son opacité réglée."))
-  r.ctx:SetPoint("LEFT", r, "LEFT", 486, 0)
+  r.ctx:SetPoint("LEFT", r, "LEFT", 594, 0)
   r.ctx:SetScript("OnClick", function(s) if r.name then OP.SetFrameField(r.name, "ctx", s:GetChecked()) end end)
 
   r.force = Check(r, nil, T("TT_FORCE", "Cette fenêtre est pilotée par une suite d'interface. Forcer : Opacity s'applique quand même, "
     .. "en multipliant l'opacité que la suite lui donne (leur fondu continue de fonctionner)."))
-  r.force:SetPoint("LEFT", r, "LEFT", 516, 0)
+  r.force:SetPoint("LEFT", r, "LEFT", 624, 0)
   r.force:SetScript("OnClick", function(s) if r.name then OP.SetFrameField(r.name, "force", s:GetChecked()) end end)
 
   r.remove = CreateFrame("Button", nil, r, "UIPanelCloseButton")
   r.remove:SetSize(22, 22)
-  r.remove:SetPoint("LEFT", r, "LEFT", 552, 0)
+  r.remove:SetPoint("LEFT", r, "LEFT", 654, 0)
   r.remove:SetScript("OnClick", function() if r.name then OP.RemoveFrame(r.name) end end)
   r.remove:SetScript("OnEnter", function(s)
     GameTooltip:SetOwner(s, "ANCHOR_RIGHT"); GameTooltip:SetText(T("TT_REMOVE", "Retirer (la fenêtre retrouve son opacité d'origine)"), 1, 1, 1, 1, true); GameTooltip:Show()
@@ -414,21 +414,34 @@ local function TogglePresets(anchor)
     for _, pre in ipairs(OP.PRESETS) do entries[#entries + 1] = pre end
     entries[#entries + 1] = {
       key = "shot", label = T("PRE_SHOT", "Capture d'écran"),
-      desc = T("PRE_SHOT_D", "Fait disparaître toutes les fenêtres de votre liste. Prenez votre capture (Impr. écran) : "
-        .. "tout réapparaît automatiquement juste après. Aussi disponible en raccourci clavier."),
+      desc = T("PRE_SHOT_D", "Fait disparaître toute l'interface. Prenez votre capture (Impr. écran) : "
+        .. "tout réapparaît automatiquement juste après, ou avec Échap. Aussi disponible en raccourci clavier."),
+    }
+    -- Sortie de secours, toujours en bas du menu : tout remettre a l'opacite
+    -- normale d'un clic (suspend Opacity sans rien effacer), puis reactiver.
+    entries[#entries + 1] = {
+      key = "restore", label = T("PRE_RESTORE", "Tout réafficher"),
+      desc = T("PRE_RESTORE_D", "Remet immédiatement toutes les fenêtres à leur opacité normale, sans perdre vos réglages. "
+        .. "Cliquez à nouveau (« Réactiver Opacity ») pour les retrouver."),
     }
     for _, pre in ipairs(entries) do
       local b = Button(presetMenu, 180, pre.label, pre.desc)
       b:SetPoint("TOP", 0, y)
       b:SetScript("OnClick", function()
         presetMenu:Hide()
-        if pre.key == "shot" then Opacity_ToggleScreenshot() else OP.ApplyPreset(pre.key) end
+        if pre.key == "shot" then Opacity_ToggleScreenshot()
+        elseif pre.key == "restore" then Opacity_ToggleEnabled()
+        else OP.ApplyPreset(pre.key) end
       end)
+      if pre.key == "restore" then presetMenu.restore = b end
       y = y - 26
     end
     presetMenu:SetSize(196, -y + 6)
     presetMenu:Hide()
   end
+  -- Libelle de l'entree de secours selon l'etat courant.
+  presetMenu.restore._label:SetText(OpacityDB.enabled and T("PRE_RESTORE", "Tout réafficher")
+    or AccentText(T("PRE_REACTIVATE", "Réactiver Opacity")))
   presetMenu:ClearAllPoints()
   presetMenu:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -2)
   presetMenu:SetShown(not presetMenu:IsShown())
@@ -443,7 +456,7 @@ local function SavePosition()
 end
 
 local function BuildMain()
-  main = Window("OpacityMainFrame", 612, 500, "Opacity")
+  main = Window("OpacityMainFrame", 720, 500, "Opacity")
   main:SetScript("OnDragStop", function(s) s:StopMovingOrSizing(); SavePosition() end)
   local w = OpacityDB.win
   if type(w) == "table" and w.point then
@@ -488,17 +501,21 @@ local function BuildMain()
     x = x + w + 6
     return b
   end
-  Action(80, T("BTN_PICK", "Pipette"), T("TT_PICK", "Survolez n'importe quelle fenêtre du jeu et cliquez pour l'ajouter."), function()
+  Action(76, T("BTN_PICK", "Pipette"), T("TT_PICK", "Survolez n'importe quelle fenêtre du jeu et cliquez pour l'ajouter."), function()
     main:Hide(); OP.StartPicker()
+  end)
+  Action(96, T("BTN_RESET", "Réinitialiser"), T("TT_RESET", "Vide la liste : toutes les fenêtres retrouvent leur opacité d'origine, "
+    .. "contextes et curseur maître reviennent aux valeurs par défaut. « Annuler » restaure le profil précédent."), function()
+    OP.ResetProfile()
   end)
   Action(80, T("BTN_ADD", "Ajouter..."), T("TT_ADD", "Choisir dans la liste des fenêtres Blizzard, TibiSuite et des addons détectés."), ShowAdd)
   local pre
-  pre = Action(96, T("BTN_PRESETS", "Préréglages"), nil, function() TogglePresets(pre) end)
-  main.shot = Action(80, T("BTN_SHOT", "Capture"), T("TT_SHOT", "Mode capture d'écran : fait disparaître les fenêtres de la liste jusqu'à votre prochaine capture."),
+  pre = Action(92, T("BTN_PRESETS", "Préréglages"), nil, function() TogglePresets(pre) end)
+  main.shot = Action(76, T("BTN_SHOT", "Capture"), T("TT_SHOT", "Mode capture d'écran : fait disparaître toute l'interface jusqu'à votre prochaine capture (ou Échap)."),
     function() Opacity_ToggleScreenshot() end)
-  Action(80, T("BTN_EXPORT", "Exporter"), T("TT_EXPORT", "Obtenir un code texte de votre profil."), function() ShowCode("export") end)
-  Action(80, T("BTN_IMPORT", "Importer"), T("TT_IMPORT", "Coller un code de profil Opacity."), function() ShowCode("import") end)
-  main.undo = Action(78, T("BTN_UNDO", "Annuler"), T("TT_UNDO", "Restaure le profil d'avant le dernier import, préréglage ou réinitialisation."), function()
+  Action(76, T("BTN_EXPORT", "Exporter"), T("TT_EXPORT", "Obtenir un code texte de votre profil."), function() ShowCode("export") end)
+  Action(76, T("BTN_IMPORT", "Importer"), T("TT_IMPORT", "Coller un code de profil Opacity."), function() ShowCode("import") end)
+  main.undo = Action(76, T("BTN_UNDO", "Annuler"), T("TT_UNDO", "Restaure le profil d'avant le dernier import, préréglage ou réinitialisation."), function()
     if OP.Undo() then OP.Print(T("MSG_UNDO", "profil précédent restauré.")) end
   end)
 
@@ -513,10 +530,10 @@ local function BuildMain()
     fs:SetText(text)
   end
   Col(T("COL_FRAME", "Fenêtre"), 6)
-  Col(T("COL_ALPHA", "Opacité"), 236)
-  Col(T("COL_HOVER", "Survol"), 434)
-  Col(T("COL_CTX", "Ctx"), 486)
-  Col(T("COL_FORCE", "Forcer"), 510)
+  Col(T("COL_ALPHA", "Opacité"), 344)
+  Col(T("COL_HOVER", "Survol"), 542)
+  Col(T("COL_CTX", "Ctx"), 594)
+  Col(T("COL_FORCE", "Forcer"), 618)
 
   local scroll = CreateFrame("ScrollFrame", nil, main, "UIPanelScrollFrameTemplate")
   scroll:SetPoint("TOPLEFT", 10, -126)

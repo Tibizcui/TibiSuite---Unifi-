@@ -656,7 +656,7 @@ everything back the moment you need it.
   instance (dungeon, delve, scenario, PvP) or mounted. Example: everything at
   40% while mounted, 100% in combat. Each window can opt out.
 - **One-click presets**: Immersion and Raid, plus an **Undo** button.
-- **Screenshot mode**: hides the windows in your list, take your screenshot,
+- **Screenshot mode**: hides the whole interface, take your screenshot,
   everything comes back on its own.
 - **Master slider** that scales every value at once, with key bindings
   (+/- 10%).
@@ -694,7 +694,7 @@ en avez besoin.
   peut s'en exclure.
 - **Préréglages en un clic** : Immersion et Raid, avec un bouton
   **Annuler**.
-- **Mode capture d'écran** : les fenêtres de votre liste disparaissent,
+- **Mode capture d'écran** : toute l'interface disparaît,
   prenez votre capture, tout revient tout seul.
 - **Curseur maître** qui ajuste toutes les valeurs d'un coup, avec des
   raccourcis clavier (+/- 10 %).

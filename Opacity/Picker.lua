@@ -34,7 +34,7 @@ end
 -- Toutes les lectures passent sous pcall, IsForbidden d'abord (via
 -- OP.IsUsableFrame) : sous 12.x, UIParent contient des frames interdites dont
 -- le moindre appel de methode leve une erreur, ce qui cassait toute la pipette.
-local function Consider(f, list)
+local function Consider(f, list, depth)
   if IsOurs(f) or not OP.IsUsableFrame(f) then return end
   local name = f:GetName()
   if not (name and OP.ValidName(name) and _G[name] == f) then return end
@@ -43,7 +43,7 @@ local function Consider(f, list)
   if not w or w < 4 or h < 4 then return end
   if w >= UIParent:GetWidth() * 0.98 and h >= UIParent:GetHeight() * 0.98 then return end
   list[#list + 1] = {
-    frame = f, name = name, area = w * h,
+    frame = f, name = name, area = w * h, depth = depth,
     strata = STRATA[f:GetFrameStrata()] or 0, level = f:GetFrameLevel() or 0,
   }
 end
@@ -52,8 +52,8 @@ end
 local function ConsiderBranch(f, list)
   if IsOurs(f) or not OP.IsUsableFrame(f) then return end
   if not (f:IsVisible() and f:IsMouseOver()) then return end
-  Consider(f, list)
-  for _, c in ipairs({ f:GetChildren() }) do pcall(Consider, c, list) end
+  Consider(f, list, 1)
+  for _, c in ipairs({ f:GetChildren() }) do pcall(Consider, c, list, 2) end
 end
 
 local function Gather()
@@ -62,7 +62,11 @@ local function Gather()
   if ok then
     for _, f in ipairs(children) do pcall(ConsiderBranch, f, list) end
   end
+  -- La fenetre entiere (enfant direct de UIParent) passe AVANT ses elements :
+  -- on veut la barre d'action, pas un de ses boutons (retour en jeu 2026-09-24).
+  -- La molette donne toujours acces aux elements.
   table.sort(list, function(a, b)
+    if a.depth ~= b.depth then return a.depth < b.depth end
     if a.strata ~= b.strata then return a.strata > b.strata end
     if a.level ~= b.level then return a.level > b.level end
     return a.area < b.area
