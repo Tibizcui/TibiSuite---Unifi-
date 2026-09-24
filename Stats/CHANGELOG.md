@@ -1,5 +1,13 @@
 # Changelog
 
+## 7.1.5.16
+- Update and integration opacity - new addons.
+- Nouvelle colonne Extension dans le detail des cartes Quetes, Expeditions, Donjons & M+, Raids, Gouffres, Reputation gagnee et Points de metier gagnes (ex. une quete faite a Legion, un raid de Midnight). L'extension est lue au moment de l'evenement : les evenements enregistres avant cette version affichent "-", l'historique ne peut pas etre reconstitue.
+- Nouveau filtre par extension au-dessus de ces listes (Toutes, une extension precise, ou Non renseignee pour les anciens evenements).
+- Nouveau journal des parties JcJ : une ligne par champ de bataille, arene, Blitz ou bagarre termine (carte, type, resultat, duree, extension d'origine de la carte), accessible via le bouton "Journal des parties" du panneau PVP. Il demarre a l'installation de cette version.
+- Or et Temps joue n'ont pas de colonne Extension (listes regroupees par source ou activite).
+- Egalement affiche dans Tibi Companion et sur le Dashboard-Tibi. Format d'export inchange.
+
 ## 7.1.5.15
 - Nouvelle carte Expeditions (World Quests) : compte les expeditions terminees par jour, toutes extensions depuis Legion, avec courbe et detail au clic (expedition, zone, XP). Le compteur demarre a l'installation de cette version : aucune statistique Blizzard ne permet de reprendre l'historique. Egalement affichee dans Tibi Companion et sur le Dashboard-Tibi.
 

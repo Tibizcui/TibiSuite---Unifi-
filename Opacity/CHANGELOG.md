@@ -1,6 +1,7 @@
 # Changelog
 
-## 7.1.5.15
+## 7.1.5.16
+- Update and integration opacity - new addons.
 - Premiere version d'Opacity, nouveau module de la suite TibiSuite : reglez l'opacite de n'importe quelle fenetre du jeu (Blizzard, TibiSuite et vos autres addons).
 - Fondu au survol, profils par contexte (ABS, combat, raid, instance, monture), curseur maitre, prereglages Immersion et Raid, entree "Tout reafficher" pour revenir a la normale d'un clic.
 - Mode capture d'ecran : masque toute l'interface, qui revient seule apres la capture (ou avec Echap).

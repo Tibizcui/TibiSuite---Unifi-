@@ -11,8 +11,8 @@
 
 ## Vue d'ensemble
 
-- **Version courante de la suite : 7.1.5.15**, synchronisée sur les 14
-  addons (13 modules + le core `TibiSuite`).
+- **Version courante de la suite : 7.1.5.16**, synchronisée sur les 15
+  addons (14 modules + le core `TibiSuite`).
 - Écosystème élargi autour de la suite (dépôts séparés) :
   - **Tibiscui.fr** — site web, héberge le Dashboard qui décode le code
     d'export du module Stats.
