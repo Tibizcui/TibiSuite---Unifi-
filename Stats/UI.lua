@@ -2464,10 +2464,10 @@ local function GroupEventRows(rows, dimKey)
     local dim = row[dimKey]
     -- exp dans la cle : une ligne ancienne (sans exp) et une nouvelle du meme
     -- jour/de la meme faction restent separees plutot que de perdre l'info.
-    local gKey = dayKey .. "\1" .. tostring(dim) .. "\1" .. tostring(row.exp)
+    local gKey = dayKey .. "\1" .. tostring(dim) .. "\1" .. tostring(row.exp) .. "\1" .. tostring(row.expEst)
     local g = byKey[gKey]
     if not g then
-      g = { [dimKey] = dim, ts = row.ts, count = 0, amount = 0, time = 0, exp = row.exp }
+      g = { [dimKey] = dim, ts = row.ts, count = 0, amount = 0, time = 0, exp = row.exp, expEst = row.expEst }
       byKey[gKey] = g
       order[#order + 1] = g
     end
@@ -2573,7 +2573,15 @@ local function EventCellText(row, col)
   if key == "level" and v == nil then return "-" end
   -- Extension absente = evenement enregistre avant l'ajout de la colonne (ou
   -- API muette) : "-" comme une donnee qui n'existe pas, pas "?".
-  if key == "exp" then return ExpansionLabel(v) or "-" end
+  -- expEst : extension ESTIMEE par le rattrapage (Backfill.lua, d'apres la
+  -- zone), affichee "~ Extension" pour la distinguer d'une valeur certaine.
+  -- "~" et non "≈" : la police du jeu n'a pas ce glyphe (carre vide, meme
+  -- piege que les glyphes Unicode du socle). Le site affiche "≈".
+  if key == "exp" then
+    local label = ExpansionLabel(v)
+    if not label then return "-" end
+    return row.expEst and ("|cFFAAAAAA~|r " .. label) or label
+  end
   if key == "won" then
     if v == true then return "|cFF6EE7B7" .. L["PVP_RESULT_WIN"] .. "|r" end
     if v == false then return "|cFFFF6B6B" .. L["PVP_RESULT_LOSS"] .. "|r" end
@@ -2665,6 +2673,63 @@ local function OpenExpFilterPopup(anchor)
   p:Show()
 end
 
+-- Correction manuelle de l'extension (clic sur une cellule Extension) : liste
+-- des extensions + "Effacer". Le choix s'applique a TOUS les evenements du
+-- meme nom, tous personnages confondus (SX.AssignExpansion, Backfill.lua).
+local expAssignPopup, expAssignRows = nil, {}
+
+local function OpenExpAssignPopup(anchor, metric, entry)
+  if not (SX.AssignExpansion and SX.AssignKeyValue(metric, entry)) then return end
+  if not expAssignPopup then
+    expAssignPopup = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+    expAssignPopup:SetFrameStrata("FULLSCREEN_DIALOG")
+    expAssignPopup:SetToplevel(true)
+    UI.SkinFrame(expAssignPopup, ACCENT, UI.C.PANEL)
+    expAssignPopup:Hide()
+  end
+  local p = expAssignPopup
+  local width = 190
+  p:SetWidth(width)
+  local entries = {}
+  for n = 0, (SX.CurrentExpansionLevel() or 11) do entries[#entries + 1] = n end
+  entries[#entries + 1] = false   -- false = effacer
+  local y = -4
+  for i, value in ipairs(entries) do
+    local row = expAssignRows[i]
+    if not row then
+      row = UI.MakeButton(p, width - 8, 20, "")
+      row._label:ClearAllPoints()
+      row._label:SetPoint("LEFT", 8, 0)
+      row._label:SetPoint("RIGHT", -8, 0)
+      row._label:SetJustifyH("LEFT")
+      expAssignRows[i] = row
+    end
+    local exp = (value ~= false) and value or nil
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", p, "TOPLEFT", 4, y)
+    local label = exp and ExpansionLabel(exp) or L["EXP_ASSIGN_CLEAR"]
+    if exp ~= nil and exp == entry.exp and not entry.expEst then
+      label = UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. label .. "|r"
+    end
+    row._label:SetText(label)
+    row:SetScript("OnClick", function()
+      p:Hide()
+      local n, name = SX.AssignExpansion(metric, entry, exp)
+      print("|cFFFFD700Stats|r : " .. string.format(L["EXP_ASSIGN_DONE_FMT"],
+        exp and ExpansionLabel(exp) or "-", n, name or "?"))
+      SX.RefreshDashboard()
+    end)
+    row:Show()
+    y = y - 22
+  end
+  for i = #entries + 1, #expAssignRows do expAssignRows[i]:Hide() end
+  p:SetHeight(-y + 4)
+  p:ClearAllPoints()
+  p:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -2)
+  p:SetScript("OnUpdate", function(self) if not anchor:IsVisible() then self:Hide() end end)
+  p:Show()
+end
+
 local function BuildEventListDetail(content, metric)
   local d = eventListWidgets
   if not d.built then
@@ -2728,6 +2793,7 @@ local function BuildEventListDetail(content, metric)
     d.built = true
   end
   if expFilterPopup then expFilterPopup:Hide() end
+  if expAssignPopup then expAssignPopup:Hide() end
 
   d.title:SetText(string.format(L["EVENTS_TITLE_FMT"], CardLabel(metric) or ""))
 
@@ -2854,13 +2920,48 @@ local function BuildEventListDetail(content, metric)
       PlaceCol(fs, colX[ci], y, c.justify or "LEFT")
       fs:SetText(EventCellText(entry, c))
       fs:Show()
+      -- Cellule Extension cliquable : correction manuelle (OpenExpAssignPopup).
+      if c.key == "exp" then
+        if not row.expBtn then
+          row.expBtn = CreateFrame("Button", nil, d.scrollContent)
+          row.expBtn:SetHighlightTexture("Interface\\Buttons\\WHITE8X8")
+          row.expBtn:GetHighlightTexture():SetVertexColor(1, 1, 1, 0.08)
+          -- Bulle d'aide adaptee a la cellule : "-" (inconnue), "~" (estimee)
+          -- ou valeur sure (demande utilisateur : expliquer le "-").
+          row.expBtn:SetScript("OnEnter", function(self)
+            local e = self.entry or {}
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            if e.exp == nil then
+              GameTooltip:SetText(L["EXP_TT_NONE_TITLE"], 1, 0.82, 0)
+              GameTooltip:AddLine(L["EXP_TT_NONE"], 1, 1, 1, true)
+            elseif e.expEst then
+              GameTooltip:SetText(L["EXP_TT_EST_TITLE"], 1, 0.82, 0)
+              GameTooltip:AddLine(L["EXP_TT_EST"], 1, 1, 1, true)
+            else
+              GameTooltip:SetText(L["EVENTS_COL_EXPANSION"], 1, 0.82, 0)
+            end
+            GameTooltip:AddLine(L["EXP_ASSIGN_TT"], 0.6, 0.85, 1, true)
+            GameTooltip:Show()
+          end)
+          row.expBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        end
+        row.expBtn:ClearAllPoints()
+        row.expBtn:SetPoint("TOPLEFT", d.scrollContent, "TOPLEFT", colX[ci].x - 2, y + 2)
+        row.expBtn:SetSize(colX[ci].w + 4, 18)
+        local rowEntry = entry
+        row.expBtn.entry = entry
+        row.expBtn:SetScript("OnClick", function(self) OpenExpAssignPopup(self, metric, rowEntry) end)
+        row.expBtn:SetShown(SX.AssignKeyValue and SX.AssignKeyValue(metric, entry) ~= nil)
+      end
     end
+    if row.expBtn and not HasExpColumn(metric) then row.expBtn:Hide() end
     for ci = #cols + 1, #row do
       if type(row[ci]) == "table" and row[ci].Hide then row[ci]:Hide() end
     end
   end
   for i = shown + 1, #d.rows do
     local row = d.rows[i]
+    if row.expBtn then row.expBtn:Hide() end
     row.date:Hide()
     row.sep:Hide()
     for ci = 1, #row do if type(row[ci]) == "table" and row[ci].Hide then row[ci]:Hide() end end
@@ -2872,6 +2973,15 @@ local function BuildEventListDetail(content, metric)
     noteText = noteText .. " " .. string.format(L["EVENTS_TRUNCATED_FMT"], EVENT_LIST_MAX_ROWS)
   end
   noteText = noteText .. " " .. L["EVENTS_SORT_HINT"]
+  -- Rappel affiche seulement s'il reste des extensions inconnues ("-").
+  if hasExp then
+    for _, r in ipairs(allRows) do
+      if r.exp == nil and SX.AssignKeyValue and SX.AssignKeyValue(metric, r) then
+        noteText = noteText .. " " .. L["EXP_NOTE_NONE"]
+        break
+      end
+    end
+  end
   d.countNote:SetText(noteText)
 
   -- La boucle generique ci-dessous force :Show() sur tous les widgets de d -
@@ -2885,6 +2995,7 @@ end
 
 local function HideEventListDetail()
   if expFilterPopup then expFilterPopup:Hide() end
+  if expAssignPopup then expAssignPopup:Hide() end
   local d = eventListWidgets
   if not d.built then return end
   for _, w in pairs(d) do if type(w) == "table" and w.Hide then w:Hide() end end
@@ -3537,6 +3648,10 @@ local function BuildOptions()
   optPanel:Section(L["WINDOW_TITLE"])
   optPanel:Note(L["EXPORT_HINT"])
   optPanel:Button(L["EXPORT_BUTTON"], function() if SX.ShowExportPopup then SX.ShowExportPopup() end end)
+  -- Rattrapage de l'extension des anciens evenements (Backfill.lua).
+  optPanel:Section(L["EVENTS_COL_EXPANSION"])
+  optPanel:Note(L["EXP_BACKFILL_NOTE"])
+  optPanel:Button(L["EXP_BACKFILL_BTN"], function() if SX.RunExpBackfill then SX.RunExpBackfill(true) end end)
 end
 
 function SX.OpenOptions()
