@@ -1,0 +1,49 @@
+## Interface: 120100, 120007, 120005
+## Title: Opacity
+## Title-frFR: Opacity
+## Notes: Opacity of every window: Blizzard, TibiSuite and your other addons. Hover fade, context profiles (combat, instance, raid, mount, AFK), presets, master slider, frame picker, profile export / import.
+## Notes-frFR: Transparence de toutes les fenetres : Blizzard, TibiSuite et vos autres addons. Fondu au survol, profils par contexte (combat, instance, raid, monture, ABS), prereglages, curseur maitre, pipette, export / import de profil.
+## Author: Tibizcui - Kirin Tor
+## Version: 7.1.5.15
+## IconTexture: Interface\AddOns\Opacity\medias\TibiSuiteIcon
+
+# ----------------------------------------------------------------
+# MODULE DE LA SUITE TibiSuite - MODE DOUBLE (standalone ou integre)
+# ----------------------------------------------------------------
+# Pas de LoadOnDemand : Opacity doit poser son opacite des le login, avec ou
+# sans le core. Dependances SOUPLES : TibiSuite (detection a l'execution via
+# HasCore(), voir Opacity_Module.lua), ElvUI et EllesmereUI (charges AVANT
+# nous quand ils sont presents, pour que leurs frames existent deja au moment
+# ou on les detecte).
+## OptionalDeps: TibiSuite, ElvUI, EllesmereUI
+## Group: TibiSuite
+
+# SavedVariables propre au module. Ne JAMAIS renommer le dossier "Opacity" :
+# WoW nomme la sauvegarde d'apres lui.
+## SavedVariables: OpacityDB
+
+## Category: TibiSuite - Interface
+## Category-frFR: TibiSuite - Interface
+
+## X-Website: https://www.tibiscui.fr
+
+# Copie embarquee du socle (no-op si le core en charge deja une version
+# egale ou superieure)
+Core\TibiSuiteUI.lua
+
+# Compresseur LZW + Base64 (copie de Stats) pour les codes de profil
+Libs\LZW.lua
+
+# Localisation : le francais est embarque dans le code, enUS ne fait que surcharger
+Locales\enUS.lua
+
+Core.lua
+Frames.lua
+Context.lua
+Hover.lua
+Picker.lua
+Profiles.lua
+UI.lua
+
+## Glue TibiSuite : inscription comme onglet du catalogue unifie
+Opacity_Module.lua

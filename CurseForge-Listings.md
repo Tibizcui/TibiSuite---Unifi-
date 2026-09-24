@@ -1,7 +1,7 @@
 # TibiSuite - CurseForge Listing Content
 
 This file gathers everything needed to publish/update the CurseForge pages for
-**TibiSuite** and its 13 addons. Each entry has:
+**TibiSuite** and its 14 addons. Each entry has:
 - a **Short Summary** (English only, this is the one-liner shown in CurseForge
   search results / addon manager, keep it under ~200 characters),
 - a **Full Description**, written first in **English**, then in **French**.
@@ -629,3 +629,84 @@ de leveling.
 - Maj+Glisser pour déplacer, Maj+Clic droit pour ouvrir les options.
 
 Commandes : `/xpbar`.
+
+---
+
+## 14. Opacity
+
+**Short Summary (English):**
+Set the opacity of any window: Blizzard, TibiSuite or other addons. Hover fade, combat/raid/mount profiles, frame picker, presets.
+
+### Full Description - English
+
+Opacity lets you choose how visible every part of your interface is: the world
+map, your bags, the chat, the minimap, action bars, unit frames, and the
+windows of your other addons. Keep the screen clean while you play, and get
+everything back the moment you need it.
+
+**Key features**
+- **Any window, any addon**: Blizzard windows and interface elements, every
+  TibiSuite module, and the windows of your other addons, grouped by the
+  addon that created them.
+- **Frame picker**: hover any window on screen, click, done. The mouse wheel
+  switches between overlapping frames.
+- **Hover fade**: a window sits at 30% and smoothly comes back to 100% under
+  your mouse, with adjustable fade times and delay.
+- **Context profiles**: separate opacity when AFK, in combat, in a raid, in an
+  instance (dungeon, delve, scenario, PvP) or mounted. Example: everything at
+  40% while mounted, 100% in combat. Each window can opt out.
+- **One-click presets**: Immersion and Raid, plus an **Undo** button.
+- **Screenshot mode**: hides the windows in your list, take your screenshot,
+  everything comes back on its own.
+- **Master slider** that scales every value at once, with key bindings
+  (+/- 10%).
+- **Profile export / import** through a text code, to back up your setup or
+  share it with friends.
+- **Plays nice with EllesmereUI**: windows it drives are left alone
+  unless you tick "Force", in which case Opacity multiplies the opacity EllesmereUI gives them
+  instead of fighting its fading.
+- **Never touches Edit Mode**: Opacity reads the opacity other systems give a
+  window and multiplies it, it never rewrites your Edit Mode layouts.
+
+Key bindings: Game Menu > Options > Keybindings > AddOns > Opacity.
+Slash commands: `/opacity` or `/opa` (`pick`, `shot`, `on`, `off`,
+`options`, `reset`).
+
+### Full Description - Français
+
+Opacity vous laisse choisir la visibilité de chaque élément de votre
+interface : la carte du monde, vos sacs, la discussion, la minicarte, les
+barres d'action, les cadres d'unité et les fenêtres de vos autres addons.
+Gardez un écran épuré pendant que vous jouez, et retrouvez tout dès que vous
+en avez besoin.
+
+**Fonctionnalités principales**
+- **N'importe quelle fenêtre, n'importe quel addon** : fenêtres et éléments
+  d'interface Blizzard, tous les modules TibiSuite, et les fenêtres de vos
+  autres addons, regroupées par l'addon qui les a créées.
+- **Pipette** : survolez une fenêtre à l'écran, cliquez, c'est fait. La
+  molette passe d'un cadre à l'autre quand plusieurs se superposent.
+- **Fondu au survol** : une fenêtre reste à 30 % et revient en douceur à
+  100 % sous votre souris, avec durées de fondu et délai réglables.
+- **Profils par contexte** : une opacité dédiée quand vous êtes ABS, en
+  combat, en raid, en instance (donjon, gouffre, scénario, JcJ) ou en
+  monture. Exemple : tout à 40 % en monture, 100 % en combat. Chaque fenêtre
+  peut s'en exclure.
+- **Préréglages en un clic** : Immersion et Raid, avec un bouton
+  **Annuler**.
+- **Mode capture d'écran** : les fenêtres de votre liste disparaissent,
+  prenez votre capture, tout revient tout seul.
+- **Curseur maître** qui ajuste toutes les valeurs d'un coup, avec des
+  raccourcis clavier (+/- 10 %).
+- **Export / import de profil** par code texte, pour sauvegarder votre
+  réglage ou le partager avec vos amis.
+- **Compatible EllesmereUI** : les fenêtres qu'il pilote sont
+  laissées tranquilles, sauf si vous cochez « Forcer ». Opacity multiplie
+  alors l'opacité donnée par EllesmereUI au lieu de contrarier son fondu.
+- **Ne touche jamais au mode Édition** : Opacity lit l'opacité que les
+  autres systèmes donnent à une fenêtre et la multiplie, il ne réécrit
+  jamais vos dispositions du mode Édition.
+
+Raccourcis clavier : Menu du jeu > Options > Raccourcis > AddOns > Opacity.
+Commandes : `/opacity` ou `/opa` (`pick`, `shot`, `on`, `off`, `options`,
+`reset`).

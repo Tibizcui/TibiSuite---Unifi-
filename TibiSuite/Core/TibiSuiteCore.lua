@@ -379,6 +379,20 @@ local MODULES = {
     saved       = { "StatsDB" },
     escClose    = true,
   },
+  {
+    key         = "Opacity",
+    addonName   = "Opacity",
+    label       = "Opacity",
+    frameGlobal = "OpacityMainFrame",
+    mmBtnGlobal = "OpacityMinimapBtn",  -- propre bouton minimap seulement en mode standalone (masque si TibiSuite present)
+    toggleFn    = "Opacity_Toggle",
+    optionsFn   = "Opacity_OpenOptions",
+    slashList   = "TIBIOPACITY",  -- secours : /opacity si la fonction Toggle est absente
+    col         = { r=0.498, g=0.831, b=0.910 },  -- bleu glacier #7FD4E8 (identite Opacity)
+    curseUrl    = "https://www.curseforge.com/wow/addons/tibisuite",  -- pas encore de projet CurseForge dedie
+    saved       = { "OpacityDB" },
+    escClose    = true,
+  },
 }
 
 -- ================================================================
@@ -1857,6 +1871,7 @@ local INDIVIDUAL_MM_BTNS = {
   "PostBoxMinimapBtn",       -- PostBox (mode standalone uniquement)
   "RepBarMinimapBtn",        -- RepBar (mode standalone uniquement)
   "LairLensMinimapBtn",      -- LairLens (mode standalone uniquement)
+  "OpacityMinimapBtn",       -- Opacity (mode standalone uniquement)
 }
 
 local function HideIndividualMinimapButtons()
@@ -2331,6 +2346,16 @@ local function LoadEnabledModules()
     TibiSuiteDB.postBoxEnableMigrated = true
     if TibiSuiteDB.enabledModules.Post == nil then
       TibiSuiteDB.enabledModules.Post = true
+    end
+  end
+  -- Meme migration ponctuelle pour Opacity (arrive apres PostBox, meme
+  -- raisonnement, meme interdiction de generaliser). Opacity_Module.lua et
+  -- Opacity/Core.lua lisent ce flag : tant qu'il est absent, ils considerent
+  -- le module comme actif, pour que l'onglet soit la des la premiere session.
+  if not TibiSuiteDB.opacityEnableMigrated then
+    TibiSuiteDB.opacityEnableMigrated = true
+    if TibiSuiteDB.enabledModules.Opacity == nil then
+      TibiSuiteDB.enabledModules.Opacity = true
     end
   end
 

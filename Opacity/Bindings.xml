@@ -1,0 +1,24 @@
+<Bindings>
+	<!-- Raccourcis clavier Opacity (Echap > Options > Raccourcis > AddOns).
+	     Les libelles viennent des globales BINDING_HEADER_OPACITY et
+	     BINDING_NAME_* definies dans Core.lua. Les fonctions appelees sont
+	     des globales publiques, definies dans Core.lua et UI.lua. -->
+	<Binding name="OPACITY_MASTER_UP" header="OPACITY" category="ADDONS">
+		Opacity_MasterStep(0.1)
+	</Binding>
+	<Binding name="OPACITY_MASTER_DOWN" category="ADDONS">
+		Opacity_MasterStep(-0.1)
+	</Binding>
+	<Binding name="OPACITY_SCREENSHOT" category="ADDONS">
+		Opacity_ToggleScreenshot()
+	</Binding>
+	<Binding name="OPACITY_TOGGLE_ENABLED" category="ADDONS">
+		Opacity_ToggleEnabled()
+	</Binding>
+	<Binding name="OPACITY_PICKER" category="ADDONS">
+		Opacity_StartPicker()
+	</Binding>
+	<Binding name="OPACITY_WINDOW" category="ADDONS">
+		Opacity_Toggle()
+	</Binding>
+</Bindings>

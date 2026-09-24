@@ -12,8 +12,8 @@ suite modulaire, sans perdre la progression des joueurs.
 
 Chaque dossier de premier niveau est un **addon WoW autonome** (le dossier donne
 son nom au fichier SavedVariables). `TibiSuite/` est le **core**. Modules :
-DailyTracker, DgnTracker, LairLens, LegTracker, LvlHistory, MiniHub, PostBox,
-RenTracker, RepBar, SkillTracker, Stats, WeeklyCompass, XPBar.
+DailyTracker, DgnTracker, LairLens, LegTracker, LvlHistory, MiniHub, Opacity,
+PostBox, RenTracker, RepBar, SkillTracker, Stats, WeeklyCompass, XPBar.
 
 - Core : `TibiSuite/Core/TibiSuiteCore.lua`
 - Options (cases à cocher) : `TibiSuite/Core/TibiSuiteOptions.lua`
@@ -46,7 +46,7 @@ Un module type contient : `<Nom>.toc`, `Core.lua` (logique + events), `UI.lua`,
 Daily=DailyTrackerDB, Dgn=DgnTrackerDB, Leg=LegTrackerDB, Rep=RenTrackerDB,
 Lvl=LvlHistoryDB, Weekly=WeeklyCompassDB, MiniHub=MiniHubDB, XPBar=XPBarDB,
 Lair=LairLensDB (+LairLensCharDB), Skill=SkillTrackerDB, Stats=StatsDB,
-RepBar=RepBarDB, PostBox=PostBoxDB. Core=TibiSuiteDB (+TibiSuiteCharDB).
+RepBar=RepBarDB, PostBox=PostBoxDB, Opacity=OpacityDB. Core=TibiSuiteDB (+TibiSuiteCharDB).
 
 ## Architecture du core (`TibiSuiteCore.lua`)
 
@@ -145,6 +145,25 @@ scale 0.90, grille toggles 2x5, mmAngle 200, locked false, vertical false.
   ouvert, pas Controlled Folder Access.
 - Aucun module ne touche de code secure/verrouillé en combat (lecteurs de données
   uniquement) : pas de problème de taint sur les données elles-mêmes.
+
+## Module Opacity (transparence des fenêtres)
+
+Accent bleu glacier `#7FD4E8` = `{0.498, 0.831, 0.910}`, slash `/opacity` et
+`/opa`, raccourcis dans `Opacity/Bindings.xml`. Règle centrale : **lire et
+multiplier, ne jamais écraser**. Un `hooksecurefunc(frame, "SetAlpha")` mémorise
+l'alpha posé par les autres (Blizzard, mode Édition, ElvUI, EllesmereUI) comme
+« base », et Opacity affiche `base * facteur`. On n'écrit **jamais** dans le mode
+Édition (`C_EditMode`) : taint + conflit avec EllesmereUI qui y écrit déjà.
+Frames d'ElvUI / EllesmereUI intouchées sauf case « Forcer ». Frames protégées :
+si le client refuse un `SetAlpha` en combat (`ADDON_ACTION_BLOCKED`), file
+d'attente jusqu'à `PLAYER_REGEN_ENABLED`. Piège des fondus qui **lisent**
+`GetAlpha` à chaque image (fondu « carte en mouvement » de Blizzard) : ils
+relisent notre valeur réduite et s'enfoncent vers ~5 %. Une rafale d'écritures
+externes fait basculer la frame en mode « children » (facteur appliqué aux
+enfants et régions, frame rendue à son propriétaire), sauf types qui dessinent
+eux-mêmes (Minimap, EditBox, modèles...). Un seul moteur d'animation
+(`Hover.lua`) qui s'endort quand rien ne bouge. Codes de profil `OPA1:` (LZW de
+Stats copié dans `Opacity/Libs`, non lu par le site).
 
 ## Module PostBox (rétro-ingénierie de Postal, en chantier)
 
