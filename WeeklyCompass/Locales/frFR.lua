@@ -36,6 +36,11 @@ ns:AddLocale("frFR", {
 
     -- Details
     DETAIL_API_PENDING    = "En attente des donnees de la Saison 2",
+    DETAIL_SOURCES_PENDING = "Sources pas encore configurees",
+    DETAIL_RENOWN_RANK    = "Rang %d",
+    SRC_COFFER_SHARDS_SHORT = "Fragments de cle",
+    SRC_DELVES_RENOWN_SHORT = "Renom Gouffres",
+    SRC_HUNT_RENOWN_SHORT   = "Rang Traque",
 
     -- Demarrage / minimap
     LOGIN_LOADED          = "%s charge. %d actives, %d en attente de la Saison 2. Tape /wc pour ouvrir.",

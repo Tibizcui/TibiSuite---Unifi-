@@ -35,6 +35,11 @@ local tbl = {
 
     -- Detalles
     DETAIL_API_PENDING    = "Esperando datos de la Temporada 2",
+    DETAIL_SOURCES_PENDING = "Fuentes aun no configuradas",
+    DETAIL_RENOWN_RANK    = "Rango %d",
+    SRC_COFFER_SHARDS_SHORT = "Fragmentos de llave",
+    SRC_DELVES_RENOWN_SHORT = "Renombre abismos",
+    SRC_HUNT_RENOWN_SHORT   = "Rango de caza",
 
     -- Inicio / minimapa
     LOGIN_LOADED          = "%s cargado. %d activas, %d esperando la Temporada 2. Usa /wc para abrir.",

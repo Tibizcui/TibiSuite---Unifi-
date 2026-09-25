@@ -38,6 +38,11 @@ ns:AddLocale("enUS", {
 
     -- Details
     DETAIL_API_PENDING    = "Awaiting Season 2 data",
+    DETAIL_SOURCES_PENDING = "Sources not configured yet",
+    DETAIL_RENOWN_RANK    = "Rank %d",
+    SRC_COFFER_SHARDS_SHORT = "Key shards",
+    SRC_DELVES_RENOWN_SHORT = "Delve renown",
+    SRC_HUNT_RENOWN_SHORT   = "Hunt rank",
 
     -- Demarrage / minimap
     LOGIN_LOADED          = "%s loaded. %d active, %d awaiting Season 2. Type /wc to open.",

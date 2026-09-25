@@ -1,0 +1,8 @@
+## Interface: 120100, 120007, 120005
+## Title: TibiProbe (dev)
+## Notes: Sonde jetable : inventaire des API Logement / Gouffres / Traque / hebdo. Ne pas publier.
+## Author: Tibiscui
+## Version: 0.1-dev
+## SavedVariables: TibiProbeDB
+
+TibiProbe.lua

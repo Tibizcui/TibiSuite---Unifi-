@@ -45,6 +45,7 @@ Core\SavedVars.lua
 Core\Reset.lua
 Core\Journal.lua
 Core\Registry.lua
+Core\Sources.lua
 
 # --- Donnees : manifeste + modules d'activite (branchables par la donnee) ---
 Data\Activities.lua

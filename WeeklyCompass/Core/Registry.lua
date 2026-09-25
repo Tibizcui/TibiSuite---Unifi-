@@ -49,7 +49,7 @@ local function manifestState(key)
     local manifest = ns.ActivityManifest or {}
     for _, row in ipairs(manifest) do
         if row.key == key then
-            return row.enabled ~= false, row.reason
+            return row.enabled ~= false, row.reason or (row.reasonKey and ns.L[row.reasonKey])
         end
     end
     return true, nil   -- non liste => actif par defaut
@@ -81,6 +81,14 @@ function Registry:Refresh(desc)
             detail   = reason or ns.L["DETAIL_API_PENDING"],
         })
         return
+    end
+
+    -- L'activite est active : son entree "en attente" n'a plus de sens pour
+    -- AUCUN perso. Sans cette purge, les rerolls pas reconnectes gardent une
+    -- vieille colonne "?" a cote des nouvelles colonnes de l'activite.
+    local statusKey = desc.key .. ":_status"
+    for _, char in pairs(ns.DB:GetAllChars()) do
+        if char.entries then char.entries[statusKey] = nil end
     end
 
     local count = 0

@@ -35,6 +35,11 @@ ns:AddLocale("deDE", {
 
     -- Details
     DETAIL_API_PENDING    = "Warte auf Daten der Saison 2",
+    DETAIL_SOURCES_PENDING = "Quellen noch nicht konfiguriert",
+    DETAIL_RENOWN_RANK    = "Rang %d",
+    SRC_COFFER_SHARDS_SHORT = "Schluesselsplitter",
+    SRC_DELVES_RENOWN_SHORT = "Tiefen-Ruhm",
+    SRC_HUNT_RENOWN_SHORT   = "Jagdrang",
 
     -- Start / Minikarte
     LOGIN_LOADED          = "%s geladen. %d aktiv, %d warten auf Saison 2. /wc zum Oeffnen.",
