@@ -34,15 +34,15 @@ ns:AddLocale("deDE", {
     STATUS_UNKNOWN        = "Unbekannt",
 
     -- Details
-    DETAIL_API_PENDING    = "Warte auf Daten der Saison 2",
-    DETAIL_SOURCES_PENDING = "Quellen noch nicht konfiguriert",
+    DETAIL_API_PENDING    = "Warte auf Spieldaten",
+    DETAIL_SOURCES_PENDING = "Noch nicht erfasst",
     DETAIL_RENOWN_RANK    = "Rang %d",
     SRC_COFFER_SHARDS_SHORT = "Schluesselsplitter",
     SRC_DELVES_RENOWN_SHORT = "Tiefen-Ruhm",
     SRC_HUNT_RENOWN_SHORT   = "Jagdrang",
 
     -- Start / Minikarte
-    LOGIN_LOADED          = "%s geladen. %d aktiv, %d warten auf Saison 2. /wc zum Oeffnen.",
+    LOGIN_LOADED          = "%s geladen: %d Aktivitaeten erfasst, %d ausstehend. /wc zum Oeffnen.",
     MINIMAP_HINT_TOGGLE   = "Linksklick: Uebersicht oeffnen / schliessen",
     MINIMAP_HINT_DRAG     = "Ziehen: um die Minikarte bewegen",
 

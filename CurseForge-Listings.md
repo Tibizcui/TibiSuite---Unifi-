@@ -564,34 +564,67 @@ Commandes : `/stats` (ou `/ts stats` via TibiSuite).
 ## 12. WeeklyCompass
 
 **Short Summary (English):**
-One unified weekly dashboard showing exactly what's left to do to maximize your weekly rewards.
+Your whole Warband's week on one grid: Great Vault, Delves, the Hunt, and what's left on every character.
+
+<!-- Captures a placer (dans cet ordre) : 1. la grille en jeu (/wc) ;
+     2. l'infobulle d'une case ; 3. la carte "Cette semaine" sur
+     tibiscui.fr/Dashboard.html ; 4. GIF d'ouverture avec /wc. -->
 
 ### Full Description - English
 
-WeeklyCompass answers one question at a glance: "what do I still need to do
-this week?" It covers every system that matters, for every character on your
-account.
+WeeklyCompass answers one question at a glance: **"what is left to do this
+week, and on which character?"** One grid, one row per character, one column
+per weekly goal.
 
-**Key features**
-- Single, unified weekly dashboard covering Season 1 and Season 2 content.
-- Account-wide view: see every character's weekly status in one place.
-- Replaces checking half a dozen separate systems/addons with one glance.
+**What it tracks**
+- **Great Vault**: Mythic+, Raid and World rows, with the item level you have
+  already unlocked on each row, colored by upgrade track.
+- **Delves**: Coffer Key Shards against the weekly cap (e.g. 35/600) and your
+  seasonal Delve renown.
+- **The Hunt**: your Hunt rank progress.
+- **Weekly Lairs**: shown as "?" for now. The game does not expose a weekly
+  counter for them yet, and WeeklyCompass never invents numbers.
+
+**Built to be trusted**
+- **Account-wide view**: every character you log in with is remembered.
+- **Honest about stale data**: a character not seen since the weekly reset is
+  flagged instead of showing last week's numbers as if they were current.
+- **Your week outside the game**: with the Stats module, your Warband's week
+  also appears in the free Tibi Companion desktop app and on the TibiSuite
+  Dashboard (tibiscui.fr), where you paste your export code. Everything is
+  decoded locally in your browser, nothing is sent anywhere.
+- **Works alone or inside TibiSuite**: same data, no migration, either way.
+- Fully localized: English, French, German, Spanish.
 
 Slash commands: `/wc` or `/weeklycompass`.
 
 ### Full Description - Français
 
-WeeklyCompass répond à une seule question en un coup d'œil : "que me
-reste-t-il à faire cette semaine ?" Elle couvre tous les systèmes qui comptent,
-sur tous les personnages de votre compte.
+WeeklyCompass répond à une seule question en un coup d'œil : **« que me
+reste-t-il à faire cette semaine, et sur quel personnage ? »** Une grille, une
+ligne par personnage, une colonne par objectif hebdomadaire.
 
-**Fonctionnalités principales**
-- Tableau de bord hebdomadaire unique et unifié, couvrant le contenu des
-  Saisons 1 et 2.
-- Vue à l'échelle du compte : le statut hebdomadaire de chaque personnage en
-  un seul endroit.
-- Remplace la vérification d'une demi-douzaine de systèmes/addons séparés
-  par un seul coup d'œil.
+**Ce qu'il suit**
+- **Grand Coffre** : lignes Mythique+, Raid et Monde, avec le niveau d'objet
+  déjà débloqué sur chaque ligne, coloré selon la piste d'amélioration.
+- **Gouffres** : Fragments de clé de coffre face au plafond hebdomadaire (ex.
+  35/600) et ton renom de Gouffres de la saison.
+- **Traque** : la progression de ton rang de Traque.
+- **Repaires de la semaine** : affichés en « ? » pour l'instant. Le jeu
+  n'expose pas encore de compteur hebdomadaire pour eux, et WeeklyCompass
+  n'invente jamais de chiffres.
+
+**Pensé pour être fiable**
+- **Vue compte** : chaque personnage avec lequel tu te connectes est mémorisé.
+- **Honnête sur les données périmées** : un personnage pas revu depuis le
+  reset est signalé, au lieu d'afficher les chiffres de la semaine passée
+  comme s'ils étaient actuels.
+- **Ta semaine hors du jeu** : avec le module Stats, la semaine de ton
+  Bataillon apparaît aussi dans l'application gratuite Tibi Companion et sur
+  le Dashboard TibiSuite (tibiscui.fr), où tu colles ton code d'export. Tout
+  est décodé localement dans ton navigateur, rien n'est envoyé nulle part.
+- **Fonctionne seul ou dans TibiSuite** : mêmes données, aucune migration.
+- Entièrement traduit : anglais, français, allemand, espagnol.
 
 Commandes : `/wc` ou `/weeklycompass`.
 

@@ -110,7 +110,7 @@ function ns:ToggleMinimap()
 end
 
 -- Message de chargement dans le chat. Resume ce qui est actif et ce qui attend
--- encore la Saison 2, pour que l'etat de l'addon soit clair des la connexion.
+-- encore sa source (ex : Repaires), pour que l'etat de l'addon soit clair des la connexion.
 local function announce()
     local g = ns.DB and ns.DB:GetGlobal()
     if g and g.login == false then return end

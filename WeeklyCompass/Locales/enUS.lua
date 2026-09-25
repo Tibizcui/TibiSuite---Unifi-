@@ -19,7 +19,7 @@ ns:AddLocale("enUS", {
     VAULT_SLOT_RAID       = "Raid",
     VAULT_SLOT_WORLD      = "World",
     VAULT_SLOT_GENERIC    = "Track",
-    VAULT_REWARD_ILVL     = "item level %d earned",
+    VAULT_REWARD_ILVL     = "item level %d unlocked",
 
     -- Upgrade track names (used to identify an item's tier from trackString ;
     -- revalidate on the 12.1 build if Blizzard renames them).
@@ -37,15 +37,15 @@ ns:AddLocale("enUS", {
     STATUS_UNKNOWN        = "Unknown",
 
     -- Details
-    DETAIL_API_PENDING    = "Awaiting Season 2 data",
-    DETAIL_SOURCES_PENDING = "Sources not configured yet",
+    DETAIL_API_PENDING    = "Awaiting game data",
+    DETAIL_SOURCES_PENDING = "Not tracked yet",
     DETAIL_RENOWN_RANK    = "Rank %d",
     SRC_COFFER_SHARDS_SHORT = "Key shards",
     SRC_DELVES_RENOWN_SHORT = "Delve renown",
     SRC_HUNT_RENOWN_SHORT   = "Hunt rank",
 
     -- Demarrage / minimap
-    LOGIN_LOADED          = "%s loaded. %d active, %d awaiting Season 2. Type /wc to open.",
+    LOGIN_LOADED          = "%s loaded: %d activities tracked, %d pending. Type /wc to open.",
     MINIMAP_HINT_TOGGLE   = "Left click: open / close the dashboard",
     MINIMAP_HINT_DRAG     = "Drag: move around the minimap",
 

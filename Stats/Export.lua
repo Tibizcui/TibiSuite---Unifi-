@@ -104,6 +104,52 @@ local function collectAllProfessions()
   return nil
 end
 
+-- Semaine de TOUS les personnages connus de WeeklyCompass, au meme format de
+-- cle "Nom-Royaume" que StatsDB (WeeklyCompassDB range sous "Nom - Royaume",
+-- d'ou la reconstruction depuis name/realm). Meme principe que les metiers :
+-- ajout purement additif, rien si WeeklyCompass est absent ou desactive.
+--
+-- resetAt = periodId de WeeklyCompass, c'est-a-dire l'horodatage serveur du
+-- PROCHAIN reset hebdo (voir WeeklyCompass/Core/Reset.lua). Le site compare
+-- cette valeur a l'heure courante pour griser une semaine deja terminee au
+-- lieu d'afficher des compteurs perimes comme s'ils etaient actuels.
+local function collectWeekly()
+  if not _G.WeeklyCompassDB then return nil end
+  local ok, result = pcall(function()
+    local out = {}
+    for _, char in pairs(_G.WeeklyCompassDB.chars or {}) do
+      if type(char) == "table" and char.name and char.realm then
+        local entries = {}
+        for _, e in pairs(char.entries or {}) do
+          if type(e) == "table" and e.key then
+            entries[#entries + 1] = {
+              key      = e.key,
+              label    = e.label,
+              short    = e.short,
+              category = e.category,
+              order    = e.order,
+              status   = e.status,
+              current  = e.progress and e.progress.current or nil,
+              max      = e.progress and e.progress.max or nil,
+              ilvl     = e.reward and e.reward.ilvl or nil,
+              detail   = e.detail,
+            }
+          end
+        end
+        table.sort(entries, function(a, b) return tostring(a.key) < tostring(b.key) end)
+        out[char.name .. "-" .. char.realm] = {
+          resetAt  = char.periodId,
+          lastSeen = char.lastSeen,
+          entries  = entries,
+        }
+      end
+    end
+    return next(out) and out or nil
+  end)
+  if ok then return result end
+  return nil
+end
+
 local function currentSpecName()
   local si = GetSpecialization and GetSpecialization()
   if not si then return nil end
@@ -120,6 +166,7 @@ end
 function SX.CollectExportData()
   local currentKey = SX.CurrentCharKey()
   local allProfessions = collectAllProfessions()
+  local allWeekly = collectWeekly()
   local chars = {}
   for _, key in ipairs(SX.GetCharKeys()) do
     local rec = StatsDB[key] or {}
@@ -166,6 +213,7 @@ function SX.CollectExportData()
       char = charInfo,
       days = rec.days or {},
       professions = allProfessions and allProfessions[key] or nil,
+      weekly = allWeekly and allWeekly[key] or nil,
     }
   end
 
