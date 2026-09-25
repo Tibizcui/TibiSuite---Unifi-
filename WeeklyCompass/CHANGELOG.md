@@ -1,5 +1,14 @@
 # Changelog
 
+## 7.1.5.18
+- Gouffres : suivi des Fragments de cle de coffre face au plafond hebdomadaire (ex. 35/600) et du renom de Gouffres de la saison.
+- Traque : suivi de la progression du rang de Traque.
+- Repaires : toujours en attente, le jeu n'expose pas encore de compteur hebdomadaire pour eux (affiches "?", jamais de chiffre invente).
+- Les activites sont desormais pilotees par la donnee : les identifiants de monnaies et de renom sont declares dans un seul fichier, ce qui permettra de suivre les prochaines saisons sans reecrire le code.
+- Correction : les rerolls pas reconnectes n'affichent plus d'anciennes colonnes "?" en double a cote des nouvelles.
+- La semaine de tout le Bataillon est incluse dans le code d'export de Stats : elle apparait sur le Dashboard TibiSuite (tibiscui.fr) et dans Tibi Companion, avec les personnages pas revus depuis le reset signales comme "a rafraichir".
+- Textes mis a jour : plus aucune reference a une saison precise dans les messages de connexion et les descriptions.
+
 ## 7.1.5.17
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.17 pour le detail : rattrapage de l'extension des anciens evenements et correction manuelle).
 

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.18
+- Le code d'export inclut maintenant la semaine WeeklyCompass de chaque personnage (Grand Coffre, Gouffres, Traque), si WeeklyCompass est installe. Ajout purement additif : le format du code ne change pas, les anciens codes restent lisibles.
+
 ## 7.1.5.17
 - Rattrapage de l'extension des evenements enregistres avant la 7.1.5.16 (affiches "-" jusqu'ici). Lance automatiquement une fois apres la mise a jour, puis relancable depuis les options de Stats. Donjons, M+ et raids retrouves via le Guide de l'aventurier, gouffres via la carte, reputations via le panneau de reputation, metiers via la date. Quetes et expeditions : extension estimee d'apres la zone, affichee "~" dans l'addon et "≈" dans Tibi Companion et sur le site ; les capitales (Orgrimmar, Hurlevent...) restent a "-", une zone de capitale ne suffisant pas a savoir de quelle extension vient la quete.
 - Correction manuelle : clic sur une cellule Extension de la liste d'evenements pour choisir l'extension. Le choix s'applique a tous les evenements du meme nom, sur tous les personnages, et remplace une estimation.
