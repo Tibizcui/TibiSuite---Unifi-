@@ -18,6 +18,7 @@
 --   /tprobe alts       releve gestionnaire d'alts du perso courant (auto au login)
 --   /tprobe gear       equipement, ensemble de raid, transmogrification (auto au login)
 --   /tprobe model [X]  mannequin 3D de test reconstruit depuis le releve gear de X
+--   /tprobe talents [E] talents : heroique, build charge, code d'import (auto au login)
 --   (la banque de Bataillon est journalisee automatiquement a chaque ouverture)
 --   /tprobe house X    appelle les getters sans argument du Logement, rangees
 --                      sous l'etiquette X (ex : "dedans", "dehors")
@@ -740,6 +741,121 @@ bankWatcher:SetScript("OnEvent", function(_, event, arg1)
 end)
 
 -- ---------------------------------------------------------------------------
+-- 5 septies. Talents (fiche detaillee) : arbre heroique actif, nom du build
+-- charge, code d'import officiel, liste des talents choisis. Releve auto a
+-- la connexion ET via /tprobe talents [etiquette] (a relancer fenetre des
+-- talents ouverte, pour comparer). TibiProbeDB.talents["Nom - Royaume"][etiquette].
+-- ---------------------------------------------------------------------------
+local TALENT_APIS = {
+    "C_ClassTalents.GetActiveConfigID", "C_ClassTalents.GetLastSelectedSavedConfigID",
+    "C_ClassTalents.GetConfigIDsBySpecID", "C_ClassTalents.GetActiveHeroTalentSpec",
+    "C_ClassTalents.GetStarterBuildActive", "C_Traits.GetConfigInfo", "C_Traits.GetSubTreeInfo",
+    "C_Traits.GenerateImportString", "C_Traits.GetTreeNodes", "C_Traits.GetNodeInfo",
+    "C_Traits.GetEntryInfo", "C_Traits.GetDefinitionInfo", "C_Spell.GetSpellName", "C_Spell.GetSpellTexture",
+}
+
+local function doTalents(label)
+    TibiProbeDB = TibiProbeDB or {}
+    local d = TibiProbeDB
+    d.talents = d.talents or {}
+    local key = (UnitName("player") or "?") .. " - " .. (GetRealmName() or "?")
+    label = (label and label ~= "") and label or "login"
+    local out = { context = context(), inCombat = InCombatLockdown(), apis = {} }
+    for _, path in ipairs(TALENT_APIS) do out.apis[path] = type(resolve(path)) == "function" end
+
+    local specIdx = GetSpecialization and GetSpecialization()
+    local specID = specIdx and GetSpecializationInfo and GetSpecializationInfo(specIdx)
+    out.specID = snap(specID)
+
+    local CT, TR = C_ClassTalents, C_Traits
+    local okC, configID = pcall(function() return CT and CT.GetActiveConfigID and CT.GetActiveConfigID() end)
+    out.activeConfigID = okC and snap(configID) or { error = tostring(configID) }
+    if okC and type(configID) == "number" then
+        out.activeConfigInfo = call("C_Traits.GetConfigInfo", configID)
+        out.importString = call("C_Traits.GenerateImportString", configID)
+        -- Code complet (snap coupe a 200 caracteres) : c'est lui qu'on veut valider.
+        if TR and TR.GenerateImportString then
+            local okS, full = pcall(TR.GenerateImportString, configID)
+            if okS and type(full) == "string" and not isSecret(full) then
+                out.importStringFull = full
+                out.importStringLen = #full
+            end
+        end
+
+        -- Build sauvegarde charge (nom donne par le joueur).
+        if specID then
+            local lastSaved = call("C_ClassTalents.GetLastSelectedSavedConfigID", specID)
+            out.lastSavedConfigID = lastSaved
+            if type(lastSaved) == "table" and type(lastSaved[1]) == "number" then
+                out.lastSavedInfo = call("C_Traits.GetConfigInfo", lastSaved[1])
+            end
+            local ids = call("C_ClassTalents.GetConfigIDsBySpecID", specID)
+            out.configIDsBySpec = ids
+            if type(ids) == "table" and type(ids[1]) == "table" then
+                local names = {}
+                for i, id in ipairs(ids[1]) do
+                    if i > 10 then break end
+                    local info = call("C_Traits.GetConfigInfo", id)
+                    names[#names + 1] = { id = id, name = type(info) == "table" and type(info[1]) == "table" and info[1].name or info }
+                end
+                out.savedLoadouts = names
+            end
+            out.starterBuild = call("C_ClassTalents.GetStarterBuildActive")
+        end
+
+        -- Arbre heroique actif.
+        local hero = call("C_ClassTalents.GetActiveHeroTalentSpec")
+        out.heroSubTree = hero
+        if type(hero) == "table" and type(hero[1]) == "number" then
+            out.heroSubTreeInfo = call("C_Traits.GetSubTreeInfo", configID, hero[1])
+        end
+
+        -- Talents choisis : noeuds de l'arbre avec un rang actif.
+        local info = out.activeConfigInfo
+        local treeID = type(info) == "table" and type(info[1]) == "table" and type(info[1].treeIDs) == "table" and info[1].treeIDs[1]
+        out.treeID = snap(treeID)
+        if treeID and TR and TR.GetTreeNodes then
+            local okN, nodes = pcall(TR.GetTreeNodes, treeID)
+            if okN and type(nodes) == "table" then
+                local picked, sample, bySubTree = 0, {}, {}
+                for _, nodeID in ipairs(nodes) do
+                    local okI, node = pcall(TR.GetNodeInfo, configID, nodeID)
+                    if okI and type(node) == "table" and (tonumber(node.activeRank) or 0) > 0 and node.activeEntry then
+                        picked = picked + 1
+                        local sub = node.subTreeID or 0
+                        bySubTree[sub] = (bySubTree[sub] or 0) + 1
+                        if #sample < 12 then
+                            local row = { nodeID = nodeID, rank = node.activeRank, maxRanks = node.maxRanks,
+                                          subTreeID = node.subTreeID, posX = node.posX, posY = node.posY }
+                            local okE, entry = pcall(TR.GetEntryInfo, configID, node.activeEntry.entryID)
+                            if okE and type(entry) == "table" and entry.definitionID then
+                                local okD, def = pcall(TR.GetDefinitionInfo, entry.definitionID)
+                                if okD and type(def) == "table" then
+                                    row.spellID = snap(def.spellID)
+                                    row.overrideName = snap(def.overrideName)
+                                    if def.spellID and C_Spell and C_Spell.GetSpellName then
+                                        row.spellName = snap(C_Spell.GetSpellName(def.spellID))
+                                    end
+                                end
+                            end
+                            sample[#sample + 1] = row
+                        end
+                    end
+                end
+                out.nodes = { total = #nodes, picked = picked, bySubTree = bySubTree, sample = sample }
+            else
+                out.nodes = { error = tostring(nodes) }
+            end
+        end
+    end
+    d.talents[key] = d.talents[key] or {}
+    d.talents[key][label] = out
+    say("talents [%s / %s] : code %s, %s talents choisis.", key, label,
+        out.importStringLen and (out.importStringLen .. " caracteres") or "ABSENT",
+        tostring(type(out.nodes) == "table" and out.nodes.picked or "?"))
+end
+
+-- ---------------------------------------------------------------------------
 -- 6. Evenements : on ecoute TOUT, on ne garde que des compteurs par nom.
 -- Aucun argument d'evenement n'est lu (valeurs secretes en 12.x).
 -- ---------------------------------------------------------------------------
@@ -831,12 +947,13 @@ saver:SetScript("OnEvent", function(self, event, isLogin, isReload)
             doScan()
             doAlts()
             doGear()
+            doTalents("login")
         end)
     end
 end)
 
 SLASH_TIBIPROBE1 = "/tprobe"
-local PROBE_VERSION = "0.5"
+local PROBE_VERSION = "0.6"
 
 local function dispatch(msg)
     local cmd, rest = (msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
@@ -849,6 +966,8 @@ local function dispatch(msg)
         doEvents()
     elseif cmd == "decor" then
         doDecor()
+    elseif cmd == "talents" then
+        doTalents(rest)
     elseif cmd == "gear" then
         doGear()
     elseif cmd == "model" then
@@ -858,7 +977,7 @@ local function dispatch(msg)
         say("alts : requetes envoyees, releve dans 3 s.")
         C_Timer.After(3, doAlts)
     else
-        say("v%s : /tprobe scan | /tprobe alts | /tprobe gear | /tprobe model [Nom - Royaume] | /tprobe house <etiquette> | /tprobe decor | /tprobe events",
+        say("v%s : /tprobe scan | /tprobe alts | /tprobe gear | /tprobe talents [etiquette] | /tprobe model [Nom - Royaume] | /tprobe house <etiquette> | /tprobe decor | /tprobe events",
             PROBE_VERSION)
     end
 end
