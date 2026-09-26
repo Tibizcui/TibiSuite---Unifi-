@@ -21,7 +21,16 @@ ns.ActivityManifest = {
     { key = "profile",    enabled = true },
     { key = "keystone",   enabled = true },
     { key = "lockouts",   enabled = true },
+    -- Fiche detaillee (clic gauche sur un nom), jamais affichee en colonne.
+    { key = "sheet",      enabled = true },
 }
+
+-- Monnaies de la saison affichees dans la fiche detaillee. Identifiants
+-- releves par la sonde ; A REVOIR A CHAQUE SAISON, comme les renoms.
+--   3442 : Ecu de brume d'aventure (saison 2 Midnight, plafond cumule 700).
+-- Les autres ecus de la saison 2 (veteran, champion, heroique, mythique) ne
+-- sont pas encore reperes : a completer des qu'un perso en aura ramasse.
+ns.SheetCurrencies = { 3442 }
 
 -- Sources des activites pilotees par la donnee (lues par Core/Sources.lua).
 --

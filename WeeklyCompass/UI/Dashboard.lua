@@ -78,9 +78,11 @@ local function currentTab()
     return global().tab == "chars" and "chars" or "week"
 end
 
--- Onglet d'une entree : les entrees de la fiche portent tab = "chars".
+-- Onglet d'une entree : "week" par defaut, "chars" pour la fiche des
+-- colonnes Personnages. Tout autre onglet ("sheet" : fiche detaillee) n'est
+-- affiche dans aucun des deux tableaux.
 local function entryTab(e)
-    return e.tab == "chars" and "chars" or "week"
+    return e.tab or "week"
 end
 
 -- Texte de detail d'une entree. Une entree est stockee avec son texte deja
@@ -283,6 +285,7 @@ local function showCharTip(owner)
     addLine(L["TIP_LAST_SEEN"]:format(fmtTime(ch.lastSeen)), 0.80, 0.80, 0.80)
     if ch.stale and currentTab() == "week" then addLine(L["UI_STALE"], 0.55, 0.55, 0.58, true) end
     if ch.hidden then addLine(L["UI_HIDDEN_TAG"], 0.55, 0.55, 0.58) end
+    addLine({ text = L["TIP_LEFT_CLICK"], color = { 0.55, 0.55, 0.58 }, font = "small" })
     addLine({ text = L["TIP_RIGHT_CLICK"], color = { 0.55, 0.55, 0.58 }, font = "small" })
     tip:Show()
 end
@@ -377,8 +380,15 @@ end
 local function makeNameHit(fs)
     local h = CreateFrame("Button", nil, scrollChild)
     h:SetAllPoints(fs)
-    h:RegisterForClicks("RightButtonUp")
-    h:SetScript("OnClick", openCharMenu)
+    h:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    h:SetScript("OnClick", function(self, button)
+        if button == "RightButton" then
+            openCharMenu(self)
+        elseif self.ch and ns.Sheet then
+            hideTip()
+            ns.Sheet:Open(self.ch.key)
+        end
+    end)
     h:SetScript("OnEnter", showCharTip)
     h:SetScript("OnLeave", hideTip)
     h:Hide()
@@ -760,8 +770,9 @@ local function buildTotals(cols, chars)
                     local wb = global().warband
                     local total = sum
                     if rec.key == "profile:gold" then
-                        -- 0 n'est jamais retenu (voir Profile.lua) : sans releve, on le dit.
-                        if wb and (tonumber(wb.money) or 0) > 0 then
+                        -- Releve fait par un perso qui a acces a la banque (voir
+                        -- Profile.lua) : 0 y est une vraie valeur. Sans releve, on le dit.
+                        if wb and tonumber(wb.money) then
                             total = total + tonumber(wb.money)
                             lines[#lines + 1] = { text = L["TOTAL_WARBAND_LABEL"], right = ns.FormatGold(wb.money, true),
                                 color = { 0.85, 0.85, 0.85 }, rcolor = WHITE }
@@ -832,6 +843,9 @@ function UI:Refresh()
 
     -- 2. Lignes a afficher : persos tries, en-tetes de royaume, total.
     sortRoster(roster, tab, groupRealm)
+    -- Ordre affiche, repris par les fleches precedent / suivant de la fiche.
+    UI.order = {}
+    for _, ch in ipairs(roster) do UI.order[#UI.order + 1] = ch.key end
     local items = {}
     local lastRealm
     for _, ch in ipairs(roster) do

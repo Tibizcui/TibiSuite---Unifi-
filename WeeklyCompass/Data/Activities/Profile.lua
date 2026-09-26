@@ -101,12 +101,20 @@ local function readWarband()
     local B = C_Bank
     local bankType = Enum and Enum.BankType and Enum.BankType.Account
     if not (B and type(B.FetchDepositedMoney) == "function" and bankType) then return end
+    -- Un perso qui n'a pas debloque la banque de Bataillon (suite de quetes)
+    -- lit 0 : ce 0 ne dit rien du vrai montant, on ne l'enregistre pas.
+    -- Constate en jeu : 33 lectures a 0 sur un perso sans acces.
+    if type(B.CanViewBank) == "function" then
+        local okV, canView = pcall(B.CanViewBank, bankType)
+        if okV and not canView then
+            ns:Debug("Banque de Bataillon : pas d'acces sur ce personnage")
+            return
+        end
+    end
     local ok, money = pcall(B.FetchDepositedMoney, bankType)
     money = ok and tonumber(money)
     ns:Debug("Banque de Bataillon : %s", tostring(money))
-    -- Constate en jeu (7.1.5.21 dev) : 0 renvoye alors que la banque contenait
-    -- de l'or. Un 0 n'est donc JAMAIS retenu : mieux vaut "ouvre-la" qu'un faux total.
-    if not money or money <= 0 then return end
+    if not money or money < 0 then return end
     local g = ns.DB:GetGlobal()
     if not g then return end
     g.warband = { money = money, at = GetServerTime() }

@@ -1,5 +1,14 @@
 # Changelog
 
+## 7.1.5.22
+- Nouvelle fiche detaillee : clic gauche sur le nom d'un personnage. Panneau accole au tableau, fleches pour passer d'un personnage a l'autre, Echap pour fermer.
+- En-tete : modele 3D anime du personnage connecte (glisser pour le tourner), bandeau classe et race pour les autres, niveau, specialisation, niveau d'objet.
+- Equipement : les 16 emplacements, niveau d'objet colore par piste d'amelioration, infobulle de l'objet au survol. Enchantement manquant et chasse vide signales en rouge.
+- Ensemble de raid : nom, pieces portees (ex. 4/5), bonus 2 et 4 pieces, raid d'origine et extension, badge "saison en cours" ou "saison precedente".
+- Statistiques secondaires, grille du Grand Coffre (niveau d'objet de chaque emplacement debloque), verrouillages de raid et monnaies de la saison.
+- Banque de Bataillon : le montant n'est lu que sur un personnage qui y a acces (suite de quetes validee), ce qui evite les faux zeros.
+- Correction : la piste d'amelioration "Mythe" n'etait pas reconnue sur un client francais (couleur du niveau d'objet du Grand Coffre).
+
 ## 7.1.5.21
 - Nouvel onglet "Personnages" : niveau, specialisation, niveau d'objet equipe, or, XP de repos, cle mythique+, score M+ et verrouillages de raid de tous tes personnages, sur une seule vue. Ces donnees ne sont pas remises a zero au reset : chaque personnage garde sa derniere fiche.
 - Verrouillages de raid : une case "N raids", et le detail boss par boss avec le temps restant avant le reset dans l'infobulle. Un verrouillage expire disparait de lui-meme, meme si le personnage ne s'est pas reconnecte.

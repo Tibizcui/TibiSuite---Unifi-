@@ -56,9 +56,11 @@ Data\Activities\HuntRanks.lua
 Data\Activities\Profile.lua
 Data\Activities\Keystone.lua
 Data\Activities\Lockouts.lua
+Data\Activities\Sheet.lua
 
 # --- Interface ---
 UI\Dashboard.lua
+UI\Sheet.lua
 UI\Launcher.lua
 
 ## Glue TibiSuite : inscription comme onglet + recherche globale (remplace UI\Suite.lua)

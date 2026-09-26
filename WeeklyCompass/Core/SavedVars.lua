@@ -28,9 +28,6 @@ local function initDB()
     db.global.sort = db.global.sort or {}            -- [tab] = { key = colKey|"name", desc = bool }
     if db.global.groupRealm == nil then db.global.groupRealm = false end
     db.global.warband = db.global.warband or {}      -- { money = cuivre, at = horodatage } (banque de Bataillon)
-    -- Un releve a 0 enregistre par la 7.1.5.21 de dev etait faux (banque non
-    -- vide) : on l'oublie pour afficher "ouvre-la" plutot qu'un faux total.
-    if db.global.warband.money == 0 then db.global.warband = {} end
     db.chars   = db.chars or {}
 
     local key = charKey()

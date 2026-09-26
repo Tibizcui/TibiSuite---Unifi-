@@ -60,7 +60,9 @@ function Journal:Upsert(entry, scope)
     local char = ns.DB:GetChar()
     if not char then return end
     entry.updatedAt = GetServerTime()
-    if scope == "snapshot" then entry.tab = "chars" end
+    -- Une entree peut choisir son onglet (ex. "sheet" : fiche detaillee,
+    -- jamais affichee en colonne) ; sinon la fiche va dans "chars".
+    if scope == "snapshot" and not entry.tab then entry.tab = "chars" end
     store(char, scope)[entry.key] = entry
 end
 

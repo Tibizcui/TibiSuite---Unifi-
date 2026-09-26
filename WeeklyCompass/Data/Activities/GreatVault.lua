@@ -158,6 +158,10 @@ local function rewardTrack(hyperlink)
     return best
 end
 
+-- Partage : la fiche detaillee (Sheet.lua) colore aussi l'equipement par piste.
+ns.ItemTrack = rewardTrack
+ns.ItemLevelFromLink = itemLevelFromLink
+
 function module.Poll(emit)
     local activities = C_WeeklyRewards.GetActivities()
     if type(activities) ~= "table" then return end
@@ -192,11 +196,12 @@ function module.Poll(emit)
 
         local progress  = tonumber(info.progress)  or 0
         local threshold = tonumber(info.threshold) or 0
-        bucket.slots[#bucket.slots + 1] = {
+        local slot = {
             index = tonumber(info.index) or bucket.total,
             progress = progress,
             threshold = threshold,
         }
+        bucket.slots[#bucket.slots + 1] = slot
         if threshold > 0 and progress >= threshold then
             bucket.filled = bucket.filled + 1
 
@@ -212,6 +217,9 @@ function module.Poll(emit)
                 end
 
                 local tier = rewardTrack(hyperlink)
+                -- Par emplacement, pour la grille 3x3 de la fiche detaillee.
+                slot.ilvl = ilvl > 0 and ilvl or nil
+                slot.color = tier and tier.color or nil
                 if tier and (not bucket.track or tier.rank > bucket.track.rank) then
                     bucket.track = tier
                 end
@@ -248,6 +256,7 @@ function module.Poll(emit)
             progress = { current = b.filled, max = b.total },
             reward   = reward,
             lines    = slotLines(b, t),
+            slots    = b.slots,   -- grille de la fiche : { index, progress, threshold, ilvl, color }
         })
     end
 
