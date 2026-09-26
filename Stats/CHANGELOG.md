@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.19
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir WeeklyCompass 7.1.5.19 pour le detail : Grand Coffre calque sur la fenetre du jeu et recompense a recuperer).
+
 ## 7.1.5.18
 - Le code d'export inclut maintenant la semaine WeeklyCompass de chaque personnage (Grand Coffre, Gouffres, Traque), si WeeklyCompass est installe. Ajout purement additif : le format du code ne change pas, les anciens codes restent lisibles.
 

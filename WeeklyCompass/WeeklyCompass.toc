@@ -4,7 +4,7 @@
 ## Notes: Account-wide weekly dashboard: Great Vault, Delves, the Hunt and what is left to do on every character.
 ## Notes-frFR: Tableau de bord hebdomadaire du compte : Grand Coffre, Gouffres, Traque et ce qu'il reste a faire sur chaque personnage.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.18
+## Version: 7.1.5.19
 ## X-Curse-Project-ID: 1629524
 ## IconTexture: Interface\AddOns\WeeklyCompass\medias\TibiSuiteIcon
 

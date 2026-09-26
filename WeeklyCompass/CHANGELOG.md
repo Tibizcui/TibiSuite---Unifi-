@@ -1,5 +1,13 @@
 # Changelog
 
+## 7.1.5.19
+- Grand Coffre calque sur la fenetre du jeu : la colonne "Mythique+" devient "Donjons", car la ligne de Blizzard compte aussi les donjons heroiques, mythiques et des Marcheurs du temps, pas seulement les cles M+.
+- La colonne "Suivi" disparait : c'etait une ligne interne du Grand Coffre que la fenetre du jeu n'affiche jamais. Elle est aussi retiree chez les rerolls pas reconnectes.
+- Nouvelle colonne "Recompense" : "A recuperer" s'affiche pour chaque personnage qui a une recompense du Grand Coffre en attente de choix. La colonne n'apparait que si au moins un personnage est concerne, et la case se vide des que le choix est fait.
+- Les en-tetes de colonnes reprennent toujours le libelle le plus recent, meme si un reroll pas reconnecte garde un ancien nom en memoire.
+- Une case sans compteur affiche son texte (ex. "A recuperer", "Rang 20") au lieu d'un simple statut.
+- Dashboard TibiSuite et Tibi Companion : memes corrections d'en-tetes sur la carte "Cette semaine".
+
 ## 7.1.5.18
 - Gouffres : suivi des Fragments de cle de coffre face au plafond hebdomadaire (ex. 35/600) et du renom de Gouffres de la saison.
 - Traque : suivi de la progression du rang de Traque.
