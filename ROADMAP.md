@@ -11,7 +11,7 @@
 
 ## Vue d'ensemble
 
-- **Version courante de la suite : 7.1.5.19**, synchronisée sur les 15
+- **Version courante de la suite : 7.1.5.20**, synchronisée sur les 15
   addons (14 modules + le core `TibiSuite`).
 - Écosystème élargi autour de la suite (dépôts séparés) :
   - **Tibiscui.fr** — site web, héberge le Dashboard qui décode le code

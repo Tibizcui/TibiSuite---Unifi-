@@ -134,7 +134,7 @@ end
 local function onPlayerLogin()
     LL:CheckWeeklyReset()
     LL:Emit("READY")
-    print("|cFFFFFFFFLairLens|r v7.1.5.19 chargé -- tapez |cFFFFD700/ll|r pour ouvrir.")
+    print("|cFFFFFFFFLairLens|r v7.1.5.20 chargé -- tapez |cFFFFD700/ll|r pour ouvrir.")
 end
 
 LL.frame:RegisterEvent("ADDON_LOADED")
