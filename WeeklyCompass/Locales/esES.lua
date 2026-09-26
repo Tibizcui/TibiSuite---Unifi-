@@ -13,11 +13,14 @@ local tbl = {
     ACTIVITY_HUNT_SHORT   = "Caceria",
 
     -- Gran Boveda
-    VAULT_SLOT_MYTHIC     = "Mitica+",
+    VAULT_SLOT_DUNGEONS = "Mazmorras",
     VAULT_SLOT_RAID       = "Banda",
     VAULT_SLOT_WORLD      = "Mundo",
     VAULT_SLOT_GENERIC    = "Seguimiento",
     VAULT_REWARD_ILVL     = "nivel de objeto %d obtenido",
+    VAULT_CLAIM_LABEL     = "Gran Camara: recompensa por recoger",
+    VAULT_CLAIM_SHORT     = "Recompensa",
+    VAULT_CLAIM_CELL      = "Por recoger",
 
     -- Nombres de las vias de mejora
     TRACK_NAME_EXPLORER   = "Explorador",

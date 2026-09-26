@@ -13,11 +13,14 @@ ns:AddLocale("frFR", {
     ACTIVITY_HUNT_SHORT   = "Traque",
 
     -- Grand Coffre
-    VAULT_SLOT_MYTHIC     = "Mythique+",
+    VAULT_SLOT_DUNGEONS = "Donjons",
     VAULT_SLOT_RAID       = "Raid",
     VAULT_SLOT_WORLD      = "Monde",
     VAULT_SLOT_GENERIC    = "Suivi",
     VAULT_REWARD_ILVL     = "objet niveau %d obtenu",
+    VAULT_CLAIM_LABEL     = "Grand Coffre : recompense a recuperer",
+    VAULT_CLAIM_SHORT     = "Recompense",
+    VAULT_CLAIM_CELL      = "A recuperer",
 
     -- Noms des pistes d'amelioration (servent a identifier le palier d'un objet
     -- depuis trackString ; a revalider sur la build 12.1 FR si Blizzard renomme).

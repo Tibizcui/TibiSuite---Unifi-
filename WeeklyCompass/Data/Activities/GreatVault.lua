@@ -32,14 +32,23 @@ function module.IsAvailable()
         and type(C_WeeklyRewards.GetActivities) == "function"
 end
 
--- Libelle lisible d'un type de creneau. On mappe depuis l'enum quand il existe,
--- sinon on retombe sur un libelle generique. Les valeurs reellement alimentees
--- en S2 restent a confirmer : le fallback garantit qu'on affiche toujours
--- quelque chose de correct sans rien inventer.
+-- Lignes que la fenetre de Blizzard AFFICHE (constate en jeu en 12.1 : Raids,
+-- Donjons, Monde). GetActivities renvoie aussi un type interne jamais montre
+-- au joueur (type 5 : un creneau a seuil 3, sans ligne dans la fenetre) : on
+-- ne l'affiche pas non plus. Sans l'enum, on ne sait rien filtrer : tout passe.
+local function isDisplayedType(activityType)
+    local E = Enum and Enum.WeeklyRewardChestThresholdType
+    if not E then return true end
+    return activityType == E.Activities or activityType == E.Raid or activityType == E.World
+end
+
+-- Libelle lisible d'un type de creneau, calque sur la fenetre de Blizzard.
+-- "Activities" = ligne "Donjons" : heroique, mythique, M+ ET Marcheurs du
+-- temps comptent, d'ou "Donjons" et non "Mythique+".
 local function slotLabel(activityType)
     local E = Enum and Enum.WeeklyRewardChestThresholdType
     if E then
-        if activityType == E.Activities then return L["VAULT_SLOT_MYTHIC"] end
+        if activityType == E.Activities then return L["VAULT_SLOT_DUNGEONS"] end
         if activityType == E.Raid       then return L["VAULT_SLOT_RAID"] end
         if activityType == E.World      then return L["VAULT_SLOT_WORLD"] end
     end
@@ -122,9 +131,26 @@ function module.Poll(emit)
     local activities = C_WeeklyRewards.GetActivities()
     if type(activities) ~= "table" then return end
 
+    -- Les rerolls pas reconnectes gardent d'anciennes entrees de lignes
+    -- masquees (ex. "greatVault:5", affichee "Suivi" avant la 7.1.5.19) :
+    -- on les retire pour tous les persos, sinon la colonne resterait visible.
+    -- (Mettre une cle existante a nil pendant un pairs est autorise en Lua.)
+    for _, char in pairs(ns.DB:GetAllChars()) do
+        for key in pairs(char.entries or {}) do
+            local t = tonumber(key:match("^greatVault:(%d+)$"))
+            if t and not isDisplayedType(t) then char.entries[key] = nil end
+        end
+    end
+
+    -- Seules les lignes montrees par la fenetre de Blizzard sont resumees.
+    local shown = {}
+    for _, info in ipairs(activities) do
+        if isDisplayedType(info.type or 0) then shown[#shown + 1] = info end
+    end
+
     -- Regroupe par type de creneau pour un resume "rempli / total" par famille.
     local byType = {}
-    for _, info in ipairs(activities) do
+    for _, info in ipairs(shown) do
         local t = info.type or 0
         local bucket = byType[t]
         if not bucket then
@@ -186,6 +212,28 @@ function module.Poll(emit)
             progress = { current = b.filled, max = b.total },
             reward   = reward,
         })
+    end
+
+    -- Recompense d'une semaine passee pas encore choisie dans la Grande
+    -- Chambre forte. Entree emise SEULEMENT si c'est le cas : la colonne
+    -- n'apparait que lorsqu'au moins un perso a quelque chose a recuperer, et
+    -- disparait des que le choix est fait (le module est re-collecte a chaque
+    -- WEEKLY_REWARDS_UPDATE). HasAvailableRewards : non teste en jeu a
+    -- l'ecriture, d'ou le garde de type et le pcall.
+    local hasAvail = C_WeeklyRewards.HasAvailableRewards
+    if type(hasAvail) == "function" then
+        local ok, pending = pcall(hasAvail)
+        if ok and pending then
+            emit({
+                key      = module.key .. ":claim",
+                category = module.category,
+                order    = module.order + 50,
+                label    = L["VAULT_CLAIM_LABEL"],
+                short    = L["VAULT_CLAIM_SHORT"],
+                status   = C.Status.NOT_STARTED,
+                detail   = L["VAULT_CLAIM_CELL"],
+            })
+        end
     end
 end
 

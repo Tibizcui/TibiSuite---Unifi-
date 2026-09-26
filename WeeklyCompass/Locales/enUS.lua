@@ -15,11 +15,14 @@ ns:AddLocale("enUS", {
     ACTIVITY_HUNT_SHORT   = "Hunt",
 
     -- Grand Coffre
-    VAULT_SLOT_MYTHIC     = "Mythic+",
+    VAULT_SLOT_DUNGEONS = "Dungeons",
     VAULT_SLOT_RAID       = "Raid",
     VAULT_SLOT_WORLD      = "World",
     VAULT_SLOT_GENERIC    = "Track",
     VAULT_REWARD_ILVL     = "item level %d unlocked",
+    VAULT_CLAIM_LABEL     = "Great Vault: reward to claim",
+    VAULT_CLAIM_SHORT     = "Vault reward",
+    VAULT_CLAIM_CELL      = "To claim",
 
     -- Upgrade track names (used to identify an item's tier from trackString ;
     -- revalidate on the 12.1 build if Blizzard renames them).

@@ -67,6 +67,9 @@ local function cellText(e)
     local txt
     if e.progress and e.progress.max and e.progress.max > 0 then
         txt = ("%d/%d"):format(e.progress.current or 0, e.progress.max)
+    elseif e.detail then
+        -- Case sans compteur mais avec un texte court (ex. "A recuperer").
+        txt = tostring(e.detail)
     elseif e.status == C.Status.DONE then
         txt = L["STATUS_DONE"]
     elseif e.status == C.Status.NOT_STARTED then
@@ -265,19 +268,27 @@ function UI:Refresh()
     local roster = ns.Journal:GetRoster()
 
     -- 1. Colonnes = union ordonnee des cles d'entrees sur tous les persos.
+    -- L'en-tete vient de l'entree la plus RECENTE (updatedAt) : un reroll pas
+    -- reconnecte garde l'ancien libelle (ex. "Mythique+" devenu "Donjons"), et
+    -- ne doit pas imposer ce libelle perime a toute la colonne.
     local cols = {}
     local colByKey = {}
     for _, ch in ipairs(roster) do
         for _, e in ipairs(ch.entries) do
-            if not colByKey[e.key] then
-                local rec = {
+            local rec = colByKey[e.key]
+            if not rec then
+                rec = {
                     key      = e.key,
                     headerTx = e.short or e.label or e.key,
                     category = e.category,
                     order    = e.order or 100,
+                    seenAt   = e.updatedAt or 0,
                 }
                 cols[#cols + 1] = rec
                 colByKey[e.key] = rec
+            elseif (e.updatedAt or 0) > rec.seenAt then
+                rec.headerTx = e.short or e.label or e.key
+                rec.seenAt   = e.updatedAt or 0
             end
         end
     end

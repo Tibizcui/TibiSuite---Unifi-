@@ -13,11 +13,14 @@ ns:AddLocale("deDE", {
     ACTIVITY_HUNT_SHORT   = "Jagd",
 
     -- Grosses Vault
-    VAULT_SLOT_MYTHIC     = "Mythisch+",
+    VAULT_SLOT_DUNGEONS = "Dungeons",
     VAULT_SLOT_RAID       = "Schlachtzug",
     VAULT_SLOT_WORLD      = "Welt",
     VAULT_SLOT_GENERIC    = "Verfolgung",
     VAULT_REWARD_ILVL     = "Gegenstandsstufe %d erhalten",
+    VAULT_CLAIM_LABEL     = "Grosse Schatzkammer: Belohnung abholen",
+    VAULT_CLAIM_SHORT     = "Belohnung",
+    VAULT_CLAIM_CELL      = "Abholen",
 
     -- Namen der Verbesserungsstufen
     TRACK_NAME_EXPLORER   = "Entdecker",
