@@ -32,13 +32,19 @@ C.StatusColor = {
 --
 -- color : teinte "type WoW" du palier {r, g, b} sur 0..1 (gris, blanc, vert,
 -- bleu, violet, or), du plus bas au plus haut.
+--
+-- trackID : identifiant de la piste renvoye par le jeu (trackStringID de
+-- C_Item.GetItemUpgradeInfo), le meme dans TOUTES les langues du client.
+-- Releves en jeu par la sonde TibiProbe 0.5 (2026-09-26) : 972 Veteran,
+-- 973 Champion, 974 Heros, 978 Mythe. Explorateur et Aventurier jamais vus :
+-- reconnus par leur nom (Locales) en secours.
 C.UpgradeTrack = {
-    { key = "explorer",   rank = 1, color = { 0.62, 0.62, 0.62 } },  -- gris
-    { key = "adventurer", rank = 2, color = { 1.00, 1.00, 1.00 } },  -- blanc
-    { key = "veteran",    rank = 3, color = { 0.12, 1.00, 0.00 } },  -- vert
-    { key = "champion",   rank = 4, color = { 0.00, 0.44, 0.87 } },  -- bleu
-    { key = "hero",       rank = 5, color = { 0.64, 0.21, 0.93 } },  -- violet
-    { key = "myth",       rank = 6, color = { 1.00, 0.50, 0.00 } },  -- or / mythique
+    { key = "explorer",   rank = 1, color = { 0.62, 0.62, 0.62 } },                 -- gris
+    { key = "adventurer", rank = 2, color = { 1.00, 1.00, 1.00 } },                 -- blanc
+    { key = "veteran",    rank = 3, color = { 0.12, 1.00, 0.00 }, trackID = 972 },  -- vert
+    { key = "champion",   rank = 4, color = { 0.00, 0.44, 0.87 }, trackID = 973 },  -- bleu
+    { key = "hero",       rank = 5, color = { 0.64, 0.21, 0.93 }, trackID = 974 },  -- violet
+    { key = "myth",       rank = 6, color = { 1.00, 0.50, 0.00 }, trackID = 978 },  -- or / mythique
 }
 
 -- Categories d'affichage (regroupement dans le tableau de bord).

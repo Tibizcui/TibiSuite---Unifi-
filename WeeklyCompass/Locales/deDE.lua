@@ -2,14 +2,14 @@ local addonName, ns = ...
 
 ns:AddLocale("deDE", {
     -- Aktivitaeten
-    ACTIVITY_GREAT_VAULT  = "Grosses Vault",
-    ACTIVITY_LAIRS        = "Woechentliche Lager",
-    ACTIVITY_DELVES       = "Schaechte",
+    ACTIVITY_GREAT_VAULT  = "Große Schatzkammer",
+    ACTIVITY_LAIRS        = "Wöchentliche Lager",
+    ACTIVITY_DELVES       = "Tiefen",
     ACTIVITY_HUNT         = "Die Jagd",
 
     -- Kurze Bezeichnungen (Spaltenkoepfe der Kontoansicht)
     ACTIVITY_LAIRS_SHORT  = "Lager",
-    ACTIVITY_DELVES_SHORT = "Schaechte",
+    ACTIVITY_DELVES_SHORT = "Tiefen",
     ACTIVITY_HUNT_SHORT   = "Jagd",
 
     -- Grosses Vault
@@ -18,7 +18,7 @@ ns:AddLocale("deDE", {
     VAULT_SLOT_WORLD      = "Welt",
     VAULT_SLOT_GENERIC    = "Verfolgung",
     VAULT_REWARD_ILVL     = "Gegenstandsstufe %d erhalten",
-    VAULT_CLAIM_LABEL     = "Grosse Schatzkammer: Belohnung abholen",
+    VAULT_CLAIM_LABEL     = "Große Schatzkammer: Belohnung abholen",
     VAULT_CLAIM_SHORT     = "Belohnung",
     VAULT_CLAIM_CELL      = "Abholen",
 
@@ -42,20 +42,20 @@ ns:AddLocale("deDE", {
     DETAIL_RENOWN_RANK    = "Rang %d",
 
     RANK_SUFFIX           = "(R%d)",   -- rang colle a la progression d'un renom
-    SRC_COFFER_SHARDS_SHORT = "Schluesselsplitter",
+    SRC_COFFER_SHARDS_SHORT = "Schlüsselsplitter",
     SRC_DELVES_RENOWN_SHORT = "Tiefen-Ruhm",
     SRC_HUNT_RENOWN_SHORT   = "Jagdrang",
 
     -- Start / Minikarte
-    LOGIN_LOADED          = "%s geladen: %d Aktivitaeten erfasst, %d ausstehend. /wc zum Oeffnen.",
-    MINIMAP_HINT_TOGGLE   = "Linksklick: Uebersicht oeffnen / schliessen",
+    LOGIN_LOADED          = "%s geladen: %d Aktivitäten erfasst, %d ausstehend. /wc zum Öffnen.",
+    MINIMAP_HINT_TOGGLE   = "Linksklick: Übersicht öffnen / schließen",
     MINIMAP_HINT_DRAG     = "Ziehen: um die Minikarte bewegen",
 
     -- Interface
     UI_TITLE              = "WeeklyCompass",
     UI_SUBTITLE           = "Kontoansicht: was diese Woche noch aussteht",
     UI_HEADER_CHAR        = "Charakter",
-    UI_EMPTY              = "Noch keine Charakterdaten. Logge dich mit deinen Twinks ein, um die Kontoansicht zu fuellen.",
+    UI_EMPTY              = "Noch keine Charakterdaten. Logge dich mit deinen Twinks ein, um die Kontoansicht zu füllen.",
     UI_STALE              = "Daten stammen vor dem letzten Reset",
     SLASH_HINT            = "Befehle: /wc | /wc options | /wc dump | /wc minimap | /wc debug",
     UI_ALL_HIDDEN         = "Alle deine Charaktere sind ausgeblendet. Aktiviere „Ausgeblendete Charaktere anzeigen“ in den Optionen.",

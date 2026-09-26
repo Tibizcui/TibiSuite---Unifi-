@@ -1,8 +1,16 @@
 ## Interface: 120007, 120100
-## Title: WeeklyCompass
-## Title-frFR: WeeklyCompass
-## Notes: Account-wide weekly dashboard: Great Vault, Delves, the Hunt and what is left to do on every character.
-## Notes-frFR: Tableau de bord hebdomadaire du compte : Grand Coffre, Gouffres, Traque et ce qu'il reste a faire sur chaque personnage.
+## Title: WeeklyCompass - Alts & Weekly
+## Notes: Alt manager and weekly tracker: Great Vault, Delves, the Hunt, item level, gold, raid lockouts, gear and talents of every character.
+## Notes-frFR: Gestionnaire d'alts et suivi hebdomadaire : Grand Coffre, Gouffres, Traque, niveau d'objet, or, raids verrouillés, équipement et talents de chaque personnage.
+## Notes-deDE: Twink-Verwaltung und Wochenübersicht: Große Schatzkammer, Tiefen, Jagd, Gegenstandsstufe, Gold, Schlachtzugssperren, Ausrüstung und Talente aller Charaktere.
+## Notes-esES: Gestor de alters y seguimiento semanal: Gran Cámara, abismos, cacería, nivel de objeto, oro, bloqueos de banda, equipo y talentos de cada personaje.
+## Notes-esMX: Gestor de alters y seguimiento semanal: Gran Cámara, abismos, cacería, nivel de objeto, oro, bloqueos de banda, equipo y talentos de cada personaje.
+## Notes-ruRU: Менеджер альтов и недельный трекер: Великое хранилище, вылазки, охота, уровень предметов, золото, сохранения рейдов, экипировка и таланты каждого персонажа.
+## Notes-zhCN: 小号管理与每周追踪：宏伟宝库、地下堡、狩猎、物品等级、金币、团队副本进度、装备和天赋，涵盖每个角色。
+## Notes-zhTW: 分身管理與每週追蹤：宏偉寶庫、探究、狩獵、物品等級、金幣、團隊副本進度、裝備和天賦，涵蓋每個角色。
+## Notes-koKR: 부캐릭터 관리 및 주간 추적: 위대한 금고, 구렁, 사냥, 아이템 레벨, 골드, 공격대 귀속, 장비와 특성을 모든 캐릭터별로.
+## Notes-ptBR: Gerenciador de alts e acompanhamento semanal: Grande Cofre, Imersões, Caçada, nível de item, ouro, vínculos de raide, equipamento e talentos de cada personagem.
+## Notes-itIT: Gestore di alt e monitoraggio settimanale: Grande Forziere, Scorribande, Caccia, livello oggetti, oro, vincoli di incursione, equipaggiamento e talenti di ogni personaggio.
 ## Author: Tibizcui - Kirin Tor
 ## Version: 7.1.5.24
 ## X-Curse-Project-ID: 1629524
@@ -37,6 +45,12 @@ Locales\enUS.lua
 Locales\frFR.lua
 Locales\deDE.lua
 Locales\esES.lua
+Locales\ruRU.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+Locales\koKR.lua
+Locales\ptBR.lua
+Locales\itIT.lua
 
 # --- Coeur : donnees / logique, aucune connaissance des activites specifiques ---
 Core\Constants.lua

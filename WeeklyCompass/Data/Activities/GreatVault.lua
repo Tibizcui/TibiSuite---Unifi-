@@ -142,7 +142,18 @@ local function rewardTrack(hyperlink)
     if type(getUpg) ~= "function" then return nil end
 
     local up = getUpg(hyperlink)
-    if type(up) ~= "table" or type(up.trackString) ~= "string" or up.trackString == "" then
+    if type(up) ~= "table" then return nil end
+
+    -- 1. Par identifiant de piste : independant de la langue du client.
+    local id = tonumber(up.trackStringID)
+    if id then
+        for _, tier in ipairs(C.UpgradeTrack) do
+            if tier.trackID == id then return tier end
+        end
+    end
+
+    -- 2. Secours par le nom (pistes dont l'identifiant n'a jamais ete releve).
+    if type(up.trackString) ~= "string" or up.trackString == "" then
         return nil
     end
 

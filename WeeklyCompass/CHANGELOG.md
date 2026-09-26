@@ -1,5 +1,13 @@
 # Changelog
 
+## 7.1.5.25
+- WeeklyCompass devient "WeeklyCompass - Alts & Weekly" : le nom dit enfin ce qu'il fait, gestionnaire d'alts et suivi de la semaine.
+- 6 nouvelles langues : russe, chinois simplifie, chinois traditionnel, coreen, portugais du Bresil, italien (10 langues en tout). Traductions faites avec soin mais a relire par des joueurs natifs : les corrections sont les bienvenues.
+- Les termes que le jeu traduit deja (coup critique, hate, maitrise, polyvalence, niveau, specialisation) sont repris directement du client, donc exacts dans toutes les langues.
+- Pistes d'amelioration reconnues par leur identifiant de jeu, dans toutes les langues : la couleur du niveau d'objet (Veteran, Champion, Heros, Mythe) ne depend plus de la langue du client.
+- Allemand et espagnol : accents et termes corriges (Tiefen, Abismos, Gran Camara, Grosse Schatzkammer avec leurs vrais accents).
+- Description de l'addon traduite dans les 10 langues dans la liste des addons du jeu.
+
 ## 7.1.5.24
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.24 pour le detail : l'onglet Personnages et la fiche detaillee de WeeklyCompass partent sur le Dashboard TibiSuite et dans Tibi Companion).
 

@@ -563,83 +563,135 @@ Commandes : `/stats` (ou `/ts stats` via TibiSuite).
 
 ## 12. WeeklyCompass
 
-**Short Summary (English):**
-Your whole Warband's week on one grid: Great Vault, Delves, the Hunt, and what's left on every character.
+**Project name on CurseForge (suggested):** WeeklyCompass - Alt Manager & Weekly Tracker
+(in-game title: "WeeklyCompass - Alts & Weekly")
 
-<!-- Captures a placer (dans cet ordre) : 1. la grille en jeu (/wc) ;
-     2. l'infobulle d'une case ; 3. la carte "Cette semaine" sur
-     tibiscui.fr/Dashboard.html ; 4. GIF d'ouverture avec /wc. -->
+**Short Summary (English):**
+Alt manager and weekly tracker: Great Vault, Delves, raid lockouts, item level, gold, gear and talents of every character, in one account-wide view.
+
+<!-- Captures a placer (dans cet ordre) :
+     1. l'onglet "Personnages" en jeu (niveau d'objet, or, raids, ligne Total) ;
+     2. la fiche detaillee de Tibiscui (equipement, ensemble 4/5, stats, coffre) ;
+     3. l'infobulle des raids verrouilles (raids en gras, difficulte en couleur) ;
+     4. l'onglet "Cette semaine" (Grand Coffre, Gouffres, Traque avec le rang) ;
+     5. la fenetre "Copier le build" ;
+     6. la carte "Fiche" sur tibiscui.fr/Dashboard.html. -->
 
 ### Full Description - English
 
-WeeklyCompass answers one question at a glance: **"what is left to do this
-week, and on which character?"** One grid, one row per character, one column
-per weekly goal.
+WeeklyCompass answers two questions at a glance: **"what is left to do this
+week?"** and **"where do all my characters stand?"** One window, one row per
+character, two tabs.
 
-**What it tracks**
-- **Great Vault**: the same Raids, Dungeons and World rows as the in-game
-  window, with the item level you have already unlocked on each row, colored
-  by upgrade track. Heroic, Mythic, Mythic+ and Timewalking dungeons all count
-  for the Dungeons row.
-- **Reward to claim**: a "To claim" column shows which characters still have
-  a Great Vault reward waiting for you to pick it. The column only appears
-  when at least one character is concerned.
-- **Delves**: Coffer Key Shards against the weekly cap (e.g. 35/600) and your
-  seasonal Delve renown.
-- **The Hunt**: your Hunt rank progress.
-- **Weekly Lairs**: shown as "?" for now. The game does not expose a weekly
-  counter for them yet, and WeeklyCompass never invents numbers.
+**This week**
+- **Great Vault**: the same Raid, Dungeons and World rows as the in-game
+  window, with the item level already unlocked, colored by upgrade track. The
+  tooltip shows each slot and what is missing for the next one ("1 more
+  dungeon").
+- **Reward to claim**: flags every character with a Great Vault reward waiting,
+  even the ones you have not logged in since the reset.
+- **Delves and the Hunt**: Coffer Key Shards against the weekly cap, Delve
+  renown and Hunt rank, with the rank right in the cell ("1775/4200 (R3)").
+
+**Characters: your alt manager**
+- **Level, specialization, equipped item level, gold, rested XP**, Mythic
+  keystone and Mythic+ rating (only when the game has a real value).
+- **Raid lockouts**: "8 raids" in the cell, boss by boss in the tooltip, with
+  the difficulty in color and the time left before reset. Expired lockouts
+  disappear on their own, even on characters you have not logged in with.
+- **Total row**: the gold of all your characters, plus your Warband bank.
+- **Sort** any column in one click, **hide** the columns you do not need,
+  group characters by realm.
+
+**Detailed sheet (click a name)**
+- **Gear**: all 16 slots, item level colored by upgrade track, and a red flag
+  on every **missing enchantment** and **empty socket**.
+- **Raid set**: pieces worn (e.g. 4/5), 2 and 4 piece bonuses, the raid it
+  comes from, and whether it belongs to the **current season** or a previous
+  one.
+- **Talents**: hero tree, the name of your loaded build (with "modified" when
+  you changed it without saving), and a **Copy build** button: the official
+  import string is already selected, plus a link to the full tree on Wowhead.
+- **Secondary stats**, **Great Vault grid**, **raid lockouts**, **season
+  currencies**, and a live 3D model of the character you are playing.
 
 **Built to be trusted**
-- **Account-wide view**: every character you log in with is remembered.
-- **Honest about stale data**: a character not seen since the weekly reset is
-  flagged instead of showing last week's numbers as if they were current.
-- **Always in step with the game**: column headers follow the latest names,
-  and internal Great Vault rows the game never shows are hidden too.
-- **Your week outside the game**: with the Stats module, your Warband's week
-  also appears in the free Tibi Companion desktop app and on the TibiSuite
-  Dashboard (tibiscui.fr), where you paste your export code. Everything is
-  decoded locally in your browser, nothing is sent anywhere.
+- **Honest data**: WeeklyCompass never invents a number. A character not seen
+  since the reset is flagged, deduced information is marked as such.
+- **Outside the game**: with the Stats module, your characters and their
+  sheets also appear in the free Tibi Companion desktop app and on the
+  TibiSuite Dashboard (tibiscui.fr). Everything is decoded locally, nothing is
+  sent anywhere.
+- **Right-click a name** to hide or forget a character.
 - **Works alone or inside TibiSuite**: same data, no migration, either way.
-- Fully localized: English, French, German, Spanish.
+- **10 languages**: English, French, German, Spanish, Russian, Simplified and
+  Traditional Chinese, Korean, Brazilian Portuguese, Italian. Game terms
+  (stats, level, specialization) come straight from the game client. The new
+  translations were written carefully but deserve a native speaker's eye:
+  corrections are very welcome in the comments.
 
 Slash commands: `/wc` or `/weeklycompass`.
 
 ### Full Description - Français
 
-WeeklyCompass répond à une seule question en un coup d'œil : **« que me
-reste-t-il à faire cette semaine, et sur quel personnage ? »** Une grille, une
-ligne par personnage, une colonne par objectif hebdomadaire.
+WeeklyCompass répond à deux questions en un coup d'œil : **« que me reste-t-il
+cette semaine ? »** et **« où en sont tous mes personnages ? »** Une fenêtre,
+une ligne par personnage, deux onglets.
 
-**Ce qu'il suit**
-- **Grand Coffre** : les mêmes lignes Raids, Donjons et Monde que la fenêtre
-  du jeu, avec le niveau d'objet déjà débloqué sur chaque ligne, coloré selon
-  la piste d'amélioration. Les donjons héroïques, mythiques, Mythique+ et des
-  Marcheurs du temps comptent tous pour la ligne Donjons.
-- **Récompense à récupérer** : une colonne « À récupérer » indique quels
-  personnages ont encore une récompense du Grand Coffre en attente de ton
-  choix. Elle n'apparaît que si au moins un personnage est concerné.
-- **Gouffres** : Fragments de clé de coffre face au plafond hebdomadaire (ex.
-  35/600) et ton renom de Gouffres de la saison.
-- **Traque** : la progression de ton rang de Traque.
-- **Repaires de la semaine** : affichés en « ? » pour l'instant. Le jeu
-  n'expose pas encore de compteur hebdomadaire pour eux, et WeeklyCompass
-  n'invente jamais de chiffres.
+**Cette semaine**
+- **Grand Coffre** : les mêmes lignes Raid, Donjons et Monde que la fenêtre du
+  jeu, avec le niveau d'objet déjà débloqué, coloré selon la piste
+  d'amélioration. L'infobulle détaille chaque emplacement et ce qu'il manque
+  pour le suivant (« encore 1 donjon »).
+- **Récompense à récupérer** : signale chaque personnage qui a une récompense
+  du Grand Coffre en attente, même ceux que tu n'as pas reconnectés depuis le
+  reset.
+- **Gouffres et Traque** : Fragments de clé face au plafond hebdomadaire, renom
+  des Gouffres et rang de Traque, avec le rang directement dans la case
+  (« 1775/4200 (R3) »).
+
+**Personnages : ton gestionnaire d'alts**
+- **Niveau, spécialisation, niveau d'objet équipé, or, XP de repos**, clé
+  mythique et score Mythique+ (seulement quand le jeu renvoie une vraie
+  valeur).
+- **Raids verrouillés** : « 8 raids » dans la case, boss par boss dans
+  l'infobulle, avec la difficulté en couleur et le temps avant le reset. Les
+  verrouillages expirés disparaissent d'eux-mêmes, même sur les personnages
+  pas reconnectés.
+- **Ligne de total** : l'or de tous tes personnages, plus ta banque de
+  Bataillon.
+- **Tri** de chaque colonne en un clic, **colonnes masquables**, regroupement
+  par royaume.
+
+**Fiche détaillée (clic sur un nom)**
+- **Équipement** : les 16 emplacements, niveau d'objet coloré par piste, et un
+  signal rouge sur chaque **enchantement manquant** et chaque **châsse vide**.
+- **Ensemble de raid** : pièces portées (ex. 4/5), bonus 2 et 4 pièces, le raid
+  d'origine, et s'il appartient à la **saison en cours** ou à une saison
+  précédente.
+- **Talents** : arbre héroïque, nom du build chargé (avec « modifié » si tu
+  l'as changé sans l'enregistrer), et un bouton **Copier le build** : le code
+  d'import officiel est déjà sélectionné, avec un lien vers l'arbre complet
+  sur Wowhead.
+- **Statistiques secondaires**, **grille du Grand Coffre**, **raids
+  verrouillés**, **monnaies de la saison**, et le modèle 3D animé du
+  personnage que tu joues.
 
 **Pensé pour être fiable**
-- **Vue compte** : chaque personnage avec lequel tu te connectes est mémorisé.
-- **Honnête sur les données périmées** : un personnage pas revu depuis le
-  reset est signalé, au lieu d'afficher les chiffres de la semaine passée
-  comme s'ils étaient actuels.
-- **Toujours aligné sur le jeu** : les en-têtes suivent les derniers libellés,
-  et les lignes internes du Grand Coffre que le jeu n'affiche jamais sont
-  masquées aussi.
-- **Ta semaine hors du jeu** : avec le module Stats, la semaine de ton
-  Bataillon apparaît aussi dans l'application gratuite Tibi Companion et sur
-  le Dashboard TibiSuite (tibiscui.fr), où tu colles ton code d'export. Tout
-  est décodé localement dans ton navigateur, rien n'est envoyé nulle part.
+- **Des données honnêtes** : WeeklyCompass n'invente jamais un chiffre. Un
+  personnage pas revu depuis le reset est signalé, une information déduite est
+  marquée comme telle.
+- **Hors du jeu** : avec le module Stats, tes personnages et leurs fiches
+  apparaissent aussi dans l'application gratuite Tibi Companion et sur le
+  Dashboard TibiSuite (tibiscui.fr). Tout est décodé localement, rien n'est
+  envoyé nulle part.
+- **Clic droit sur un nom** pour masquer ou oublier un personnage.
 - **Fonctionne seul ou dans TibiSuite** : mêmes données, aucune migration.
-- Entièrement traduit : anglais, français, allemand, espagnol.
+- **10 langues** : anglais, français, allemand, espagnol, russe, chinois
+  simplifié et traditionnel, coréen, portugais du Brésil, italien. Les termes
+  du jeu (statistiques, niveau, spécialisation) viennent directement du client.
+  Les nouvelles traductions ont été faites avec soin mais méritent l'œil d'un
+  joueur natif : les corrections sont les bienvenues en commentaire.
 
 Commandes : `/wc` ou `/weeklycompass`.
 

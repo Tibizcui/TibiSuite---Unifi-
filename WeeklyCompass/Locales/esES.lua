@@ -2,15 +2,15 @@ local addonName, ns = ...
 
 local tbl = {
     -- Actividades
-    ACTIVITY_GREAT_VAULT  = "Gran Boveda",
+    ACTIVITY_GREAT_VAULT  = "Gran Cámara",
     ACTIVITY_LAIRS        = "Guaridas semanales",
-    ACTIVITY_DELVES       = "Simas",
-    ACTIVITY_HUNT         = "La Caceria",
+    ACTIVITY_DELVES       = "Abismos",
+    ACTIVITY_HUNT         = "La Cacería",
 
     -- Etiquetas cortas (cabeceras de columna de la vista de cuenta)
     ACTIVITY_LAIRS_SHORT  = "Guaridas",
-    ACTIVITY_DELVES_SHORT = "Simas",
-    ACTIVITY_HUNT_SHORT   = "Caceria",
+    ACTIVITY_DELVES_SHORT = "Abismos",
+    ACTIVITY_HUNT_SHORT   = "Cacería",
 
     -- Gran Boveda
     VAULT_SLOT_DUNGEONS = "Mazmorras",
@@ -18,7 +18,7 @@ local tbl = {
     VAULT_SLOT_WORLD      = "Mundo",
     VAULT_SLOT_GENERIC    = "Seguimiento",
     VAULT_REWARD_ILVL     = "nivel de objeto %d obtenido",
-    VAULT_CLAIM_LABEL     = "Gran Camara: recompensa por recoger",
+    VAULT_CLAIM_LABEL     = "Gran Cámara: recompensa por recoger",
     VAULT_CLAIM_SHORT     = "Recompensa",
     VAULT_CLAIM_CELL      = "Por recoger",
 
@@ -26,9 +26,9 @@ local tbl = {
     TRACK_NAME_EXPLORER   = "Explorador",
     TRACK_NAME_ADVENTURER = "Aventurero",
     TRACK_NAME_VETERAN    = "Veterano",
-    TRACK_NAME_CHAMPION   = "Campeon",
-    TRACK_NAME_HERO       = "Heroe",
-    TRACK_NAME_MYTH       = "Mitico",
+    TRACK_NAME_CHAMPION   = "Campeón",
+    TRACK_NAME_HERO       = "Héroe",
+    TRACK_NAME_MYTH       = "Mítico",
 
     -- Estados
     STATUS_DONE           = "Hecho",
@@ -38,7 +38,7 @@ local tbl = {
 
     -- Detalles
     DETAIL_API_PENDING    = "Esperando datos del juego",
-    DETAIL_SOURCES_PENDING = "Aun sin seguimiento",
+    DETAIL_SOURCES_PENDING = "Aún sin seguimiento",
     DETAIL_RENOWN_RANK    = "Rango %d",
 
     RANK_SUFFIX           = "(R%d)",   -- rang colle a la progression d'un renom
@@ -55,8 +55,8 @@ local tbl = {
     UI_TITLE              = "WeeklyCompass",
     UI_SUBTITLE           = "Vista de cuenta: lo que queda esta semana",
     UI_HEADER_CHAR        = "Personaje",
-    UI_EMPTY              = "Todavia no hay datos de personajes. Conectate con tus personajes secundarios para completar la vista de cuenta.",
-    UI_STALE              = "Los datos son anteriores al ultimo reinicio",
+    UI_EMPTY              = "Todavía no hay datos de personajes. Conéctate con tus personajes secundarios para completar la vista de cuenta.",
+    UI_STALE              = "Los datos son anteriores al último reinicio",
     SLASH_HINT            = "Comandos: /wc | /wc options | /wc dump | /wc minimap | /wc debug",
     UI_ALL_HIDDEN         = "Todos tus personajes están ocultos. Marca «Mostrar personajes ocultos» en las opciones.",
     UI_HIDDEN_TAG         = "(oculto)",

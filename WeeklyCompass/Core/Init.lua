@@ -69,6 +69,30 @@ function ns:SendMessage(msg, ...)
 end
 
 -- ---------------------------------------------------------------------------
+-- Termes officiels du jeu. Pour les mots que Blizzard traduit deja dans ses
+-- propres textes (GlobalStrings), on reprend la version du client : exacte
+-- dans toutes les langues, y compris celles dont les traductions de l'addon
+-- sont a relire. Texte absent, vide ou contenant un format : on garde celui
+-- des Locales. Charge apres les Locales (voir WeeklyCompass.toc).
+-- ---------------------------------------------------------------------------
+do
+    local GAME_STRINGS = {
+        STAT_CRIT     = "STAT_CRITICAL_STRIKE",
+        STAT_HASTE    = "STAT_HASTE",
+        STAT_MASTERY  = "STAT_MASTERY",
+        STAT_VERSA    = "STAT_VERSATILITY",
+        PROFILE_LEVEL = "LEVEL",
+        PROFILE_SPEC  = "SPECIALIZATION",
+    }
+    for key, global in pairs(GAME_STRINGS) do
+        local v = rawget(_G, global)
+        if type(v) == "string" and v ~= "" and not v:find("[%%|]") then
+            ns.L[key] = v
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Formats d'affichage partages (onglet Personnages). Separateurs et suffixes
 -- viennent des Locales : "204 702 po" en francais, "204,702g" en anglais.
 -- ---------------------------------------------------------------------------
