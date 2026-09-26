@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.24
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.24 pour le detail : l'onglet Personnages et la fiche detaillee de WeeklyCompass partent sur le Dashboard TibiSuite et dans Tibi Companion).
+
 ## 7.1.5.23
 - Talents dans la fiche detaillee : arbre heroique actif (icone et nom), nom du build charge, avec "(modifie)" si les talents actifs ne correspondent plus au build enregistre.
 - Survol de la ligne des talents : liste des talents heroiques choisis et nombre des talents de classe et de specialisation.
