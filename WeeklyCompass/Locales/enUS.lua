@@ -177,4 +177,19 @@ ns:AddLocale("enUS", {
     SHEET_MORE            = "+ %d more",
     SHEET_CURRENCIES      = "Season currencies",
     SHEET_NO_DATA         = "No detailed sheet yet for this character. Log in on it once to fill it in (equipment, set, stats).",
+
+    -- Talents (fiche detaillee)
+    SHEET_BUILD           = "Build \"%s\"",
+    SHEET_BUILD_MODIFIED  = "(modified)",
+    SHEET_STARTER         = "Starter build",
+    SHEET_COPY_BUILD      = "Copy build",
+    SHEET_COPY_TITLE      = "%s's talent build",
+    SHEET_COPY_HINT       = "Ctrl+C to copy, then \"Import\" in the talent window, or paste it on Raidbots.",
+    SHEET_WOWHEAD         = "Wowhead talent calculator:",
+    SHEET_WOWHEAD_BASE    = "https://www.wowhead.com/talent-calc/blizzard/",
+    SHEET_HERO_TALENTS    = "Hero talents",
+    SHEET_OTHER_TALENTS   = "+ %d class and specialization talents",
+    SHEET_MODIFIED_TIP    = "The active talents no longer match the saved build (changes not saved).",
+    SHEET_TALENT_CLICK    = "Click: copy the build",
+    SHEET_NO_TALENTS      = "Talents not read yet",
 })

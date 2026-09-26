@@ -22,7 +22,7 @@ ns.Sheet = Sheet
 -- ===========================================================================
 
 local W        = 668
-local HEADER_H = 124
+local HEADER_H = 138
 local PAD      = 14
 local COL_L_W  = 330
 local COL_R_X  = 362
@@ -124,6 +124,120 @@ local function hidePair(p) p.left:Hide(); p.right:Hide() end
 local function hideSection(s) s.fs:Hide(); s.line:Hide() end
 
 -- ---------------------------------------------------------------------------
+-- Talents : infobulle et fenetre "Copier le build". Fenetre maison (pas de
+-- StaticPopup, qui provoque lui aussi du taint) : le code est deja
+-- selectionne, Ctrl+C suffit. Un addon ne peut pas ecrire directement dans
+-- le presse-papiers.
+-- ---------------------------------------------------------------------------
+local copyDlg
+
+local function readOnlyBox(parent, y)
+    local eb = CreateFrame("EditBox", nil, parent, "InputBoxTemplate")
+    eb:SetSize(446, 20)
+    eb:SetPoint("TOPLEFT", 20, y)
+    eb:SetAutoFocus(false)
+    if eb.SetMaxLetters then eb:SetMaxLetters(0) end
+    eb:SetFontObject("GameFontHighlightSmall")
+    eb:SetScript("OnEscapePressed", function() parent:Hide() end)
+    -- Tout le texte est toujours selectionne, curseur ramene au debut : on
+    -- voit le debut du lien et Ctrl+C copie le texte entier (constate en jeu :
+    -- la fin seule etait visible, d'ou une copie partielle possible).
+    local function selectAll(self)
+        if self.SetCursorPosition then self:SetCursorPosition(0) end
+        self:HighlightText()
+    end
+    eb.selectAll = selectAll
+    eb:SetScript("OnEditFocusGained", selectAll)
+    eb:SetScript("OnMouseUp", selectAll)
+    -- Lecture seule : toute frappe remet le texte d'origine, selectionne.
+    eb:SetScript("OnTextChanged", function(self, userInput)
+        if userInput and self.value then
+            self:SetText(self.value)
+            self.selectAll(self)
+        end
+    end)
+    return eb
+end
+
+local function buildCopy()
+    if copyDlg then return end
+    copyDlg = CreateFrame("Frame", "WeeklyCompassBuildCopy", UIParent, "BackdropTemplate")
+    copyDlg:SetSize(486, 150)
+    copyDlg:SetPoint("CENTER", 0, 120)
+    copyDlg:SetFrameStrata("DIALOG")
+    copyDlg:SetMovable(true)
+    copyDlg:EnableMouse(true)
+    copyDlg:RegisterForDrag("LeftButton")
+    copyDlg:SetScript("OnDragStart", copyDlg.StartMoving)
+    copyDlg:SetScript("OnDragStop", copyDlg.StopMovingOrSizing)
+    copyDlg:SetClampedToScreen(true)
+    if copyDlg.SetBackdrop then
+        copyDlg:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8",
+            edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+        copyDlg:SetBackdropColor(0.06, 0.07, 0.09, 0.98)
+        copyDlg:SetBackdropBorderColor(ACCENT[1], ACCENT[2], ACCENT[3], 0.6)
+    end
+    copyDlg.title = newFS(copyDlg, "GameFontNormal")
+    copyDlg.title:SetPoint("TOPLEFT", 16, -12)
+    setColor(copyDlg.title, ACCENT)
+    local close = CreateFrame("Button", nil, copyDlg, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", 2, 2)
+    copyDlg.code = readOnlyBox(copyDlg, -36)
+    copyDlg.hint = newFS(copyDlg, "GameFontDisableSmall")
+    copyDlg.hint:SetPoint("TOPLEFT", 16, -62)
+    copyDlg.hint:SetWidth(454)
+    if copyDlg.hint.SetWordWrap then copyDlg.hint:SetWordWrap(true) end
+    copyDlg.whLabel = newFS(copyDlg, "GameFontHighlightSmall")
+    copyDlg.whLabel:SetPoint("TOPLEFT", 16, -92)
+    copyDlg.wh = readOnlyBox(copyDlg, -106)
+    tinsert(UISpecialFrames, "WeeklyCompassBuildCopy")
+    copyDlg:Hide()
+end
+
+local function openCopy()
+    local t = ui.talent and ui.talent.talents
+    if not (t and t.code) then return end
+    buildCopy()
+    copyDlg.title:SetText(L["SHEET_COPY_TITLE"]:format(ui.talent.charName or "?"))
+    copyDlg.hint:SetText(L["SHEET_COPY_HINT"])
+    copyDlg.whLabel:SetText(L["SHEET_WOWHEAD"])
+    copyDlg.code.value = t.code
+    copyDlg.code:SetText(t.code)
+    local url = L["SHEET_WOWHEAD_BASE"] .. t.code
+    copyDlg.wh.value = url
+    copyDlg.wh:SetText(url)
+    copyDlg.wh.selectAll(copyDlg.wh)
+    copyDlg:Show()
+    copyDlg.code:SetFocus()
+    copyDlg.code.selectAll(copyDlg.code)
+end
+
+local function showTalentTip(self)
+    local t = self.talents
+    if not (t and GameTooltip) then return end
+    GameTooltip:SetOwner(self, "ANCHOR_BOTTOMRIGHT")
+    local title = t.hero and t.hero.name or L["SHEET_HERO_TALENTS"]
+    if t.hero and t.hero.atlas then title = ("|A:%s:18:18|a %s"):format(t.hero.atlas, title) end
+    GameTooltip:AddLine(title, ACCENT[1], ACCENT[2], ACCENT[3])
+    if t.heroTalents and #t.heroTalents > 0 then
+        GameTooltip:AddLine(L["SHEET_HERO_TALENTS"], 0.85, 0.85, 0.85)
+        for _, h in ipairs(t.heroTalents) do
+            local line = h.icon and ("|T%s:0|t %s"):format(tostring(h.icon), h.name or "?") or (h.name or "?")
+            if (h.max or 1) > 1 then line = line .. (" |cff8a8a8a%d/%d|r"):format(h.rank or 0, h.max) end
+            GameTooltip:AddLine(line, 1, 1, 1)
+        end
+    end
+    if t.otherCount and t.otherCount > 0 then
+        GameTooltip:AddLine(L["SHEET_OTHER_TALENTS"]:format(t.otherCount), GREY[1], GREY[2], GREY[3])
+    end
+    if t.modified then
+        GameTooltip:AddLine(L["SHEET_MODIFIED_TIP"], ORANGE[1], ORANGE[2], ORANGE[3], true)
+    end
+    if t.code then GameTooltip:AddLine(L["SHEET_TALENT_CLICK"], GREY[1], GREY[2], GREY[3]) end
+    GameTooltip:Show()
+end
+
+-- ---------------------------------------------------------------------------
 -- Construction (une fois)
 -- ---------------------------------------------------------------------------
 local function buildHeader()
@@ -175,8 +289,26 @@ local function buildHeader()
     ui.realm:SetPoint("TOPLEFT", ui.name, "BOTTOMLEFT", 0, -2)
     ui.line = newFS(frame, "GameFontHighlight")
     ui.line:SetPoint("TOPLEFT", ui.realm, "BOTTOMLEFT", 0, -8)
+    -- Talents : arbre heroique, build charge, bouton de copie.
+    ui.talent = CreateFrame("Button", nil, frame)
+    ui.talent:SetSize(200, 18)
+    ui.talent:SetPoint("TOPLEFT", ui.line, "BOTTOMLEFT", 0, -6)
+    ui.talentIcon = ui.talent:CreateTexture(nil, "ARTWORK")
+    ui.talentIcon:SetSize(18, 18)
+    ui.talentIcon:SetPoint("LEFT", 0, 0)
+    ui.talentText = newFS(ui.talent, "GameFontHighlightSmall")
+    ui.talentText:SetPoint("LEFT", ui.talentIcon, "RIGHT", 5, 0)
+    ui.talent:SetScript("OnEnter", showTalentTip)
+    ui.talent:SetScript("OnLeave", hideTip)
+    ui.talent:SetScript("OnClick", openCopy)
+    ui.copy = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    ui.copy:SetSize(126, 20)
+    ui.copy:SetPoint("LEFT", ui.talent, "RIGHT", 10, 0)
+    ui.copy:SetText(L["SHEET_COPY_BUILD"])
+    ui.copy:SetScript("OnClick", openCopy)
+
     ui.updated = newFS(frame, "GameFontDisableSmall")
-    ui.updated:SetPoint("TOPLEFT", ui.line, "BOTTOMLEFT", 0, -8)
+    ui.updated:SetPoint("TOPLEFT", ui.talent, "BOTTOMLEFT", 0, -6)
 
     ui.ilvl = newFS(frame, "GameFontNormalHuge", "RIGHT")
     ui.ilvl:SetPoint("TOPRIGHT", -PAD - 8, -44)
@@ -345,6 +477,43 @@ local function fillHeader(key, char, by, sheet)
     ui.line:SetText(table.concat(parts, "  |cff8a8a8a·|r  "))
     ui.updated:SetText(sheet and L["SHEET_UPDATED"]:format(fmtTime(sheet.updatedAt))
         or L["TIP_LAST_SEEN"]:format(fmtTime(char.lastSeen)))
+
+    -- Ligne des talents.
+    local t = sheet and sheet.talents
+    ui.talent.talents = t
+    ui.talent.charName = char.name
+    if t and (t.hero or t.build or t.code) then
+        local tp = {}
+        if t.hero and t.hero.name then tp[#tp + 1] = "|cff0affbe" .. t.hero.name .. "|r" end
+        if t.starter then
+            tp[#tp + 1] = L["SHEET_STARTER"]
+        elseif t.build then
+            tp[#tp + 1] = L["SHEET_BUILD"]:format(t.build)
+                .. (t.modified and (" |cffffb34d" .. L["SHEET_BUILD_MODIFIED"] .. "|r") or "")
+        end
+        ui.talentText:SetText(table.concat(tp, "  |cff8a8a8a·|r  "))
+        local atlas = t.hero and t.hero.atlas
+        if atlas and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(atlas) then
+            ui.talentIcon:SetAtlas(atlas)
+            ui.talentIcon:Show()
+        else
+            ui.talentIcon:Hide()
+        end
+        ui.talent:SetWidth(24 + (ui.talentText:GetStringWidth() or 150))
+        ui.talent:Show()
+        ui.copy:SetShown(t.code ~= nil)
+    elseif sheet then
+        ui.talentText:SetText(L["SHEET_NO_TALENTS"])
+        ui.talentIcon:Hide()
+        ui.talent:SetWidth(24 + (ui.talentText:GetStringWidth() or 150))
+        ui.talent:Show()
+        ui.copy:Hide()
+    else
+        ui.talentText:SetText("")
+        ui.talentIcon:Hide()
+        ui.talent:Hide()
+        ui.copy:Hide()
+    end
 
     local ilvl = by["profile:ilvl"]
     ui.ilvl:SetText(ilvl and ilvl.detail or "-")

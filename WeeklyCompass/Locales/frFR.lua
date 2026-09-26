@@ -172,4 +172,19 @@ ns:AddLocale("frFR", {
     SHEET_MORE            = "+ %d autre(s)",
     SHEET_CURRENCIES      = "Monnaies de la saison",
     SHEET_NO_DATA         = "Pas encore de fiche détaillée pour ce personnage. Connecte-toi une fois dessus pour la remplir (équipement, ensemble, statistiques).",
+
+    -- Talents (fiche detaillee)
+    SHEET_BUILD           = "Build « %s »",
+    SHEET_BUILD_MODIFIED  = "(modifié)",
+    SHEET_STARTER         = "Build de départ",
+    SHEET_COPY_BUILD      = "Copier le build",
+    SHEET_COPY_TITLE      = "Build de talents de %s",
+    SHEET_COPY_HINT       = "Ctrl+C pour copier, puis « Importer » dans la fenêtre des talents, ou colle-le sur Raidbots.",
+    SHEET_WOWHEAD         = "Calculateur de talents Wowhead :",
+    SHEET_WOWHEAD_BASE    = "https://www.wowhead.com/fr/talent-calc/blizzard/",
+    SHEET_HERO_TALENTS    = "Talents héroïques",
+    SHEET_OTHER_TALENTS   = "+ %d talents de classe et de spécialisation",
+    SHEET_MODIFIED_TIP    = "Les talents actifs ne correspondent plus au build enregistré (modifications non sauvegardées).",
+    SHEET_TALENT_CLICK    = "Clic : copier le build",
+    SHEET_NO_TALENTS      = "Talents pas encore relevés",
 })

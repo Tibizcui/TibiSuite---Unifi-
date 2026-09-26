@@ -44,7 +44,9 @@ local module = {
     order    = 900,
     scope    = "snapshot",
     events   = { "PLAYER_EQUIPMENT_CHANGED", "PLAYER_AVG_ITEM_LEVEL_UPDATE",
-                 "PLAYER_SPECIALIZATION_CHANGED", "CURRENCY_DISPLAY_UPDATE" },
+                 "PLAYER_SPECIALIZATION_CHANGED", "CURRENCY_DISPLAY_UPDATE",
+                 -- Talents : changement de talent, de build ou de configuration.
+                 "TRAIT_CONFIG_UPDATED", "ACTIVE_COMBAT_CONFIG_CHANGED", "TRAIT_CONFIG_LIST_UPDATED" },
 }
 
 function module.IsAvailable()
@@ -163,6 +165,110 @@ local function collectStats()
     }
 end
 
+-- Talents (sonde TibiProbe 0.6, lisibles des la connexion, sans ouvrir la
+-- fenetre des talents) : arbre heroique actif, build charge (nom donne par
+-- le joueur), code d'import officiel (~100 caracteres), talents heroiques
+-- choisis et nombre des autres. "modified" : les talents actifs ne
+-- correspondent plus au build enregistre (codes d'import differents).
+local function spellNameAndIcon(def)
+    local spellID = def and tonumber(def.spellID)
+    local name = def and type(def.overrideName) == "string" and def.overrideName ~= "" and def.overrideName
+    if spellID and C_Spell then
+        name = name or (C_Spell.GetSpellName and C_Spell.GetSpellName(spellID))
+        local icon = C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(spellID)
+        return spellID, name, icon
+    end
+    return spellID, name, nil
+end
+
+local function collectTalents()
+    local CT, TR = C_ClassTalents, C_Traits
+    if not (CT and TR and CT.GetActiveConfigID and TR.GetConfigInfo) then return nil end
+    local ok, configID = pcall(CT.GetActiveConfigID)
+    if not ok or type(configID) ~= "number" then return nil end
+    local out = {}
+
+    local function importString(id)
+        if type(TR.GenerateImportString) ~= "function" then return nil end
+        local okS, code = pcall(TR.GenerateImportString, id)
+        return okS and type(code) == "string" and code ~= "" and code or nil
+    end
+    out.code = importString(configID)
+
+    local specIdx = GetSpecialization and GetSpecialization()
+    local specID = specIdx and GetSpecializationInfo and GetSpecializationInfo(specIdx)
+    if specID and CT.GetLastSelectedSavedConfigID then
+        local okL, savedID = pcall(CT.GetLastSelectedSavedConfigID, specID)
+        if okL and type(savedID) == "number" then
+            local okI, info = pcall(TR.GetConfigInfo, savedID)
+            if okI and type(info) == "table" and type(info.name) == "string" and info.name ~= "" then
+                out.build = info.name
+            end
+            local savedCode = importString(savedID)
+            if out.code and savedCode and savedCode ~= out.code then out.modified = true end
+        end
+    end
+    if CT.GetStarterBuildActive then
+        local okB, starter = pcall(CT.GetStarterBuildActive)
+        if okB and starter then out.starter = true end
+    end
+
+    -- Arbre heroique actif (nom + atlas officiel, ex. talents-heroclass-paladin-templar).
+    local heroSub, selection = nil, {}
+    if CT.GetActiveHeroTalentSpec and TR.GetSubTreeInfo then
+        local okH, subTreeID = pcall(CT.GetActiveHeroTalentSpec)
+        if okH and type(subTreeID) == "number" then
+            local okT, sub = pcall(TR.GetSubTreeInfo, configID, subTreeID)
+            if okT and type(sub) == "table" then
+                out.hero = { id = subTreeID, name = sub.name, atlas = sub.iconElementID }
+                heroSub = subTreeID
+                for _, nodeID in ipairs(sub.subTreeSelectionNodeIDs or {}) do selection[nodeID] = true end
+            end
+        end
+    end
+
+    -- Talents choisis. Les noeuds de choix de l'arbre heroique ne comptent
+    -- pas comme des talents ; ceux d'un arbre heroique inactif non plus.
+    local okC, cinfo = pcall(TR.GetConfigInfo, configID)
+    local treeID = okC and type(cinfo) == "table" and type(cinfo.treeIDs) == "table" and cinfo.treeIDs[1]
+    if treeID and TR.GetTreeNodes and TR.GetNodeInfo then
+        local okN, nodes = pcall(TR.GetTreeNodes, treeID)
+        if okN and type(nodes) == "table" then
+            local heroTalents, others = {}, 0
+            for _, nodeID in ipairs(nodes) do
+                local okI, node = pcall(TR.GetNodeInfo, configID, nodeID)
+                if okI and type(node) == "table" and (tonumber(node.activeRank) or 0) > 0
+                    and node.activeEntry and not selection[nodeID] then
+                    if heroSub and node.subTreeID == heroSub then
+                        local def
+                        local okE, entry = pcall(TR.GetEntryInfo, configID, node.activeEntry.entryID)
+                        if okE and type(entry) == "table" and entry.definitionID then
+                            local okD, d = pcall(TR.GetDefinitionInfo, entry.definitionID)
+                            if okD then def = d end
+                        end
+                        local spellID, name, icon = spellNameAndIcon(def)
+                        heroTalents[#heroTalents + 1] = {
+                            spellID = spellID, name = name, icon = icon,
+                            rank = tonumber(node.activeRank), max = tonumber(node.maxRanks),
+                            x = tonumber(node.posX) or 0, y = tonumber(node.posY) or 0,
+                        }
+                    elseif not node.subTreeID then
+                        others = others + 1
+                    end
+                end
+            end
+            -- Ordre de l'arbre : de haut en bas, puis de gauche a droite.
+            table.sort(heroTalents, function(a, b)
+                if a.y ~= b.y then return a.y < b.y end
+                return a.x < b.x
+            end)
+            out.heroTalents = heroTalents
+            out.otherCount = others
+        end
+    end
+    return out
+end
+
 -- Monnaies de la saison, liste pilotee par la donnee (Data/Activities.lua).
 local function collectCurrencies()
     local out = {}
@@ -198,6 +304,7 @@ function module.Poll(emit)
         set = set,
         stats = collectStats(),
         currencies = collectCurrencies(),
+        talents = collectTalents(),
     })
 end
 

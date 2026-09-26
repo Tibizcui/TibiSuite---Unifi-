@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.1.5.23
+- Talents dans la fiche detaillee : arbre heroique actif (icone et nom), nom du build charge, avec "(modifie)" si les talents actifs ne correspondent plus au build enregistre.
+- Survol de la ligne des talents : liste des talents heroiques choisis et nombre des talents de classe et de specialisation.
+- Bouton "Copier le build" : le code d'import officiel s'affiche deja selectionne (Ctrl+C), avec le lien du calculateur de talents Wowhead.
+
 ## 7.1.5.22
 - Nouvelle fiche detaillee : clic gauche sur le nom d'un personnage. Panneau accole au tableau, fleches pour passer d'un personnage a l'autre, Echap pour fermer.
 - En-tete : modele 3D anime du personnage connecte (glisser pour le tourner), bandeau classe et race pour les autres, niveau, specialisation, niveau d'objet.

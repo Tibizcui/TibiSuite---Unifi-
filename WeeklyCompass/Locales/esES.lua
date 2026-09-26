@@ -174,6 +174,21 @@ local tbl = {
     SHEET_MORE            = "+ %d más",
     SHEET_CURRENCIES      = "Monedas de la temporada",
     SHEET_NO_DATA         = "Todavía no hay ficha detallada para este personaje. Conéctate una vez con él para rellenarla (equipo, conjunto, estadísticas).",
+
+    -- Talents (fiche detaillee)
+    SHEET_BUILD           = "Build «%s»",
+    SHEET_BUILD_MODIFIED  = "(modificado)",
+    SHEET_STARTER         = "Build inicial",
+    SHEET_COPY_BUILD      = "Copiar build",
+    SHEET_COPY_TITLE      = "Build de talentos de %s",
+    SHEET_COPY_HINT       = "Ctrl+C para copiar, luego «Importar» en la ventana de talentos, o pégalo en Raidbots.",
+    SHEET_WOWHEAD         = "Calculadora de talentos de Wowhead:",
+    SHEET_WOWHEAD_BASE    = "https://www.wowhead.com/es/talent-calc/blizzard/",
+    SHEET_HERO_TALENTS    = "Talentos heroicos",
+    SHEET_OTHER_TALENTS   = "+ %d talentos de clase y especialización",
+    SHEET_MODIFIED_TIP    = "Los talentos activos ya no coinciden con el build guardado (cambios sin guardar).",
+    SHEET_TALENT_CLICK    = "Clic: copiar el build",
+    SHEET_NO_TALENTS      = "Talentos aún no leídos",
 }
 
 ns:AddLocale("esES", tbl)

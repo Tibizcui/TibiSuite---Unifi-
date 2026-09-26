@@ -174,4 +174,19 @@ ns:AddLocale("deDE", {
     SHEET_MORE            = "+ %d weitere",
     SHEET_CURRENCIES      = "Saisonwährungen",
     SHEET_NO_DATA         = "Noch kein Detailblatt für diesen Charakter. Logge dich einmal mit ihm ein, um es zu füllen (Ausrüstung, Set, Werte).",
+
+    -- Talents (fiche detaillee)
+    SHEET_BUILD           = "Build „%s“",
+    SHEET_BUILD_MODIFIED  = "(geändert)",
+    SHEET_STARTER         = "Start-Build",
+    SHEET_COPY_BUILD      = "Build kopieren",
+    SHEET_COPY_TITLE      = "Talentbuild von %s",
+    SHEET_COPY_HINT       = "Strg+C zum Kopieren, dann „Importieren“ im Talentfenster oder auf Raidbots einfügen.",
+    SHEET_WOWHEAD         = "Wowhead-Talentrechner:",
+    SHEET_WOWHEAD_BASE    = "https://www.wowhead.com/de/talent-calc/blizzard/",
+    SHEET_HERO_TALENTS    = "Heldentalente",
+    SHEET_OTHER_TALENTS   = "+ %d Klassen- und Spezialisierungstalente",
+    SHEET_MODIFIED_TIP    = "Die aktiven Talente entsprechen nicht mehr dem gespeicherten Build (Änderungen nicht gespeichert).",
+    SHEET_TALENT_CLICK    = "Klick: Build kopieren",
+    SHEET_NO_TALENTS      = "Talente noch nicht gelesen",
 })
