@@ -6,6 +6,8 @@
 --      maison (pas seulement le catalogue) ? Condition de l'idee "vitrine".
 --   2. WeeklyCompass : quels identifiants reels (monnaies, factions, quetes
 --      hebdo, evenements) alimentent Gouffres, Traque et Repaires ?
+--   3. WeeklyCompass gestionnaire d'alts : niveau d'objet, cle M+, score, or,
+--      verrouillages, metiers, specialisation (releve auto a chaque connexion).
 --
 -- Tout est ecrit dans TibiProbeDB (WTF\Account\<compte>\SavedVariables\
 -- TibiProbe.lua), que Claude relit apres un /reload. Rien n'est modifie en jeu.
@@ -13,6 +15,7 @@
 -- Commandes :
 --   /tprobe            aide
 --   /tprobe scan       inventaire API + monnaies + factions + journal de quetes
+--   /tprobe alts       releve gestionnaire d'alts du perso courant (auto au login)
 --   /tprobe house X    appelle les getters sans argument du Logement, rangees
 --                      sous l'etiquette X (ex : "dedans", "dehors")
 --   /tprobe events     evenements interessants vus depuis le chargement
@@ -313,6 +316,171 @@ local function probeDecor()
 end
 
 -- ---------------------------------------------------------------------------
+-- 5 ter. Gestionnaire d'alts (WeeklyCompass phase 0) : quelles API donnent
+-- niveau d'objet, cle M+, score, or, verrouillages, metiers, specialisation ?
+-- Une entree par perso dans TibiProbeDB.alts["Nom - Royaume"] : se connecter
+-- sur plusieurs rerolls accumule les releves sans rien ecraser.
+--
+-- Cle et verrouillages demandent une requete serveur prealable (RequestMapInfo,
+-- RequestRaidInfo) : lancee a l'entree en jeu, lue quelques secondes plus tard.
+-- ---------------------------------------------------------------------------
+
+-- Presence de chaque fonction attendue, sans l'appeler.
+local ALT_APIS = {
+    "GetAverageItemLevel", "GetMoney", "UnitLevel", "GetXPExhaustion", "GetRestState",
+    "GetSpecialization", "GetSpecializationInfo", "GetProfessions", "GetProfessionInfo",
+    "RequestRaidInfo", "GetNumSavedInstances", "GetSavedInstanceInfo",
+    "GetSavedInstanceEncounterInfo", "GetNumSavedWorldBosses", "GetSavedWorldBossInfo",
+    "C_MythicPlus.RequestMapInfo", "C_MythicPlus.GetOwnedKeystoneChallengeMapID",
+    "C_MythicPlus.GetOwnedKeystoneLevel", "C_MythicPlus.GetOwnedKeystoneMapID",
+    "C_MythicPlus.GetCurrentSeason", "C_MythicPlus.GetRunHistory",
+    "C_ChallengeMode.GetOverallDungeonScore", "C_ChallengeMode.GetMapUIInfo",
+    "C_PlayerInfo.GetPlayerMythicPlusRatingSummary",
+    "C_WeeklyRewards.HasAvailableRewards", "C_WeeklyRewards.CanClaimRewards",
+    "C_WeeklyRewards.AreRewardsForCurrentRewardPeriod",
+    "C_Bank.FetchDepositedMoney", "C_TradeSkillUI.GetConcentrationCurrencyID",
+    "C_TradeSkillUI.GetProfessionInfoBySkillLineID",
+}
+
+local function resolve(path)
+    local v = _G
+    for part in path:gmatch("[^%.]+") do
+        if type(v) ~= "table" then return nil end
+        v = v[part]
+    end
+    return v
+end
+
+-- Appel protege d'une API par son chemin ; absente => "<absent>".
+local function call(path, ...)
+    local f = resolve(path)
+    if type(f) ~= "function" then return "<absent>" end
+    return packResults(pcall(f, ...))
+end
+
+local function altRequests()
+    if C_MythicPlus and C_MythicPlus.RequestMapInfo then pcall(C_MythicPlus.RequestMapInfo) end
+    if RequestRaidInfo then pcall(RequestRaidInfo) end
+end
+
+local function probeLockouts()
+    local out = { instances = {}, worldBosses = {} }
+    local ok, n = pcall(GetNumSavedInstances)
+    out.numSaved = ok and snap(n) or { error = tostring(n) }
+    if ok and type(n) == "number" then
+        for i = 1, math.min(n, 30) do
+            local row = { info = packResults(pcall(GetSavedInstanceInfo, i)) }
+            -- Detail des boss sur les 3 premieres seulement (format a valider).
+            if i <= 3 then
+                local enc = {}
+                for j = 1, 12 do
+                    local r = packResults(pcall(GetSavedInstanceEncounterInfo, i, j))
+                    if r.error or r[1] == nil then break end
+                    enc[j] = r
+                end
+                row.encounters = enc
+            end
+            out.instances[i] = row
+        end
+    end
+    local okW, nW = pcall(GetNumSavedWorldBosses)
+    if okW and type(nW) == "number" then
+        for i = 1, math.min(nW, 10) do
+            out.worldBosses[i] = packResults(pcall(GetSavedWorldBossInfo, i))
+        end
+    end
+    return out
+end
+
+local function probeKeystone()
+    local out = {
+        challengeMapID = call("C_MythicPlus.GetOwnedKeystoneChallengeMapID"),
+        level          = call("C_MythicPlus.GetOwnedKeystoneLevel"),
+        mapID          = call("C_MythicPlus.GetOwnedKeystoneMapID"),
+        season         = call("C_MythicPlus.GetCurrentSeason"),
+        overallScore   = call("C_ChallengeMode.GetOverallDungeonScore"),
+        ratingSummary  = call("C_PlayerInfo.GetPlayerMythicPlusRatingSummary", "player"),
+    }
+    local cm = out.challengeMapID
+    if type(cm) == "table" and type(cm[1]) == "number" then
+        out.mapInfo = call("C_ChallengeMode.GetMapUIInfo", cm[1])
+    end
+    -- Historique de la semaine : on ne garde que le nombre et le 1er element.
+    local f = resolve("C_MythicPlus.GetRunHistory")
+    if type(f) == "function" then
+        local ok, runs = pcall(f, false, true)
+        if ok and type(runs) == "table" then
+            out.weekRuns = { count = #runs, first = snap(runs[1]) }
+        else
+            out.weekRuns = { error = tostring(runs) }
+        end
+    end
+    return out
+end
+
+local function probeProfessions()
+    local out = {}
+    local ok, p1, p2, arch, fish, cook = pcall(GetProfessions)
+    if not ok then return { error = tostring(p1) } end
+    out.indices = { p1 = p1, p2 = p2, arch = arch, fish = fish, cook = cook }
+    for label, idx in pairs(out.indices) do
+        if type(idx) == "number" then
+            local info = packResults(pcall(GetProfessionInfo, idx))
+            local row = { info = info }
+            -- 7e retour = skillLine : on tente la concentration dessus.
+            local skillLine = info[7]
+            if type(skillLine) == "number" then
+                row.bySkillLine   = call("C_TradeSkillUI.GetProfessionInfoBySkillLineID", skillLine)
+                row.concentration = call("C_TradeSkillUI.GetConcentrationCurrencyID", skillLine)
+            end
+            out[label] = row
+        end
+    end
+    return out
+end
+
+local function doAlts()
+    -- db() est declare plus bas : on passe directement par la SavedVariable.
+    TibiProbeDB = TibiProbeDB or {}
+    local d = TibiProbeDB
+    d.alts = d.alts or {}
+    local present = {}
+    for _, path in ipairs(ALT_APIS) do
+        present[path] = type(resolve(path)) == "function"
+    end
+    local specIdx = type(GetSpecialization) == "function" and GetSpecialization()
+    local accountBank = Enum and Enum.BankType and Enum.BankType.Account
+
+    local key = (UnitName("player") or "?") .. " - " .. (GetRealmName() or "?")
+    d.alts[key] = {
+        context       = context(),
+        inCombat      = InCombatLockdown(),
+        apis          = present,
+        class         = snap(select(2, UnitClass("player"))),
+        level         = call("UnitLevel", "player"),
+        itemLevel     = call("GetAverageItemLevel"),
+        money         = call("GetMoney"),
+        warbandMoney  = accountBank and call("C_Bank.FetchDepositedMoney", accountBank) or "<enum absent>",
+        restXP        = call("GetXPExhaustion"),
+        restState     = call("GetRestState"),
+        spec          = specIdx and call("GetSpecializationInfo", specIdx) or "<aucune>",
+        keystone      = probeKeystone(),
+        lockouts      = probeLockouts(),
+        professions   = probeProfessions(),
+        vaultClaim    = {
+            hasAvailable = call("C_WeeklyRewards.HasAvailableRewards"),
+            canClaim     = call("C_WeeklyRewards.CanClaimRewards"),
+            currentPeriod = call("C_WeeklyRewards.AreRewardsForCurrentRewardPeriod"),
+        },
+        vault         = scanVault(),
+    }
+    local missing = 0
+    for _, ok in pairs(present) do if not ok then missing = missing + 1 end end
+    say("alts [%s] : releve fait, %d API absentes sur %d. /reload pour ecrire.",
+        key, missing, #ALT_APIS)
+end
+
+-- ---------------------------------------------------------------------------
 -- 6. Evenements : on ecoute TOUT, on ne garde que des compteurs par nom.
 -- Aucun argument d'evenement n'est lu (valeurs secretes en 12.x).
 -- ---------------------------------------------------------------------------
@@ -399,15 +567,16 @@ saver:SetScript("OnEvent", function(self, event, isLogin, isReload)
         end
     elseif isLogin or isReload then
         self:UnregisterEvent("PLAYER_ENTERING_WORLD")
-        C_Timer.After(5, function()
+        altRequests()
+        C_Timer.After(8, function()
             doScan()
-            say("tape /tprobe house dedans (dans ta maison) et /tprobe house dehors (ailleurs).")
+            doAlts()
         end)
     end
 end)
 
 SLASH_TIBIPROBE1 = "/tprobe"
-local PROBE_VERSION = "0.3"
+local PROBE_VERSION = "0.4"
 
 local function dispatch(msg)
     local cmd, rest = (msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
@@ -420,8 +589,12 @@ local function dispatch(msg)
         doEvents()
     elseif cmd == "decor" then
         doDecor()
+    elseif cmd == "alts" then
+        altRequests()
+        say("alts : requetes envoyees, releve dans 3 s.")
+        C_Timer.After(3, doAlts)
     else
-        say("v%s : /tprobe scan | /tprobe house <etiquette> | /tprobe decor | /tprobe events",
+        say("v%s : /tprobe scan | /tprobe alts | /tprobe house <etiquette> | /tprobe decor | /tprobe events",
             PROBE_VERSION)
     end
 end
