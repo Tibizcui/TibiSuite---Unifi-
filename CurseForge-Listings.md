@@ -577,8 +577,13 @@ week, and on which character?"** One grid, one row per character, one column
 per weekly goal.
 
 **What it tracks**
-- **Great Vault**: Mythic+, Raid and World rows, with the item level you have
-  already unlocked on each row, colored by upgrade track.
+- **Great Vault**: the same Raids, Dungeons and World rows as the in-game
+  window, with the item level you have already unlocked on each row, colored
+  by upgrade track. Heroic, Mythic, Mythic+ and Timewalking dungeons all count
+  for the Dungeons row.
+- **Reward to claim**: a "To claim" column shows which characters still have
+  a Great Vault reward waiting for you to pick it. The column only appears
+  when at least one character is concerned.
 - **Delves**: Coffer Key Shards against the weekly cap (e.g. 35/600) and your
   seasonal Delve renown.
 - **The Hunt**: your Hunt rank progress.
@@ -589,6 +594,8 @@ per weekly goal.
 - **Account-wide view**: every character you log in with is remembered.
 - **Honest about stale data**: a character not seen since the weekly reset is
   flagged instead of showing last week's numbers as if they were current.
+- **Always in step with the game**: column headers follow the latest names,
+  and internal Great Vault rows the game never shows are hidden too.
 - **Your week outside the game**: with the Stats module, your Warband's week
   also appears in the free Tibi Companion desktop app and on the TibiSuite
   Dashboard (tibiscui.fr), where you paste your export code. Everything is
@@ -605,8 +612,13 @@ reste-t-il à faire cette semaine, et sur quel personnage ? »** Une grille, une
 ligne par personnage, une colonne par objectif hebdomadaire.
 
 **Ce qu'il suit**
-- **Grand Coffre** : lignes Mythique+, Raid et Monde, avec le niveau d'objet
-  déjà débloqué sur chaque ligne, coloré selon la piste d'amélioration.
+- **Grand Coffre** : les mêmes lignes Raids, Donjons et Monde que la fenêtre
+  du jeu, avec le niveau d'objet déjà débloqué sur chaque ligne, coloré selon
+  la piste d'amélioration. Les donjons héroïques, mythiques, Mythique+ et des
+  Marcheurs du temps comptent tous pour la ligne Donjons.
+- **Récompense à récupérer** : une colonne « À récupérer » indique quels
+  personnages ont encore une récompense du Grand Coffre en attente de ton
+  choix. Elle n'apparaît que si au moins un personnage est concerné.
 - **Gouffres** : Fragments de clé de coffre face au plafond hebdomadaire (ex.
   35/600) et ton renom de Gouffres de la saison.
 - **Traque** : la progression de ton rang de Traque.
@@ -619,6 +631,9 @@ ligne par personnage, une colonne par objectif hebdomadaire.
 - **Honnête sur les données périmées** : un personnage pas revu depuis le
   reset est signalé, au lieu d'afficher les chiffres de la semaine passée
   comme s'ils étaient actuels.
+- **Toujours aligné sur le jeu** : les en-têtes suivent les derniers libellés,
+  et les lignes internes du Grand Coffre que le jeu n'affiche jamais sont
+  masquées aussi.
 - **Ta semaine hors du jeu** : avec le module Stats, la semaine de ton
   Bataillon apparaît aussi dans l'application gratuite Tibi Companion et sur
   le Dashboard TibiSuite (tibiscui.fr), où tu colles ton code d'export. Tout
