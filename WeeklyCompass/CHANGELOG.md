@@ -1,5 +1,17 @@
 # Changelog
 
+## 7.1.5.21
+- Nouvel onglet "Personnages" : niveau, specialisation, niveau d'objet equipe, or, XP de repos, cle mythique+, score M+ et verrouillages de raid de tous tes personnages, sur une seule vue. Ces donnees ne sont pas remises a zero au reset : chaque personnage garde sa derniere fiche.
+- Verrouillages de raid : une case "N raids", et le detail boss par boss avec le temps restant avant le reset dans l'infobulle. Un verrouillage expire disparait de lui-meme, meme si le personnage ne s'est pas reconnecte.
+- Ligne de total : or de tous les personnages, plus la banque de Bataillon (relevee a son ouverture), nombre de raids verrouilles.
+- Tri : clic sur un en-tete de colonne pour trier (niveau d'objet, or, score...), second clic pour inverser.
+- Clic droit sur un en-tete pour masquer une colonne. Nouvelle section "Tableau" dans les options : grouper les personnages par royaume, reafficher toutes les colonnes.
+- Cle et score M+ : affiches seulement quand le jeu renvoie une vraie valeur, jamais de zero invente.
+- Infobulles plus lisibles, avec leur propre mise en forme : raids en gras, progression alignee a droite (verte si complete), difficulte en couleur (Mythique, Heroique, Normal, Outil de raids), une seule ligne de reset commune.
+- Ligne de total mise en valeur (bandeau, montants en or) et icone de piece d'or a la place de "po".
+- Gouffres et Traque : le rang s'affiche directement dans la case, ex. "1775/4200 (R3)".
+- Banque de Bataillon : un releve a 0 n'est plus jamais retenu (le jeu renvoyait 0 banque pleine), le total indique alors d'ouvrir la banque plutot qu'un faux montant.
+
 ## 7.1.5.20
 - Infobulles sur toutes les cases : libelle complet, statut, recompense et date de mise a jour. Sur le Grand Coffre, le detail de chaque emplacement et ce qu'il reste a faire pour le prochain (ex. "encore 1 donjon").
 - Clic droit sur le nom d'un personnage : le masquer, le reafficher, ou l'oublier (il revient a sa prochaine connexion). Nouvelle section "Personnages" dans les options pour afficher les masques ou tout reafficher.

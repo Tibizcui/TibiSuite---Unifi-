@@ -66,11 +66,13 @@ function readers.renown(src)
     local maxed = type(MF.HasMaximumRenown) == "function" and MF.HasMaximumRenown(src.id)
     local earned    = tonumber(data.renownReputationEarned) or 0
     local threshold = tonumber(data.renownLevelThreshold) or 0
+    local rank      = tonumber(data.renownLevel) or 0
     return {
         label    = data.name,
         status   = maxed and C.Status.DONE or C.Status.IN_PROGRESS,
         progress = (not maxed and threshold > 0) and { current = earned, max = threshold } or nil,
-        detail   = ns.L["DETAIL_RENOWN_RANK"]:format(tonumber(data.renownLevel) or 0),
+        detail   = ns.L["DETAIL_RENOWN_RANK"]:format(rank),
+        rank     = rank,   -- affiche dans la case : "1775/4200 (R3)"
     }
 end
 

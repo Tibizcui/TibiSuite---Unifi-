@@ -17,6 +17,10 @@ ns.ActivityManifest = {
     { key = "lairs",      enabled = false, hidden = true },
     { key = "delves",     enabled = true, reasonKey = "DETAIL_SOURCES_PENDING" },
     { key = "huntRanks",  enabled = true, reasonKey = "DETAIL_SOURCES_PENDING" },
+    -- Onglet Personnages (fiche persistante, magasin "snapshot").
+    { key = "profile",    enabled = true },
+    { key = "keystone",   enabled = true },
+    { key = "lockouts",   enabled = true },
 }
 
 -- Sources des activites pilotees par la donnee (lues par Core/Sources.lua).

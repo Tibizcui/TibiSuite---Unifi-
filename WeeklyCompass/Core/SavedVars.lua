@@ -23,6 +23,14 @@ local function initDB()
     if db.global.login == nil then db.global.login = true end
     db.global.hidden = db.global.hidden or {}        -- [charKey] = true : masque de la vue compte
     if db.global.showHidden == nil then db.global.showHidden = false end
+    db.global.tab = db.global.tab or "week"          -- onglet ouvert : "week" | "chars"
+    db.global.hiddenCols = db.global.hiddenCols or {}  -- [tab][colKey] = true
+    db.global.sort = db.global.sort or {}            -- [tab] = { key = colKey|"name", desc = bool }
+    if db.global.groupRealm == nil then db.global.groupRealm = false end
+    db.global.warband = db.global.warband or {}      -- { money = cuivre, at = horodatage } (banque de Bataillon)
+    -- Un releve a 0 enregistre par la 7.1.5.21 de dev etait faux (banque non
+    -- vide) : on l'oublie pour afficher "ouvre-la" plutot qu'un faux total.
+    if db.global.warband.money == 0 then db.global.warband = {} end
     db.chars   = db.chars or {}
 
     local key = charKey()
@@ -34,7 +42,8 @@ local function initDB()
     char.class    = select(2, UnitClass("player"))   -- token de classe (ex "MAGE")
     char.faction  = UnitFactionGroup("player")
     char.periodId = char.periodId or nil             -- semaine de reference des entrees
-    char.entries  = char.entries or {}               -- [entryKey] = entree normalisee
+    char.entries  = char.entries or {}               -- [entryKey] = entree normalisee (videe au reset)
+    char.snapshot = char.snapshot or {}              -- [entryKey] = fiche persistante (jamais videe au reset)
     char.lastSeen = GetServerTime()
 
     ns.db = db
@@ -71,6 +80,32 @@ end
 function DB:SetShowHidden(show)
     local g = self:GetGlobal()
     if g then g.showHidden = show and true or false end
+end
+
+-- Colonnes masquees, par onglet.
+function DB:IsColHidden(tab, colKey)
+    local g = self:GetGlobal()
+    return (g and g.hiddenCols and g.hiddenCols[tab] and g.hiddenCols[tab][colKey]) == true
+end
+
+function DB:SetColHidden(tab, colKey, hidden)
+    local g = self:GetGlobal()
+    if not g then return end
+    g.hiddenCols[tab] = g.hiddenCols[tab] or {}
+    g.hiddenCols[tab][colKey] = hidden and true or nil
+end
+
+function DB:CountHiddenCols(tab)
+    local g = self:GetGlobal()
+    local n = 0
+    for _ in pairs((g and g.hiddenCols and g.hiddenCols[tab]) or {}) do n = n + 1 end
+    return n
+end
+
+function DB:UnhideAllCols(tab)
+    local g = self:GetGlobal()
+    if not g then return end
+    if tab then g.hiddenCols[tab] = nil else wipe(g.hiddenCols) end
 end
 
 -- Oubli : retire le perso de la base. Refuse pour le perso connecte (il serait

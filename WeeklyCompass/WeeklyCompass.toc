@@ -53,6 +53,9 @@ Data\Activities\GreatVault.lua
 Data\Activities\Lairs.lua
 Data\Activities\Delves.lua
 Data\Activities\HuntRanks.lua
+Data\Activities\Profile.lua
+Data\Activities\Keystone.lua
+Data\Activities\Lockouts.lua
 
 # --- Interface ---
 UI\Dashboard.lua

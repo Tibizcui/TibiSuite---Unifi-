@@ -10,6 +10,7 @@ C.Status = {
     NOT_STARTED = "not_started",
     IN_PROGRESS = "in_progress",
     DONE        = "done",
+    INFO        = "info",         -- valeur neutre (onglet Personnages : or, niveau...), sans notion de "fait"
 }
 
 -- Couleurs de statut, volontairement sobres et lisibles d'un coup d'oeil.
@@ -19,6 +20,7 @@ C.StatusColor = {
     [C.Status.NOT_STARTED] = { 0.82, 0.44, 0.40 },
     [C.Status.IN_PROGRESS] = { 0.87, 0.69, 0.32 },
     [C.Status.DONE]        = { 0.42, 0.73, 0.48 },
+    [C.Status.INFO]        = { 0.90, 0.90, 0.92 },
 }
 
 -- Pistes d'amelioration, du plus bas au plus haut palier. On CLASSE par piste
@@ -45,6 +47,7 @@ C.Category = {
     LAIRS  = "lairs",
     DELVES = "delves",
     HUNT   = "hunt",
+    CHARS  = "chars",    -- onglet Personnages (fiche persistante)
     MISC   = "misc",
 }
 
@@ -54,5 +57,6 @@ C.CategoryOrder = {
     [C.Category.LAIRS]  = 20,
     [C.Category.DELVES] = 30,
     [C.Category.HUNT]   = 40,
+    [C.Category.CHARS]  = 50,
     [C.Category.MISC]   = 90,
 }

@@ -75,6 +75,13 @@ local function BuildOptions()
   panel:Button(L["OPT_UNHIDE_ALL"], function() ns.DB:UnhideAll(); refreshView() end)
   panel:Note(L["OPT_CHARS_NOTE"])
 
+  panel:Section(L["OPT_SECTION_TABLE"])
+  panel:Check(L["OPT_GROUP_REALM"],
+    function() local g = ns.DB:GetGlobal(); return g and g.groupRealm == true end,
+    function(v) local g = ns.DB:GetGlobal(); if g then g.groupRealm = v and true or false end; refreshView() end)
+  panel:Button(L["OPT_UNHIDE_COLS"], function() ns.DB:UnhideAllCols(); refreshView() end)
+  panel:Note(L["OPT_TABLE_NOTE"])
+
   panel:Section(L["OPT_SECTION_FLOAT"])
   panel:Check(L["OPT_HIDE_OPTIONS"],
     function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("WeeklyCompassFrame", "options") end,

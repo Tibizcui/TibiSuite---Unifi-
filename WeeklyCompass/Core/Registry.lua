@@ -18,8 +18,11 @@ local C = ns.Const
 --   order       = number,                 -- ordre d'affichage de base
 --   events      = { "WEEKLY_REWARDS_UPDATE", ... } | nil,  -- rafraichit sur ces evenements
 --   IsAvailable = function() return boolean end,   -- l'API attendue existe-t-elle ?
---   Poll        = function(emit)          -- appelle emit(entry) 0..n fois
---                 end,
+--   Poll        = function(emit)          -- appelle emit(entry) 0..n fois ; renvoyer
+--                 end,                    -- false = donnees pas pretes, garder l'existant
+--   scope       = "weekly" | "snapshot" | nil,  -- magasin : semaine (defaut, vide au
+--                                          -- reset) ou fiche persistante (onglet Personnages)
+--   Refine      = function(entry, now) | nil,   -- recalcul a l'affichage (voir Journal)
 -- }
 -- ---------------------------------------------------------------------------
 
@@ -69,53 +72,75 @@ function Registry:IsActive(desc)
     return true
 end
 
--- Rafraichit un module : purge ses anciennes entrees, puis re-collecte.
+-- Rafraichit un module. La collecte est ATOMIQUE : les entrees emises sont
+-- d'abord rassemblees, puis remplacent les anciennes d'un bloc. Si Poll
+-- renvoie false ("donnees pas encore pretes", ex. verrouillages avant la
+-- reponse du serveur) ou plante, les anciennes entrees sont conservees.
 -- Un module inactif reste visible avec un statut "inconnu" et sa raison, pour
 -- que le joueur sache qu'une activite existe mais attend encore sa source.
+local afterCombat = false
+
 function Registry:Refresh(desc)
     if not desc then return end
+    local prefix = desc.key .. ":"
+    local scope = (desc.scope == "snapshot") and "snapshot" or "weekly"
     if self:IsHidden(desc) then
         -- Purge chez tous les persos : sinon les rerolls pas reconnectes
         -- garderaient la colonne en memoire.
-        ns.Journal:ClearByPrefixAll(desc.key .. ":")
+        ns.Journal:ClearByPrefixAll(prefix)
         return
     end
-    ns.Journal:ClearByPrefix(desc.key .. ":")
 
     if not self:IsActive(desc) then
+        ns.Journal:ClearByPrefix(prefix, scope)
         local _, reason = manifestState(desc.key)
         ns.Journal:Upsert({
-            key      = desc.key .. ":_status",
+            key      = prefix .. "_status",
             category = desc.category,
             order    = desc.order,
             label    = ns.L[desc.labelKey],
             short    = ns.L[desc.labelShortKey or desc.labelKey],
             status   = C.Status.UNKNOWN,
             detail   = reason or ns.L["DETAIL_API_PENDING"],
-        })
+        }, scope)
         return
     end
 
     -- L'activite est active : son entree "en attente" n'a plus de sens pour
     -- AUCUN perso. Sans cette purge, les rerolls pas reconnectes gardent une
     -- vieille colonne "?" a cote des nouvelles colonnes de l'activite.
-    local statusKey = desc.key .. ":_status"
+    local statusKey = prefix .. "_status"
     for _, char in pairs(ns.DB:GetAllChars()) do
         if char.entries then char.entries[statusKey] = nil end
+        if char.snapshot then char.snapshot[statusKey] = nil end
     end
 
-    local count = 0
+    -- Fiche persistante : jamais de lecture en combat (valeurs secretes 12.x
+    -- possibles, et rien ne presse). On rattrape a la sortie du combat.
+    if scope == "snapshot" and InCombatLockdown and InCombatLockdown() then
+        afterCombat = true
+        return
+    end
+
+    local collected, count = {}, 0
     local function emit(entry)
         count = count + 1
-        entry.key      = entry.key or (desc.key .. ":" .. count)
+        entry.key      = entry.key or (prefix .. count)
         entry.category = entry.category or desc.category
         entry.order    = entry.order or desc.order
-        ns.Journal:Upsert(entry)
+        collected[#collected + 1] = entry
     end
 
-    local ok, err = pcall(desc.Poll, emit)
+    local ok, res = pcall(desc.Poll, emit)
     if not ok then
-        ns:Debug("Poll %s : %s", desc.key, tostring(err))
+        ns:Debug("Poll %s : %s", desc.key, tostring(res))
+        return
+    end
+    if res == false then return end
+
+    ns.Journal:ClearByPrefix(prefix, scope)
+    for _, entry in ipairs(collected) do
+        ns.Journal:Upsert(entry, scope)
     end
 end
 
@@ -138,6 +163,14 @@ local function scheduleRefresh()
         Registry:RefreshAll()
     end)
 end
+
+-- Sortie de combat : rattrape une collecte de fiche reportee.
+ns:RegisterEvent("PLAYER_REGEN_ENABLED", function()
+    if afterCombat then
+        afterCombat = false
+        scheduleRefresh()
+    end
+end)
 
 function Registry:WireEvents()
     local seen = {}

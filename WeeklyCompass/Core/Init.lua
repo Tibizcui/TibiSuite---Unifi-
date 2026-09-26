@@ -69,6 +69,40 @@ function ns:SendMessage(msg, ...)
 end
 
 -- ---------------------------------------------------------------------------
+-- Formats d'affichage partages (onglet Personnages). Separateurs et suffixes
+-- viennent des Locales : "204 702 po" en francais, "204,702g" en anglais.
+-- ---------------------------------------------------------------------------
+local function groupThousands(n)
+    local s = tostring(math.floor(n))
+    local sep = ns.L["FMT_THOUSANDS"]
+    local out = s:reverse():gsub("(%d%d%d)", "%1" .. sep:reverse()):reverse()
+    if out:sub(1, #sep) == sep then out = out:sub(#sep + 1) end
+    return out
+end
+
+-- Or seulement (pieces d'argent et de cuivre ignorees), depuis des pieces de
+-- cuivre. withIcon : icone de piece d'or du jeu au lieu du suffixe texte.
+local GOLD_ICON = " |TInterface\\MoneyFrame\\UI-GoldIcon:0:0:1:0|t"
+function ns.FormatGold(copper, withIcon)
+    copper = tonumber(copper) or 0
+    return groupThousands(copper / 10000) .. (withIcon and GOLD_ICON or ns.L["FMT_GOLD_SUFFIX"])
+end
+
+-- Nombre decimal avec le separateur de la langue ("284,7" en francais).
+function ns.FormatDecimal(x)
+    return (("%.1f"):format(tonumber(x) or 0):gsub("%.", ns.L["FMT_DECIMAL"]))
+end
+
+-- Duree restante en jours / heures (verrouillages).
+function ns.FormatDelay(seconds)
+    seconds = math.max(0, tonumber(seconds) or 0)
+    local d = math.floor(seconds / 86400)
+    local h = math.floor((seconds % 86400) / 3600)
+    if d > 0 then return ns.L["FMT_DELAY_DH"]:format(d, h) end
+    return ns.L["FMT_DELAY_H"]:format(math.max(h, 1))
+end
+
+-- ---------------------------------------------------------------------------
 -- Log de debug discret. Active via /wc debug. Sur, meme avant le chargement
 -- des SavedVariables (le garde court-circuite si la DB n'existe pas encore).
 -- ---------------------------------------------------------------------------

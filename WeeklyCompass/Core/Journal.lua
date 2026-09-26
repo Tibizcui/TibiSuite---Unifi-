@@ -38,8 +38,20 @@ local function validate(entry)
     return true
 end
 
--- Ecrit ou remplace une entree pour le perso courant, sur la semaine courante.
-function Journal:Upsert(entry)
+-- Deux magasins par perso : "weekly" (char.entries, vide au reset) et
+-- "snapshot" (char.snapshot, fiche persistante de l'onglet Personnages).
+local function store(char, scope)
+    if scope == "snapshot" then
+        char.snapshot = char.snapshot or {}
+        return char.snapshot
+    end
+    return char.entries
+end
+
+-- Ecrit ou remplace une entree pour le perso courant, dans le magasin voulu.
+-- Une entree de la fiche persistante est marquee tab = "chars" (onglet
+-- Personnages) ; sans tab, l'entree appartient a l'onglet de la semaine.
+function Journal:Upsert(entry, scope)
     local ok, err = validate(entry)
     if not ok then
         ns:Debug("Journal:Upsert rejete (%s)", err)
@@ -48,30 +60,33 @@ function Journal:Upsert(entry)
     local char = ns.DB:GetChar()
     if not char then return end
     entry.updatedAt = GetServerTime()
-    char.entries[entry.key] = entry
+    if scope == "snapshot" then entry.tab = "chars" end
+    store(char, scope)[entry.key] = entry
 end
 
--- Efface les entrees d'un module (par prefixe "cle:"), avant de le re-collecter.
-function Journal:ClearByPrefix(prefix)
-    local char = ns.DB:GetChar()
-    if not char then return end
+local function clearPrefix(t, prefix)
+    if not t then return end
     local n = #prefix
-    for k in pairs(char.entries) do
+    for k in pairs(t) do
         if k:sub(1, n) == prefix then
-            char.entries[k] = nil
+            t[k] = nil
         end
     end
 end
 
--- Meme purge, mais sur TOUS les persos (activite retiree du tableau).
+-- Efface les entrees d'un module (par prefixe "cle:"), avant de le re-collecter.
+function Journal:ClearByPrefix(prefix, scope)
+    local char = ns.DB:GetChar()
+    if not char then return end
+    clearPrefix(store(char, scope), prefix)
+end
+
+-- Meme purge, mais sur TOUS les persos et dans les deux magasins (activite
+-- retiree du tableau).
 function Journal:ClearByPrefixAll(prefix)
-    local n = #prefix
     for _, char in pairs(ns.DB:GetAllChars()) do
-        for k in pairs(char.entries or {}) do
-            if k:sub(1, n) == prefix then
-                char.entries[k] = nil
-            end
-        end
+        clearPrefix(char.entries, prefix)
+        clearPrefix(char.snapshot, prefix)
     end
 end
 
@@ -84,13 +99,35 @@ local function sortEntries(a, b)
     return (a.label or "") < (b.label or "")
 end
 
--- Entrees d'un personnage (le courant par defaut), triees et pretes a afficher.
+-- Une entree de la fiche peut expirer (expiresAt : cle M+ au reset) ou etre
+-- recalculee a l'affichage par son module (Refine : verrouillages dont une
+-- partie a expire depuis la derniere connexion). Refine renvoie une COPIE, la
+-- base n'est jamais modifiee a l'affichage. nil = rien a afficher.
+local function refine(e, now)
+    if e.expiresAt and e.expiresAt <= now then return nil end
+    local modKey = type(e.key) == "string" and e.key:match("^([^:]+):")
+    local mod = modKey and ns.Registry and ns.Registry:Get(modKey)
+    if mod and mod.Refine then
+        local ok, r = pcall(mod.Refine, e, now)
+        if ok then return r end
+        ns:Debug("Refine %s : %s", tostring(modKey), tostring(r))
+    end
+    return e
+end
+
+-- Entrees d'un personnage (le courant par defaut), semaine et fiche
+-- confondues, triees et pretes a afficher.
 function Journal:GetEntries(charData)
     charData = charData or ns.DB:GetChar()
     local out = {}
     if not charData or not charData.entries then return out end
     for _, e in pairs(charData.entries) do
         out[#out + 1] = e
+    end
+    local now = GetServerTime()
+    for _, e in pairs(charData.snapshot or {}) do
+        local r = refine(e, now)
+        if r then out[#out + 1] = r end
     end
     table.sort(out, sortEntries)
     return out
