@@ -16,6 +16,9 @@
 --   /tprobe            aide
 --   /tprobe scan       inventaire API + monnaies + factions + journal de quetes
 --   /tprobe alts       releve gestionnaire d'alts du perso courant (auto au login)
+--   /tprobe gear       equipement, ensemble de raid, transmogrification (auto au login)
+--   /tprobe model [X]  mannequin 3D de test reconstruit depuis le releve gear de X
+--   (la banque de Bataillon est journalisee automatiquement a chaque ouverture)
 --   /tprobe house X    appelle les getters sans argument du Logement, rangees
 --                      sous l'etiquette X (ex : "dedans", "dehors")
 --   /tprobe events     evenements interessants vus depuis le chargement
@@ -481,6 +484,262 @@ local function doAlts()
 end
 
 -- ---------------------------------------------------------------------------
+-- 5 quater. Fiche detaillee (WeeklyCompass) : equipement, ensemble de raid
+-- (quel raid, quelle saison), enchantements / chasses, statistiques,
+-- transmogrification appliquee (piste A : mannequin 3D des rerolls).
+-- TibiProbeDB.gear["Nom - Royaume"], une entree par perso.
+-- ---------------------------------------------------------------------------
+local SLOT_NAMES = {
+    [1] = "HEAD", [2] = "NECK", [3] = "SHOULDER", [4] = "SHIRT", [5] = "CHEST", [6] = "WAIST",
+    [7] = "LEGS", [8] = "FEET", [9] = "WRIST", [10] = "HANDS", [11] = "FINGER1", [12] = "FINGER2",
+    [13] = "TRINKET1", [14] = "TRINKET2", [15] = "BACK", [16] = "MAINHAND", [17] = "OFFHAND", [19] = "TABARD",
+}
+
+-- "item:ID:enchant:gem1:gem2:gem3:gem4:..." -> champs utiles du lien.
+local function parseItemLink(link)
+    local s = type(link) == "string" and link:match("item:([%-%d:]+)")
+    if not s then return nil end
+    local f = {}
+    for v in (s .. ":"):gmatch("([%-%d]*):") do f[#f + 1] = tonumber(v) or 0 end
+    return { itemID = f[1], enchantID = f[2], gems = { f[3], f[4], f[5], f[6] } }
+end
+
+-- Lignes d'infobulle d'un objet equipe (C_TooltipInfo) : on garde celles qui
+-- parlent d'ensemble ("(4/5)", "Ensemble", "Set") et un echantillon.
+local function tooltipLines(slot)
+    local TI = C_TooltipInfo
+    if not (TI and TI.GetInventoryItem) then return "<C_TooltipInfo absent>" end
+    local ok, data = pcall(TI.GetInventoryItem, "player", slot)
+    if not ok or type(data) ~= "table" or type(data.lines) ~= "table" then return { error = tostring(data) } end
+    local out, setLines = {}, {}
+    for i, line in ipairs(data.lines) do
+        local t = line.leftText
+        if type(t) == "string" and not isSecret(t) then
+            if i <= 40 then out[#out + 1] = t end
+            if t:find("%(%d+/%d+%)") or t:find("%(%d+%)") then setLines[#setLines + 1] = t end
+        end
+    end
+    return { sample = out, setLines = setLines }
+end
+
+local function transmogSets(sourceID)
+    local TS = C_TransmogSets
+    if not (TS and TS.GetSetsContainingSourceID) then return "<absent>" end
+    local ok, ids = pcall(TS.GetSetsContainingSourceID, sourceID)
+    if not ok or type(ids) ~= "table" then return { error = tostring(ids) } end
+    local out = {}
+    for i, id in ipairs(ids) do
+        if i > 4 then break end
+        out[i] = { setID = id, info = TS.GetSetInfo and packResults(pcall(TS.GetSetInfo, id)) or "<absent>" }
+    end
+    return out
+end
+
+-- Transmogrification APPLIQUEE sur un emplacement (perso connecte seulement).
+local function appliedTransmog(slot)
+    local TU, T = TransmogUtil, C_Transmog
+    if not (TU and TU.GetTransmogLocation and T and T.GetSlotVisualInfo and Enum and Enum.TransmogType) then
+        return "<API transmog absente>"
+    end
+    local okL, loc = pcall(TU.GetTransmogLocation, slot, Enum.TransmogType.Appearance,
+        Enum.TransmogModification and Enum.TransmogModification.Main or 0)
+    if not okL or not loc then return { error = "location : " .. tostring(loc) } end
+    return packResults(pcall(T.GetSlotVisualInfo, loc))
+end
+
+local function doGear()
+    TibiProbeDB = TibiProbeDB or {}
+    local d = TibiProbeDB
+    d.gear = d.gear or {}
+    local key = (UnitName("player") or "?") .. " - " .. (GetRealmName() or "?")
+    local slots, setCount = {}, {}
+    for slot, sname in pairs(SLOT_NAMES) do
+        local link = GetInventoryItemLink("player", slot)
+        if link then
+            local row = { slot = sname, link = snap(link), parsed = parseItemLink(link) }
+            local getInfo = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+            local info = { pcall(getInfo, link) }
+            if info[1] then
+                -- 15e retour : extension ; 16e : identifiant d'ensemble d'objets.
+                row.expacID, row.setID = snap(info[16]), snap(info[17])
+                if type(info[17]) == "number" and info[17] > 0 then
+                    setCount[info[17]] = (setCount[info[17]] or 0) + 1
+                end
+            end
+            row.ilvl = call("C_Item.GetDetailedItemLevelInfo", link)
+            row.upgrade = call("C_Item.GetItemUpgradeInfo", link)
+            row.stats = call("C_Item.GetItemStats", link)
+            row.numSockets = call("C_Item.GetItemNumSockets", link)
+            local tc = call("C_TransmogCollection.GetItemInfo", link)
+            row.transmogItemInfo = tc
+            if type(tc) == "table" and type(tc[2]) == "number" then
+                row.transmogSets = transmogSets(tc[2])
+            end
+            row.applied = appliedTransmog(slot)
+            if slot == 1 or slot == 3 or slot == 5 or slot == 7 or slot == 10 then
+                row.tooltip = tooltipLines(slot)
+            end
+            slots[sname] = row
+        end
+    end
+    -- Nom des ensembles comptes (plusieurs API candidates, on note laquelle repond).
+    local sets = {}
+    for setID, n in pairs(setCount) do
+        sets[setID] = {
+            equipped = n,
+            itemSetInfo = call("C_Item.GetItemSetInfo", setID),
+            lootJournal = call("C_LootJournal.GetItemSetItems", setID),
+        }
+    end
+    local raceName, raceFile, raceID = UnitRace("player")
+    d.gear[key] = {
+        context = context(),
+        race = { name = snap(raceName), file = snap(raceFile), id = snap(raceID) },
+        sex = snap(UnitSex("player")),
+        slots = slots,
+        sets = sets,
+        stats = {
+            crit = call("GetCritChance"), haste = call("GetHaste"), mastery = call("GetMasteryEffect"),
+            versa = call("GetCombatRatingBonus", CR_VERSATILITY_DAMAGE_DONE or 29),
+            versaBonus = call("GetVersatilityBonus", CR_VERSATILITY_DAMAGE_DONE or 29),
+        },
+        apis = {
+            GetItemSetInfo = type(resolve("C_Item.GetItemSetInfo")) == "function",
+            GetItemNumSockets = type(resolve("C_Item.GetItemNumSockets")) == "function",
+            GetSetsContainingSourceID = type(resolve("C_TransmogSets.GetSetsContainingSourceID")) == "function",
+            GetSlotVisualInfo = type(resolve("C_Transmog.GetSlotVisualInfo")) == "function",
+            TooltipInfo = type(resolve("C_TooltipInfo.GetInventoryItem")) == "function",
+        },
+    }
+    local n = 0
+    for _ in pairs(slots) do n = n + 1 end
+    say("gear [%s] : %d emplacements releves.", key, n)
+end
+
+-- ---------------------------------------------------------------------------
+-- 5 quinquies. Piste A en direct : mannequin de test a l'ecran, reconstruit
+-- avec la race / le sexe et la transmogrification RELEVES (pas SetUnit), comme
+-- on le ferait pour un reroll deconnecte. /tprobe model [Nom - Royaume].
+-- On note aussi quelles methodes existent sur DressUpModel et ModelScene.
+-- ---------------------------------------------------------------------------
+local modelFrame
+local function methodsOf(obj, names)
+    local out = {}
+    for _, m in ipairs(names) do out[m] = type(obj and obj[m]) == "function" end
+    return out
+end
+
+local function doModel(target)
+    TibiProbeDB = TibiProbeDB or {}
+    local d = TibiProbeDB
+    local key = (target and target ~= "") and target
+        or ((UnitName("player") or "?") .. " - " .. (GetRealmName() or "?"))
+    local g = d.gear and d.gear[key]
+    if not g then
+        say("model : aucun releve gear pour [%s]. Connecte-toi sur ce perso d'abord.", key)
+        return
+    end
+    if not modelFrame then
+        modelFrame = CreateFrame("Frame", "TibiProbeModelBox", UIParent, "BackdropTemplate")
+        modelFrame:SetSize(320, 420)
+        modelFrame:SetPoint("CENTER", 300, 0)
+        modelFrame:SetFrameStrata("DIALOG")
+        if modelFrame.SetBackdrop then
+            modelFrame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8" })
+            modelFrame:SetBackdropColor(0, 0, 0, 0.85)
+        end
+        modelFrame.title = modelFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        modelFrame.title:SetPoint("TOP", 0, -8)
+        local close = CreateFrame("Button", nil, modelFrame, "UIPanelCloseButton")
+        close:SetPoint("TOPRIGHT")
+        modelFrame.model = CreateFrame("DressUpModel", nil, modelFrame)
+        modelFrame.model:SetPoint("TOPLEFT", 10, -30)
+        modelFrame.model:SetPoint("BOTTOMRIGHT", -10, 10)
+    end
+    local m = modelFrame.model
+    local report = {
+        dressUpMethods = methodsOf(m, { "SetUnit", "SetCustomRace", "TryOn", "Undress", "Dress",
+            "SetModelByCreatureDisplayID", "SetItemTransmogInfo", "RefreshCamera" }),
+    }
+    local ms = CreateFrame("ModelScene", nil, UIParent)
+    report.modelSceneMethods = methodsOf(ms, { "CreateActor", "AcquireActor", "GetPlayerActor" })
+    if ms.CreateActor then
+        local okA, actor = pcall(ms.CreateActor, ms)
+        if okA and actor then
+            report.actorMethods = methodsOf(actor, { "SetModelByUnit", "SetCustomRace", "TryOn",
+                "Undress", "SetPlayerModelFromGlues", "SetItemTransmogInfo", "Dress" })
+        end
+    end
+    ms:Hide()
+
+    -- Reconstruction : race + sexe, deshabille, puis chaque apparence appliquee.
+    local steps = {}
+    local raceID, sex = g.race and g.race.id, g.sex
+    steps.setCustomRace = m.SetCustomRace and packResults(pcall(m.SetCustomRace, m, raceID, (sex or 2) - 2))
+        or "<absent>"
+    if m.Undress then pcall(m.Undress, m) end
+    local tried = 0
+    for sname, row in pairs(g.slots or {}) do
+        -- GetSlotVisualInfo : 1 = source de base, 3 = source appliquee (a valider).
+        local a = type(row.applied) == "table" and row.applied
+        local src = a and ((type(a[3]) == "number" and a[3] > 0 and a[3]) or (type(a[1]) == "number" and a[1] > 0 and a[1]))
+        if not src and type(row.transmogItemInfo) == "table" then src = row.transmogItemInfo[2] end
+        if src and m.TryOn then
+            local okT, err = pcall(m.TryOn, m, src)
+            steps["tryOn_" .. sname] = okT and src or ("erreur : " .. tostring(err))
+            tried = tried + 1
+        end
+    end
+    report.steps = steps
+    d.model = d.model or {}
+    d.model[key] = { context = context(), report = report }
+    modelFrame.title:SetText("Piste A : " .. key)
+    modelFrame:Show()
+    say("model [%s] : %d apparences essayees. Regarde le mannequin, puis /reload.", key, tried)
+end
+
+-- ---------------------------------------------------------------------------
+-- 5 sexies. Banque de Bataillon : C_Bank.FetchDepositedMoney a renvoye 0 banque
+-- ouverte et pleine. On journalise chaque evenement de banque et plusieurs
+-- lectures dans les secondes qui suivent, avec toutes les valeurs de l'enum.
+-- ---------------------------------------------------------------------------
+local bankLog = {}
+local function bankSnapshot(tag)
+    local B = C_Bank
+    local row = { tag = tag, t = GetTime and GetTime() or 0 }
+    if Enum and Enum.BankType then
+        row.enum = snap(Enum.BankType)
+        for name, v in pairs(Enum.BankType) do
+            if B and B.FetchDepositedMoney then row["money_" .. name] = packResults(pcall(B.FetchDepositedMoney, v)) end
+        end
+    end
+    if B then
+        local fns = {}
+        for fname, f in pairs(B) do if type(f) == "function" then fns[#fns + 1] = fname end end
+        table.sort(fns)
+        row.bankFns = fns
+    end
+    bankLog[#bankLog + 1] = row
+    TibiProbeDB = TibiProbeDB or {}
+    TibiProbeDB.bank = bankLog
+end
+
+local bankWatcher = CreateFrame("Frame")
+for _, ev in ipairs({ "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "ACCOUNT_MONEY",
+    "PLAYER_INTERACTION_MANAGER_FRAME_SHOW", "BANK_TABS_CHANGED", "PLAYERBANKSLOTS_CHANGED" }) do
+    pcall(bankWatcher.RegisterEvent, bankWatcher, ev)
+end
+bankWatcher:SetScript("OnEvent", function(_, event, arg1)
+    local tag = event .. (arg1 ~= nil and not isSecret(arg1) and (":" .. tostring(arg1)) or "")
+    bankSnapshot(tag)
+    if event ~= "BANKFRAME_CLOSED" then
+        for _, delay in ipairs({ 1, 3, 6 }) do
+            C_Timer.After(delay, function() bankSnapshot(tag .. "+" .. delay .. "s") end)
+        end
+    end
+end)
+
+-- ---------------------------------------------------------------------------
 -- 6. Evenements : on ecoute TOUT, on ne garde que des compteurs par nom.
 -- Aucun argument d'evenement n'est lu (valeurs secretes en 12.x).
 -- ---------------------------------------------------------------------------
@@ -571,12 +830,13 @@ saver:SetScript("OnEvent", function(self, event, isLogin, isReload)
         C_Timer.After(8, function()
             doScan()
             doAlts()
+            doGear()
         end)
     end
 end)
 
 SLASH_TIBIPROBE1 = "/tprobe"
-local PROBE_VERSION = "0.4"
+local PROBE_VERSION = "0.5"
 
 local function dispatch(msg)
     local cmd, rest = (msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
@@ -589,12 +849,16 @@ local function dispatch(msg)
         doEvents()
     elseif cmd == "decor" then
         doDecor()
+    elseif cmd == "gear" then
+        doGear()
+    elseif cmd == "model" then
+        doModel(rest)
     elseif cmd == "alts" then
         altRequests()
         say("alts : requetes envoyees, releve dans 3 s.")
         C_Timer.After(3, doAlts)
     else
-        say("v%s : /tprobe scan | /tprobe alts | /tprobe house <etiquette> | /tprobe decor | /tprobe events",
+        say("v%s : /tprobe scan | /tprobe alts | /tprobe gear | /tprobe model [Nom - Royaume] | /tprobe house <etiquette> | /tprobe decor | /tprobe events",
             PROBE_VERSION)
     end
 end
