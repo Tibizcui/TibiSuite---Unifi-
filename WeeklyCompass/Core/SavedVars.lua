@@ -21,6 +21,8 @@ local function initDB()
     db.global  = db.global or { debug = false }
     db.global.minimap = db.global.minimap or { angle = 220, hidden = false }
     if db.global.login == nil then db.global.login = true end
+    db.global.hidden = db.global.hidden or {}        -- [charKey] = true : masque de la vue compte
+    if db.global.showHidden == nil then db.global.showHidden = false end
     db.chars   = db.chars or {}
 
     local key = charKey()
@@ -42,6 +44,43 @@ end
 function DB:GetChar()      return ns.char end
 function DB:GetGlobal()    return ns.db and ns.db.global end
 function DB:GetAllChars()  return (ns.db and ns.db.chars) or {} end
+
+-- Masquage : le perso reste en base (ses donnees continuent de se mettre a
+-- jour a chaque connexion), il n'apparait simplement plus dans la vue compte.
+function DB:IsHidden(key)
+    local g = self:GetGlobal()
+    return (g and g.hidden and g.hidden[key]) == true
+end
+
+function DB:SetHidden(key, hidden)
+    local g = self:GetGlobal()
+    if not (g and g.hidden) then return end
+    g.hidden[key] = hidden and true or nil
+end
+
+function DB:UnhideAll()
+    local g = self:GetGlobal()
+    if g and g.hidden then wipe(g.hidden) end
+end
+
+function DB:ShowHidden()
+    local g = self:GetGlobal()
+    return (g and g.showHidden) == true
+end
+
+function DB:SetShowHidden(show)
+    local g = self:GetGlobal()
+    if g then g.showHidden = show and true or false end
+end
+
+-- Oubli : retire le perso de la base. Refuse pour le perso connecte (il serait
+-- recree a l'instant). Un perso oublie revient a sa prochaine connexion.
+function DB:ForgetChar(key)
+    if not ns.db or key == charKey() then return false end
+    ns.db.chars[key] = nil
+    self:SetHidden(key, false)
+    return true
+end
 
 ns:RegisterEvent("ADDON_LOADED", function(_, loaded)
     if loaded ~= addonName then return end

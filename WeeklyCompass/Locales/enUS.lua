@@ -59,4 +59,41 @@ ns:AddLocale("enUS", {
     UI_EMPTY              = "No character data yet. Log in on your alts to populate the account view.",
     UI_STALE              = "Data predates the last reset",
     SLASH_HINT            = "Commands: /wc | /wc options | /wc dump | /wc minimap | /wc debug",
+    UI_ALL_HIDDEN         = "All your characters are hidden. Tick \"Show hidden characters\" in the options.",
+    UI_HIDDEN_TAG         = "(hidden)",
+
+    -- Great Vault details
+    VAULT_CLAIM_PROBABLE_CELL = "To claim?",
+    VAULT_CLAIM_PROBABLE_TIP  = "Deduced: this character had unlocked Great Vault slots before the reset and has not logged in since.",
+    VAULT_SLOT_LINE       = "Slot %d: %d/%d",
+    VAULT_NEXT_SLOT       = "Next slot: %d more %s",
+    VAULT_ALL_SLOTS       = "All slots unlocked",
+    VAULT_UNIT_DUNGEONS   = "dungeon(s)",
+    VAULT_UNIT_RAID       = "boss(es)",
+    VAULT_UNIT_WORLD      = "activity(ies)",
+    VAULT_UNIT_GENERIC    = "step(s)",
+
+    -- Tooltips and menu
+    TIP_UPDATED           = "Updated: %s",
+    TIP_LAST_SEEN         = "Last login: %s",
+    TIP_RIGHT_CLICK       = "Right click: hide or forget",
+    MENU_HIDE             = "Hide this character",
+    MENU_UNHIDE           = "Show this character",
+    MENU_FORGET           = "Forget this character (comes back at its next login)",
+
+    -- Options
+    OPT_TITLE             = "WeeklyCompass - Options",
+    OPT_SECTION_WINDOW    = "Window",
+    OPT_TOGGLE            = "Open / close",
+    OPT_RECENTER          = "Recenter the window",
+    OPT_REFRESH           = "Refresh activities",
+    OPT_SECTION_CHARS     = "Characters",
+    OPT_SHOW_HIDDEN       = "Show hidden characters",
+    OPT_UNHIDE_ALL        = "Show all characters again",
+    OPT_CHARS_NOTE        = "Right click a character's name in the dashboard to hide or forget it.",
+    OPT_SECTION_FLOAT     = "Floating buttons (TibiSuite bar)",
+    OPT_HIDE_OPTIONS      = "Hide the Options button",
+    OPT_HIDE_SEARCH       = "Hide the Search field",
+    OPT_FLOAT_NOTE        = "The Options button and the Search field stick out above the window. Even hidden, Shift+right click on the window opens these options.",
+    OPT_TAB_TIP           = "Tip: right clicking the Weekly tab in the TibiSuite bar also opens these options.",
 })

@@ -58,6 +58,26 @@ local function colorCode(c)
     return ("ff%02x%02x%02x"):format(b(c[1]), b(c[2]), b(c[3]))
 end
 
+-- Texte de detail d'une entree. Une entree est stockee avec son texte deja
+-- traduit : un reroll pas reconnecte garderait l'ancien texte (ex. "A recuperer"
+-- sans accent, ou la langue d'avant). detailKey le retraduit a l'affichage ;
+-- la recompense du Coffre stockee avant la 7.1.5.20 n'a pas de detailKey,
+-- d'ou le repli sur sa cle d'entree.
+local function detailText(e)
+    local key = e.detailKey
+    if not key and e.key == "greatVault:claim" and not e.inferred then key = "VAULT_CLAIM_CELL" end
+    if key then return L[key] end
+    return e.detail
+end
+
+-- Meme principe pour l'en-tete de colonne (libelle court).
+local function shortText(e)
+    local key = e.shortKey
+    if not key and e.key == "greatVault:claim" then key = "VAULT_CLAIM_SHORT" end
+    if key then return L[key] end
+    return e.short or e.label or e.key
+end
+
 -- Contenu compact d'une cellule. Le niveau d'objet obtenu (le plus haut deja
 -- debloque) est colle apres la progression, comme demande.
 local function cellText(e)
@@ -67,9 +87,9 @@ local function cellText(e)
     local txt
     if e.progress and e.progress.max and e.progress.max > 0 then
         txt = ("%d/%d"):format(e.progress.current or 0, e.progress.max)
-    elseif e.detail then
+    elseif detailText(e) then
         -- Case sans compteur mais avec un texte court (ex. "A recuperer").
-        txt = tostring(e.detail)
+        txt = tostring(detailText(e))
     elseif e.status == C.Status.DONE then
         txt = L["STATUS_DONE"]
     elseif e.status == C.Status.NOT_STARTED then
@@ -97,6 +117,125 @@ local function makeFS(parent, template)
     fs:SetJustifyH("LEFT")
     if fs.SetWordWrap then fs:SetWordWrap(false) end
     return fs
+end
+
+-- ---------------------------------------------------------------------------
+-- Infobulles et menu. Les cases sont des FontStrings (non cliquables) : chacune
+-- recoit une zone de survol invisible calee dessus (SetAllPoints).
+-- ---------------------------------------------------------------------------
+local STATUS_KEY = {
+    [C.Status.DONE]        = "STATUS_DONE",
+    [C.Status.IN_PROGRESS] = "STATUS_IN_PROGRESS",
+    [C.Status.NOT_STARTED] = "STATUS_NOT_STARTED",
+    [C.Status.UNKNOWN]     = "STATUS_UNKNOWN",
+}
+
+local function fmtTime(ts)
+    return (type(ts) == "number" and ts > 0) and date("%d/%m %H:%M", ts) or "?"
+end
+
+-- Une zone survolee hors de la partie visible du tableau defilant ne doit
+-- pas ouvrir d'infobulle.
+local function visibleHover(owner)
+    return not scrollFrame or scrollFrame:IsMouseOver()
+end
+
+local function hideTip()
+    if GameTooltip then GameTooltip:Hide() end
+end
+
+local function showEntryTip(owner)
+    local e = owner.entry
+    if not (e and GameTooltip and visibleHover(owner)) then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(e.label or e.key, 1, 1, 1)
+    local sr, sg, sb = statusRGB(e.status)
+    local st = L[STATUS_KEY[e.status] or "STATUS_UNKNOWN"]
+    if e.progress and e.progress.max and e.progress.max > 0 then
+        st = ("%s  %d/%d"):format(st, e.progress.current or 0, e.progress.max)
+    end
+    GameTooltip:AddLine(st, sr, sg, sb)
+    local detail = detailText(e)
+    if detail then GameTooltip:AddLine(tostring(detail), 0.85, 0.85, 0.85, true) end
+    if e.reward and e.reward.text then GameTooltip:AddLine(e.reward.text, 0.85, 0.85, 0.85) end
+    if type(e.lines) == "table" then
+        for _, line in ipairs(e.lines) do
+            GameTooltip:AddLine(tostring(line), 0.80, 0.80, 0.80, true)
+        end
+    end
+    if owner.stale then GameTooltip:AddLine(L["UI_STALE"], 0.55, 0.55, 0.58, true) end
+    if not e.inferred and e.updatedAt then
+        GameTooltip:AddLine(L["TIP_UPDATED"]:format(fmtTime(e.updatedAt)), 0.55, 0.55, 0.58)
+    end
+    GameTooltip:Show()
+end
+
+local function showCharTip(owner)
+    local ch = owner.ch
+    if not (ch and GameTooltip and visibleHover(owner)) then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    local cr, cg, cb = classRGB(ch.class)
+    GameTooltip:AddLine(("%s - %s"):format(ch.name or "?", ch.realm or "?"), cr, cg, cb)
+    GameTooltip:AddLine(L["TIP_LAST_SEEN"]:format(fmtTime(ch.lastSeen)), 0.80, 0.80, 0.80)
+    if ch.stale then GameTooltip:AddLine(L["UI_STALE"], 0.55, 0.55, 0.58, true) end
+    if ch.hidden then GameTooltip:AddLine(L["UI_HIDDEN_TAG"], 0.55, 0.55, 0.58) end
+    GameTooltip:AddLine(L["TIP_RIGHT_CLICK"], 0.55, 0.55, 0.58)
+    GameTooltip:Show()
+end
+
+-- Menu clic droit sur un nom : masquer / reafficher, oublier.
+local function openCharMenu(owner)
+    local ch = owner.ch
+    if not ch then return end
+    hideTip()
+    local function toggleHidden()
+        ns.DB:SetHidden(ch.key, not ch.hidden)
+        UI:Refresh()
+    end
+    if not (MenuUtil and MenuUtil.CreateContextMenu) then
+        -- Repli si le menu moderne manque : bascule directe du masquage.
+        toggleHidden()
+        return
+    end
+    MenuUtil.CreateContextMenu(owner, function(_, root)
+        root:CreateTitle(("%s - %s"):format(ch.name or "?", ch.realm or "?"))
+        root:CreateButton(ch.hidden and L["MENU_UNHIDE"] or L["MENU_HIDE"], toggleHidden)
+        if ch.key ~= ns.charKey() then
+            root:CreateButton(L["MENU_FORGET"], function()
+                ns.DB:ForgetChar(ch.key)
+                UI:Refresh()
+            end)
+        end
+    end)
+end
+
+local function makeHit(fs)
+    local h = CreateFrame("Frame", nil, scrollChild)
+    h:SetAllPoints(fs)
+    h:EnableMouse(true)
+    h:SetScript("OnEnter", showEntryTip)
+    h:SetScript("OnLeave", hideTip)
+    h:Hide()
+    return h
+end
+
+local function makeNameHit(fs)
+    local h = CreateFrame("Button", nil, scrollChild)
+    h:SetAllPoints(fs)
+    h:RegisterForClicks("RightButtonUp")
+    h:SetScript("OnClick", openCharMenu)
+    h:SetScript("OnEnter", showCharTip)
+    h:SetScript("OnLeave", hideTip)
+    h:Hide()
+    return h
+end
+
+-- Nom affiche : royaume en gris seulement pour les homonymes, mention des masques.
+local function nameText(ch)
+    local t = ch.name or "?"
+    if ch.dup and ch.realm then t = t .. " |cff8a8a8a- " .. ch.realm .. "|r" end
+    if ch.hidden then t = t .. " |cff8a8a8a" .. L["UI_HIDDEN_TAG"] .. "|r" end
+    return t
 end
 
 -- Repositionne le curseur de la barre en fonction de l'offset courant.
@@ -235,7 +374,8 @@ end
 local function getRow(r)
     local row = rowPool[r]
     if not row then
-        row = { name = makeFS(scrollChild, "GameFontNormal"), cells = {} }
+        row = { name = makeFS(scrollChild, "GameFontNormal"), cells = {}, hits = {} }
+        row.nameHit = makeNameHit(row.name)
         rowPool[r] = row
     end
     return row
@@ -246,8 +386,20 @@ local function getCell(row, c)
     if not fs then
         fs = makeFS(scrollChild, "GameFontHighlightSmall")
         row.cells[c] = fs
+        row.hits[c] = makeHit(fs)
     end
     return fs
+end
+
+local function hideRow(row, fromCol)
+    if not fromCol then
+        row.name:Hide()
+        row.nameHit:Hide()
+    end
+    for c = fromCol or 1, #row.cells do
+        row.cells[c]:Hide()
+        row.hits[c]:Hide()
+    end
 end
 
 local function hideEverything()
@@ -256,16 +408,13 @@ local function hideEverything()
     if track then track:Hide() end
     if thumb then thumb:Hide() end
     for _, fs in ipairs(header) do fs:Hide() end
-    for _, row in ipairs(rowPool) do
-        row.name:Hide()
-        for _, cell in ipairs(row.cells) do cell:Hide() end
-    end
+    for _, row in ipairs(rowPool) do hideRow(row) end
 end
 
 function UI:Refresh()
     if not frame or not frame:IsShown() then return end
 
-    local roster = ns.Journal:GetRoster()
+    local roster, nHidden = ns.Journal:GetRoster()
 
     -- 1. Colonnes = union ordonnee des cles d'entrees sur tous les persos.
     -- L'en-tete vient de l'entree la plus RECENTE (updatedAt) : un reroll pas
@@ -279,7 +428,7 @@ function UI:Refresh()
             if not rec then
                 rec = {
                     key      = e.key,
-                    headerTx = e.short or e.label or e.key,
+                    headerTx = shortText(e),
                     category = e.category,
                     order    = e.order or 100,
                     seenAt   = e.updatedAt or 0,
@@ -287,7 +436,7 @@ function UI:Refresh()
                 cols[#cols + 1] = rec
                 colByKey[e.key] = rec
             elseif (e.updatedAt or 0) > rec.seenAt then
-                rec.headerTx = e.short or e.label or e.key
+                rec.headerTx = shortText(e)
                 rec.seenAt   = e.updatedAt or 0
             end
         end
@@ -302,7 +451,7 @@ function UI:Refresh()
 
     if #roster == 0 or #cols == 0 then
         hideEverything()
-        frame.empty:SetText(L["UI_EMPTY"])
+        frame.empty:SetText((#roster == 0 and (nHidden or 0) > 0) and L["UI_ALL_HIDDEN"] or L["UI_EMPTY"])
         frame.empty:SetWidth(300)
         frame.empty:Show()
         frame:SetSize(340, 150)
@@ -323,7 +472,7 @@ function UI:Refresh()
 
     for r, ch in ipairs(roster) do
         local row = getRow(r)
-        row.name:SetText(ch.name or "?")
+        row.name:SetText(nameText(ch))
         local w = row.name:GetStringWidth() or 0
         if w > nameW then nameW = w end
 
@@ -389,7 +538,7 @@ function UI:Refresh()
     for r, ch in ipairs(roster) do
         local row = rowPool[r]
         local yy = (r - 1) * ROW_H
-        local alpha = ch.stale and 0.45 or 1
+        local alpha = (ch.stale or ch.hidden) and 0.45 or 1
 
         row.name:ClearAllPoints()
         row.name:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 0, -yy)
@@ -397,6 +546,8 @@ function UI:Refresh()
         local cr, cg, cb = classRGB(ch.class)
         row.name:SetTextColor(cr, cg, cb, alpha)
         row.name:Show()
+        row.nameHit.ch = ch
+        row.nameHit:Show()
 
         for c = 1, #cols do
             local cell = getCell(row, c)
@@ -406,15 +557,19 @@ function UI:Refresh()
             local e = row._byKey[cols[c].key]
             local sr, sg, sb
             if e then sr, sg, sb = statusRGB(e.status) else sr, sg, sb = 0.40, 0.40, 0.42 end
-            cell:SetTextColor(sr, sg, sb, alpha)
+            -- Deduction (ex. recompense probable) : un cran plus discrete.
+            local a = (e and e.inferred) and alpha * 0.75 or alpha
+            cell:SetTextColor(sr, sg, sb, a)
             cell:Show()
+            local hit = row.hits[c]
+            hit.entry = e
+            hit.stale = ch.stale
+            if e then hit:Show() else hit:Hide() end
         end
-        for c = #cols + 1, #row.cells do row.cells[c]:Hide() end
+        hideRow(row, #cols + 1)
     end
     for r = nRows + 1, #rowPool do
-        local row = rowPool[r]
-        row.name:Hide()
-        for _, cell in ipairs(row.cells) do cell:Hide() end
+        hideRow(rowPool[r])
     end
 
     -- 7. Barre de defilement + largeur reservee si besoin.

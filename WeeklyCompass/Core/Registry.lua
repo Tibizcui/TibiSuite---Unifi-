@@ -49,10 +49,17 @@ local function manifestState(key)
     local manifest = ns.ActivityManifest or {}
     for _, row in ipairs(manifest) do
         if row.key == key then
-            return row.enabled ~= false, row.reason or (row.reasonKey and ns.L[row.reasonKey])
+            return row.enabled ~= false, row.reason or (row.reasonKey and ns.L[row.reasonKey]),
+                row.hidden == true
         end
     end
-    return true, nil   -- non liste => actif par defaut
+    return true, nil, false   -- non liste => actif par defaut
+end
+
+-- Activite retiree du tableau (manifeste : hidden = true). Contrairement a une
+-- activite inactive, elle n'affiche meme pas de colonne "?".
+function Registry:IsHidden(desc)
+    return desc ~= nil and select(3, manifestState(desc.key)) == true
 end
 
 function Registry:IsActive(desc)
@@ -67,6 +74,12 @@ end
 -- que le joueur sache qu'une activite existe mais attend encore sa source.
 function Registry:Refresh(desc)
     if not desc then return end
+    if self:IsHidden(desc) then
+        -- Purge chez tous les persos : sinon les rerolls pas reconnectes
+        -- garderaient la colonne en memoire.
+        ns.Journal:ClearByPrefixAll(desc.key .. ":")
+        return
+    end
     ns.Journal:ClearByPrefix(desc.key .. ":")
 
     if not self:IsActive(desc) then

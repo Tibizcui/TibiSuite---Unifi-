@@ -46,33 +46,45 @@ local panel
 local function BuildOptions()
   local ui = GetUI(); if not ui then return nil end
   if panel then return panel end
+  local L = ns.L
   panel = ui.CreateOptionsPanel({
     name = "WeeklyCompassOptionsMidnight",
-    title = "WeeklyCompass - Options", accent = ACCENT })
+    title = L["OPT_TITLE"], accent = ACCENT })
 
-  panel:Section("Fenêtre")
-  panel:Button("Ouvrir / fermer", function()
+  local function refreshView()
+    if ns.UI and ns.UI.Refresh then ns.UI:Refresh() end
+  end
+
+  panel:Section(L["OPT_SECTION_WINDOW"])
+  panel:Button(L["OPT_TOGGLE"], function()
     if _G.WeeklyCompass_Toggle then _G.WeeklyCompass_Toggle() end
   end)
-  panel:Button("Recentrer la fenêtre", function()
+  panel:Button(L["OPT_RECENTER"], function()
     local f = _G[FRAME]; if f then f:ClearAllPoints(); f:SetPoint("CENTER") end
   end)
-  panel:Button("Rafraîchir les activités", function()
+  panel:Button(L["OPT_REFRESH"], function()
     if ns and ns.Registry and ns.Registry.RefreshAll then
       pcall(function() ns.Registry:RefreshAll() end)
     end
   end)
 
-  panel:Section("Boutons flottants (barre TibiSuite)")
-  panel:Check("Masquer le bouton Options",
+  panel:Section(L["OPT_SECTION_CHARS"])
+  panel:Check(L["OPT_SHOW_HIDDEN"],
+    function() return ns.DB:ShowHidden() end,
+    function(v) ns.DB:SetShowHidden(v); refreshView() end)
+  panel:Button(L["OPT_UNHIDE_ALL"], function() ns.DB:UnhideAll(); refreshView() end)
+  panel:Note(L["OPT_CHARS_NOTE"])
+
+  panel:Section(L["OPT_SECTION_FLOAT"])
+  panel:Check(L["OPT_HIDE_OPTIONS"],
     function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("WeeklyCompassFrame", "options") end,
     function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("WeeklyCompassFrame", "options", v) end end)
-  panel:Check("Masquer le champ Recherche",
+  panel:Check(L["OPT_HIDE_SEARCH"],
     function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("WeeklyCompassFrame", "search") end,
     function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("WeeklyCompassFrame", "search", v) end end)
-  panel:Note("Le bouton Options et le champ Recherche debordent au-dessus de la fenetre. Meme masques, Maj+clic droit sur la fenetre ouvre ces options.")
+  panel:Note(L["OPT_FLOAT_NOTE"])
 
-  panel:Note("Astuce : clic droit sur l'onglet Weekly dans la barre TibiSuite ouvre aussi ces options.")
+  panel:Note(L["OPT_TAB_TIP"])
   return panel
 end
 
@@ -90,11 +102,13 @@ local function provider(q)
   if not ok or type(modules) ~= "table" then return out end
   local L = (ns and ns.L) or {}
   for k, desc in pairs(modules) do
+    -- Une activite retiree du tableau (manifeste hidden) n'est pas proposee.
+    local hidden = ns.Registry.IsHidden and ns.Registry:IsHidden(desc)
     local labelKey = type(desc) == "table" and desc.labelKey
     local label = (labelKey and L[labelKey])
       or (type(desc) == "table" and (desc.label or desc.title or desc.name)) or k
     local hay = tostring(label) .. " " .. tostring(k) .. " " .. tostring(labelKey or "")
-    if ui.Match(hay, q) then
+    if not hidden and ui.Match(hay, q) then
       out[#out + 1] = { text = tostring(label),
         onClick = function()
           local f = _G[FRAME]

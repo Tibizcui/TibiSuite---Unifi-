@@ -5,12 +5,16 @@ local addonName, ns = ...
 -- C'est ICI qu'on active, desactive ou reordonne une activite, sans jamais
 -- toucher au journal, au registre ni a l'interface. "reason" / "reasonKey"
 -- documente pourquoi une activite affiche encore un statut "inconnu".
+-- "hidden = true" retire completement l'activite du tableau (pas de colonne
+-- "?"), a utiliser quand le jeu n'expose aucun compteur exploitable.
 --
 -- Ajouter une activite = deposer un module dans Data/Activities/, l'inscrire
 -- dans le .toc, et l'ajouter ici.
 ns.ActivityManifest = {
     { key = "greatVault", enabled = true },
-    { key = "lairs",      enabled = true, reasonKey = "DETAIL_SOURCES_PENDING" },
+    -- Repaires : aucun compteur hebdo cote jeu (sonde 2026-09-25), la colonne
+    -- restait toujours a "?". Retiree du tableau jusqu'a ce qu'une source existe.
+    { key = "lairs",      enabled = false, hidden = true },
     { key = "delves",     enabled = true, reasonKey = "DETAIL_SOURCES_PENDING" },
     { key = "huntRanks",  enabled = true, reasonKey = "DETAIL_SOURCES_PENDING" },
 }

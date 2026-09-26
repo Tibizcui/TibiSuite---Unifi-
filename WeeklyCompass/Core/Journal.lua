@@ -19,6 +19,10 @@ local C = ns.Const
 --   progress  = { current, max } | nil,   -- optionnel : "x/y"
 --   reward    = { text = string } | nil,  -- optionnel : palier de recompense localise
 --   detail    = string | nil,             -- optionnel : complement court
+--   detailKey = string | nil,             -- optionnel : cle de Locales, prioritaire sur
+--                                         -- detail a l'affichage (texte toujours a jour)
+--   lines     = { string, ... } | nil,    -- optionnel : lignes de l'infobulle de la case
+--   inferred  = true | nil,               -- entree DEDUITE a l'affichage, jamais stockee
 --   updatedAt = number,          -- rempli automatiquement par Upsert
 -- }
 -- ---------------------------------------------------------------------------
@@ -59,6 +63,18 @@ function Journal:ClearByPrefix(prefix)
     end
 end
 
+-- Meme purge, mais sur TOUS les persos (activite retiree du tableau).
+function Journal:ClearByPrefixAll(prefix)
+    local n = #prefix
+    for _, char in pairs(ns.DB:GetAllChars()) do
+        for k in pairs(char.entries or {}) do
+            if k:sub(1, n) == prefix then
+                char.entries[k] = nil
+            end
+        end
+    end
+end
+
 -- Comparateur de tri : categorie, puis ordre, puis libelle.
 local function sortEntries(a, b)
     local ca = C.CategoryOrder[a.category] or 100
@@ -84,21 +100,74 @@ end
 -- "stale" signale un perso dont les donnees sont anterieures au reset courant
 -- (typiquement un reroll pas reconnecte depuis le reset). Honnete par design :
 -- on n'invente pas ses compteurs, on indique juste qu'ils sont a rafraichir.
-function Journal:GetRoster()
-    local roster = {}
-    local current = ns.Reset:GetCurrentPeriodId()
-    for key, char in pairs(ns.DB:GetAllChars()) do
-        roster[#roster + 1] = {
-            key      = key,
-            name     = char.name,
-            realm    = char.realm,
-            class    = char.class,
-            faction  = char.faction,
-            periodId = char.periodId,
-            stale    = not ns.Reset:IsSamePeriod(char.periodId, current),
-            entries  = self:GetEntries(char),
-        }
+--
+-- Recompense deduite : un perso "stale" qui avait debloque au moins un
+-- emplacement du Grand Coffre avant le reset a forcement un choix en attente
+-- (il ne s'est pas reconnecte pour le faire). On l'affiche, marque comme une
+-- deduction, sans jamais l'ecrire dans la base.
+local function addInferredClaim(char, entries)
+    local stored = char.entries or {}
+    if stored["greatVault:claim"] then return end   -- deja releve en jeu
+    local filled = false
+    for k, e in pairs(stored) do
+        if k:match("^greatVault:%d+$") and type(e.progress) == "table"
+            and (tonumber(e.progress.current) or 0) > 0 then
+            filled = true
+            break
+        end
     end
-    table.sort(roster, function(a, b) return (a.name or "") < (b.name or "") end)
-    return roster
+    if not filled then return end
+    entries[#entries + 1] = {
+        key      = "greatVault:claim",
+        category = C.Category.VAULT,
+        order    = 60,   -- meme place que l'entree reelle (GreatVault : order + 50)
+        label    = ns.L["VAULT_CLAIM_LABEL"],
+        short    = ns.L["VAULT_CLAIM_SHORT"],
+        status   = C.Status.NOT_STARTED,
+        detail   = ns.L["VAULT_CLAIM_PROBABLE_CELL"],
+        lines    = { ns.L["VAULT_CLAIM_PROBABLE_TIP"] },
+        inferred = true,
+    }
+    table.sort(entries, sortEntries)
+end
+
+-- Retourne la liste affichable et le nombre de persos masques. Les persos
+-- masques n'y figurent que si l'option "afficher les masques" est active.
+-- "dup" signale un nom porte par plusieurs persos (royaumes differents).
+function Journal:GetRoster()
+    local roster, nHidden = {}, 0
+    local current = ns.Reset:GetCurrentPeriodId()
+    local showHidden = ns.DB:ShowHidden()
+    local nameCount = {}
+    for key, char in pairs(ns.DB:GetAllChars()) do
+        local hidden = ns.DB:IsHidden(key)
+        if hidden then nHidden = nHidden + 1 end
+        if not hidden or showHidden then
+            local stale = not ns.Reset:IsSamePeriod(char.periodId, current)
+            local entries = self:GetEntries(char)
+            if stale then addInferredClaim(char, entries) end
+            roster[#roster + 1] = {
+                key      = key,
+                name     = char.name,
+                realm    = char.realm,
+                class    = char.class,
+                faction  = char.faction,
+                periodId = char.periodId,
+                lastSeen = char.lastSeen,
+                stale    = stale,
+                hidden   = hidden,
+                entries  = entries,
+            }
+            local n = char.name or "?"
+            nameCount[n] = (nameCount[n] or 0) + 1
+        end
+    end
+    for _, ch in ipairs(roster) do
+        ch.dup = (nameCount[ch.name or "?"] or 0) > 1
+    end
+    table.sort(roster, function(a, b)
+        if (a.name or "") ~= (b.name or "") then return (a.name or "") < (b.name or "") end
+        return (a.realm or "") < (b.realm or "")
+    end)
+    return roster, nHidden
 end

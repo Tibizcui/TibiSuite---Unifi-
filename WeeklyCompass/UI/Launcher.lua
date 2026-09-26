@@ -118,7 +118,9 @@ local function announce()
     local active, pending = 0, 0
     local modules, order = ns.Registry:GetAll()
     for _, key in ipairs(order) do
-        if ns.Registry:IsActive(modules[key]) then
+        if ns.Registry:IsHidden(modules[key]) then
+            -- retiree du tableau : ni suivie, ni en attente
+        elseif ns.Registry:IsActive(modules[key]) then
             active = active + 1
         else
             pending = pending + 1

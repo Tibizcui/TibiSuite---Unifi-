@@ -55,6 +55,37 @@ local function slotLabel(activityType)
     return L["VAULT_SLOT_GENERIC"]
 end
 
+-- Unite de progression d'une ligne, pour "encore N <unite>" dans l'infobulle.
+local function slotUnit(activityType)
+    local E = Enum and Enum.WeeklyRewardChestThresholdType
+    if E then
+        if activityType == E.Activities then return L["VAULT_UNIT_DUNGEONS"] end
+        if activityType == E.Raid       then return L["VAULT_UNIT_RAID"] end
+        if activityType == E.World      then return L["VAULT_UNIT_WORLD"] end
+    end
+    return L["VAULT_UNIT_GENERIC"]
+end
+
+-- Lignes d'infobulle d'une famille : chaque emplacement "progression/seuil",
+-- puis ce qu'il manque pour le prochain. Seuils lus dans l'API (sonde 12.1 :
+-- Donjons 1/4/8, Raid 2/4/6, Monde 2/4/8), jamais codes en dur.
+local function slotLines(bucket, activityType)
+    table.sort(bucket.slots, function(a, b) return a.index < b.index end)
+    local lines, nextNeed = {}, nil
+    for i, s in ipairs(bucket.slots) do
+        lines[#lines + 1] = L["VAULT_SLOT_LINE"]:format(i, math.min(s.progress, s.threshold), s.threshold)
+        if not nextNeed and s.threshold > 0 and s.progress < s.threshold then
+            nextNeed = s.threshold - s.progress
+        end
+    end
+    if nextNeed then
+        lines[#lines + 1] = L["VAULT_NEXT_SLOT"]:format(nextNeed, slotUnit(activityType))
+    elseif #bucket.slots > 0 then
+        lines[#lines + 1] = L["VAULT_ALL_SLOTS"]
+    end
+    return lines
+end
+
 -- Lien de l'objet que le jeu donnerait a l'instant T pour cette activite.
 -- On ne code AUCUN seuil : c'est l'API du coffre qui repond. Retourne nil si
 -- aucun objet n'est encore obtenable ou si l'API manque.
@@ -154,13 +185,18 @@ function module.Poll(emit)
         local t = info.type or 0
         local bucket = byType[t]
         if not bucket then
-            bucket = { filled = 0, total = 0, earnedLevel = 0, label = slotLabel(t) }
+            bucket = { filled = 0, total = 0, earnedLevel = 0, label = slotLabel(t), slots = {} }
             byType[t] = bucket
         end
         bucket.total = bucket.total + 1
 
         local progress  = tonumber(info.progress)  or 0
         local threshold = tonumber(info.threshold) or 0
+        bucket.slots[#bucket.slots + 1] = {
+            index = tonumber(info.index) or bucket.total,
+            progress = progress,
+            threshold = threshold,
+        }
         if threshold > 0 and progress >= threshold then
             bucket.filled = bucket.filled + 1
 
@@ -211,6 +247,7 @@ function module.Poll(emit)
             status   = status,
             progress = { current = b.filled, max = b.total },
             reward   = reward,
+            lines    = slotLines(b, t),
         })
     end
 
@@ -232,6 +269,7 @@ function module.Poll(emit)
                 short    = L["VAULT_CLAIM_SHORT"],
                 status   = C.Status.NOT_STARTED,
                 detail   = L["VAULT_CLAIM_CELL"],
+                detailKey = "VAULT_CLAIM_CELL",   -- retraduit a l'affichage
             })
         end
     end

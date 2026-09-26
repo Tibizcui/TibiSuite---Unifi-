@@ -1,5 +1,13 @@
 # Changelog
 
+## 7.1.5.20
+- Infobulles sur toutes les cases : libelle complet, statut, recompense et date de mise a jour. Sur le Grand Coffre, le detail de chaque emplacement et ce qu'il reste a faire pour le prochain (ex. "encore 1 donjon").
+- Clic droit sur le nom d'un personnage : le masquer, le reafficher, ou l'oublier (il revient a sa prochaine connexion). Nouvelle section "Personnages" dans les options pour afficher les masques ou tout reafficher.
+- Deux personnages du meme nom sur des royaumes differents sont enfin distingues : le royaume s'affiche en gris a cote du nom.
+- Recompense du Grand Coffre deduite pour les personnages pas reconnectes depuis le reset : s'ils avaient debloque au moins un emplacement, la case affiche "A recuperer ?", signalee comme une deduction.
+- La colonne Repaires disparait : le jeu n'expose aucun compteur hebdomadaire pour eux, elle restait toujours a "?".
+- Panneau d'options traduit dans toutes les langues de l'addon, et accents retablis dans les textes francais.
+
 ## 7.1.5.19
 - Grand Coffre calque sur la fenetre du jeu : la colonne "Mythique+" devient "Donjons", car la ligne de Blizzard compte aussi les donjons heroiques, mythiques et des Marcheurs du temps, pas seulement les cles M+.
 - La colonne "Suivi" disparait : c'etait une ligne interne du Grand Coffre que la fenetre du jeu n'affiche jamais. Elle est aussi retiree chez les rerolls pas reconnectes.
