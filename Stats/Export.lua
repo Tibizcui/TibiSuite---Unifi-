@@ -133,6 +133,8 @@ local function collectWeekly()
               max      = e.progress and e.progress.max or nil,
               ilvl     = e.reward and e.reward.ilvl or nil,
               detail   = e.detail,
+              rank     = e.rank,    -- rang d'un renom (Gouffres, Traque), affiche "(R3)"
+              slots    = e.slots,   -- Grand Coffre : { index, progress, threshold, ilvl, color }
             }
           end
         end
@@ -148,6 +150,121 @@ local function collectWeekly()
   end)
   if ok then return result end
   return nil
+end
+
+-- Retire les marqueurs d'affichage du jeu (icone |T..|t, atlas |A..|a,
+-- couleur |c..|r) : le site n'affiche que du texte.
+local function stripMarkup(s)
+  if type(s) ~= "string" then return s end
+  s = s:gsub("|T.-|t%s*", ""):gsub("|A.-|a%s*", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+  return s
+end
+
+-- Saison d'un ensemble de raid, calculee ICI (le site ne connait pas la
+-- version du client) : "en cours" si son patch majeur.mineur n'est pas
+-- anterieur a celui du client. Meme regle que WeeklyCompass/UI/Sheet.lua.
+local function setSeason(patchID)
+  patchID = tonumber(patchID)
+  if not patchID then return nil, nil end
+  local patchText = ("%d.%d"):format(math.floor(patchID / 10000), math.floor(patchID / 100) % 100)
+  local version = GetBuildInfo and GetBuildInfo() or ""
+  local major, minor = version:match("^(%d+)%.(%d+)")
+  if not major then return nil, patchText end
+  return math.floor(patchID / 100) >= tonumber(major) * 100 + tonumber(minor), patchText
+end
+
+-- Onglet Personnages et fiche detaillee de WeeklyCompass (phase 4), pour
+-- TOUS les personnages connus, au format de cle "Nom-Royaume" de StatsDB.
+-- Ajout purement additif (schema inchange) : un site ou un Companion pas
+-- encore a jour ignore ce bloc. Lit la SavedVariable directement (comme
+-- collectWeekly), jamais le code de WeeklyCompass. Aussi : la banque de
+-- Bataillon, commune au compte.
+local function collectCompass()
+  local db = _G.WeeklyCompassDB
+  if not db then return nil, nil end
+  local ok, chars, warband = pcall(function()
+    local out = {}
+    local hidden = (db.global and db.global.hidden) or {}
+    for wcKey, char in pairs(db.chars or {}) do
+      if type(char) == "table" and char.name and char.realm then
+        local snap = char.snapshot or {}
+        local function num(k) local e = snap[k]; return e and tonumber(e.sortValue) or nil end
+        local c = {
+          lastSeen = char.lastSeen,
+          hidden = hidden[wcKey] and true or nil,
+          profile = {
+            level = num("profile:level"),
+            spec  = snap["profile:spec"] and stripMarkup(snap["profile:spec"].detail) or nil,
+            ilvl  = num("profile:ilvl"),
+            gold  = num("profile:gold"),   -- pieces de cuivre
+            rest  = num("profile:rest"),   -- % d'un niveau
+            updatedAt = snap["profile:level"] and snap["profile:level"].updatedAt or nil,
+          },
+        }
+        local key = snap["keystone:key"]
+        if key then
+          c.keystone = { text = stripMarkup(key.detail), level = tonumber(key.sortValue), expiresAt = key.expiresAt }
+        end
+        local score = snap["keystone:score"]
+        if score then c.score = { value = tonumber(score.sortValue), color = score.color } end
+        local lk = snap["lockouts:raids"]
+        if lk and type(lk.items) == "table" then
+          local items = {}
+          for _, it in ipairs(lk.items) do
+            items[#items + 1] = { name = it.name, diff = it.diff, diffID = it.diffID,
+              killed = it.killed, total = it.total, expiresAt = it.expiresAt }
+          end
+          c.lockouts = items
+        end
+        local sd = snap["sheet:data"]
+        if sd then
+          local slots = {}
+          for slotID, s in pairs(sd.slots or {}) do
+            slots[#slots + 1] = {
+              slot = tonumber(slotID),
+              id = type(s.link) == "string" and tonumber(s.link:match("item:(%d+)")) or nil,
+              name = s.name, ilvl = s.ilvl and math.floor(s.ilvl) or nil,
+              track = s.trackKey, quality = s.quality,
+              missingEnchant = s.missingEnchant, emptySockets = s.emptySockets,
+            }
+          end
+          table.sort(slots, function(a, b) return (a.slot or 0) < (b.slot or 0) end)
+          local set
+          if sd.set then
+            local current, patchText = setSeason(sd.set.patchID)
+            set = { name = sd.set.name, count = sd.set.count, total = sd.set.total, raid = sd.set.raid,
+              expansion = sd.set.expansionID and _G["EXPANSION_NAME" .. sd.set.expansionID] or nil,
+              patch = patchText, current = current }
+          end
+          local currencies = {}
+          for _, cur in ipairs(sd.currencies or {}) do
+            currencies[#currencies + 1] = { name = cur.name, quantity = cur.quantity, max = cur.max,
+              earned = cur.earned, useEarned = cur.useEarned }
+          end
+          local talents
+          local t = sd.talents
+          if t then
+            local heroTalents = {}
+            for _, h in ipairs(t.heroTalents or {}) do
+              heroTalents[#heroTalents + 1] = { name = h.name, rank = h.rank, max = h.max, spellID = h.spellID }
+            end
+            talents = { code = t.code, build = t.build, modified = t.modified, starter = t.starter,
+              hero = t.hero and t.hero.name or nil, heroTalents = heroTalents, otherCount = t.otherCount }
+          end
+          c.sheet = {
+            updatedAt = sd.updatedAt, race = sd.race and sd.race.name or nil, className = sd.className,
+            slots = slots, set = set, stats = sd.stats, currencies = currencies, talents = talents,
+          }
+        end
+        out[char.name .. "-" .. char.realm] = c
+      end
+    end
+    local wb = db.global and db.global.warband
+    local warbandOut = (wb and tonumber(wb.money)) and { money = tonumber(wb.money), at = wb.at } or nil
+    return next(out) and out or nil, warbandOut
+  end)
+  if ok then return chars, warband end
+  return nil, nil
 end
 
 local function currentSpecName()
@@ -167,6 +284,7 @@ function SX.CollectExportData()
   local currentKey = SX.CurrentCharKey()
   local allProfessions = collectAllProfessions()
   local allWeekly = collectWeekly()
+  local allCompass, warband = collectCompass()
   local chars = {}
   for _, key in ipairs(SX.GetCharKeys()) do
     local rec = StatsDB[key] or {}
@@ -214,6 +332,7 @@ function SX.CollectExportData()
       days = rec.days or {},
       professions = allProfessions and allProfessions[key] or nil,
       weekly = allWeekly and allWeekly[key] or nil,
+      compass = allCompass and allCompass[key] or nil,
     }
   end
 
@@ -223,6 +342,7 @@ function SX.CollectExportData()
     account = { generatedBy = currentKey },
     data = {
       chars = chars,
+      warband = warband,   -- banque de Bataillon (WeeklyCompass), commune au compte
     },
   }
 end

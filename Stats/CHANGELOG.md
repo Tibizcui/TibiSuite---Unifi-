@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.1.5.24
+- Le code d'export transporte aussi l'onglet Personnages et la fiche detaillee de WeeklyCompass : niveau, specialisation, niveau d'objet, or, repos, cle et score M+, verrouillages de raid, equipement (piste, enchantement manquant, chasse vide), ensemble de raid avec son raid et sa saison, statistiques secondaires, monnaies, talents (code du build, arbre heroique, nom du build).
+- Aussi : la banque de Bataillon, le rang des renoms et le detail des emplacements du Grand Coffre.
+- Ajout purement additif : un site ou un Tibi Companion pas encore a jour ignore ces nouvelles donnees, rien ne casse.
+- Les personnages masques dans WeeklyCompass sont exportes avec un marqueur, et masques aussi sur le Dashboard.
+
 ## 7.1.5.23
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir WeeklyCompass 7.1.5.23 pour le detail : talents dans la fiche detaillee, bouton Copier le build).
 
