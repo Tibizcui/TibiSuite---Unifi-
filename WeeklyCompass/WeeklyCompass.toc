@@ -12,7 +12,7 @@
 ## Notes-ptBR: Gerenciador de alts e acompanhamento semanal: Grande Cofre, Imersões, Caçada, nível de item, ouro, vínculos de raide, equipamento e talentos de cada personagem.
 ## Notes-itIT: Gestore di alt e monitoraggio settimanale: Grande Forziere, Scorribande, Caccia, livello oggetti, oro, vincoli di incursione, equipaggiamento e talenti di ogni personaggio.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.24
+## Version: 7.1.5.25
 ## X-Curse-Project-ID: 1629524
 ## IconTexture: Interface\AddOns\WeeklyCompass\medias\TibiSuiteIcon
 

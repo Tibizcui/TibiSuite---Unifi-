@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.25
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir WeeklyCompass 7.1.5.25 pour le detail : WeeklyCompass - Alts & Weekly, disponible en 10 langues).
+
 ## 7.1.5.24
 - Le code d'export transporte aussi l'onglet Personnages et la fiche detaillee de WeeklyCompass : niveau, specialisation, niveau d'objet, or, repos, cle et score M+, verrouillages de raid, equipement (piste, enchantement manquant, chasse vide), ensemble de raid avec son raid et sa saison, statistiques secondaires, monnaies, talents (code du build, arbre heroique, nom du build).
 - Aussi : la banque de Bataillon, le rang des renoms et le detail des emplacements du Grand Coffre.
