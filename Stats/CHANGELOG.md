@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.26
+- Dashboard web et Tibi Companion : les cartes Cette semaine, Personnages et Fiche ont un bouton Deplier / Replier dans leur en-tete, pour garder la page lisible avec beaucoup de personnages. Repliees par defaut, un clic sur le titre les ouvre. Aucun changement dans le code de l'addon lui-meme.
+
 ## 7.1.5.25
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir WeeklyCompass 7.1.5.25 pour le detail : WeeklyCompass - Alts & Weekly, disponible en 10 langues).
 

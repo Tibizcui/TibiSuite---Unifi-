@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.26
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats et WeeklyCompass 7.1.5.26 : cartes Personnages et Fiche repliables sur le Dashboard web et dans Tibi Companion).
+
 ## 7.1.5.25
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir WeeklyCompass 7.1.5.25 pour le detail : WeeklyCompass - Alts & Weekly, disponible en 10 langues).
 

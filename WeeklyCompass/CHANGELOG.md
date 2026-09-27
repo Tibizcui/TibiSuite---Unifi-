@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.26
+- Dashboard web et Tibi Companion : les cartes Cette semaine, Personnages et Fiche ont un bouton Deplier / Replier dans leur en-tete, pour garder la page lisible avec beaucoup de personnages. Repliees par defaut, un clic sur le titre les ouvre. Aucun changement dans le code de l'addon lui-meme.
+
 ## 7.1.5.25
 - WeeklyCompass devient "WeeklyCompass - Alts & Weekly" : le nom dit enfin ce qu'il fait, gestionnaire d'alts et suivi de la semaine.
 - 6 nouvelles langues : russe, chinois simplifie, chinois traditionnel, coreen, portugais du Bresil, italien (10 langues en tout). Traductions faites avec soin mais a relire par des joueurs natifs : les corrections sont les bienvenues.
