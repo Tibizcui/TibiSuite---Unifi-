@@ -1,6 +1,6 @@
 # Changelog
 
-## 7.1.5.34 (en préparation)
+## 7.1.5.34
 Mise à jour 12.1 complète, en trois lots.
 
 **Données et fiabilité 12.1**

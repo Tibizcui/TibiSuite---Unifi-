@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.34
+- Socle d'interface embarque passe en v12 : les barres de defilement des options et de la recherche sont habillees aux couleurs du module. Pour le reste, bump de version pour aligner le numero sur l'ensemble de la suite (voir DailyTracker 7.1.5.34 pour le detail : mise a jour 12.1, suivi par personnage, vue Personnages, liste A faire a l'ecran, rappel avant le reset, 10 langues).
+
 ## 7.1.5.33
 Refonte complète pour la 12.1, en trois lots, sur le modèle d'XPBar 7.1.5.30.
 

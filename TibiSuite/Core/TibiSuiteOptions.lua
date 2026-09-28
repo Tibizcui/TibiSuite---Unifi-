@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.33
+-- TibiSuiteOptions v7.1.5.34
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -239,6 +239,10 @@ L.WN_LOG      = L.WN_LOG      or "Journal complet"
 L.WN_SETUP    = L.WN_SETUP    or "Relancer l'installation"
 L.WN_OK       = L.WN_OK       or "Compris"
 L.WN_NONE     = L.WN_NONE     or "Pas de note pour cette version."
+L.WN_34_1 = L.WN_34_1 or "DailyTracker mis à jour pour la 12.1 : Forces de Zul'Jarra et Capitaine Tokka, quêtes vérifiées en jeu sous leur vrai nom, suivi propre à chaque personnage."
+L.WN_34_2 = L.WN_34_2 or "Nouvelle vue Personnages : où en est chaque alt cette semaine, et ce qu'il lui reste à faire."
+L.WN_34_3 = L.WN_34_3 or "Liste « À faire » à épingler à l'écran, renom réel, quêtes du monde comptées en direct et rappel avant le reset."
+L.WN_34_4 = L.WN_34_4 or "Toute la suite : barres de défilement des options et de la recherche aux couleurs de chaque module."
 L.WN_33_1 = L.WN_33_1 or "RepBar mis à jour pour la 12.1 : la barre native est de nouveau masquée, un seul panneau d'options, 10 langues."
 L.WN_33_2 = L.WN_33_2 or "Réputation par heure, temps avant le prochain palier et « +250 » flottant à chaque gain."
 L.WN_33_3 = L.WN_33_3 or "Coffres de Parangon signalés sur la barre, récompense du prochain renom, 3 factions épinglées et historique au clic."
@@ -283,6 +287,12 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.34"] = {
+    { key = "Daily", title = "DailyTracker", text = L.WN_34_1, new = true },
+    { key = "Daily", title = "DailyTracker", text = L.WN_34_2, new = true },
+    { key = "Daily", title = "DailyTracker", text = L.WN_34_3, new = true },
+    { key = "Suite", title = "TibiSuite",    text = L.WN_34_4 },
+  },
   ["7.1.5.33"] = {
     { key = "RepBar", title = "RepBar", text = L.WN_33_1, new = true },
     { key = "RepBar", title = "RepBar", text = L.WN_33_2, new = true },
