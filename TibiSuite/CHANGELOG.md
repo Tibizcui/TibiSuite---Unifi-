@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.1.5.32
+- Nouvel installateur en 6 etapes : Bienvenue (installation express, personnalisee ou import de profil), Modules (vrais logos, prereglages Leveling / End-game / Collection / Minimaliste), Barre et minicarte (orientation, echelle, grille, position de depart, bouton minimap, messages de connexion, apercu en direct), Ecosysteme (Dashboard web, Tibi-Companion via le Microsoft Store), Recapitulatif, Installation animee avec le resultat reel de chaque module. /ts setup le relance sans rien effacer.
+- Un module decoche est desactive dans la liste d'addons de WoW : apres /reload, il n'est plus charge du tout (vraie economie de memoire). Cocher un module absent de la memoire propose le /reload.
+- Nouvelles commandes : /ts doctor (verifie versions et activation de chaque module), /ts perf (memoire par module), /ts profile (exporter / importer un profil TS1:), /ts news, /ts minimap.
+- Fenetre Quoi de neuf a la premiere connexion apres une mise a jour ; messages de connexion reduits a une ligne (reglable).
+- Corrige : PostBox et Opacity pouvaient se re-cocher tout seuls apres l'installation.
+
 ## 7.1.5.31
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir LegTracker 7.1.5.31 pour le detail : donnees des legendaires verifiees en jeu, detection sur tout le compte, vue Collection, farm de la semaine, alertes au butin et nouvelle carte Legendaires du Dashboard).
 

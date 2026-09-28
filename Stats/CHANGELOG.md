@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.32
+- L'export automatique pour le Dashboard (a la deconnexion et au /reload) peut etre coupe depuis l'installateur TibiSuite ; il reste actif par defaut et sans le core.
+- Nouveau logo dedie (or).
+
 ## 7.1.5.31
 - Code d'export : ajoute les legendaires du compte releves par LegTracker (data.legendaries), pour la nouvelle carte "Legendaires" du Dashboard. Ajout additif : un site ou un Companion plus ancien ignore ce bloc.
 

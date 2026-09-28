@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.32
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir TibiSuite 7.1.5.32 pour le detail : nouvel installateur en 6 etapes, modules decoches reellement desactives dans WoW, /ts doctor, /ts perf et profils de suite).
+
 ## 7.1.5.32 (en preparation)
 - Noms francais de deux raids alignes sur le client (Le Puits de soleil ; Aberrus, le creuset de l'Ombre), releves par /lt verify. Les 11 IDs de raids sont confirmes en jeu.
 

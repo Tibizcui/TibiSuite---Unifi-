@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.31
+-- TibiSuiteOptions v7.1.5.32
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;

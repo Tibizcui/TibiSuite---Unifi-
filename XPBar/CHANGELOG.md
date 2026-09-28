@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.32
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir TibiSuite 7.1.5.32 pour le detail : nouvel installateur en 6 etapes, modules decoches reellement desactives dans WoW, /ts doctor, /ts perf et profils de suite).
+
 ## 7.1.5.31
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir LegTracker 7.1.5.31 pour le detail : donnees des legendaires verifiees en jeu, detection sur tout le compte, vue Collection, farm de la semaine, alertes au butin et nouvelle carte Legendaires du Dashboard).
 

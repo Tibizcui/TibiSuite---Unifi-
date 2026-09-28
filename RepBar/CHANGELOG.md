@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.32
+- Nouveau logo dedie aux couleurs du module (il partageait jusqu'ici celui d'un autre module). Pour le reste, bump d'alignement sur la suite (voir TibiSuite 7.1.5.32 : nouvel installateur, modules decoches reellement desactives dans WoW, /ts doctor, /ts perf, profils).
+
 ## 7.1.5.31
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir LegTracker 7.1.5.31 pour le detail : donnees des legendaires verifiees en jeu, detection sur tout le compte, vue Collection, farm de la semaine, alertes au butin et nouvelle carte Legendaires du Dashboard).
 
