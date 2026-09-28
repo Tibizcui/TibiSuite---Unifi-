@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.30
+-- TibiSuiteOptions v7.1.5.31
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Panneau « Modules » de la suite. Une case a cocher par
 --          module connu (meme non charge). Cocher = charge le module

@@ -1,6 +1,6 @@
 # Changelog
 
-## 7.1.5.31 (en preparation)
+## 7.1.5.31
 - Code d'export : ajoute les legendaires du compte releves par LegTracker (data.legendaries), pour la nouvelle carte "Legendaires" du Dashboard. Ajout additif : un site ou un Companion plus ancien ignore ce bloc.
 
 ## 7.1.5.30

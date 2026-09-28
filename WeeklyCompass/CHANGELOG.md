@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.31
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir LegTracker 7.1.5.31 pour le detail : donnees des legendaires verifiees en jeu, detection sur tout le compte, vue Collection, farm de la semaine, alertes au butin et nouvelle carte Legendaires du Dashboard).
+
 ## 7.1.5.30
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir XPBar 7.1.5.30 pour le detail : XP reelle des quetes, historique par niveau, styles, panneau d'options unique, 10 langues).
 

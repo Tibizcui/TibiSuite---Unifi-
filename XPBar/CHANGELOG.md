@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.31
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir LegTracker 7.1.5.31 pour le detail : donnees des legendaires verifiees en jeu, detection sur tout le compte, vue Collection, farm de la semaine, alertes au butin et nouvelle carte Legendaires du Dashboard).
+
 ## 7.1.5.30
 - Nouveau : le segment orange montre l'XP reelle des quetes terminees a rendre (proportionnel, au lieu d'un repere fixe). Le pourcentage apparait a droite de la barre, en or quand rendre les quetes suffit pour passer de niveau.
 - Nouveau : projection des quetes en cours (segment translucide), zone du bonus de repos avec repere de fin, graduations tous les 10 %.

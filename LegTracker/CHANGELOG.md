@@ -1,6 +1,6 @@
 # Changelog
 
-## 7.1.5.31 (en preparation)
+## 7.1.5.31
 - Carte "Legendaires" sur le Dashboard (Tibiscui.fr et Tibi Companion) : LegTracker ecrit a chaque scan un resume du compte (statut, personnages detenteurs, etape en cours), que Stats ajoute a son code d'export.
 - Vue Collection : les objets reserves a une seule classe affichent la classe (les quatre Atiesh se distinguent).
 - Farm cette semaine : la fiche d'un legendaire non obtenu indique pour chaque raid utile s'il est libre ou deja verrouille cette semaine (difficulte et boss tues), avec les boss a viser.
