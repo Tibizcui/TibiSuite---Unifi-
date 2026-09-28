@@ -129,16 +129,9 @@ end
 -- (bouton texte "Options"). Le handler PLAYER_LOGIN d'origine (tibiEv dans
 -- XPBar.lua) faisait ce travail, mais il ne tourne plus quand le module se
 -- charge a la demande, PLAYER_LOGIN etant deja passe.
+-- Un seul code d'habillage : celui de XPBar.lua (XPBar_Decorate, idempotent).
 local function Decorate()
-  local ui = GetUI(); local f = _G[FRAME]
-  if not (ui and f) then return end
-  if f._tibiControls then return end
-  if ui.AddHeaderControls then
-    ui.AddHeaderControls(f, {
-      accent = ACCENT,
-      onOptions = function() if _G.XPBar_OpenOptions then _G.XPBar_OpenOptions() end end,
-    })
-  end
+  if _G.XPBar_Decorate then _G.XPBar_Decorate() end
 end
 
 -- MODE MODULE : inscription au catalogue, sauf si explicitement desactive.

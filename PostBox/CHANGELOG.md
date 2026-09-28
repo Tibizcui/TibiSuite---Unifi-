@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.30
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir XPBar 7.1.5.30 pour le detail : XP reelle des quetes, historique par niveau, styles, panneau d'options unique, 10 langues).
+
 ## 7.1.5.29
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir RenTracker 7.1.5.29 pour le detail : checklist hebdo automatique et estimation du temps restant).
 

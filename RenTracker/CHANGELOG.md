@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.30
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir XPBar 7.1.5.30 pour le detail : XP reelle des quetes, historique par niveau, styles, panneau d'options unique, 10 langues).
+
 ## 7.1.5.29
 - Nouveau : checklist hebdo automatique. Compteur "faites / suivies" sur chaque ligne de faction et dans l'en-tete des quetes hebdomadaires, total des hebdos restantes dans le recap. Les 4 Pierres-Runes de la Cour comptent pour une seule hebdo (les autres variantes s'affichent "autre choix fait").
 - Nouveau : estimation du temps restant. Rythme de gain moyen (jours joues des 7 derniers jours) et delai jusqu'au prochain rang, au Renom max ou au prochain coffre de Paragon. Reputations de Bataillon mesurees au niveau du compte, les autres par personnage. Estimation affichee apres 2 jours de jeu avec gain.

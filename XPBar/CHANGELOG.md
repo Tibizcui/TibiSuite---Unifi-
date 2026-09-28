@@ -1,5 +1,23 @@
 # Changelog
 
+## 7.1.5.30
+- Nouveau : le segment orange montre l'XP reelle des quetes terminees a rendre (proportionnel, au lieu d'un repere fixe). Le pourcentage apparait a droite de la barre, en or quand rendre les quetes suffit pour passer de niveau.
+- Nouveau : projection des quetes en cours (segment translucide), zone du bonus de repos avec repere de fin, graduations tous les 10 %.
+- Nouveau : texte flottant "+XP" a chaque gain (orange pour une quete).
+- Nouveau : estimation des monstres et des quetes restants avant le niveau suivant, dans l'infobulle.
+- Nouveau : historique par niveau. Temps passe sur le niveau actuel et le precedent dans l'infobulle, message a chaque niveau, commande /xpbar history (15 derniers niveaux, par personnage).
+- Nouveau : option reputation au niveau max. La barre suit la reputation surveillee (amitie, renom, paragon) au lieu de disparaitre.
+- Nouveau : styles prets a l'emploi (Fine, Classique, Verticale) et barre a la couleur de la classe.
+- Nouveau : panneau d'options unique, le meme en suite et en autonome, avec couleurs, opacite, taille du texte et boutons de reinitialisation. Les options autrefois liees (XP/h et temps restant, quetes terminees et repos) sont separees. Case "Afficher la barre".
+- Nouveau : XPBar disponible en 10 langues (francais, anglais, allemand, espagnol, italien, portugais, russe, chinois simplifie et traditionnel, coreen). Les clients non francais voyaient jusqu'ici l'addon en francais.
+- Correction 12.1 : "Masquer les barres natives" agit sur les conteneurs de la 12.x et coupe leur infobulle invisible ; decochee, l'option ne force plus l'opacite des autres addons.
+- Correction : l'XP de fin de niveau n'est plus perdue au passage de niveau (XP/h et temps restant etaient sous-estimes).
+- Correction : "Masquer en combat" agit des l'entree en combat.
+- Correction : la barre masquee (/xpbar hide ou onglet de la suite) le reste apres /reload.
+- Correction : sur une barre fine, les textes passent sous la barre et ne sont plus recouverts par le bouton Options.
+- Correction : "XP bloquee" s'affiche quand l'XP est verrouillee.
+- Optimisation : les rafales d'evenements ne declenchent plus qu'un rafraichissement, et le journal de quetes n'est relu que lorsqu'il change.
+
 ## 7.1.5.29
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir RenTracker 7.1.5.29 pour le detail : checklist hebdo automatique et estimation du temps restant).
 
