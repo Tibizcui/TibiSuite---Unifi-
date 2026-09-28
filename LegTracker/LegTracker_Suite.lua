@@ -69,6 +69,21 @@ local function BuildOptions()
       Refresh()
     end)
 
+  panel:Section(T("OPT_SEC_TOOLTIPS", "Infobulles"))
+  panel:Check(T("OPT_TOOLTIPS", "Infos LegTracker dans les infobulles"),
+    function() return _G.LegTrackerDB and _G.LegTrackerDB.tooltips ~= false end,
+    function(v) if _G.LegTrackerDB then _G.LegTrackerDB.tooltips = v end end,
+    T("OPT_TOOLTIPS_TT", "Ajoute une ligne LegTracker aux infobulles des composants (legendaire concerne et quantite) et des objets legendaires suivis (statut)."))
+
+  panel:Section(T("OPT_SEC_ALERTS", "Alertes"))
+  panel:Check(T("OPT_LOOT_ALERT", "Alerte quand un composant ou un legendaire est obtenu"),
+    function() return _G.LegTrackerDB and _G.LegTrackerDB.lootAlert ~= false end,
+    function(v) if _G.LegTrackerDB then _G.LegTrackerDB.lootAlert = v end end,
+    T("OPT_LOOT_ALERT_TT", "Message a l'ecran et dans le chat des qu'un composant suivi entre dans vos sacs (tant que la quantite requise n'est pas atteinte), ou qu'un legendaire suivi est obtenu."))
+  panel:Check(T("OPT_LOOT_SOUND", "Son de l'alerte"),
+    function() return _G.LegTrackerDB and _G.LegTrackerDB.lootSound ~= false end,
+    function(v) if _G.LegTrackerDB then _G.LegTrackerDB.lootSound = v end end)
+
   panel:Section(T("OPT_SEC_FLOATING", "Boutons flottants"))
   panel:Check(T("OPT_HIDE_OPTIONS_BTN", "Masquer le bouton Options"),
     function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "options") end,

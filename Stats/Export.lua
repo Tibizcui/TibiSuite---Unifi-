@@ -267,6 +267,40 @@ local function collectCompass()
   return nil, nil
 end
 
+-- Legendaires du compte (LegTracker 7.1.5.31) : recopie du resume que
+-- LegTracker ecrit a chaque scan dans sa SavedVariable
+-- (LegTrackerDB.dashboard). Meme principe que collectCompass : lecture
+-- seule de la SavedVariable, jamais du code de LegTracker, copie champ par
+-- champ (rien d'inattendu ne part dans le code). Ajout additif, schema
+-- inchange : un site ou un Companion pas a jour ignore data.legendaries.
+local function collectLegendaries()
+  local db = _G.LegTrackerDB
+  local snap = db and db.dashboard
+  if type(snap) ~= "table" or type(snap.exts) ~= "table" then return nil end
+  local ok, res = pcall(function()
+    local exts = {}
+    for _, ext in ipairs(snap.exts) do
+      local items = {}
+      for _, it in ipairs(ext.items or {}) do
+        local owners
+        if type(it.owners) == "table" then
+          owners = {}
+          for _, o in ipairs(it.owners) do owners[#owners + 1] = tostring(o) end
+        end
+        items[#items + 1] = {
+          id = tonumber(it.id), name = it.name, status = it.status, via = it.via,
+          legacy = it.legacy and true or nil, owners = owners,
+          step = tonumber(it.step), steps = tonumber(it.steps),
+          compDone = tonumber(it.compDone), compTotal = tonumber(it.compTotal),
+        }
+      end
+      exts[#exts + 1] = { key = ext.key, label = ext.label, items = items }
+    end
+    return { at = tonumber(snap.at), by = snap.by, exts = exts }
+  end)
+  return ok and res or nil
+end
+
 local function currentSpecName()
   local si = GetSpecialization and GetSpecialization()
   if not si then return nil end
@@ -343,6 +377,7 @@ function SX.CollectExportData()
     data = {
       chars = chars,
       warband = warband,   -- banque de Bataillon (WeeklyCompass), commune au compte
+      legendaries = collectLegendaries(),   -- LegTracker, commun au compte
     },
   }
 end

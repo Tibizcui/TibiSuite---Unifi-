@@ -1,5 +1,28 @@
 # Changelog
 
+## 7.1.5.31 (en preparation)
+- Carte "Legendaires" sur le Dashboard (Tibiscui.fr et Tibi Companion) : LegTracker ecrit a chaque scan un resume du compte (statut, personnages detenteurs, etape en cours), que Stats ajoute a son code d'export.
+- Vue Collection : les objets reserves a une seule classe affichent la classe (les quatre Atiesh se distinguent).
+- Farm cette semaine : la fiche d'un legendaire non obtenu indique pour chaque raid utile s'il est libre ou deja verrouille cette semaine (difficulte et boss tues), avec les boss a viser.
+- Vue Collection (bouton en haut de la fenetre ou `/lt collection`) : tous les legendaires du compte en une grille, une colonne par personnage, colonne Compte (tour de force, apparence), taux de collection et raids de farm encore libres cette semaine. Clic sur une ligne pour revenir a sa fiche.
+- Alerte au butin : message a l'ecran, dans le chat et son (desactivables) quand un composant suivi entre dans les sacs ou qu'un legendaire est obtenu. Muette a l'ouverture de la banque.
+- `/lt verify` controle aussi les IDs des raids.
+- Midnight's Edge (patch 12.2) : fiche d'attente et gabarit prets pour l'ajout a la sortie du patch.
+- Detection sur tout le compte : un legendaire est reconnu comme obtenu s'il est sur ce personnage, sur un autre personnage deja scanne, via son tour de force (compte) ou via son apparence apprise, meme s'il a ete vendu ou si le personnage n'a jamais lance LegTracker. La fiche indique comment il a ete detecte.
+- Etapes de quetes : la suite est numerotee, l'etape en cours est mise en avant ("Etape 2/3"), et marquee "[Dans le journal]" quand la quete est acceptee. Accepter la quete suffit a passer l'objet "En cours".
+- Infobulles : sur un composant (objet ou monnaie), une ligne LegTracker indique le legendaire concerne et la quantite possedee ; sur un legendaire suivi, son statut. Desactivable dans les options (section Infobulles).
+- `/lt verify` controle aussi les tours de force.
+- Donnees corrigees : Nasz'uro utilisait l'ID de Fyr'alath (un Guerrier qui possedait Fyr'alath voyait Nasz'uro obtenu). Nasz'uro = 204177, Fyr'alath = 206448.
+- Anneaux de Warlords of Draenor : les 5 anneaux avec leurs bons noms (Thorasus et Etheralus manquaient, les autres etaient decales).
+- Capes de Mists of Pandaria : les 6 capes (Qian-Le manquait, Qian-Ying etait nommee Jina-Kang).
+- Shadowlands : Cendre d'ame, Scories d'ame et Flux cosmique sont suivis comme des monnaies. La progression restait bloquee a zero.
+- The War Within et Midnight : fiches d'information claires (aucun legendaire en TWW, Midnight's Edge annonce pour le patch 12.2) au lieu d'emplacements vides.
+- Corrections issues du premier `/lt verify` en jeu : noms alignes sur le client francais, composants faux retires ou remplaces (Lame-tonnerre, Sulfuras, Deuillelombre, Courroux du dragon, Crocs du pere, capes MoP, Nasz'uro), legendaires Legion inverses ou mal identifies corriges. Anneaux WoD marques "legacy" : leur suite de quetes a ete retiree avec Legion.
+- Nouvelle commande `/lt verify` : controle en jeu de chaque ID d'objet, de monnaie et de quete, et signale les IDs inconnus ou les noms differents (client francais).
+- Point de route sans TomTom : plus d'erreur sur les cartes d'instance (Ulduar, Citadelle de la Couronne de glace), un message l'explique.
+- Performances : le panneau de droite ne recree plus ses elements a chaque rafraichissement (la memoire augmentait a chaque mise a jour des sacs, fenetre ouverte), et chaque objet n'est plus interroge qu'une fois par scan.
+- Compatibilite 12.x : plus d'appel aux anciennes fonctions globales GetItemCount / GetItemInfoInstant quand l'API C_Item est disponible ; icone de secours corrigee.
+
 ## 7.1.5.30
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir XPBar 7.1.5.30 pour le detail : XP reelle des quetes, historique par niveau, styles, panneau d'options unique, 10 langues).
 

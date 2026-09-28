@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.31 (en preparation)
+- Code d'export : ajoute les legendaires du compte releves par LegTracker (data.legendaries), pour la nouvelle carte "Legendaires" du Dashboard. Ajout additif : un site ou un Companion plus ancien ignore ce bloc.
+
 ## 7.1.5.30
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir XPBar 7.1.5.30 pour le detail : XP reelle des quetes, historique par niveau, styles, panneau d'options unique, 10 langues).
 
