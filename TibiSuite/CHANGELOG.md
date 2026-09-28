@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.33
+- Fenetre Quoi de neuf : notes de la version 7.1.5.33 (RepBar). Pour le reste, bump de version pour aligner le numero sur l'ensemble de la suite (voir RepBar 7.1.5.33 pour le detail : mise a jour 12.1, barre native de nouveau masquee, panneau d'options unique, 10 langues, reputation par heure et temps restant, coffres de Parangon, recompense du prochain renom, factions epinglees et historique au clic).
+
 ## 7.1.5.32
 - Nouvel installateur en 6 etapes : Bienvenue (installation express, personnalisee ou import de profil), Modules (vrais logos, prereglages Leveling / End-game / Collection / Minimaliste), Barre et minicarte (orientation, echelle, grille, position de depart, bouton minimap, messages de connexion, apercu en direct), Ecosysteme (Dashboard web, Tibi-Companion via le Microsoft Store), Recapitulatif, Installation animee avec le resultat reel de chaque module. /ts setup le relance sans rien effacer.
 - Un module decoche est desactive dans la liste d'addons de WoW : apres /reload, il n'est plus charge du tout (vraie economie de memoire). Cocher un module absent de la memoire propose le /reload.

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.33
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir RepBar 7.1.5.33 pour le detail : mise a jour 12.1, barre native de nouveau masquee, panneau d'options unique, 10 langues, reputation par heure et temps restant, coffres de Parangon, recompense du prochain renom, factions epinglees et historique au clic).
+
 ## 7.1.5.32
 - L'export automatique pour le Dashboard (a la deconnexion et au /reload) peut etre coupe depuis l'installateur TibiSuite ; il reste actif par defaut et sans le core.
 - Nouveau logo dedie (or).

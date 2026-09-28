@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.32
+-- TibiSuiteOptions v7.1.5.33
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -239,6 +239,9 @@ L.WN_LOG      = L.WN_LOG      or "Journal complet"
 L.WN_SETUP    = L.WN_SETUP    or "Relancer l'installation"
 L.WN_OK       = L.WN_OK       or "Compris"
 L.WN_NONE     = L.WN_NONE     or "Pas de note pour cette version."
+L.WN_33_1 = L.WN_33_1 or "RepBar mis à jour pour la 12.1 : la barre native est de nouveau masquée, un seul panneau d'options, 10 langues."
+L.WN_33_2 = L.WN_33_2 or "Réputation par heure, temps avant le prochain palier et « +250 » flottant à chaque gain."
+L.WN_33_3 = L.WN_33_3 or "Coffres de Parangon signalés sur la barre, récompense du prochain renom, 3 factions épinglées et historique au clic."
 L.WN_32_1 = L.WN_32_1 or "Nouvel installateur en 6 étapes : préréglages, aperçu de la barre, Dashboard et Tibi-Companion."
 L.WN_32_2 = L.WN_32_2 or "Un module décoché n'est plus chargé du tout par WoW après /reload : vraie économie de mémoire."
 L.WN_32_3 = L.WN_32_3 or "/ts doctor vérifie tes modules, /ts perf affiche leur mémoire, /ts profile exporte ta configuration."
@@ -280,6 +283,11 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.33"] = {
+    { key = "RepBar", title = "RepBar", text = L.WN_33_1, new = true },
+    { key = "RepBar", title = "RepBar", text = L.WN_33_2, new = true },
+    { key = "RepBar", title = "RepBar", text = L.WN_33_3, new = true },
+  },
   ["7.1.5.32"] = {
     { key = "Suite", title = "TibiSuite", text = L.WN_32_1, new = true },
     { key = "Suite", title = "TibiSuite", text = L.WN_32_2, new = true },

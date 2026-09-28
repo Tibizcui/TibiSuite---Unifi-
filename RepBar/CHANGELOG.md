@@ -1,6 +1,6 @@
 # Changelog
 
-## 7.1.5.33 (en préparation)
+## 7.1.5.33
 Refonte complète pour la 12.1, en trois lots, sur le modèle d'XPBar 7.1.5.30.
 
 **Fiabilité 12.1**
