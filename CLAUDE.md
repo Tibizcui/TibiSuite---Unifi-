@@ -72,7 +72,30 @@ modules intactes), `SetTabBadge(key,count)`, `SetMinimapBadge(count)`,
 
 Défaut non destructif : `TibiSuiteDB.enabledModules == nil` => tous les modules
 présents sont actifs. Chargement au login : `LoadEnabledModules` via
-`C_AddOns.LoadAddOn` sous pcall. Un seul bouton minimap + entrée AddonCompartment,
+`C_AddOns.LoadAddOn` sous pcall.
+
+**Activation réelle (depuis 7.1.5.32).** Aucun module n'est LoadOnDemand (mode
+double), donc WoW les charge tous. Décocher appelle `C_AddOns.DisableAddOn`
+(zéro mémoire après `/reload`), cocher `EnableAddOn` puis `LoadAddOn`
+(refusé pour un non-LOD pas en mémoire => état « reload »). La case TibiSuite est
+la source de vérité, réappliquée à la liste d'addons à chaque login.
+`SetModuleEnabled` renvoie `"loaded" | "reload" | "off" | "absent"` ;
+`TibiSuite.pendingReload[key]`, `NeedsReload()`, `Reload()`, `IsEnabledInWoW(name)`.
+Autres API ajoutées : `ApplyBarSettings{vertical,scale,cols,rows,corner(1-9),open,
+logoSize,locked}`, `GetBarCorner()`, `SetMinimapHidden(bool)`, `ExportProfile()` /
+`DecodeProfile(code)` / `ApplyProfile(prof, skipModules)` (codes `TS1:` = Base64
++ djb2, réglages de suite seulement), `RunDoctor()`, `RunPerf()`. Nouvelles clés
+`TibiSuiteDB` : `mmHidden`, `loginMsg` ("full"|"one"|"none"), `statsAutoExport`
+(lu par `Stats/Core.lua` au `PLAYER_LOGOUT`), `lastSeenVersion`, `wowSyncDone`.
+Slash ajoutés : `/ts doctor|perf|profile|setup|news|minimap`.
+
+**Installation (`TibiSuiteOptions.lua`).** Installateur 6 étapes
+(`TibiSuite.RunSetup()`, relançable sans rien effacer), fenêtre « Quoi de neuf »
+(`ShowWhatsNew`, une fois par version, table `WHATSNEW` indexée par version du
+core : **ajouter une entrée à chaque release**, sinon rien ne s'affiche), fenêtre
+de profils (`OpenProfileWindow`). L'installateur pose `postBoxEnableMigrated` et
+`opacityEnableMigrated` pour que les migrations ponctuelles du core n'écrasent pas
+le choix de l'utilisateur. Logos par module : table `MODULE_LOGO`. Un seul bouton minimap + entrée AddonCompartment,
 créés uniquement par le core ; les boutons minimap individuels sont masqués.
 
 Slash : `/tibisuite` et `/ts` (sous-commandes dont `/ts modules`). Chaque module
@@ -135,11 +158,15 @@ scale 0.90, grille toggles 2x5, mmAngle 200, locked false, vertical false.
 
 ## Pièges connus
 
-- **Taint / Échap (résolu, à respecter).** Ne JAMAIS utiliser `UISpecialFrames` +
-  hook `OnHide` pour fermer à Échap (contamine `ToggleGameMenu` => popup Blizzard
-  "action réservée à l'IU de Blizzard"). Correctif : sur chaque fenêtre `escClose`,
-  `EnableKeyboard` + `SetPropagateKeyboardInput` + `HookScript OnKeyDown` ; sur
-  ESCAPE, `propagate(false)` puis fermeture via `toggleFn` puis `HideBarUI`.
+- **Taint / Échap (résolu, à respecter).** Ne JAMAIS combiner `UISpecialFrames` +
+  hook `OnHide` (contamine `ToggleGameMenu` => popup Blizzard "action réservée à
+  l'IU de Blizzard"), ni capter Échap soi-même (`OnKeyDown` +
+  `SetPropagateKeyboardInput` : bloqué dès qu'un autre addon réagit aussi à Échap).
+  État actuel du core (`WireEscapeFor`) : les fenêtres `escClose` sont seulement
+  inscrites dans `UISpecialFrames`, SANS aucun hook ; c'est Blizzard qui ferme.
+  Contrepartie assumée : Échap ne referme plus la barre en même temps.
+  Ne jamais écrire non plus dans `StaticPopupDialogs` (fenêtres maison
+  `TibiSuite.ShowConfirm` / `ShowURL`).
 - **Fichier socle refusé en écriture** : si SEUL `TibiSuiteUI.lua` est refusé alors
   que ses voisins passent, c'est l'attribut Windows "Lecture seule" ou un handle
   ouvert, pas Controlled Folder Access.
@@ -180,8 +207,10 @@ Workflow validé : **présenter le PLAN avant d'écrire le code**.
 ## Vérification
 
 Pas de client WoW ici. Syntaxe en **Lua 5.1** : `luac5.1 -p <fichier>.lua`
-(installer : `apt-get install -y lua5.1`, ou `luajit`). Un mock WoW du core existe
-dans l'historique des sessions (assertions sur RegisterModule / enable / catalog).
+(installer : `apt-get install -y lua5.1`, ou `luajit`). Sous Windows sans Lua :
+luaparse (copie en cache npx, appelée via node). Tests d'exécution : fengari
+(Lua 5.3, entiers 32 bits : `%08x` d'un nombre > 2^31 échoue dans le mock mais
+pas en jeu) + faux client WoW, reconstruit par session dans le scratchpad.
 
 ## Lien avec le site (Tibiscui.fr)
 

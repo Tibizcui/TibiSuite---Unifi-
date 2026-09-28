@@ -123,6 +123,39 @@ L.WELCOME_MODULES = L.WELCOME_MODULES or "activer / désactiver les modules"
 L.WELCOME_LOCK    = L.WELCOME_LOCK    or "verrouiller"
 L.WELCOME_HELP    = L.WELCOME_HELP    or "aide complète"
 L.ADDONCOMPT_SUBTITLE = L.ADDONCOMPT_SUBTITLE or "Suite de trackers, par Tibiscui"
+-- Activation reelle dans la liste d'addons de WoW
+L.MSG_TAB_NEEDRELOAD  = L.MSG_TAB_NEEDRELOAD  or " est maintenant coché.\n\nWoW ne peut le charger qu'après un rechargement de l'interface. Recharger maintenant ?"
+L.MSG_SYNC_REENABLED  = L.MSG_SYNC_REENABLED  or "réactivé(s) dans la liste d'addons, actif(s) après |cFFFFD700/reload|r :"
+L.MSG_SYNC_DISABLED   = L.MSG_SYNC_DISABLED   or "décoché(s) dans TibiSuite, désactivé(s) dans la liste d'addons (|cFFFFD700/ts modules|r pour réactiver) :"
+L.MSG_SYNC_FIRST      = L.MSG_SYNC_FIRST      or "module(s) décoché(s) ne seront plus chargés par WoW à partir du prochain |cFFFFD700/reload|r :"
+L.MSG_LOGIN_ONE       = L.MSG_LOGIN_ONE       or "afficher la barre"
+-- /ts doctor
+L.DOC_HEADER    = L.DOC_HEADER    or "diagnostic des modules"
+L.DOC_SOCLE     = L.DOC_SOCLE     or "socle d'interface"
+L.DOC_ABSENT    = L.DOC_ABSENT    or "absent du dossier AddOns"
+L.DOC_ON        = L.DOC_ON        or "coché"
+L.DOC_OFF       = L.DOC_OFF       or "décoché"
+L.DOC_VERSION   = L.DOC_VERSION   or "version différente du core :"
+L.DOC_WOWLIST   = L.DOC_WOWLIST   or "liste d'addons WoW non synchronisée"
+L.DOC_TOLOAD    = L.DOC_TOLOAD    or "sera chargé au /reload"
+L.DOC_INMEM     = L.DOC_INMEM     or "encore en mémoire jusqu'au /reload"
+L.DOC_ALLGOOD   = L.DOC_ALLGOOD   or "tout est en ordre."
+L.DOC_ISSUES    = L.DOC_ISSUES    or "point(s) à vérifier. Une version différente signifie souvent que le dossier AddOns n'est pas à jour (gestionnaire d'addons qui restaure une ancienne version ?)."
+-- /ts perf
+L.PERF_HEADER   = L.PERF_HEADER   or "mémoire utilisée par module"
+L.PERF_TOTAL    = L.PERF_TOTAL    or "Total"
+L.PERF_UNAVAIL  = L.PERF_UNAVAIL  or "mesure de mémoire indisponible sur ce client."
+L.PERF_NOTLOADED = L.PERF_NOTLOADED or "non chargés :"
+-- Profils
+L.PROFILE_ERR_format   = L.PROFILE_ERR_format   or "code invalide (il doit commencer par TS1:)."
+L.PROFILE_ERR_checksum = L.PROFILE_ERR_checksum or "code abîmé ou incomplet (somme de contrôle incorrecte)."
+L.PROFILE_ERR_version  = L.PROFILE_ERR_version  or "code créé par une version plus récente de TibiSuite."
+L.HELP_DOCTOR  = L.HELP_DOCTOR  or "vérifier les modules (versions, activation)"
+L.HELP_PERF    = L.HELP_PERF    or "mémoire utilisée par chaque module"
+L.HELP_PROFILE = L.HELP_PROFILE or "exporter / importer un profil de la suite"
+L.HELP_SETUP   = L.HELP_SETUP   or "relancer l'installation (rien n'est effacé)"
+L.HELP_NEWS    = L.HELP_NEWS    or "quoi de neuf dans cette version"
+L.HELP_MINIMAP = L.HELP_MINIMAP or "afficher / masquer le bouton de minicarte"
 
 -- Table globale minimale exposée pour les modules récents (ex. MiniHub).
 -- Elle leur permet de détecter TibiSuite comme parent, de s'y enregistrer,
@@ -130,6 +163,9 @@ L.ADDONCOMPT_SUBTITLE = L.ADDONCOMPT_SUBTITLE or "Suite de trackers, par Tibiscu
 -- N'affecte pas le reste du wrapper (qui reste piloté par la table MODULES).
 TibiSuite = _G.TibiSuite or {}
 TibiSuite.modules = TibiSuite.modules or {}
+TibiSuite.VERSION = VERSION
+-- Modules dont l'etat change au prochain /reload (session seulement).
+TibiSuite.pendingReload = TibiSuite.pendingReload or {}
 
 -- SavedVariables (compte) : réglages partagés par tous les personnages
 --   mmAngle  : angle du bouton minimap
@@ -152,6 +188,8 @@ local DEFAULTS = {
   cols     = 2,        -- grille de toggles par defaut : 2 colonnes
   rows     = 5,        -- ... et 5 lignes
   logoSize = 22,        -- taille de l'icone du logo dans l'en-tete de la barre
+  mmHidden = false,     -- bouton de minicarte masque (compartiment d'addons seulement)
+  loginMsg = "one",     -- messages de connexion : "full" | "one" | "none"
 }
 
 -- Bornes de taille du logo : au-dela de la resolution native du fichier
@@ -604,7 +642,17 @@ local function OnTabClick(mod)
   -- cf. « cocher charge immédiatement »), soit il est absent (placeholder).
   if not C_AddOns.IsAddOnLoaded(mod.addonName) then
     if TibiSuite.ModuleExists(mod.addonName) then
-      TibiSuite.SetModuleEnabled(mod.key, true)   -- charge sous pcall + coche
+      local status = TibiSuite.SetModuleEnabled(mod.key, true)   -- coche + tente le chargement
+      -- Module present mais pas chargeable a chaud (desactive dans la liste
+      -- d'addons, non LoadOnDemand) : il faut un /reload, on le propose.
+      if status == "reload" then
+        UpdateTabHighlights()
+        if TibiSuite.ShowConfirm then
+          TibiSuite.ShowConfirm(ColorCode(mod.col.r, mod.col.g, mod.col.b) .. mod.addonName .. "|r"
+            .. L.MSG_TAB_NEEDRELOAD, function() TibiSuite.Reload() end)
+        end
+        return
+      end
     end
     if not C_AddOns.IsAddOnLoaded(mod.addonName) then
       ShowPlaceholder(mod)   -- toujours pas chargé => vraiment absent
@@ -1852,6 +1900,15 @@ local function BuildMinimapButton()
     GameTooltip:Show()
   end)
   minimapBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+  -- Bouton masquable (installateur, /ts minimap) : la barre reste accessible
+  -- par le compartiment d'addons, LibDataBroker et /ts.
+  if TibiSuiteDB.mmHidden then minimapBtn:Hide() end
+end
+
+function TibiSuite.SetMinimapHidden(hidden)
+  TibiSuiteDB.mmHidden = hidden and true or false
+  if minimapBtn then minimapBtn:SetShown(not TibiSuiteDB.mmHidden) end
 end
 
 -- ================================================================
@@ -2149,6 +2206,24 @@ SlashCmdList["TIBISUITE"] = function(msg)
       OnTabClick(statsMod)
     end
 
+  elseif msg == "doctor" then
+    TibiSuite.RunDoctor()
+
+  elseif msg == "perf" then
+    TibiSuite.RunPerf()
+
+  elseif msg == "profile" or msg == "profil" then
+    if TibiSuite.OpenProfileWindow then TibiSuite.OpenProfileWindow() end
+
+  elseif msg == "setup" or msg == "install" then
+    if TibiSuite.RunSetup then TibiSuite.RunSetup() end
+
+  elseif msg == "news" or msg == "whatsnew" then
+    if TibiSuite.ShowWhatsNew then TibiSuite.ShowWhatsNew(true) end
+
+  elseif msg == "minimap" then
+    TibiSuite.SetMinimapHidden(not TibiSuiteDB.mmHidden)
+
   elseif msg == "help" or msg == "?" then
     print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " - " .. L.HELP_HEADER)
     print("  |cFFFFD700/ts|r : " .. L.HELP_TOGGLE)
@@ -2159,6 +2234,12 @@ SlashCmdList["TIBISUITE"] = function(msg)
     print("  |cFFFFD700/ts lock|r : " .. L.HELP_LOCK)
     print("  |cFFFFD700/ts vertical|r : " .. L.HELP_VERTICAL)
     print("  |cFFFFD700/ts reset|r : " .. L.HELP_RESET)
+    print("  |cFFFFD700/ts minimap|r : " .. L.HELP_MINIMAP)
+    print("  |cFFFFD700/ts doctor|r : " .. L.HELP_DOCTOR)
+    print("  |cFFFFD700/ts perf|r : " .. L.HELP_PERF)
+    print("  |cFFFFD700/ts profile|r : " .. L.HELP_PROFILE)
+    print("  |cFFFFD700/ts setup|r : " .. L.HELP_SETUP)
+    print("  |cFFFFD700/ts news|r : " .. L.HELP_NEWS)
 
   else
     ToggleBar()
@@ -2225,6 +2306,56 @@ local function ModuleExists(addon)
   return name ~= nil
 end
 TibiSuite.ModuleExists = ModuleExists
+
+-- ================================================================
+-- ACTIVATION REELLE DANS LA LISTE D'ADDONS DE WOW
+-- ----------------------------------------------------------------
+-- Aucun module n'est LoadOnDemand (mode double : il doit pouvoir se charger
+-- seul, sans le core). Consequence : WoW les charge TOUS au login, meme
+-- decoches dans TibiSuite. Pour qu'un module decoche ne coute vraiment plus
+-- rien, on le desactive dans la liste d'addons de WoW (C_AddOns.DisableAddOn) :
+-- au /reload suivant, WoW ne lit plus ses fichiers. Cocher le reactive
+-- (EnableAddOn) ; s'il n'est pas deja en memoire, il faut un /reload car WoW
+-- refuse LoadAddOn sur un addon non LoadOnDemand.
+-- La case de TibiSuite reste la source de verite : elle est reappliquee a la
+-- liste d'addons a chaque connexion (LoadEnabledModules).
+-- A VERIFIER EN JEU : appele sans nom de personnage, Enable/DisableAddOn
+-- devrait s'appliquer a tous les personnages (comme enabledModules, qui est
+-- au niveau du compte).
+-- ================================================================
+local function IsEnabledInWoW(addon)
+  if not (C_AddOns and C_AddOns.GetAddOnEnableState) then return true end
+  local ok, state = pcall(C_AddOns.GetAddOnEnableState, addon, UnitName("player"))
+  if not ok then return true end
+  if type(state) == "boolean" then return state end
+  return (tonumber(state) or 0) > 0   -- 0 aucun, 1 certains persos, 2 tous
+end
+TibiSuite.IsEnabledInWoW = IsEnabledInWoW
+
+local function SetEnabledInWoW(addon, on)
+  local fn = C_AddOns and (on and C_AddOns.EnableAddOn or C_AddOns.DisableAddOn)
+  if not fn then return false end
+  return (pcall(fn, addon))
+end
+
+function TibiSuite.NeedsReload() return next(TibiSuite.pendingReload) ~= nil end
+function TibiSuite.Reload()
+  if C_UI and C_UI.Reload then C_UI.Reload() else ReloadUI() end
+end
+
+-- Repasse differee (et regroupee) sur les fenetres de module : Echap natif +
+-- masquage des boutons flottants. Remplace les rafales de minuteries fixes :
+-- plusieurs demandes rapprochees ne declenchent qu'une seule passe.
+local wirePending = false
+local function ScheduleWire(delay)
+  if wirePending then return end
+  wirePending = true
+  C_Timer.After(delay or 1.0, function()
+    wirePending = false
+    WireAllEscape()
+    WireAllHeaderExtras()
+  end)
+end
 
 -- Catalogue complet, pour le panneau d'options (une case a cocher par module).
 function TibiSuite.GetCatalog() return MODULES end
@@ -2298,19 +2429,26 @@ function TibiSuite.RegisterModule(spec)
     pcall(UI.RegisterSearch, spec.key, spec.label or spec.key, spec.searchProvider)
   end
   if barFrame then C_Timer.After(0.05, UpdateTabHighlights) end
+  ScheduleWire()
 end
+
+-- Raisons de refus attendues (module seulement en attente d'un /reload) :
+-- pas d'alerte rouge dans ce cas, c'est le fonctionnement normal.
+local EXPECTED_LOAD_REFUSALS = { NOT_DEMAND_LOADED = true, DISABLED = true, DEMAND_LOADED = true }
 
 -- Charge un module a la demande, sous pcall (isolation stricte des erreurs :
 -- l'echec d'un module ne doit jamais empecher les autres de se charger).
-local function LoadModule(mod)
+local function LoadModule(mod, quiet)
   if not mod or not ModuleExists(mod.addonName) then return false end
   if C_AddOns.IsAddOnLoaded(mod.addonName) then return true end
   local ok, loaded, reason = pcall(C_AddOns.LoadAddOn, mod.addonName)
   if not ok or not loaded then
-    print("|cFFC41F3BTibiSuite|r : |cFFFF7777" .. L.MSG_LOADFAIL .. "|r " .. L.MSG_LOADFAIL_OF .. " "
-      .. ColorCode(mod.col.r, mod.col.g, mod.col.b) .. mod.addonName .. "|r"
-      .. (reason and ("  (" .. tostring(reason) .. ")") or ""))
-    return false
+    if not (quiet and reason and EXPECTED_LOAD_REFUSALS[reason]) then
+      print("|cFFC41F3BTibiSuite|r : |cFFFF7777" .. L.MSG_LOADFAIL .. "|r " .. L.MSG_LOADFAIL_OF .. " "
+        .. ColorCode(mod.col.r, mod.col.g, mod.col.b) .. mod.addonName .. "|r"
+        .. (reason and ("  (" .. tostring(reason) .. ")") or ""))
+    end
+    return false, reason
   end
   return true
 end
@@ -2342,6 +2480,8 @@ local function LoadEnabledModules()
   -- reactiverait a tort n'importe quel module deja decoche par un
   -- utilisateur existant, faute de pouvoir distinguer "jamais configure" de
   -- "explicitement desactive" avec les donnees actuelles.
+  -- (L'installateur pose lui-meme ces deux drapeaux : un choix fait a
+  -- l'installation n'est jamais re-ecrase ici.)
   if not TibiSuiteDB.postBoxEnableMigrated then
     TibiSuiteDB.postBoxEnableMigrated = true
     if TibiSuiteDB.enabledModules.Post == nil then
@@ -2359,33 +2499,349 @@ local function LoadEnabledModules()
     end
   end
 
+  -- Synchronisation avec la liste d'addons de WoW (voir « ACTIVATION REELLE »).
+  -- Premiere fois : on se contente d'un resume (migration des modules deja
+  -- decoches avant cette version). Ensuite : un message par ecart corrige.
+  local firstSync = not TibiSuiteDB.wowSyncDone
+  TibiSuiteDB.wowSyncDone = true
+  local reenabled, disabled = {}, {}
   for _, mod in ipairs(MODULES) do
-    if TibiSuiteDB.enabledModules[mod.key] then
-      LoadModule(mod)   -- deja encapsule dans pcall
+    if ModuleExists(mod.addonName) then
+      local want = TibiSuiteDB.enabledModules[mod.key] and true or false
+      local inWoW = IsEnabledInWoW(mod.addonName)
+      if want and not inWoW then
+        SetEnabledInWoW(mod.addonName, true)
+        reenabled[#reenabled + 1] = mod
+      elseif (not want) and inWoW then
+        SetEnabledInWoW(mod.addonName, false)
+        disabled[#disabled + 1] = mod
+        if C_AddOns.IsAddOnLoaded(mod.addonName) then TibiSuite.pendingReload[mod.key] = true end
+      end
+      if want and not LoadModule(mod, true) then   -- deja encapsule dans pcall
+        TibiSuite.pendingReload[mod.key] = true
+      end
+    end
+  end
+
+  local function names(list)
+    local t = {}
+    for _, mod in ipairs(list) do
+      t[#t + 1] = ColorCode(mod.col.r, mod.col.g, mod.col.b) .. mod.addonName .. "|r"
+    end
+    return table.concat(t, ", ")
+  end
+  if #reenabled > 0 then
+    print("|cFFC41F3BTibiSuite|r : " .. L.MSG_SYNC_REENABLED .. " " .. names(reenabled))
+  end
+  if #disabled > 0 then
+    if firstSync then
+      print("|cFFC41F3BTibiSuite|r : " .. #disabled .. " " .. L.MSG_SYNC_FIRST .. " " .. names(disabled))
+    else
+      print("|cFFC41F3BTibiSuite|r : " .. L.MSG_SYNC_DISABLED .. " " .. names(disabled))
     end
   end
 end
 
--- Cocher / decocher une case du panneau d'options.
---   Cocher   : charge le module immediatement (a chaud), effet instantane.
---   Decocher : effet au prochain /reload (le module reste charge cette session ;
---              WoW ne permet pas de decharger un addon a chaud).
+-- Cocher / decocher une case (panneau des modules, installateur, profil).
+-- Renvoie l'etat obtenu, pour que l'interface puisse l'annoncer :
+--   "loaded" : coche et charge (effet immediat)
+--   "reload" : coche, mais WoW ne le chargera qu'apres un /reload
+--   "off"    : decoche ; il reste en memoire jusqu'au /reload s'il l'etait
+--   "absent" : dossier du module introuvable
 function TibiSuite.SetModuleEnabled(key, on)
   TibiSuiteDB.enabledModules = TibiSuiteDB.enabledModules or {}
+  local mod = CatalogByKey(key)
+  local status
   if on then
     TibiSuiteDB.enabledModules[key] = true
-    local mod = CatalogByKey(key)
-    if mod then
-      LoadModule(mod)
-      -- Le module vient d'etre charge : sa fenetre et ses controles se creent
-      -- en differe. On repasse pour appliquer masquage + raccourci Maj+clic droit.
-      C_Timer.After(1.2, WireAllHeaderExtras)
-      C_Timer.After(3.2, WireAllHeaderExtras)
+    if mod and ModuleExists(mod.addonName) then
+      if not IsEnabledInWoW(mod.addonName) then SetEnabledInWoW(mod.addonName, true) end
+      if LoadModule(mod, true) then
+        status = "loaded"
+        TibiSuite.pendingReload[key] = nil
+        -- Fenetre et controles du module se creent en differe : une passe
+        -- groupee applique ensuite Echap natif + masquage des boutons flottants.
+        ScheduleWire(1.2)
+      else
+        status = "reload"
+        TibiSuite.pendingReload[key] = true
+      end
+    else
+      status = "absent"
     end
   else
     TibiSuiteDB.enabledModules[key] = nil
+    status = "off"
+    if mod and ModuleExists(mod.addonName) then
+      SetEnabledInWoW(mod.addonName, false)
+      TibiSuite.pendingReload[key] = C_AddOns.IsAddOnLoaded(mod.addonName) and true or nil
+    end
   end
   if barFrame then UpdateTabHighlights() end
+  return status
+end
+
+-- ================================================================
+-- REGLAGES DE LA BARRE EN UN APPEL (installateur, profils)
+-- ================================================================
+-- Emplacements de depart proposes par l'installateur (grille 3 x 3, lue de
+-- gauche a droite puis de haut en bas). Le coin haut-droit est decale pour
+-- ne pas recouvrir la minicarte.
+local CORNER_POS = {
+  { point = "TOPLEFT",     x =  20, y = -20 }, { point = "TOP",    x = 0, y = -20 }, { point = "TOPRIGHT",    x = -240, y = -20 },
+  { point = "LEFT",        x =  20, y =   0 }, { point = "CENTER", x = 0, y =   0 }, { point = "RIGHT",       x =  -20, y =   0 },
+  { point = "BOTTOMLEFT",  x =  20, y = 150 }, { point = "BOTTOM", x = 0, y = 150 }, { point = "BOTTOMRIGHT", x =  -20, y = 150 },
+}
+
+-- Index (1-9) de l'emplacement de depart correspondant a la position actuelle.
+function TibiSuite.GetBarCorner()
+  local pos = TibiSuiteCharDB.barPos
+  if not pos then return 1 end
+  for i, c in ipairs(CORNER_POS) do
+    if c.point == pos.point and c.x == pos.x and c.y == pos.y then return i end
+  end
+  return nil   -- position personnalisee (deplacee a la main)
+end
+
+--   s = { vertical=, scale= (0-1), cols=, rows=, corner= (1-9), open=, logoSize=, locked= }
+function TibiSuite.ApplyBarSettings(s)
+  if type(s) ~= "table" then return end
+  if s.vertical ~= nil then TibiSuiteDB.vertical = s.vertical and true or false end
+  if s.scale then TibiSuiteDB.scale = math.max(SCALE_MIN, math.min(SCALE_MAX, s.scale)) end
+  if s.cols then TibiSuiteDB.cols = math.max(1, math.min(#MODULES, s.cols)) end
+  if s.rows then TibiSuiteDB.rows = math.max(1, math.min(#MODULES, s.rows)) end
+  if s.logoSize then TibiSuiteDB.logoSize = math.max(LOGO_SIZE_MIN, math.min(LOGO_SIZE_MAX, s.logoSize)) end
+  if s.locked ~= nil then TibiSuiteDB.locked = s.locked and true or false end
+  if s.corner and CORNER_POS[s.corner] then
+    local c = CORNER_POS[s.corner]
+    TibiSuiteCharDB.barPos = { point = c.point, x = c.x, y = c.y }
+  end
+  if s.open ~= nil then
+    TibiSuiteCharDB.barOpen = s.open and true or false
+    TibiSuiteCharDB.barCollapsed = false
+  end
+  if barFrame then
+    LayoutBar()
+    RestoreBarPos()
+    if s.open ~= nil then
+      if barFrame._pill then barFrame._pill:Hide() end
+      if s.open then barFrame:Show(); UpdateTabHighlights() else barFrame:Hide() end
+    end
+  end
+  RefreshOptions()
+end
+
+-- ================================================================
+-- PROFILS DE SUITE (code TS1:)
+-- ----------------------------------------------------------------
+-- Transporte les reglages de la SUITE uniquement (modules coches, barre,
+-- minicarte, messages, export auto de Stats) : jamais la progression d'un
+-- module, jamais la position de la barre (propre a chaque ecran).
+-- Format : "TS1:" .. Base64( "cle=valeur;..." .. "|" .. djb2 hexa ).
+-- Le texte fait moins de 300 caracteres : pas besoin de compression.
+-- ================================================================
+local B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local B64INV = {}
+for i = 1, 64 do B64INV[B64:sub(i, i)] = i - 1 end
+
+local function B64Encode(s)
+  local out = {}
+  for i = 1, #s, 3 do
+    local a, b, c = s:byte(i, i + 2)
+    local n = a * 65536 + (b or 0) * 256 + (c or 0)
+    local c1 = math.floor(n / 262144) % 64
+    local c2 = math.floor(n / 4096) % 64
+    local c3 = math.floor(n / 64) % 64
+    local c4 = n % 64
+    out[#out + 1] = B64:sub(c1 + 1, c1 + 1) .. B64:sub(c2 + 1, c2 + 1)
+      .. (b and B64:sub(c3 + 1, c3 + 1) or "=") .. (c and B64:sub(c4 + 1, c4 + 1) or "=")
+  end
+  return table.concat(out)
+end
+
+local function B64Decode(s)
+  s = s:gsub("[^%w%+/=]", "")
+  if #s == 0 or #s % 4 ~= 0 then return nil end
+  local out = {}
+  for i = 1, #s, 4 do
+    local q = s:sub(i, i + 3)
+    local v = {}
+    for j = 1, 4 do
+      local ch = q:sub(j, j)
+      v[j] = (ch == "=") and 0 or B64INV[ch]
+      if v[j] == nil then return nil end
+    end
+    local n = v[1] * 262144 + v[2] * 4096 + v[3] * 64 + v[4]
+    out[#out + 1] = string.char(math.floor(n / 65536) % 256)
+    if q:sub(3, 3) ~= "=" then out[#out + 1] = string.char(math.floor(n / 256) % 256) end
+    if q:sub(4, 4) ~= "=" then out[#out + 1] = string.char(n % 256) end
+  end
+  return table.concat(out)
+end
+
+local function Djb2(s)
+  local h = 5381
+  for i = 1, #s do h = (h * 33 + s:byte(i)) % 4294967296 end
+  return string.format("%08x", h)
+end
+
+function TibiSuite.ExportProfile()
+  local mods, hid = {}, {}
+  for _, mod in ipairs(MODULES) do
+    if TibiSuite.IsModuleEnabled(mod.key) then mods[#mods + 1] = mod.key end
+    if TibiSuiteDB.hidden and TibiSuiteDB.hidden[mod.key] then hid[#hid + 1] = mod.key end
+  end
+  local p = table.concat({
+    "v=1",
+    "m="  .. table.concat(mods, ","),
+    "vt=" .. (TibiSuiteDB.vertical and 1 or 0),
+    "sc=" .. math.floor((TibiSuiteDB.scale or 0.9) * 100 + 0.5),
+    "c="  .. (TibiSuiteDB.cols or 2),
+    "r="  .. (TibiSuiteDB.rows or 5),
+    "lg=" .. (TibiSuiteDB.logoSize or 22),
+    "lk=" .. (TibiSuiteDB.locked and 1 or 0),
+    "mm=" .. (TibiSuiteDB.mmHidden and 1 or 0),
+    "lm=" .. (TibiSuiteDB.loginMsg or "one"),
+    "ex=" .. ((TibiSuiteDB.statsAutoExport == false) and 0 or 1),
+    "hd=" .. table.concat(hid, ","),
+  }, ";")
+  return "TS1:" .. B64Encode(p .. "|" .. Djb2(p))
+end
+
+-- Decode un code TS1: sans rien appliquer. Renvoie prof, ou nil + cle d'erreur
+-- ("format" | "checksum" | "version", voir L.PROFILE_ERR_*).
+function TibiSuite.DecodeProfile(code)
+  if type(code) ~= "string" then return nil, "format" end
+  code = code:gsub("^%s+", ""):gsub("%s+$", "")
+  local body = code:match("^TS1:(.+)$")
+  if not body then return nil, "format" end
+  local raw = B64Decode(body)
+  if not raw then return nil, "format" end
+  local p, sum = raw:match("^(.*)|(%x+)$")
+  if not p or Djb2(p) ~= sum then return nil, "checksum" end
+  local t = {}
+  for k, v in p:gmatch("(%w+)=([^;]*)") do t[k] = v end
+  if t.v ~= "1" then return nil, "version" end
+  local prof = { mods = {}, hidden = {} }
+  for k in (t.m or ""):gmatch("[^,]+") do prof.mods[k] = true end
+  for k in (t.hd or ""):gmatch("[^,]+") do prof.hidden[k] = true end
+  prof.vertical   = (t.vt == "1")
+  prof.scale      = tonumber(t.sc) and (tonumber(t.sc) / 100) or 0.9
+  prof.cols       = tonumber(t.c) or 2
+  prof.rows       = tonumber(t.r) or 5
+  prof.logoSize   = tonumber(t.lg)
+  prof.locked     = (t.lk == "1")
+  prof.mmHidden   = (t.mm == "1")
+  prof.loginMsg   = (t.lm == "full" or t.lm == "none") and t.lm or "one"
+  prof.autoExport = (t.ex ~= "0")
+  return prof
+end
+
+-- Applique un profil decode. skipModules = true : ne touche pas aux cases
+-- (l'installateur les applique lui-meme, avec son animation).
+function TibiSuite.ApplyProfile(prof, skipModules)
+  if type(prof) ~= "table" then return end
+  TibiSuiteDB.hidden = {}
+  for k in pairs(prof.hidden or {}) do TibiSuiteDB.hidden[k] = true end
+  TibiSuite.SetMinimapHidden(prof.mmHidden)
+  TibiSuiteDB.loginMsg = prof.loginMsg
+  TibiSuiteDB.statsAutoExport = prof.autoExport and true or false
+  TibiSuite.ApplyBarSettings({ vertical = prof.vertical, scale = prof.scale, cols = prof.cols,
+    rows = prof.rows, logoSize = prof.logoSize, locked = prof.locked })
+  if not skipModules then
+    for _, mod in ipairs(MODULES) do
+      if ModuleExists(mod.addonName) then
+        TibiSuite.SetModuleEnabled(mod.key, prof.mods[mod.key] and true or false)
+      end
+    end
+  end
+end
+
+-- ================================================================
+-- /ts doctor : etat reel de chaque module
+-- ================================================================
+function TibiSuite.RunDoctor()
+  local tag = "|cFFC41F3BTibiSuite|r "
+  print(tag .. L.DOC_HEADER .. " (core v" .. VERSION .. ")")
+  local UI = _G.TibiMidnight
+  print("  " .. L.DOC_SOCLE .. " : v" .. tostring(UI and UI._version or "?"))
+  local issues = 0
+  local getMeta = C_AddOns and C_AddOns.GetAddOnMetadata
+  for _, mod in ipairs(MODULES) do
+    local name = mod.addonName
+    local colored = ColorCode(mod.col.r, mod.col.g, mod.col.b) .. name .. "|r"
+    if not ModuleExists(name) then
+      print("  " .. ICON_MISS .. " " .. colored .. " : |cFF808080" .. L.DOC_ABSENT .. "|r")
+    else
+      local v = getMeta and getMeta(name, "Version") or "?"
+      local loaded  = C_AddOns.IsAddOnLoaded(name)
+      local checked = TibiSuite.IsModuleEnabled(mod.key)
+      local notes = {}
+      if v ~= VERSION then
+        notes[#notes + 1] = "|cFFFF9A3C" .. L.DOC_VERSION .. " " .. tostring(v) .. "|r"
+        issues = issues + 1
+      end
+      if checked ~= IsEnabledInWoW(name) then
+        notes[#notes + 1] = "|cFFFF9A3C" .. L.DOC_WOWLIST .. "|r"
+        issues = issues + 1
+      end
+      if checked and not loaded then notes[#notes + 1] = "|cFFFFD700" .. L.DOC_TOLOAD .. "|r" end
+      if (not checked) and loaded then notes[#notes + 1] = "|cFFFFD700" .. L.DOC_INMEM .. "|r" end
+      print("  " .. ((#notes == 0) and ICON_OK or ICON_MISS) .. " " .. colored .. " |cFF808080v" .. tostring(v) .. "|r : "
+        .. (checked and L.DOC_ON or ("|cFF808080" .. L.DOC_OFF .. "|r"))
+        .. ((#notes > 0) and ("   " .. table.concat(notes, ", ")) or ""))
+    end
+  end
+  if issues == 0 then
+    print(tag .. "|cFF66FF66" .. L.DOC_ALLGOOD .. "|r")
+  else
+    print(tag .. "|cFFFF9A3C" .. issues .. "|r " .. L.DOC_ISSUES)
+  end
+end
+
+-- ================================================================
+-- /ts perf : memoire de chaque module charge (et temps CPU recent si le
+-- profileur d'addons du client est disponible)
+-- ================================================================
+function TibiSuite.RunPerf()
+  local tag = "|cFFC41F3BTibiSuite|r "
+  local update = UpdateAddOnMemoryUsage or (C_AddOns and C_AddOns.UpdateAddOnMemoryUsage)
+  local getMem = GetAddOnMemoryUsage or (C_AddOns and C_AddOns.GetAddOnMemoryUsage)
+  if not (update and getMem) then print(tag .. L.PERF_UNAVAIL) return end
+  pcall(update)
+  local prof = C_AddOnProfiler and C_AddOnProfiler.GetAddOnMetric
+  local metric = Enum and Enum.AddOnProfilerMetric and Enum.AddOnProfilerMetric.RecentAverageTime
+  local rows, total, off = {}, 0, {}
+  local list = { { addonName = ADDON, col = { r = 0.769, g = 0.122, b = 0.231 } } }
+  for _, mod in ipairs(MODULES) do list[#list + 1] = mod end
+  for _, mod in ipairs(list) do
+    if C_AddOns.IsAddOnLoaded(mod.addonName) then
+      local ok, kb = pcall(getMem, mod.addonName)
+      kb = (ok and tonumber(kb)) or 0
+      local ms
+      if prof and metric then
+        local okP, v = pcall(prof, mod.addonName, metric)
+        if okP and tonumber(v) then ms = tonumber(v) end
+      end
+      total = total + kb
+      rows[#rows + 1] = { mod = mod, kb = kb, ms = ms }
+    elseif ModuleExists(mod.addonName) then
+      off[#off + 1] = mod.addonName
+    end
+  end
+  table.sort(rows, function(a, b) return a.kb > b.kb end)
+  local function fmt(kb)
+    if kb >= 1024 then return string.format("%.1f Mo", kb / 1024) end
+    return string.format("%.0f Ko", kb)
+  end
+  print(tag .. L.PERF_HEADER)
+  for _, r in ipairs(rows) do
+    local c = r.mod.col
+    print("  " .. ColorCode(c.r, c.g, c.b) .. r.mod.addonName .. "|r : |cFFFFD700" .. fmt(r.kb) .. "|r"
+      .. (r.ms and string.format("  |cFF808080(%.2f ms/image)|r", r.ms) or ""))
+  end
+  print("  " .. L.PERF_TOTAL .. " : |cFFFFD700" .. fmt(total) .. "|r")
+  if #off > 0 then print("  |cFF808080" .. L.PERF_NOTLOADED .. " " .. table.concat(off, ", ") .. "|r") end
 end
 
 -- ================================================================
@@ -2492,6 +2948,11 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- décochés ne sont jamais lus : zéro mémoire (LoadOnDemand).
     if TibiSuiteDB.setupDone then
       LoadEnabledModules()
+      -- Nouvelle version depuis la derniere connexion : « Quoi de neuf »,
+      -- une seule fois (remplace les lignes de chat du login).
+      if TibiSuiteDB.lastSeenVersion ~= VERSION and TibiSuite.ShowWhatsNew then
+        C_Timer.After(3.0, function() TibiSuite.ShowWhatsNew() end)
+      end
     elseif TibiSuite.RunFirstSetup then
       C_Timer.After(1.0, function() TibiSuite.RunFirstSetup() end)
     else
@@ -2504,15 +2965,12 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- Masquer les boutons minimap individuels (ils sont créés à ce stade)
     C_Timer.After(0.5, HideIndividualMinimapButtons)
 
-    -- Cabler la fermeture par Echap des fenetres de module deja creees
-    C_Timer.After(0.6, WireAllEscape)
-
-    -- Boutons flottants (masquage + raccourci Maj+clic droit) : les fenetres et
-    -- leurs controles sont crees en differe par chaque glue (0.2/1.0/3.0 s),
-    -- donc on repasse plusieurs fois pour tout couvrir.
-    C_Timer.After(1.2, WireAllHeaderExtras)
-    C_Timer.After(3.2, WireAllHeaderExtras)
-    C_Timer.After(5.0, WireAllHeaderExtras)
+    -- Echap natif + boutons flottants des fenetres de module : les fenetres
+    -- sont creees en differe par chaque glue (0.2 / 1.0 / 3.0 s). Deux passes
+    -- groupees suffisent (RegisterModule en demande aussi une) ; ensuite
+    -- UpdateTabHighlights cable paresseusement toute fenetre creee plus tard.
+    ScheduleWire(1.2)
+    C_Timer.After(3.5, function() ScheduleWire(0) end)
 
     -- Restaurer l'état de la barre propre à ce personnage
     if barFrame then
@@ -2528,20 +2986,27 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       end
     end
 
-    -- Message de bienvenue : rappel des commandes de la suite.
-    print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " " .. L.WELCOME_HEADER)
-    print("  |cFFFFD700/ts|r " .. L.HELP_TOGGLE .. "    |cFFFFD700/ts modules|r " .. L.WELCOME_MODULES)
-    print("  |cFFFFD700/ts config|r options    |cFFFFD700/ts openall|r / |cFFFFD700closeall|r " .. L.HELP_OPENCLOSEALL)
-    print("  |cFFFFD700/ts lock|r " .. L.WELCOME_LOCK .. "    |cFFFFD700/ts vertical|r orientation    |cFFFFD700/ts help|r " .. L.WELCOME_HELP)
+    -- Message de bienvenue, selon le reglage « Messages de connexion »
+    -- (installateur) : complet, une ligne (defaut) ou aucun.
+    local loginMsg = TibiSuiteDB.loginMsg or "one"
+    if loginMsg == "full" then
+      print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " " .. L.WELCOME_HEADER)
+      print("  |cFFFFD700/ts|r " .. L.HELP_TOGGLE .. "    |cFFFFD700/ts modules|r " .. L.WELCOME_MODULES)
+      print("  |cFFFFD700/ts config|r options    |cFFFFD700/ts openall|r / |cFFFFD700closeall|r " .. L.HELP_OPENCLOSEALL)
+      print("  |cFFFFD700/ts lock|r " .. L.WELCOME_LOCK .. "    |cFFFFD700/ts vertical|r orientation    |cFFFFD700/ts help|r " .. L.WELCOME_HELP)
 
-    -- Rappel du site officiel, 45s apres le login. Affiche UNIQUEMENT ici
-    -- (le core) quand il est present : chaque module verifie HasCore() et se
-    -- tait dans ce cas, pour eviter que le meme message apparaisse jusqu'a
-    -- 12 fois (une par module) au lieu d'une seule.
-    C_Timer.After(45, function()
-      print("|cFFC41F3BTibiSuite|r : plus d'infos sur |cFFFFD700https://www.tibiscui.fr|r")
-      print("|cFFC41F3BTibiSuite|r : télécharge Tibi-Companion sur |cFFFFD700https://tibiscui.fr/tibi-companion.html|r")
-    end)
+      -- Rappel du site officiel, 45s apres le login. Affiche UNIQUEMENT ici
+      -- (le core) quand il est present : chaque module verifie HasCore() et se
+      -- tait dans ce cas, pour eviter que le meme message apparaisse jusqu'a
+      -- 12 fois (une par module) au lieu d'une seule.
+      C_Timer.After(45, function()
+        print("|cFFC41F3BTibiSuite|r : plus d'infos sur |cFFFFD700https://www.tibiscui.fr|r")
+        print("|cFFC41F3BTibiSuite|r : télécharge Tibi-Companion sur |cFFFFD700https://tibiscui.fr/tibi-companion.html|r")
+      end)
+    elseif loginMsg == "one" then
+      print("|cFFC41F3BTibiSuite|r v" .. VERSION .. "   |cFFFFD700/ts|r " .. L.MSG_LOGIN_ONE
+        .. "   |cFFFFD700/ts help|r " .. L.WELCOME_HELP)
+    end
 
   -- ── UPDATE_PENDING_MAIL : courrier non lu apparu/disparu ──────
   elseif event == "UPDATE_PENDING_MAIL" then

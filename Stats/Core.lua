@@ -2206,7 +2206,11 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
     -- dernier code d'export dans StatsDB pour que le fichier Stats.lua
     -- contienne toujours la derniere version, lisible meme le jeu ferme.
     -- PLAYER_LOGOUT couvre a la fois /reload et la deconnexion.
-    if SX.Export and SX.Export.Generate then
+    -- Coupable depuis l'installateur TibiSuite (TibiSuiteDB.statsAutoExport =
+    -- false) ; sans le core, ou tant que rien n'est choisi, l'export reste actif.
+    local tdb = _G.TibiSuiteDB
+    local autoExport = not (type(tdb) == "table" and tdb.statsAutoExport == false)
+    if autoExport and SX.Export and SX.Export.Generate then
       local ok, code = pcall(SX.Export.Generate)
       if ok and type(code) == "string" and code ~= "" then
         StatsDB.export = code
