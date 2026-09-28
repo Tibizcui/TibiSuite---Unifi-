@@ -6,9 +6,9 @@
     - RegisterModule : ajoute la vignette "Daily" (accent cyan) au catalogue,
       avec ouverture (DailyTracker_Toggle) et options (DailyTracker_OpenOptions).
     - masque le bouton minimap individuel : un seul bouton pour toute la suite.
-    - rattrape l'habillage de la fenetre DTMainFrame (liseré cyan + controles),
-      car en LoadOnDemand le PLAYER_LOGIN du module ne se declenche plus et
-      c'est lui qui, via DailyTracker_Suite.lua, habillait la fenetre.
+    - l'habillage de DTMainFrame (liseré cyan + contrôles) est fait UNIQUEMENT
+      par DailyTracker_Suite.lua (l'ancien doublon d'ici a été retiré : le
+      module n'est plus LoadOnDemand, son PLAYER_LOGIN tourne toujours).
 
   La recherche globale reste geree par DailyTracker_Suite.lua (RegisterSearch),
   conserve dans le .toc. On ne la re-enregistre donc PAS ici : aucun doublon.
@@ -18,8 +18,6 @@
 local FRAME  = "DTMainFrame"
 local ACCENT = { 0.086, 0.769, 0.988 }   -- cyan (logo #16C4FC) - accent existant
 local KEY    = "Daily"
-
-local function GetUI() return _G.TibiMidnight end
 
 -- MODE DOUBLE : le core est-il present et fonctionnel ?
 local function HasCore()
@@ -43,30 +41,6 @@ end
 local function IsEnabledByCore()
   if not (TibiSuiteDB and type(TibiSuiteDB.enabledModules) == "table") then return true end
   return TibiSuiteDB.enabledModules[KEY] == true
-end
-
--- ---------------------------------------------------------- Habillage fenetre
--- En LoadOnDemand, la decoration faite par DailyTracker_Suite.lua sur son
--- PLAYER_LOGIN ne tourne plus. On refait donc l'habillage ici, en differe.
--- Le provider de recherche du header est REUTILISE tel quel : on le relit dans
--- le registre du socle ou DailyTracker_Suite.lua l'a deja inscrit (pas de
--- doublon, pas d'invention).
-local function Decorate()
-  local ui = GetUI(); local f = _G[FRAME]
-  if not (ui and f) then return end
-  if not f._tibiSkinned then
-    ui.SkinFrame(f, ACCENT)
-    f._tibiSkinned = true
-  end
-  if f._tibiControls then return end
-  local prov
-  local reg = ui.searchProviders
-  if reg and reg[KEY] then prov = reg[KEY].fn end
-  ui.AddHeaderControls(f, {
-    accent    = ACCENT,
-    onOptions = function() if _G.DailyTracker_OpenOptions then _G.DailyTracker_OpenOptions() end end,
-    provider  = prov,
-  })
 end
 
 -- Un seul bouton minimap pour la suite EN MODE MODULE seulement : on masque
@@ -107,10 +81,8 @@ if HasCore() and IsEnabledByCore() then
   })
 end
 
--- La fenetre DTMainFrame est construite par DailyTracker.lua sur son
--- ADDON_LOADED, juste apres le chargement de ce fichier. On habille donc en
--- differe et on remasque le bouton minimap (mode module uniquement), avec
--- des tentatives de secours.
-C_Timer.After(0.2, function() HideOwnMinimap(); Decorate() end)
-C_Timer.After(1.0, function() HideOwnMinimap(); Decorate() end)
-C_Timer.After(3.0, function() HideOwnMinimap(); Decorate() end)
+-- Le bouton minimap est cree par DailyTracker.lua sur son ADDON_LOADED,
+-- juste apres le chargement de ce fichier : masquage differe, avec une
+-- tentative de secours (mode module uniquement).
+C_Timer.After(0.2, HideOwnMinimap)
+C_Timer.After(3.0, HideOwnMinimap)

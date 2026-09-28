@@ -38,6 +38,10 @@
 ## egale ou superieure - voir le garde de version dans le fichier lui-meme)
 Core\TibiSuiteUI.lua
 
+## Textes d'interface (10 langues). NOUVEAU FICHIER : redemarrage complet
+## du client requis la premiere fois (un /reload ne le charge pas).
+Locales.lua
+
 ## Les fichiers data sont charges en premier
 data\Midnight.lua
 data\TheWarWithin.lua

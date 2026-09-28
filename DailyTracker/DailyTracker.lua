@@ -1,12 +1,16 @@
 -- ================================================================
--- DailyTracker v7.1.5.33
+-- DailyTracker
 -- Auteur : Tibiscui - Kirin Tor
 -- Pool de frames (anti-fuite) + refresh throttlé
--- Scroll réel, i18n FR/EN, suivi manuel, timers de reset,
--- compteur global, filtre "à faire", reduire/deployer, diagnostic questID
+-- Scroll réel, 10 langues (Locales.lua), suivi manuel PAR PERSONNAGE,
+-- timers de reset, quêtes partagées / au choix comptées une fois,
+-- renom réel, quêtes du monde en direct, vue Alts, liste « À faire »,
+-- rappel avant reset, pont de données avec RenTracker.
 -- ================================================================
 
-local ADDON = "DailyTracker"
+local ADDON, NS = ...
+ADDON = ADDON or "DailyTracker"
+NS = NS or {}
 DailyTrackerData = DailyTrackerData or {}
 
 DailyTrackerDB = DailyTrackerDB or {
@@ -22,217 +26,58 @@ DailyTrackerDB = DailyTrackerDB or {
   manual        = {},
 }
 
+-- Textes d'interface : Locales.lua (charge avant ce fichier par le .toc).
+-- Filet de securite si le fichier de langue manque (ancienne install) :
+-- la cle elle-meme s'affiche au lieu d'une erreur Lua.
+local L = NS.L or setmetatable({}, {__index=function(_, k) return k end})
+
+local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version"))
+  or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or "?"
+local ACCENT_HEX  = "|cFF16C4FC"               -- cyan d'identite (logo #16C4FC)
+local ACCENT      = {0.086, 0.769, 0.988}
+local CURRENT_EXT = "Midnight"                 -- extension courante (badge, rappel, liste)
+
+local function HasCore()
+  return _G.TibiSuite and _G.TibiSuite.RegisterModule and true or false
+end
+
+-- Libelles des groupes « au choix » (une seule quete du groupe par semaine).
+local GROUP_LABELS = {
+  runestones = "Renforcement des pierres runiques",
+  pacts      = "Pacte des Fils Tranchés",
+}
+
 -- ================================================================
--- LOCALISATION (evolution 10) - FR par defaut, EN en fallback
--- Seule l'interface est traduite ; les donnees (noms de quetes,
--- PNJ, zones) restent celles du jeu.
+-- PERSONNAGE COURANT (suivi manuel et instantanes par perso)
+-- DailyTrackerDB est partage par tout le compte : les coches manuelles
+-- des quetes vivent donc sous chars[<Nom-Royaume>]. DailyTrackerDB.manual
+-- ne garde que les entrees marquees warband=true dans les donnees.
 -- ================================================================
-local FRFR = {
-  DRAG_HINT       = "Glisser pour deplacer  -  /dt",
-  BY              = "by Tibiscui",
-  F_ALL           = "Tout",
-  F_WEEKLY        = "Hebdo",
-  F_DAILY         = "Quotidien",
-  F_ONETIME       = "Unique",
-  TODO            = "A faire",
-  COLLAPSE_ALL    = "Reduire tout",
-  EXPAND_ALL      = "Deployer tout",
-  CAT_PRINCIPALE  = "Factions Principales",
-  CAT_SECONDAIRE  = "Factions Secondaires",
-  CAT_PVP         = "PvP",
-  TAG_WEEKLY      = "[Hebdo]",
-  TAG_ONETIME     = "[Unique]",
-  TAG_DAILY       = "[Quotidien]",
-  SEC_WEEKLY      = "Quetes hebdomadaires",
-  SEC_ONETIME     = "Quetes uniques",
-  SEC_DAILY       = "Quetes quotidiennes",
-  ACTIVITIES      = "Activites : ",
-  ACT_COUNT       = "Activites : %d / %d",
-  TOTAL           = "Total : %d / %d",
-  ZONE            = "Zone : ",
-  NPC             = "PNJ :",
-  COORDS          = "Coord. :",
-  REP             = "Rep. :",
-  REP_SUFFIX      = " rep.",
-  DONE            = "Complete",
-  NOTDONE         = "Non complete",
-  NO_QUESTID      = "(Pas de questID - suivi manuel)",
-  AUTO_DONE       = "Auto",
-  AUTO_TODO       = "Auto",
-  MANUAL_DONE     = "Fait",
-  MANUAL_TODO     = "A faire",
-  MANUAL_HINT     = "Clic : marquer fait / a faire",
-  WAYPOINT_HINT   = "[Clic] Waypoint TomTom",
-  RESET_DAILY     = "Quotidien",
-  RESET_WEEKLY    = "Hebdo",
-  MM_LEFT         = "Clic gauche : ouvrir / fermer",
-  MM_DRAG         = "Glisser : repositionner l'icone",
-  COMPART_SUB     = "Activites quotidiennes & hebdomadaires",
-  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.33 - |cFFFFD700/dt|r pour ouvrir.",
-  CHECK_HEADER    = "Diagnostic questID (les IDs non resolus sont a verifier) :",
-  CHECK_OK        = "OK",
-  CHECK_MISSING   = "NON RESOLU",
-  CHECK_MANUAL    = "manuel (pas de questID)",
-  CHECK_DONE      = "Diagnostic termine. Utilise ces resultats pour corriger les IDs douteux.",
-  HELP            = "Commandes : /dt (ouvrir), /dt options (options), /dt check (verifier les questID), /dt help",
-}
-local ENUS = {
-  DRAG_HINT       = "Drag to move  -  /dt",
-  BY              = "by Tibiscui",
-  F_ALL           = "All",
-  F_WEEKLY        = "Weekly",
-  F_DAILY         = "Daily",
-  F_ONETIME       = "One-time",
-  TODO            = "To do",
-  COLLAPSE_ALL    = "Collapse all",
-  EXPAND_ALL      = "Expand all",
-  CAT_PRINCIPALE  = "Main Factions",
-  CAT_SECONDAIRE  = "Secondary Factions",
-  CAT_PVP         = "PvP",
-  TAG_WEEKLY      = "[Weekly]",
-  TAG_ONETIME     = "[One-time]",
-  TAG_DAILY       = "[Daily]",
-  SEC_WEEKLY      = "Weekly quests",
-  SEC_ONETIME     = "One-time quests",
-  SEC_DAILY       = "Daily quests",
-  ACTIVITIES      = "Activities: ",
-  ACT_COUNT       = "Activities: %d / %d",
-  TOTAL           = "Total: %d / %d",
-  ZONE            = "Zone: ",
-  NPC             = "NPC:",
-  COORDS          = "Coords:",
-  REP             = "Rep:",
-  REP_SUFFIX      = " rep.",
-  DONE            = "Completed",
-  NOTDONE         = "Not completed",
-  NO_QUESTID      = "(No questID - manual tracking)",
-  AUTO_DONE       = "Auto",
-  AUTO_TODO       = "Auto",
-  MANUAL_DONE     = "Done",
-  MANUAL_TODO     = "To do",
-  MANUAL_HINT     = "Click: toggle done / to do",
-  WAYPOINT_HINT   = "[Click] TomTom waypoint",
-  RESET_DAILY     = "Daily",
-  RESET_WEEKLY    = "Weekly",
-  MM_LEFT         = "Left click: open / close",
-  MM_DRAG         = "Drag: reposition icon",
-  COMPART_SUB     = "Daily & weekly activities",
-  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.33 - |cFFFFD700/dt|r to open.",
-  CHECK_HEADER    = "questID diagnostic (unresolved IDs need review):",
-  CHECK_OK        = "OK",
-  CHECK_MISSING   = "UNRESOLVED",
-  CHECK_MANUAL    = "manual (no questID)",
-  CHECK_DONE      = "Diagnostic done. Use these results to fix doubtful IDs.",
-  HELP            = "Commands: /dt (open), /dt options (options), /dt check (verify questIDs), /dt help",
-}
-local DEDE = {
-  DRAG_HINT       = "Ziehen zum Verschieben  -  /dt",
-  BY              = "von Tibiscui",
-  F_ALL           = "Alle",
-  F_WEEKLY        = "Woechentlich",
-  F_DAILY         = "Taeglich",
-  F_ONETIME       = "Einmalig",
-  TODO            = "Zu erledigen",
-  COLLAPSE_ALL    = "Alle einklappen",
-  EXPAND_ALL      = "Alle ausklappen",
-  CAT_PRINCIPALE  = "Hauptfraktionen",
-  CAT_SECONDAIRE  = "Nebenfraktionen",
-  CAT_PVP         = "PvP",
-  TAG_WEEKLY      = "[Woechentlich]",
-  TAG_ONETIME     = "[Einmalig]",
-  TAG_DAILY       = "[Taeglich]",
-  SEC_WEEKLY      = "Woechentliche Quests",
-  SEC_ONETIME     = "Einmalige Quests",
-  SEC_DAILY       = "Taegliche Quests",
-  ACTIVITIES      = "Aktivitaeten: ",
-  ACT_COUNT       = "Aktivitaeten: %d / %d",
-  TOTAL           = "Gesamt: %d / %d",
-  ZONE            = "Zone: ",
-  NPC             = "NSC:",
-  COORDS          = "Koord.:",
-  REP             = "Ruf:",
-  REP_SUFFIX      = " Ruf",
-  DONE            = "Abgeschlossen",
-  NOTDONE         = "Nicht abgeschlossen",
-  NO_QUESTID      = "(Keine QuestID - manuelle Verfolgung)",
-  AUTO_DONE       = "Auto",
-  AUTO_TODO       = "Auto",
-  MANUAL_DONE     = "Erledigt",
-  MANUAL_TODO     = "Zu erledigen",
-  MANUAL_HINT     = "Klick: erledigt / zu erledigen umschalten",
-  WAYPOINT_HINT   = "[Klick] TomTom-Wegpunkt",
-  RESET_DAILY     = "Taeglich",
-  RESET_WEEKLY    = "Woechentlich",
-  MM_LEFT         = "Linksklick: oeffnen / schliessen",
-  MM_DRAG         = "Ziehen: Symbol verschieben",
-  COMPART_SUB     = "Taegliche & woechentliche Aktivitaeten",
-  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.33 - |cFFFFD700/dt|r zum Oeffnen.",
-  CHECK_HEADER    = "QuestID-Diagnose (nicht aufgeloeste IDs muessen geprueft werden):",
-  CHECK_OK        = "OK",
-  CHECK_MISSING   = "NICHT AUFGELOEST",
-  CHECK_MANUAL    = "manuell (keine QuestID)",
-  CHECK_DONE      = "Diagnose abgeschlossen. Nutze diese Ergebnisse, um zweifelhafte IDs zu korrigieren.",
-  HELP            = "Befehle: /dt (oeffnen), /dt options (Optionen), /dt check (QuestIDs pruefen), /dt help",
-}
-local ESES = {
-  DRAG_HINT       = "Arrastrar para mover  -  /dt",
-  BY              = "por Tibiscui",
-  F_ALL           = "Todo",
-  F_WEEKLY        = "Semanal",
-  F_DAILY         = "Diaria",
-  F_ONETIME       = "Unica",
-  TODO            = "Por hacer",
-  COLLAPSE_ALL    = "Contraer todo",
-  EXPAND_ALL      = "Expandir todo",
-  CAT_PRINCIPALE  = "Facciones principales",
-  CAT_SECONDAIRE  = "Facciones secundarias",
-  CAT_PVP         = "JcJ",
-  TAG_WEEKLY      = "[Semanal]",
-  TAG_ONETIME     = "[Unica]",
-  TAG_DAILY       = "[Diaria]",
-  SEC_WEEKLY      = "Misiones semanales",
-  SEC_ONETIME     = "Misiones unicas",
-  SEC_DAILY       = "Misiones diarias",
-  ACTIVITIES      = "Actividades: ",
-  ACT_COUNT       = "Actividades: %d / %d",
-  TOTAL           = "Total: %d / %d",
-  ZONE            = "Zona: ",
-  NPC             = "PNJ:",
-  COORDS          = "Coord.:",
-  REP             = "Rep.:",
-  REP_SUFFIX      = " rep.",
-  DONE            = "Completado",
-  NOTDONE         = "No completado",
-  NO_QUESTID      = "(Sin questID - seguimiento manual)",
-  AUTO_DONE       = "Auto",
-  AUTO_TODO       = "Auto",
-  MANUAL_DONE     = "Hecho",
-  MANUAL_TODO     = "Por hacer",
-  MANUAL_HINT     = "Clic: marcar hecho / por hacer",
-  WAYPOINT_HINT   = "[Clic] Waypoint de TomTom",
-  RESET_DAILY     = "Diaria",
-  RESET_WEEKLY    = "Semanal",
-  MM_LEFT         = "Clic izquierdo: abrir / cerrar",
-  MM_DRAG         = "Arrastrar: reposicionar el icono",
-  COMPART_SUB     = "Actividades diarias y semanales",
-  LOGIN_MSG       = "|cFFFFD700DailyTracker|r v7.1.5.33 - |cFFFFD700/dt|r para abrir.",
-  CHECK_HEADER    = "Diagnostico de questID (los IDs no resueltos deben revisarse):",
-  CHECK_OK        = "OK",
-  CHECK_MISSING   = "NO RESUELTO",
-  CHECK_MANUAL    = "manual (sin questID)",
-  CHECK_DONE      = "Diagnostico terminado. Usa estos resultados para corregir los IDs dudosos.",
-  HELP            = "Comandos: /dt (abrir), /dt options (opciones), /dt check (verificar questIDs), /dt help",
-}
-local L = FRFR
-do
-  local loc = (GetLocale and GetLocale()) or "frFR"
-  if loc=="enUS" or loc=="enGB" then
-    L = setmetatable(ENUS, {__index=FRFR})
-  elseif loc=="deDE" then
-    L = setmetatable(DEDE, {__index=FRFR})
-  elseif loc=="esES" or loc=="esMX" then
-    L = setmetatable(ESES, {__index=FRFR})
-  end
+local MY_KEY
+local TEMP_CHAR = {manual={}, done={}}   -- avant PLAYER_LOGIN (nom inconnu)
+
+local function CharData()
+  if not MY_KEY then return TEMP_CHAR end
+  DailyTrackerDB.chars = DailyTrackerDB.chars or {}
+  local c = DailyTrackerDB.chars[MY_KEY]
+  if not c then c = {}; DailyTrackerDB.chars[MY_KEY] = c end
+  if type(c.manual) ~= "table" then c.manual = {} end
+  if type(c.done)   ~= "table" then c.done   = {} end
+  return c
+end
+
+local function InitCharacter()
+  local name = UnitName and UnitName("player")
+  local realm = GetRealmName and GetRealmName()
+  if not name or name == "" or name == UNKNOWNOBJECT then return false end
+  MY_KEY = name .. "-" .. (realm or "?")
+  local c = CharData()
+  c.name  = name
+  c.realm = realm
+  local _, classToken = UnitClass("player")
+  c.class = classToken
+  c.level = UnitLevel and UnitLevel("player") or c.level
+  return true
 end
 
 -- ================================================================
@@ -246,7 +91,7 @@ local function IsQuestDone(questID)
   return IsQuestFlaggedCompleted and IsQuestFlaggedCompleted(questID) == true or false
 end
 
--- Secondes avant reset (evolution 6). Robuste si l'API manque.
+-- Secondes avant reset. Robuste si l'API manque.
 local function SecUntilDailyReset()
   if C_DateAndTime and C_DateAndTime.GetSecondsUntilDailyReset then
     local ok,v = pcall(C_DateAndTime.GetSecondsUntilDailyReset)
@@ -262,52 +107,136 @@ local function SecUntilWeeklyReset()
   return 0
 end
 
--- Suivi manuel persistant (evolution 5) : pour les quetes sans questID.
--- onetime -> true (permanent) ; daily/weekly -> timestamp d'expiration (reset auto).
-local function ManualKey(extKey, facName, questName)
-  return (extKey or "?").."::"..(facName or "?").."::"..(questName or "?")
+-- Cle de suivi manuel. Une quete partagee (shared=...) a UNE seule cle pour
+-- toutes les factions : cochee une fois, elle l'est partout.
+-- onetime -> true (permanent) ; daily/weekly -> timestamp d'expiration.
+local function ManualKey(extKey, facName, quest)
+  if quest.shared then return (extKey or "?").."::*"..quest.shared end
+  return (extKey or "?").."::"..(facName or "?").."::"..(quest.name or "?")
+end
+local function ManualStore(quest)
+  if quest.warband then
+    if type(DailyTrackerDB.manual)~="table" then DailyTrackerDB.manual = {} end
+    return DailyTrackerDB.manual
+  end
+  return CharData().manual
 end
 local function IsManualDone(extKey, fac, quest)
-  local db = DailyTrackerDB.manual
-  if not db then return false end
-  local v = db[ManualKey(extKey, fac.name, quest.name)]
+  local v = ManualStore(quest)[ManualKey(extKey, fac.name, quest)]
   if not v then return false end
   if quest.type=="onetime" then
     return v==true or type(v)=="number"
-  else
-    if type(v)=="number" then return time() < v end
-    return v==true
   end
+  if type(v)=="number" then return time() < v end
+  return v==true
 end
-local function ToggleManual(extKey, fac, quest)
-  DailyTrackerDB.manual = DailyTrackerDB.manual or {}
-  local key = ManualKey(extKey, fac.name, quest.name)
-  if IsManualDone(extKey, fac, quest) then
-    DailyTrackerDB.manual[key] = nil
-  else
-    if quest.type=="onetime" then
-      DailyTrackerDB.manual[key] = true
-    elseif quest.type=="weekly" then
-      DailyTrackerDB.manual[key] = time() + SecUntilWeeklyReset()
-    else
-      DailyTrackerDB.manual[key] = time() + SecUntilDailyReset()
+
+-- Cache de completion : vide a chaque rafraichissement et a chaque
+-- evenement de quete. Evite de reinterroger le client 4 fois par quete.
+local doneCache = {}
+local function InvalidateCache() wipe(doneCache) end
+
+local function IsSingleDone(extKey, fac, q)
+  if q.questID then return IsQuestDone(q.questID) end
+  return IsManualDone(extKey, fac, q)
+end
+
+-- Completion unifiee : questID auto OU suivi manuel. Pour un groupe « au
+-- choix » (group=...), la quete compte comme faite des qu'une du groupe l'est.
+local function IsQuestComplete(extKey, fac, quest)
+  local c = doneCache[quest]
+  if c ~= nil then return c end
+  local done
+  if quest.group then
+    done = false
+    for _, o in ipairs(fac.quests or {}) do
+      if o.group == quest.group and IsSingleDone(extKey, fac, o) then done = true; break end
     end
+  else
+    done = IsSingleDone(extKey, fac, quest)
   end
+  doneCache[quest] = done
+  return done
 end
--- Purge des completions manuelles expirees (au chargement).
-local function PurgeExpiredManual()
-  local db = DailyTrackerDB.manual
-  if type(db)~="table" then DailyTrackerDB.manual={}; return end
-  local now = time()
+
+local RequestBackground   -- defini plus bas (badge, liste, instantane, rappel)
+
+local function ToggleManual(extKey, fac, quest)
+  local store = ManualStore(quest)
+  local key = ManualKey(extKey, fac.name, quest)
+  if IsManualDone(extKey, fac, quest) then
+    store[key] = nil
+  elseif quest.type=="onetime" then
+    store[key] = true
+  elseif quest.type=="weekly" then
+    store[key] = time() + SecUntilWeeklyReset()
+  else
+    store[key] = time() + SecUntilDailyReset()
+  end
+  InvalidateCache()
+  if RequestBackground then RequestBackground() end
+end
+
+-- Purge des completions manuelles expirees (compte + chaque personnage).
+local function PurgeTable(db, now)
   for k,v in pairs(db) do
     if type(v)=="number" and now>=v then db[k]=nil end
   end
 end
+local function PurgeExpiredManual()
+  if type(DailyTrackerDB.manual)~="table" then DailyTrackerDB.manual={} end
+  local now = time()
+  PurgeTable(DailyTrackerDB.manual, now)
+  for _, c in pairs(DailyTrackerDB.chars or {}) do
+    if type(c.manual)=="table" then PurgeTable(c.manual, now) end
+  end
+end
 
--- Completion unifiee : questID auto OU suivi manuel.
-local function IsQuestComplete(extKey, fac, quest)
-  if quest.questID then return IsQuestDone(quest.questID) end
-  return IsManualDone(extKey, fac, quest)
+-- ================================================================
+-- UNITES DE SUIVI : une quete partagee entre factions ou un groupe « au
+-- choix » compte pour UNE activite (sinon le donjon hebdo comptait 4 fois
+-- et les 4 Pierres-Runes, dont une seule est faisable, bloquaient a 1/4).
+-- ================================================================
+-- Cle stable : le questID quand il existe (un nom peut etre corrige ou
+-- traduit sans casser les instantanes des Alts), sinon faction + nom.
+local function UnitKey(extKey, fac, q)
+  if q.shared then return extKey.."|s|"..q.shared end
+  if q.group  then return extKey.."|g|"..tostring(fac.id or fac.name).."|"..q.group end
+  if q.questID then return extKey.."|id|"..q.questID end
+  return extKey.."|q|"..fac.name.."|"..q.name
+end
+
+-- ================================================================
+-- NOMS DU CLIENT : pour une quete a questID, on affiche le titre que le jeu
+-- connait, dans la langue du client (ex. « Nettoyage des caveaux » au lieu
+-- de « Purging the Vaults »). Le nom des donnees sert de repli tant que le
+-- serveur n'a pas envoye la quete, et reste la cle interne (recherche...).
+-- ================================================================
+local titleCache = {}
+local function DisplayName(q)
+  local id = q.questID
+  if not id then return q.name end
+  local t = titleCache[id]
+  if t == nil and C_QuestLog and C_QuestLog.GetTitleForQuestID then
+    local ok, v = pcall(C_QuestLog.GetTitleForQuestID, id)
+    if ok and type(v) == "string" and v ~= "" then
+      -- Certains titres portent le prefixe d'extension (« Midnight : Assaut
+      -- de Fulgarion ») : on le retire. Recherche en mode texte brut, car le
+      -- client FR met une espace insecable avant les deux-points.
+      if v:sub(1, 8) == "Midnight" then
+        local c = v:find(":", 9, true)
+        if c and c <= 13 then v = v:sub(c + 1):gsub("^[ \194\160]+", "") end
+      end
+      t = v; titleCache[id] = v
+    end
+  end
+  return t or q.name
+end
+
+local function UnitLabel(fac, q)
+  if q.shared then return q.name end
+  if q.group then return fac.name.." : "..(GROUP_LABELS[q.group] or q.name) end
+  return fac.name.." : "..DisplayName(q)
 end
 
 -- ================================================================
@@ -367,13 +296,27 @@ local function GetActiveFactions(extKey)
   return d and d.factions or {}
 end
 
+-- Listes triees par categorie, calculees une fois par extension (les
+-- donnees sont statiques ; le pont RenTracker ne touche ni noms ni categories).
+local catCache = {}
 local function GetFactionsByCategory(cat, extKey)
+  extKey = extKey or DailyTrackerDB.extension
+  local ck = tostring(extKey).."|"..cat
+  local cached = catCache[ck]
+  if cached then return cached end
   local result = {}
   for _, fac in ipairs(GetActiveFactions(extKey)) do
     if (fac.category or "secondaire") == cat then table.insert(result,fac) end
   end
   table.sort(result, function(a,b) return a.name < b.name end)
+  catCache[ck] = result
   return result
+end
+
+local function FindFaction(extKey, facName)
+  for _, f in ipairs(GetActiveFactions(extKey)) do
+    if f.name == facName then return f end
+  end
 end
 
 local function GetSelectedFac()
@@ -385,25 +328,52 @@ local function SetSelectedFac(cat, name)
   DailyTrackerDB.selectedFac = {cat=cat, name=name}
 end
 
+-- Parcourt les unites de suivi d'une extension (dedoublonnees).
+-- typ : "weekly" | "daily" | nil (= toutes sauf uniques). fn(key, fac, q)
+local function ForEachUnit(extKey, typ, fn, onlyFac)
+  local seen = {}
+  local list = onlyFac and {onlyFac} or GetActiveFactions(extKey)
+  for _, fac in ipairs(list) do
+    for _, q in ipairs(fac.quests or {}) do
+      local ok
+      if typ then ok = (q.type == typ) else ok = (q.type ~= "onetime") end
+      if ok then
+        local k = UnitKey(extKey, fac, q)
+        if not seen[k] then seen[k] = true; fn(k, fac, q) end
+      end
+    end
+  end
+end
+
 local function GetFactionQuestStats(fac, extKey)
   extKey = extKey or DailyTrackerDB.extension
   local total, done = 0, 0
-  for _, q in ipairs(fac.quests or {}) do
-    if q.type ~= "onetime" then
-      total = total + 1
-      if IsQuestComplete(extKey, fac, q) then done = done + 1 end
-    end
-  end
+  ForEachUnit(extKey, nil, function(_, f, q)
+    total = total + 1
+    if IsQuestComplete(extKey, f, q) then done = done + 1 end
+  end, fac)
   return done, total
 end
 
-local function GetExtStats(extKey)
+local function GetExtStats(extKey, typ)
   extKey = extKey or DailyTrackerDB.extension
   local total, done = 0, 0
-  for _, fac in ipairs(GetActiveFactions(extKey)) do
-    local d, t = GetFactionQuestStats(fac, extKey); done=done+d; total=total+t
-  end
+  ForEachUnit(extKey, typ, function(_, f, q)
+    total = total + 1
+    if IsQuestComplete(extKey, f, q) then done = done + 1 end
+  end)
   return done, total
+end
+
+-- Activites restantes du personnage courant (liste « A faire », badge, rappel).
+local function GetRemaining(extKey, withDaily)
+  local out = {}
+  local function add(_, f, q)
+    if not IsQuestComplete(extKey, f, q) then out[#out+1] = {fac=f, q=q} end
+  end
+  ForEachUnit(extKey, "weekly", add)
+  if withDaily then ForEachUnit(extKey, "daily", add) end
+  return out
 end
 
 -- Format duree compacte "3j 5h" / "5h 12m" / "12m"
@@ -412,9 +382,9 @@ local function FormatDuration(sec)
   local d = math.floor(sec/86400)
   local h = math.floor((sec%86400)/3600)
   local m = math.floor((sec%3600)/60)
-  if d>0 then return string.format("%dj %dh", d, h) end
-  if h>0 then return string.format("%dh %dm", h, m) end
-  return string.format("%dm", m)
+  if d>0 then return string.format(L.DUR_DH, d, h) end
+  if h>0 then return string.format(L.DUR_HM, h, m) end
+  return string.format(L.DUR_M, m)
 end
 local function FormatResetInfo()
   return string.format("|cFF888888%s:|r |cFFCCCCCC%s|r   |cFF888888%s:|r |cFFCCCCCC%s|r",
@@ -422,10 +392,168 @@ local function FormatResetInfo()
     L.RESET_WEEKLY, FormatDuration(SecUntilWeeklyReset()))
 end
 
+-- Longueur en caracteres (et non en octets) d'une chaine UTF-8 : un accent
+-- francais pese 2 octets et faussait l'auto-largeur de la fenetre.
+local function Utf8Len(s)
+  local _, n = tostring(s or ""):gsub("[^\128-\191]", "")
+  return n
+end
+
+-- Valeurs « secretes » de Midnight (12.x) : illisibles par un addon dans
+-- certains contextes. On les ignore au lieu de planter.
+local function IsSecret(v)
+  return issecretvalue and issecretvalue(v) or false
+end
+
+-- ================================================================
+-- RENOM / AMITIE REELS (C_MajorFactions, C_GossipInfo)
+-- Renvoie un texte court (colonne) et une ligne d'infobulle, ou nil.
+-- ================================================================
+local function GetStanding(fac)
+  if not (fac and fac.id) then return nil end
+  if fac.friendship then
+    if not (C_GossipInfo and C_GossipInfo.GetFriendshipReputationRanks) then return nil end
+    local ok, r = pcall(C_GossipInfo.GetFriendshipReputationRanks, fac.id)
+    if not (ok and type(r)=="table" and r.maxLevel and not IsSecret(r.maxLevel) and r.maxLevel > 0) then return nil end
+    local reaction = ""
+    if C_GossipInfo.GetFriendshipReputation then
+      local ok2, info = pcall(C_GossipInfo.GetFriendshipReputation, fac.id)
+      if ok2 and type(info)=="table" and type(info.reaction)=="string" then reaction = info.reaction end
+    end
+    local cur = r.currentLevel or 0
+    return string.format("%d/%d", cur, r.maxLevel), string.format(L.FRIEND_TIP, cur, r.maxLevel, reaction)
+  end
+  if not (C_MajorFactions and C_MajorFactions.GetMajorFactionData) then return nil end
+  local ok, d = pcall(C_MajorFactions.GetMajorFactionData, fac.id)
+  if not (ok and type(d)=="table" and d.renownLevel) or IsSecret(d.renownLevel) then return nil end
+  local earned, thr = d.renownReputationEarned or 0, d.renownLevelThreshold or 0
+  if IsSecret(earned) or IsSecret(thr) then earned, thr = 0, 0 end
+  return string.format(L.RENOWN_SHORT, d.renownLevel), string.format(L.RENOWN_TIP, d.renownLevel, earned, thr)
+end
+
+-- ================================================================
+-- QUETES DU MONDE EN DIRECT (C_TaskQuest) - cache 60 s par carte.
+-- Le client ne connait parfois que les WQ des cartes proches : le compte
+-- peut etre incomplet loin de la zone (signale dans l'infobulle).
+-- ================================================================
+local wqCache = {}
+local function CountWorldQuests(mapID)
+  if not (mapID and C_TaskQuest) then return nil end
+  local now = GetTime()
+  local c = wqCache[mapID]
+  if c and now - c.t < 60 then return c.n end
+  local fn = C_TaskQuest.GetQuestsOnMap or C_TaskQuest.GetQuestsForPlayerByMapID
+  if not fn then return nil end
+  local ok, list = pcall(fn, mapID)
+  if not ok or type(list) ~= "table" then return nil end
+  local n, seen = 0, {}
+  local isWQ = C_QuestLog and C_QuestLog.IsWorldQuest
+  for _, info in ipairs(list) do
+    local id = type(info)=="table" and (info.questID or info.questId)
+    if id and not seen[id] and (not isWQ or isWQ(id)) and not IsQuestDone(id) then
+      seen[id] = true; n = n + 1
+    end
+  end
+  wqCache[mapID] = {n=n, t=now}
+  return n
+end
+
+-- ================================================================
+-- POINT DE PASSAGE : TomTom s'il est installe, sinon le point natif de la
+-- carte (C_Map.SetUserWaypoint + C_SuperTrack). Meme logique que RenTracker.
+-- ================================================================
+local function ParseCoords(s)
+  local x, y = (s or ""):match("([%d%.]+)%s*,%s*([%d%.]+)")
+  return tonumber(x), tonumber(y)
+end
+
+local function CanWaypoint(q)
+  local x, y = ParseCoords(q.coords)
+  return q.mapID and x and y and true or false
+end
+
+local function PlaceWaypoint(mapID, coords, title)
+  local x, y = ParseCoords(coords)
+  if not (mapID and x and y) then return false end
+  if TomTom and TomTom.AddWaypoint then
+    TomTom:AddWaypoint(mapID, x/100, y/100, {title=title, persistent=false})
+    print(ACCENT_HEX.."DailyTracker|r "..string.format(L.WAYPOINT_SET, title or "", x, y))
+    return true
+  end
+  if not (C_Map and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then return false end
+  if C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID) then return false end
+  local ok = pcall(function()
+    C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(mapID, x/100, y/100))
+    if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
+      C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+    end
+  end)
+  if ok then print(ACCENT_HEX.."DailyTracker|r "..string.format(L.WAYPOINT_SET, title or "", x, y)) end
+  return ok
+end
+
+-- ================================================================
+-- PONT DE DONNEES AVEC RENTRACKER (synergie de suite)
+-- RenTracker suit les memes factions et ses donnees sont souvent verifiees
+-- en premier. Quand il est charge, on complete ICI ce qui nous manque
+-- (ID de faction, questID, mapID) en appariant par ID de faction puis par
+-- nom de quete normalise. On n'ecrase jamais une valeur deja presente :
+-- une difference est seulement signalee par /dt check.
+-- ================================================================
+local function Norm(s)
+  s = tostring(s or "")
+  s = s:gsub("%s*%b()", "")
+  local ui = _G.TibiMidnight
+  if ui and ui.Normalize then s = ui.Normalize(s) else s = s:lower() end
+  return (s:gsub("[^%w]", ""))
+end
+
+local bridge = {imported=0, diverge={}}
+local function BridgeRenTracker()
+  local R = _G.RenTrackerData
+  if type(R) ~= "table" then return 0 end
+  local n = 0
+  for _, extKey in ipairs({"Midnight", "TheWarWithin"}) do
+    local rext = R[extKey]
+    if type(rext)=="table" and type(rext.factions)=="table" then
+      local byId, byName = {}, {}
+      for _, rf in ipairs(rext.factions) do
+        if rf.id then byId[rf.id] = rf end
+        if rf.name then byName[Norm(rf.name)] = rf end
+      end
+      for _, fac in ipairs(GetActiveFactions(extKey)) do
+        local rf = (fac.id and byId[fac.id]) or byName[Norm(fac.name)]
+        if rf then
+          if not fac.id and rf.id then fac.id = rf.id; n = n + 1 end
+          local rq = {}
+          for _, q in ipairs(rf.quests or {}) do
+            if q.name then rq[Norm(q.name)] = q end
+          end
+          for _, q in ipairs(fac.quests or {}) do
+            local r = rq[Norm(q.name)]
+            if r and r.type == q.type then
+              if not q.questID and r.questID then q.questID = r.questID; q.fromRT = true; n = n + 1 end
+              if not q.mapID and r.mapID then q.mapID = r.mapID end
+              if q.questID and r.questID and q.questID ~= r.questID then
+                bridge.diverge[#bridge.diverge+1] = string.format("%s : %s [%d] / RenTracker [%d]",
+                  fac.name, q.name, q.questID, r.questID)
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  bridge.imported = n
+  InvalidateCache()
+  return n
+end
+
 -- ================================================================
 -- FRAME PRINCIPALE
 -- ================================================================
 local mainFrame
+local ToggleTodo, RefreshTodo, UpdateBadge   -- definis plus bas
 
 local function BuildUI()
 
@@ -459,52 +587,21 @@ local function BuildUI()
   })
   mainFrame:SetBackdropColor(0.04,0.02,0.06,0.97)
   mainFrame:SetBackdropBorderColor(0.72,0.60,0.28,1.0)
+  -- Habillage du socle applique tout de suite (sinon la fenetre rouverte au
+  -- login s'affichait 1 a 3 s avec l'ancien cadre dore avant _Suite.lua).
+  do
+    local ui = _G.TibiMidnight
+    if ui and ui.SkinFrame then ui.SkinFrame(mainFrame, ACCENT); mainFrame._tibiSkinned = true end
+  end
 
   -- ----------------------------------------------------------
-  -- TITRE FLOTTANT
+  -- TITRE (en-tete TibiSuite : titre a l'interieur, haut-gauche,
+  -- comme WeeklyCompass). L'ancien bandeau flottant a ete retire.
   -- ----------------------------------------------------------
-  local titleBg = CreateFrame("Frame",nil,mainFrame,"BackdropTemplate")
-  titleBg:SetPoint("TOP",mainFrame,"TOP",0,14)
-  titleBg:SetSize(360,44)
-  titleBg:SetFrameLevel(mainFrame:GetFrameLevel()+2)
-  titleBg:SetBackdrop({
-    bgFile="Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
-    edgeFile="Interface\\DialogFrame\\UI-DialogBox-Border",
-    tile=true,tileSize=32,edgeSize=20,
-    insets={left=7,right=7,top=7,bottom=7},
-  })
-  titleBg:SetBackdropColor(0.04,0.02,0.06,0.97)
-  titleBg:SetBackdropBorderColor(0.72,0.60,0.28,1.0)
-
-  local logoL = titleBg:CreateTexture(nil,"OVERLAY")
-  logoL:SetSize(20,20)
-  logoL:SetTexture("Interface\\AddOns\\DailyTracker\\medias\\DailyTracker")
-  local logoR = titleBg:CreateTexture(nil,"OVERLAY")
-  logoR:SetSize(20,20)
-  logoR:SetTexture("Interface\\AddOns\\DailyTracker\\medias\\DailyTracker")
-
-  local titleStr = titleBg:CreateFontString(nil,"OVERLAY")
-  titleStr:SetFont("Fonts\\FRIZQT__.TTF",12,"OUTLINE")
-  titleStr:SetPoint("CENTER",titleBg,"CENTER",0,5)
-  titleStr:SetText("|cFFFFD700DailyTracker - |r|cFF9480FFMidnight|r")
-  logoL:SetPoint("RIGHT",titleStr,"LEFT",-6,0)
-  logoR:SetPoint("LEFT",titleStr,"RIGHT",6,0)
-  mainFrame._titleStr = titleStr
-
-  local byLine = titleBg:CreateFontString(nil,"OVERLAY")
-  byLine:SetFont("Fonts\\FRIZQT__.TTF",9,"OUTLINE")
-  byLine:SetPoint("TOP",titleStr,"BOTTOM",0,0)
-  byLine:SetText("|cFFF58CBA"..L.BY.."|r")
-
-  -- TibiSuite : en-tête comme WeeklyCompass (titre à l'intérieur, haut-gauche)
-  logoL:Hide(); logoR:Hide()
-  byLine:Hide()
-  titleBg:Hide()
-  titleStr:SetParent(mainFrame)
-  titleStr:SetFontObject("GameFontNormalLarge")
-  titleStr:ClearAllPoints()
+  local titleStr = mainFrame:CreateFontString(nil,"OVERLAY","GameFontNormalLarge")
   titleStr:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 16, -14)
-  titleStr:SetText("|cFF16C4FCDailyTracker|r")
+  titleStr:SetText(ACCENT_HEX.."DailyTracker|r")
+  mainFrame._titleStr = titleStr
 
   local closeBtn = CreateFrame("Button",nil,mainFrame,"UIPanelCloseButton")
   closeBtn:SetPoint("TOPRIGHT",-5,-5)
@@ -681,6 +778,7 @@ local function BuildUI()
     eb:SetScript("OnClick",function()
       DailyTrackerDB.extension=capturedKey
       DailyTrackerDB.selectedFac=nil
+      DailyTrackerDB.view=nil
       mainFrame:RefreshContent()
     end)
     eb:SetScript("OnEnter",function(s)
@@ -694,6 +792,49 @@ local function BuildUI()
     table.insert(extBtns,eb)
   end
   mainFrame.extBtns = extBtns
+
+  -- Onglets de vue : ALTS (tous les personnages) et LISTE (liste compacte
+  -- « A faire » a l'ecran). Meme habillage que les onglets d'extension.
+  local function MakeSideTab(idx, label, col, onClick, tipTitle, tipBody)
+    local yOff = extTabStartY-(idx-1)*(TAB_H+TAB_GAP) - 8
+    local b = CreateFrame("Button",nil,mainFrame,"BackdropTemplate")
+    b:SetPoint("TOPLEFT",MARGIN_L+2,yOff)
+    b:SetSize(TAB_COL_W-4,TAB_H)
+    b:SetBackdrop({
+      bgFile="Interface\\ChatFrame\\ChatFrameBackground",
+      edgeFile="Interface\\Tooltips\\UI-Tooltip-Border",
+      tile=true,tileSize=8,edgeSize=6,
+      insets={left=2,right=2,top=2,bottom=2},
+    })
+    local accent = b:CreateTexture(nil,"OVERLAY")
+    accent:SetPoint("TOPLEFT",   b,"TOPLEFT",  2,-2)
+    accent:SetPoint("BOTTOMLEFT",b,"BOTTOMLEFT",2, 2)
+    accent:SetWidth(3) ; accent:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+    local t = b:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+    t:SetPoint("CENTER",b,"CENTER",2,0)
+    t:SetText(string.format("|cFF%02X%02X%02X%s|r",
+      math.floor(col.r*255),math.floor(col.g*255),math.floor(col.b*255),label))
+    b.accent=accent ; b.col=col
+    b:SetScript("OnClick",onClick)
+    b:SetScript("OnEnter",function(s)
+      GameTooltip:SetOwner(s,"ANCHOR_RIGHT")
+      GameTooltip:AddLine(tipTitle,col.r,col.g,col.b)
+      GameTooltip:AddLine(tipBody,0.8,0.8,0.8,true)
+      GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave",function() GameTooltip:Hide() end)
+    return b
+  end
+  local nExt = #EXT_ORDER
+  mainFrame._altsBtn = MakeSideTab(nExt+1, L.TAB_ALTS, {r=0.95,g=0.75,b=0.35}, function()
+    DailyTrackerDB.view = (DailyTrackerDB.view=="alts") and nil or "alts"
+    mainFrame._scrollOffset = 0
+    mainFrame:RefreshContent()
+  end, L.ALTS_TITLE, L.ALTS_TAB_TIP)
+  mainFrame._listBtn = MakeSideTab(nExt+2, L.TAB_LIST, {r=0.55,g=0.90,b=0.65}, function()
+    if ToggleTodo then ToggleTodo() end
+    mainFrame:RefreshContent()
+  end, L.TODO_TITLE, L.LIST_TAB_TIP)
 
   local sepVert = mainFrame:CreateTexture(nil,"ARTWORK")
   sepVert:SetTexture("Interface\\BUTTONS\\WHITE8X8")
@@ -715,6 +856,7 @@ local function BuildUI()
 
   local legend = mainFrame:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
   mainFrame._legend = legend
+  legend:SetJustifyH("LEFT") ; legend:SetWordWrap(false)
   legend:SetText(string.format("|cFF4D99FF%s|r  |cFFFFCC00%s|r  |cFF4DCC4D%s|r",
     L.TAG_WEEKLY, L.TAG_ONETIME, L.TAG_DAILY))
 
@@ -809,8 +951,11 @@ local function BuildUI()
     row.dot:SetTexture("Interface\\BUTTONS\\WHITE8X8")
     row.nameFS = row:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
     row.nameFS:SetPoint("LEFT",row,"LEFT",14,0)
-    row.nameFS:SetPoint("RIGHT",row,"RIGHT",-105,0)
+    row.nameFS:SetPoint("RIGHT",row,"RIGHT",-142,0)
     row.nameFS:SetJustifyH("LEFT") ; row.nameFS:SetWordWrap(false)
+    -- Renom / rang d'amitie reel (lu dans le jeu, pas dans nos donnees)
+    row.renFS = row:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+    row.renFS:SetPoint("RIGHT",row,"RIGHT",-104,0) ; row.renFS:SetWidth(36) ; row.renFS:SetJustifyH("RIGHT")
     row.mbarBg = row:CreateTexture(nil,"ARTWORK")
     row.mbarBg:SetPoint("RIGHT",row,"RIGHT",-44,0) ; row.mbarBg:SetSize(MBAR_W,5)
     row.mbarBg:SetTexture("Interface\\BUTTONS\\WHITE8X8") ; row.mbarBg:SetVertexColor(0.08,0.06,0.12,0.9)
@@ -825,7 +970,9 @@ local function BuildUI()
       s:SetBackdropBorderColor(c.r*0.7,c.g*0.7,c.b*0.7,1.0)
       GameTooltip:SetOwner(s,"ANCHOR_RIGHT")
       GameTooltip:AddLine(s._facName,c.r,c.g,c.b)
-      GameTooltip:AddLine(L.ZONE..(s._zone or ""),0.8,0.8,0.8) ; GameTooltip:Show()
+      GameTooltip:AddLine(L.ZONE..(s._zone or ""),0.8,0.8,0.8)
+      if s._standTip then GameTooltip:AddLine(s._standTip,0.95,0.85,0.45) end
+      GameTooltip:Show()
     end)
     row:SetScript("OnLeave",function(s)
       GameTooltip:Hide()
@@ -890,15 +1037,19 @@ local function BuildUI()
       local tc=s._tc ; local quest=s._quest ; local done=s._done
       s:SetBackdropBorderColor(tc.r,tc.g,tc.b,done and 0.5 or 0.9)
       GameTooltip:SetOwner(s,"ANCHOR_BOTTOMRIGHT")
-      GameTooltip:AddLine(quest.name,1,1,1)
+      GameTooltip:AddLine(DisplayName(quest),1,1,1)
       if quest.questID then
         if done then GameTooltip:AddLine(L.DONE.." (ID: "..quest.questID..")",0.3,0.9,0.4)
         else GameTooltip:AddLine(L.NOTDONE.." (ID: "..quest.questID..")",0.8,0.5,0.3) end
       else GameTooltip:AddLine(L.NO_QUESTID,0.5,0.5,0.7) end
+      if quest.fromRT then GameTooltip:AddLine(L.FROM_RT,0.5,0.7,0.9) end
       GameTooltip:AddLine(L.ZONE..quest.zone,0.7,0.7,0.7)
       GameTooltip:AddLine("+"..(quest.rep or 0)..L.REP_SUFFIX,tc.r,tc.g,tc.b)
+      if quest.shared then GameTooltip:AddLine(L.SHARED_HINT,0.6,0.8,1.0,true) end
+      if quest.group then GameTooltip:AddLine(L.GROUP_HINT,0.6,0.8,1.0,true) end
+      if s._wq then GameTooltip:AddLine(L.WQ_HINT,0.6,0.6,0.6,true) end
       if s._tipText~="" then GameTooltip:AddLine(" "); GameTooltip:AddLine(s._tipText,0.8,0.8,0.8,true) end
-      if quest.mapID and TomTom then GameTooltip:AddLine("|cFFFFD700"..L.WAYPOINT_HINT.."|r") end
+      if CanWaypoint(quest) then GameTooltip:AddLine("|cFFFFD700"..L.WAYPOINT_HINT.."|r") end
       GameTooltip:Show()
     end)
     row:SetScript("OnLeave",function(s)
@@ -911,12 +1062,55 @@ local function BuildUI()
       if (facRef and facRef.id) and C_Reputation and C_Reputation.SetWatchedFactionByID then
         C_Reputation.SetWatchedFactionByID(facRef.id)
       end
-      if quest.coords and quest.mapID and TomTom then
-        local x2,y2=quest.coords:match("([%d%.]+),%s*([%d%.]+)")
-        if x2 and y2 then
-          TomTom:AddWaypoint(quest.mapID,tonumber(x2)/100,tonumber(y2)/100,{title=quest.name,persistent=false})
-          print("|cFFFFD700DailyTracker|r Waypoint : "..quest.name)
+      if CanWaypoint(quest) then PlaceWaypoint(quest.mapID, quest.coords, DisplayName(quest)) end
+    end)
+    return row
+  end
+
+  -- Ligne de la vue Alts (un personnage)
+  local function MakeAltRow()
+    local row = CreateFrame("Button",nil,mainFrame.questContent,"BackdropTemplate")
+    row:SetBackdrop(BD_EDGE6)
+    row:RegisterForClicks("AnyUp")
+    row.nameFS = row:CreateFontString(nil,"OVERLAY","GameFontNormal")
+    row.nameFS:SetPoint("TOPLEFT",row,"TOPLEFT",10,-6) ; row.nameFS:SetJustifyH("LEFT")
+    row.seenFS = row:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+    row.seenFS:SetPoint("TOPRIGHT",row,"TOPRIGHT",-8,-7) ; row.seenFS:SetJustifyH("RIGHT")
+    row.lineFS = row:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+    row.lineFS:SetPoint("TOPLEFT",row,"TOPLEFT",10,-22) ; row.lineFS:SetJustifyH("LEFT")
+    row.barBg = row:CreateTexture(nil,"ARTWORK")
+    row.barBg:SetPoint("TOPRIGHT",row,"TOPRIGHT",-8,-26) ; row.barBg:SetSize(90,5)
+    row.barBg:SetTexture("Interface\\BUTTONS\\WHITE8X8") ; row.barBg:SetVertexColor(0.08,0.06,0.12,0.9)
+    row.barFill = row:CreateTexture(nil,"OVERLAY")
+    row.barFill:SetPoint("LEFT",row.barBg,"LEFT",0,0) ; row.barFill:SetHeight(5)
+    row.barFill:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+    row:SetScript("OnEnter",function(s)
+      s:SetBackdropBorderColor(0.95,0.75,0.35,0.9)
+      GameTooltip:SetOwner(s,"ANCHOR_RIGHT")
+      GameTooltip:AddLine(s._title or "",1,1,1)
+      if s._stale then GameTooltip:AddLine(L.ALTS_RESET_PASSED,0.9,0.6,0.3,true) end
+      if s._remaining and #s._remaining>0 then
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(L.ALTS_REMAINING,1,0.82,0)
+        for i, lbl in ipairs(s._remaining) do
+          if i>18 then GameTooltip:AddLine(string.format(L.TODO_MORE, #s._remaining-18),0.6,0.6,0.6); break end
+          GameTooltip:AddLine("- "..lbl,0.85,0.85,0.85)
         end
+      else
+        GameTooltip:AddLine(L.ALTS_ALLDONE,0.3,0.9,0.45)
+      end
+      if not s._isMe then GameTooltip:AddLine(" "); GameTooltip:AddLine(L.ALTS_DEL_HINT,0.6,0.6,0.6) end
+      GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave",function(s)
+      GameTooltip:Hide()
+      s:SetBackdropBorderColor(0.45,0.35,0.18,0.6)
+    end)
+    row:SetScript("OnClick",function(s, button)
+      if button=="RightButton" and IsShiftKeyDown() and not s._isMe and s._key then
+        if DailyTrackerDB.chars then DailyTrackerDB.chars[s._key] = nil end
+        GameTooltip:Hide()
+        mainFrame:RefreshContent()
       end
     end)
     return row
@@ -928,6 +1122,7 @@ local function BuildUI()
     factionRow  = MakeFactionRow,
     questHeader = MakeQuestHeader,
     questRow    = MakeQuestRow,
+    altRow      = MakeAltRow,
   }
 
   mainFrame._pools    = {}
@@ -1022,6 +1217,11 @@ local function BuildUI()
             if pct>=1.0 then row.lvlFS:SetText(string.format("|cFF4DCC72%d/%d|r",fDone,fTotal))
             else row.lvlFS:SetText(string.format("|cFF%02X%02X%02X%d/%d|r",math.floor(lr*255),math.floor(lg*255),math.floor(lb*255),fDone,fTotal)) end
 
+            local stShort, stTip
+            if DailyTrackerDB.showRenown ~= false then stShort, stTip = GetStanding(fac) end
+            row.renFS:SetText(stShort and ("|cFFE8C872"..stShort.."|r") or "")
+            row._standTip = stTip
+
             row._cat=cat ; row._facName=fac.name ; row._zone=fac.zone ; row._col=col ; row._selected=isSel
             curY=curY+ROW_H+ROW_GAP
           end
@@ -1039,47 +1239,210 @@ local function BuildUI()
   mainFrame.RebuildGroups = RebuildGroups
 
   -- ============================================================
+  -- DEFILEMENT + AUTO-HAUTEUR (commun a la vue quetes et a la vue Alts)
+  -- ============================================================
+  local function ApplyScrollLayout(self, qScrollY, contentH, viewportW)
+    local questH = math.max(40, contentH+12)
+
+    -- Hauteur max de viewport pour rester sous H_MAX
+    local maxVP = math.max(60, H_MAX - qScrollY - 12 - MARGIN_BOT - 4)
+    local viewportH = math.min(questH, maxVP)
+    local scrollBgH = viewportH + 12
+
+    self.questContent:SetSize(viewportW, questH)
+    self.scrollFrame:SetSize(viewportW, viewportH)
+    self.scrollBg:SetHeight(scrollBgH)
+
+    local scrollMax = math.max(0, questH - viewportH)
+    self._scrollMax = scrollMax
+    self.scrollBar:ClearAllPoints()
+    self.scrollBar:SetPoint("TOPRIGHT",self.scrollBg,"TOPRIGHT",-4,-6)
+    self.scrollBar:SetSize(SB_W-4, viewportH)
+    self.scrollBar:SetMinMaxValues(0, scrollMax)
+    if scrollMax>0 then
+      self.scrollBar:Show()
+      local off = math.max(0, math.min(scrollMax, self._scrollOffset or 0))
+      self._scrollOffset = off
+      self.scrollBar:SetValue(off)
+      self.scrollFrame:SetVerticalScroll(off)
+    else
+      self._scrollOffset = 0
+      self.scrollBar:SetValue(0)
+      self.scrollFrame:SetVerticalScroll(0)
+      self.scrollBar:Hide()
+    end
+
+    local newH = math.max(H_MIN, math.min(H_MAX, qScrollY + scrollBgH + MARGIN_BOT + 4))
+    self:SetHeight(newH)
+  end
+
+  local function SetTabState(b, active)
+    if not b then return end
+    local col = b.col
+    if active then
+      b:SetBackdropColor(col.r*0.40,col.g*0.40,col.b*0.40,1.0)
+      b:SetBackdropBorderColor(col.r,col.g,col.b,1.0)
+      if b.accent then b.accent:SetVertexColor(col.r,col.g,col.b,1.0) end
+    else
+      b:SetBackdropColor(col.r*0.12,col.g*0.12,col.b*0.12,0.95)
+      b:SetBackdropBorderColor(col.r*0.35,col.g*0.35,col.b*0.35,0.5)
+      if b.accent then b.accent:SetVertexColor(col.r,col.g,col.b,0.5) end
+    end
+  end
+
+  -- ============================================================
+  -- VUE ALTS : un instantane par personnage (pris au login, a chaque
+  -- quete rendue et a la deconnexion). Un reset passe depuis la derniere
+  -- visite remet ses compteurs a zero (on ne devine rien).
+  -- ============================================================
+  local function SnapStats(snap, extKey, typ)
+    local now = time()
+    local valid
+    if typ=="weekly" then valid = snap.wExp and now < snap.wExp
+    else valid = snap.dExp and now < snap.dExp end
+    local done, total, remaining = 0, 0, {}
+    ForEachUnit(extKey, typ, function(k, f, q)
+      total = total + 1
+      if valid and snap.done and snap.done[k] then done = done + 1
+      else remaining[#remaining+1] = UnitLabel(f, q) end
+    end)
+    return done, total, remaining, not valid
+  end
+
+  -- La legende (gauche) et les timers de reset (droite) partagent la meme
+  -- ligne : la legende est bornee a la place restante, tronquee au besoin.
+  local function FitLegend(self)
+    local w = (self:GetWidth() or W_MIN) - CX - MARGIN_R - (self._resetInfo:GetStringWidth() or 0) - 12
+    self._legend:SetWidth(math.max(40, w))
+  end
+
+  local function RenderAlts(self)
+    self._questHeader:ClearAllPoints()
+    self._questHeader:SetPoint("TOPLEFT",CX,-Y_GROUPS)
+    self._questHeader:SetText("|cFFFFD700"..L.ALTS_TITLE.."|r  |cFF888888"..(EXT_FULLNAMES[CURRENT_EXT] or CURRENT_EXT).."|r")
+    self._counter:SetText("")
+    self._legend:ClearAllPoints()
+    self._legend:SetPoint("TOPLEFT",CX,-(Y_GROUPS+16))
+    self._legend:SetText("|cFF888888"..L.ALTS_SUB.."|r")
+    self._resetInfo:ClearAllPoints()
+    self._resetInfo:SetPoint("TOPRIGHT",-MARGIN_R,-(Y_GROUPS+16))
+    self._resetInfo:SetText(FormatResetInfo())
+
+    local qScrollY = Y_GROUPS + 32
+    local newW = 560
+    self:SetWidth(newW)
+    FitLegend(self)
+    local sbW = newW - CX - MARGIN_R - 4
+    local viewportW = sbW - 12 - SB_W
+    self.scrollBg:ClearAllPoints()
+    self.scrollBg:SetPoint("TOPLEFT",CX,-qScrollY)
+    self.scrollBg:SetWidth(sbW)
+
+    local list = {}
+    for key, c in pairs(DailyTrackerDB.chars or {}) do
+      if type(c)=="table" and c.name then list[#list+1] = {key=key, c=c} end
+    end
+    table.sort(list, function(a,b)
+      if a.key==MY_KEY then return true end
+      if b.key==MY_KEY then return false end
+      return (a.c.seen or 0) > (b.c.seen or 0)
+    end)
+
+    local y = 0
+    if not self._altsEmpty then
+      local fs = self.questContent:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+      fs:SetPoint("TOPLEFT",self.questContent,"TOPLEFT",8,-8)
+      fs:SetJustifyH("LEFT") ; fs:SetWordWrap(true)
+      self._altsEmpty = fs
+    end
+    if #list==0 then
+      self._altsEmpty:SetWidth(viewportW-16)
+      self._altsEmpty:SetText("|cFF888888"..L.ALTS_EMPTY.."|r")
+      self._altsEmpty:Show()
+      y = math.ceil(self._altsEmpty:GetStringHeight() or 14) + 16
+    else
+      self._altsEmpty:Hide()
+    end
+    for _, e in ipairs(list) do
+      local c, isMe = e.c, (e.key==MY_KEY)
+      local wd, wt, wRem, wStale = SnapStats(c, CURRENT_EXT, "weekly")
+      local dd, dt = SnapStats(c, CURRENT_EXT, "daily")
+      local row = AcquireWidget("altRow")
+      row:SetPoint("TOPLEFT",self.questContent,"TOPLEFT",2,-y)
+      row:SetSize(viewportW, 36)
+      row:SetBackdropColor(isMe and 0.10 or 0.05, isMe and 0.08 or 0.04, 0.03, 0.95)
+      row:SetBackdropBorderColor(0.45,0.35,0.18,0.6)
+
+      local hex = "|cFFDDDDDD"
+      local ui = _G.TibiMidnight
+      if c.class and ui and ui.ClassColor then
+        local cc = ui.ClassColor(c.class)
+        if type(cc)=="table" then
+          local r, g, b = cc.r or cc[1], cc.g or cc[2], cc.b or cc[3]
+          if r and g and b then hex = string.format("|cFF%02X%02X%02X", math.floor(r*255), math.floor(g*255), math.floor(b*255)) end
+        end
+      elseif c.class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[c.class] then
+        local cc = RAID_CLASS_COLORS[c.class]
+        hex = string.format("|cFF%02X%02X%02X", math.floor(cc.r*255), math.floor(cc.g*255), math.floor(cc.b*255))
+      end
+      local title = hex..(c.name or "?").."|r |cFF888888"..(c.level and ("("..c.level..")") or "")
+        .."  "..(c.realm or "").."|r"
+      if isMe then title = title.."  |cFF55DD77"..L.ALTS_CURRENT.."|r" end
+      row.nameFS:SetText(title)
+
+      if isMe then row.seenFS:SetText("")
+      else row.seenFS:SetText("|cFF777777"..string.format(L.ALTS_SEEN, FormatDuration(time()-(c.seen or time()))).."|r") end
+
+      local wCol = (wd>=wt and wt>0) and "|cFF4DCC72" or "|cFF4D99FF"
+      row.lineFS:SetText(string.format("%s"..L.ALTS_WEEKLY.."|r   |cFF4DCC4D"..L.ALTS_DAILY.."|r", wCol, wd, wt, dd, dt)
+        ..(wStale and ("   |cFFCC8844"..L.ALTS_STALE.."|r") or ""))
+      local pct = wt>0 and wd/wt or 0
+      row.barFill:SetWidth(math.max(1, math.floor(90*pct)))
+      if pct>=1 then row.barFill:SetVertexColor(0.30,0.90,0.45,0.9) else row.barFill:SetVertexColor(0.30,0.60,1.00,0.9) end
+
+      row._key=e.key ; row._isMe=isMe ; row._remaining=wRem ; row._stale=wStale
+      row._title=(c.name or "?").." - "..(c.realm or "")
+      y = y + 38
+    end
+
+    ApplyScrollLayout(self, qScrollY, y, viewportW)
+  end
+
+  -- ============================================================
   -- REFRESH CONTENT
   -- ============================================================
   mainFrame.RefreshContent = function(self)
 
     ResetPools()
+    InvalidateCache()
+    self:EnsureTicker()
 
     local extKey  = DailyTrackerDB.extension or "Midnight"
-    local extCol  = EXT_TAB_COLORS[extKey] or {r=1,g=0.84,b=0}
     local filter  = DailyTrackerDB.filter or "all"
     local hideDone= DailyTrackerDB.hideCompleted and true or false
+    local altsView= (DailyTrackerDB.view=="alts")
 
-    -- Titre : nom seul, sobre, à la couleur d'identité (pas de "- Midnight")
-    self._titleStr:SetText("|cFF16C4FCDailyTracker|r")
+    self._titleStr:SetText(ACCENT_HEX.."DailyTracker|r")
 
-    -- Compteur global (evolution 2)
+    -- Compteur global (activites dedoublonnees)
     local gDone,gTotal = GetExtStats(extKey)
     self._counter:SetText(string.format("|cFFFFD700"..L.TOTAL.."|r", gDone, gTotal))
+    self._legend:SetText(string.format("|cFF4D99FF%s|r  |cFFFFCC00%s|r  |cFF4DCC4D%s|r",
+      L.TAG_WEEKLY, L.TAG_ONETIME, L.TAG_DAILY))
 
-    -- Timers reset (evolution 6)
     self._resetInfo:SetText(FormatResetInfo())
 
-    -- Etat bouton reduire/deployer (evolution 3)
+    -- Etat bouton reduire/deployer
     local sdb=DailyTrackerDB.sections
     local allOpen = sdb.weekly and sdb.onetime and sdb.daily
     self._collapseBtn._txt:SetText(string.format("|cFF%02X%02X%02X%s|r",
       math.floor(0.98*255),math.floor(0.95*255),math.floor(0.80*255),
       allOpen and L.COLLAPSE_ALL or L.EXPAND_ALL))
 
-    -- Highlight onglets extension
-    for _, eb in ipairs(self.extBtns or {}) do
-      local col=eb.col or {r=0.5,g=0.5,b=0.5}
-      if eb.extKey==extKey then
-        eb:SetBackdropColor(col.r*0.40,col.g*0.40,col.b*0.40,1.0)
-        eb:SetBackdropBorderColor(col.r,col.g,col.b,1.0)
-        if eb.accent then eb.accent:SetVertexColor(col.r,col.g,col.b,1.0) end
-      else
-        eb:SetBackdropColor(col.r*0.12,col.g*0.12,col.b*0.12,0.95)
-        eb:SetBackdropBorderColor(col.r*0.35,col.g*0.35,col.b*0.35,0.5)
-        if eb.accent then eb.accent:SetVertexColor(col.r,col.g,col.b,0.5) end
-      end
-    end
+    -- Onglets de gauche
+    for _, eb in ipairs(self.extBtns or {}) do SetTabState(eb, (not altsView) and eb.extKey==extKey) end
+    SetTabState(self._altsBtn, altsView)
+    SetTabState(self._listBtn, DailyTrackerDB.todo and DailyTrackerDB.todo.shown)
 
     -- Highlight filtres type
     for key,btn in pairs(self.filterBtns or {}) do
@@ -1095,7 +1458,7 @@ local function BuildUI()
       end
     end
 
-    -- Highlight toggle "A faire" (evolution 4)
+    -- Highlight toggle "A faire"
     do
       local c=self._todoBtn.col
       if hideDone then
@@ -1106,6 +1469,9 @@ local function BuildUI()
         self._todoBtn:SetBackdropBorderColor(c.r*0.25,c.g*0.25,c.b*0.25,0.5)
       end
     end
+
+    if altsView then RenderAlts(self); return end
+    if self._altsEmpty then self._altsEmpty:Hide() end
 
     -- Groupes
     local groupsEndY = RebuildGroups(Y_GROUPS)
@@ -1144,18 +1510,20 @@ local function BuildUI()
     self._resetInfo:ClearAllPoints()
     self._resetInfo:SetPoint("TOPRIGHT",-MARGIN_R,-qLegendY)
 
-    -- AUTO-SIZING HORIZONTAL
+    -- AUTO-SIZING HORIZONTAL (longueur en caracteres, pas en octets)
     local maxNameLen = 0
     for _, q in ipairs(fac.quests) do
       if (filter=="all" or filter==q.type) then
         if not (hideDone and IsQuestComplete(extKey, fac, q)) then
-          if #q.name>maxNameLen then maxNameLen=#q.name end
+          local n = Utf8Len(DisplayName(q))
+          if n>maxNameLen then maxNameLen=n end
         end
       end
     end
     local neededW  = CX + maxNameLen*7 + 240
     local newW     = math.max(W_MIN, math.min(W_MAX, neededW))
     self:SetWidth(newW)
+    FitLegend(self)
 
     local sbW      = newW - CX - MARGIN_R - 4     -- largeur cadre scrollBg
     local viewportW= sbW - 12 - SB_W              -- largeur utile (moins barre)
@@ -1173,21 +1541,18 @@ local function BuildUI()
     end
 
     local y = 0
+    local showWQ = DailyTrackerDB.showWQ ~= false
 
     local function PopulateQuestRow(quest, yOff, facRef)
       local tc   = TYPE_COLORS[quest.type]  or {r=1,g=1,b=1}
       local tlbl = TYPE_LABELS[quest.type]  or ""
       local fc   = (facRef and facRef.color) or {r=0.5,g=0.5,b=0.5}
       local done = IsQuestComplete(extKey, facRef, quest)
-
-      local tipText      = quest.tip or ""
-      local charsPerLine = math.max(20, math.floor(textW/7))
-      local tipLines     = math.max(1, math.min(math.ceil(#tipText/charsPerLine),6))
-      local rowH         = 64 + tipLines*14 + 6
+      -- Groupe « au choix » : fait via une autre quete du groupe
+      local otherChoice = done and quest.group and not IsSingleDone(extKey, facRef, quest)
 
       local row = AcquireWidget("questRow")
       row:SetPoint("TOPLEFT",self.questContent,"TOPLEFT",2,-yOff)
-      row:SetSize(qcW,rowH)
       if done then
         row:SetBackdropColor(0.05,0.05,0.05,0.6)
         row:SetBackdropBorderColor(0.3,0.3,0.3,0.4)
@@ -1196,21 +1561,18 @@ local function BuildUI()
         row:SetBackdropBorderColor(tc.r*0.4,tc.g*0.4,tc.b*0.4,0.6)
       end
 
-      if quest.questID then
-        if done then row.si:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready"); row.si:SetVertexColor(0.3,1.0,0.4,1)
-        else row.si:SetTexture("Interface\\RaidFrame\\ReadyCheck-NotReady"); row.si:SetVertexColor(0.7,0.3,0.3,0.7) end
-      else
-        if done then row.si:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready"); row.si:SetVertexColor(0.3,1.0,0.4,1)
-        else row.si:SetTexture("Interface\\RaidFrame\\ReadyCheck-Waiting"); row.si:SetVertexColor(0.6,0.6,0.6,0.5) end
-      end
+      if done then row.si:SetTexture("Interface\\RaidFrame\\ReadyCheck-Ready"); row.si:SetVertexColor(0.3,1.0,0.4,otherChoice and 0.4 or 1)
+      elseif quest.questID then row.si:SetTexture("Interface\\RaidFrame\\ReadyCheck-NotReady"); row.si:SetVertexColor(0.7,0.3,0.3,0.7)
+      else row.si:SetTexture("Interface\\RaidFrame\\ReadyCheck-Waiting"); row.si:SetVertexColor(0.6,0.6,0.6,0.5) end
 
       if done then row.typeTag:SetText("|cFF555566"..tlbl.." |r")
       else row.typeTag:SetText(string.format("|cFF%02X%02X%02X%s|r",math.floor(tc.r*255),math.floor(tc.g*255),math.floor(tc.b*255),tlbl)) end
 
-      -- Auto vs manuel (evolution 5)
+      -- Auto vs manuel
       if quest.questID then
         row.autoLabel:Show()
-        row.autoLabel:SetText(done and "|cFF44AA44"..L.AUTO_DONE.."|r" or "|cFF555566"..L.AUTO_TODO.."|r")
+        if otherChoice then row.autoLabel:SetText("|cFF777788"..L.GROUP_OTHER.."|r")
+        else row.autoLabel:SetText(done and "|cFF44AA44"..L.AUTO_DONE.."|r" or "|cFF555566"..L.AUTO_TODO.."|r") end
         row.manualBtn:Hide()
       else
         row.autoLabel:Hide()
@@ -1220,27 +1582,46 @@ local function BuildUI()
       end
 
       row.qName:SetSize(textW,16)
-      row.qName:SetText(done and "|cFF888888"..quest.name.."|r" or "|cFFEEEEEE"..quest.name.."|r")
+      local dname = DisplayName(quest)
+      row.qName:SetText(done and "|cFF888888"..dname.."|r" or "|cFFEEEEEE"..dname.."|r")
 
       row.npcStr:SetSize(textW,14)
       if done then row.npcStr:SetText("|cFF555555"..L.NPC.." "..quest.npc.."  "..L.COORDS.." "..quest.coords.."|r")
       else row.npcStr:SetText("|cFF888888"..L.NPC.."|r |cFFCCBB88"..quest.npc.."|r  |cFF888888"..L.COORDS.."|r |cFF99CCFF"..quest.coords.."|r") end
 
-      row.repStr:SetSize(textW*0.55,14)
-      if done then row.repStr:SetText("|cFF555555"..L.REP.." +"..(quest.rep or 0).."|r")
-      else row.repStr:SetText(string.format("|cFF888888"..L.REP.."|r |cFF%02X%02X%02X+%d|r",math.floor(fc.r*255),math.floor(fc.g*255),math.floor(fc.b*255),quest.rep or 0)) end
+      -- Quetes du monde en direct (entrees wq=true)
+      local wqTxt = ""
+      row._wq = nil
+      if quest.wq and showWQ then
+        local n = CountWorldQuests(quest.mapID)
+        if n then
+          row._wq = true
+          wqTxt = "   "..(n>0 and ("|cFF99CCFF"..string.format(L.WQ_AVAIL, n).."|r") or ("|cFF666677"..L.WQ_NONE.."|r"))
+        end
+      end
+
+      row.repStr:SetSize(textW*0.72,14)
+      if done then row.repStr:SetText("|cFF555555"..L.REP.." +"..(quest.rep or 0).."|r"..wqTxt)
+      else row.repStr:SetText(string.format("|cFF888888"..L.REP.."|r |cFF%02X%02X%02X+%d|r",math.floor(fc.r*255),math.floor(fc.g*255),math.floor(fc.b*255),quest.rep or 0)..wqTxt) end
 
       row.zStr:SetText(done and "|cFF444455"..quest.zone.."|r" or "|cFF555577"..quest.zone.."|r")
 
+      -- Hauteur reelle du conseil (mesuree, et non estimee sur les octets)
+      local tipText = quest.tip or ""
+      local tipH = 14
       if tipText~="" then
         row.tipStr:Show()
-        row.tipStr:SetSize(textW,tipLines*14)
+        row.tipStr:SetWidth(textW)
         row.tipStr:SetText(done and "|cFF444455"..tipText.."|r" or "|cFF777777"..tipText.."|r")
+        tipH = math.max(14, math.ceil(row.tipStr:GetStringHeight() or 14))
+        row.tipStr:SetHeight(tipH)
       else
         row.tipStr:Hide()
       end
+      local rowH = 64 + tipH + 6
+      row:SetSize(qcW,rowH)
 
-      row._quest=quest ; row._fac=facRef ; row._done=done ; row._tc=tc ; row._tipText=tipText
+      row._quest=quest ; row._fac=facRef ; row._done=done ; row._tc=tc ; row._tipText=tipText ; row._yOff=yOff
       return rowH
     end
 
@@ -1259,9 +1640,16 @@ local function BuildUI()
       if #grp.quests>0 then
         local tc=TYPE_COLORS[grp.key] or {r=1,g=1,b=1}
         local isOpen=DailyTrackerDB.sections[grp.key]
-        local grpDone=0
-        for _, q in ipairs(grp.quests) do if IsQuestComplete(extKey, fac, q) then grpDone=grpDone+1 end end
-        local allDone=(grpDone==#grp.quests)
+        -- Compte par unite : un groupe « au choix » = une activite
+        local grpDone, grpTotal, seenU = 0, 0, {}
+        for _, q in ipairs(grp.quests) do
+          local k = UnitKey(extKey, fac, q)
+          if not seenU[k] then
+            seenU[k] = true ; grpTotal = grpTotal + 1
+            if IsQuestComplete(extKey, fac, q) then grpDone = grpDone + 1 end
+          end
+        end
+        local allDone=(grpDone==grpTotal)
 
         local header=AcquireWidget("questHeader")
         header:SetPoint("TOPLEFT",self.questContent,"TOPLEFT",2,-y)
@@ -1270,14 +1658,13 @@ local function BuildUI()
         else header:SetBackdropColor(tc.r*0.15,tc.g*0.15,tc.b*0.15,0.95); header:SetBackdropBorderColor(tc.r*0.5,tc.g*0.5,tc.b*0.5,0.7) end
 
         header.arrow:SetText(isOpen and "|cFFFFD700-|r" or "|cFF888888+|r")
-        if allDone then header.label:SetText(string.format("|cFF4DCC72%s  (%d/%d)|r",grp.label,grpDone,#grp.quests))
-        else header.label:SetText(string.format("|cFF%02X%02X%02X%s|r  |cFF888888(%d/%d)|r",math.floor(tc.r*255),math.floor(tc.g*255),math.floor(tc.b*255),grp.label,grpDone,#grp.quests)) end
+        if allDone then header.label:SetText(string.format("|cFF4DCC72%s  (%d/%d)|r",grp.label,grpDone,grpTotal))
+        else header.label:SetText(string.format("|cFF%02X%02X%02X%s|r  |cFF888888(%d/%d)|r",math.floor(tc.r*255),math.floor(tc.g*255),math.floor(tc.b*255),grp.label,grpDone,grpTotal)) end
         header._sectionKey=grp.key ; header._tc=tc
 
         if isOpen then
           local curRowY=y+28
           for _, quest in ipairs(grp.quests) do
-            -- evolution 4 : masquer les completees si le mode est actif
             if not (hideDone and IsQuestComplete(extKey, fac, quest)) then
               local rH=PopulateQuestRow(quest,curRowY,fac)
               curRowY=curRowY+rH+2
@@ -1290,51 +1677,38 @@ local function BuildUI()
       end
     end
 
-    -- --------------------------------------------------------
-    -- AUTO-SIZING VERTICAL + DEFILEMENT (evolution 1)
-    -- --------------------------------------------------------
-    local questH = math.max(40, y+12)
-
-    -- Hauteur max de viewport pour rester sous H_MAX
-    local maxVP = math.max(60, H_MAX - qScrollY - 12 - MARGIN_BOT - 4)
-    local viewportH = math.min(questH, maxVP)
-    local scrollBgH = viewportH + 12
-
-    self.questContent:SetSize(viewportW, questH)
-    self.scrollFrame:SetSize(viewportW, viewportH)
-    self.scrollBg:SetHeight(scrollBgH)
-
-    -- Barre de defilement
-    local scrollMax = math.max(0, questH - viewportH)
-    self._scrollMax = scrollMax
-    self.scrollBar:ClearAllPoints()
-    self.scrollBar:SetPoint("TOPRIGHT",self.scrollBg,"TOPRIGHT",-4,-6)
-    self.scrollBar:SetSize(SB_W-4, viewportH)
-    self.scrollBar:SetMinMaxValues(0, scrollMax)
-    if scrollMax>0 then
-      self.scrollBar:Show()
-      local off = math.max(0, math.min(scrollMax, self._scrollOffset or 0))
-      self._scrollOffset = off
-      self.scrollBar:SetValue(off)
-      self.scrollFrame:SetVerticalScroll(off)
-    else
-      self._scrollOffset = 0
-      self.scrollBar:SetValue(0)
-      self.scrollFrame:SetVerticalScroll(0)
-      self.scrollBar:Hide()
-    end
-
-    local newH = math.max(H_MIN, math.min(H_MAX, qScrollY + scrollBgH + MARGIN_BOT + 4))
-    self:SetHeight(newH)
-
+    ApplyScrollLayout(self, qScrollY, y, viewportW)
   end -- RefreshContent
 
-  -- Ticker : rafraichit uniquement le texte des timers de reset (evolution 6)
-  C_Timer.NewTicker(30, function()
-    if mainFrame and mainFrame:IsShown() and mainFrame._resetInfo then
-      mainFrame._resetInfo:SetText(FormatResetInfo())
+  -- Fait defiler jusqu'a une quete (recherche globale) et la met en relief.
+  mainFrame.ScrollToQuest = function(self, questName)
+    local pool = self._pools and self._pools.questRow
+    local used = self._poolUsed and self._poolUsed.questRow or 0
+    if not pool then return end
+    for i = 1, used do
+      local row = pool[i]
+      if row and row._quest and row._quest.name == questName then
+        local off = math.max(0, math.min(self._scrollMax or 0, (row._yOff or 0) - 4))
+        self._scrollOffset = off
+        self.scrollFrame:SetVerticalScroll(off)
+        self.scrollBar:SetValue(off)
+        row:SetBackdropBorderColor(ACCENT[1], ACCENT[2], ACCENT[3], 1)
+        return
+      end
     end
-  end)
+  end
+
+  -- Ticker des timers de reset : demarre par RefreshContent (donc a chaque
+  -- ouverture) et s'arrete tout seul des que la fenetre est cachee. Aucun
+  -- hook OnHide : DTMainFrame est dans UISpecialFrames, et ce melange
+  -- contamine ToggleGameMenu (piege documente dans CLAUDE.md).
+  mainFrame.EnsureTicker = function(s)
+    if s._ticker then return end
+    s._ticker = C_Timer.NewTicker(30, function(t)
+      if not s:IsShown() then t:Cancel(); s._ticker = nil; return end
+      if s._resetInfo then s._resetInfo:SetText(FormatResetInfo()) end
+    end)
+  end
 
   mainFrame:Hide()
 end -- BuildUI
@@ -1445,9 +1819,10 @@ local function BuildMinimapButton()
   minimapBtn:SetScript("OnEnter", function(s)
     if s._hl then s._hl:SetAlpha(1) end
     local ext = DailyTrackerDB.extension or "Midnight"
+    InvalidateCache()
     local d, t = GetExtStats(ext)
     GameTooltip:SetOwner(s, "ANCHOR_LEFT")
-    GameTooltip:AddLine("|cFF40C7EBDailyTracker|r", 0.58, 0.30, 0.95)
+    GameTooltip:AddLine(ACCENT_HEX.."DailyTracker|r")
     GameTooltip:AddLine(EXT_FULLNAMES[ext] or ext, 0.9, 0.9, 0.9)
     GameTooltip:AddLine(string.format(L.ACT_COUNT, d, t), 0.3, 0.9, 0.5)
     GameTooltip:AddLine(string.format("%s: %s   %s: %s",
@@ -1475,73 +1850,423 @@ function DailyTracker_OnAddonCompartmentClick()
 end
 function DailyTracker_OnAddonCompartmentEnter()
   GameTooltip:SetOwner(AddonCompartmentFrame,"ANCHOR_BOTTOMRIGHT")
-  GameTooltip:AddLine("|cFFFFD700DailyTracker|r")
+  GameTooltip:AddLine(ACCENT_HEX.."DailyTracker|r")
   GameTooltip:AddLine(L.COMPART_SUB,0.8,0.8,0.9) ; GameTooltip:Show()
 end
 function DailyTracker_OnAddonCompartmentLeave() GameTooltip:Hide() end
 
 -- ================================================================
--- DIAGNOSTIC questID (evolution 9)
--- Verifie chaque questID contre les donnees du jeu et signale les
--- IDs non resolus (a corriger a la main). N'invente aucune donnee.
+-- OUVERTURE CIBLEE (recherche globale, liste « A faire »)
+-- Ouvre la fenetre sur une faction, et optionnellement defile jusqu'a
+-- une quete precise.
 -- ================================================================
-local function RunQuestIDCheck()
-  print("|cFFFFD700DailyTracker|r "..L.CHECK_HEADER)
-  local getTitle = C_QuestLog and C_QuestLog.GetTitleForQuestID
+function DailyTracker_ShowFaction(extKey, facName, questName)
+  if not mainFrame then return end
+  extKey = extKey or DailyTrackerDB.extension or CURRENT_EXT
+  local fac = FindFaction(extKey, facName)
+  if not fac then return end
+  DailyTrackerDB.extension = extKey
+  DailyTrackerDB.view = nil
+  local cat = fac.category or "secondaire"
+  SetSelectedFac(cat, fac.name)
+  DailyTrackerDB.groups = DailyTrackerDB.groups or {}
+  DailyTrackerDB.groups[cat] = true
+  if questName then
+    DailyTrackerDB.filter = "all"
+    for _, q in ipairs(fac.quests or {}) do
+      if q.name == questName then DailyTrackerDB.sections[q.type] = true end
+    end
+  end
+  mainFrame._scrollOffset = 0
+  mainFrame:Show(); DailyTrackerDB.open = true
+  mainFrame:RefreshContent()
+  if questName then mainFrame:ScrollToQuest(questName) end
+end
+
+-- ================================================================
+-- LISTE « A FAIRE » COMPACTE (DTTodoFrame)
+-- Petite fenetre a epingler a l'ecran : activites hebdo (et, en option,
+-- quotidiennes) restantes du personnage, pour l'extension courante.
+-- Clic sur une ligne : ouvre DailyTracker sur la faction.
+-- ================================================================
+local todoFrame
+local TODO_MAX = 16
+local TODO_W   = 250
+
+local function TodoDB()
+  if type(DailyTrackerDB.todo)~="table" then DailyTrackerDB.todo = {} end
+  return DailyTrackerDB.todo
+end
+
+local function BuildTodo()
+  if todoFrame then return todoFrame end
+  local f = CreateFrame("Frame","DTTodoFrame",UIParent,"BackdropTemplate")
+  f:SetSize(TODO_W, 60)
+  f:SetFrameStrata("MEDIUM")
+  f:SetClampedToScreen(true)
+  f:SetMovable(true)
+  f:EnableMouse(true)
+  f:RegisterForDrag("LeftButton")
+  f:SetScript("OnDragStart", function(s) if not TodoDB().locked then s:StartMoving() end end)
+  f:SetScript("OnDragStop", function(s)
+    s:StopMovingOrSizing()
+    local point,_,_,x,y = s:GetPoint()
+    TodoDB().pos = {point=point, x=x, y=y}
+  end)
+  local ui = _G.TibiMidnight
+  if ui and ui.SkinFrame then
+    ui.SkinFrame(f, ACCENT)
+  else
+    f:SetBackdrop({bgFile="Interface\\Buttons\\WHITE8X8", edgeFile="Interface\\Buttons\\WHITE8X8", edgeSize=1})
+    f:SetBackdropColor(0.05,0.05,0.07,0.92)
+    f:SetBackdropBorderColor(0,0,0,1)
+  end
+
+  f.title = f:CreateFontString(nil,"OVERLAY","GameFontNormal")
+  f.title:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -7)
+  f.count = f:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+  f.count:SetPoint("TOPRIGHT", f, "TOPRIGHT", -22, -9)
+  local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+  close:SetSize(20, 20)
+  close:SetPoint("TOPRIGHT", f, "TOPRIGHT", 0, 0)
+  close:SetScript("OnClick", function()
+    TodoDB().shown = false
+    f:Hide()
+    if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
+  end)
+
+  f.lines = {}
+  for i = 1, TODO_MAX + 1 do
+    local b = CreateFrame("Button", nil, f)
+    b:SetHeight(14)
+    b:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -24 - (i-1)*14)
+    b:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -24 - (i-1)*14)
+    b.fs = b:CreateFontString(nil,"OVERLAY","GameFontHighlightSmall")
+    b.fs:SetAllPoints(b) ; b.fs:SetJustifyH("LEFT") ; b.fs:SetWordWrap(false)
+    b:SetScript("OnClick", function(s)
+      if s._fac then DailyTracker_ShowFaction(s._ext, s._fac.name, s._q and s._q.name) end
+    end)
+    b:SetScript("OnEnter", function(s)
+      if not s._fac then return end
+      GameTooltip:SetOwner(s, "ANCHOR_LEFT")
+      GameTooltip:AddLine(s._q and DisplayName(s._q) or "", 1, 1, 1)
+      GameTooltip:AddLine(s._fac.name, 0.8, 0.8, 0.8)
+      if s._q and s._q.tip then GameTooltip:AddLine(s._q.tip, 0.7, 0.7, 0.7, true) end
+      GameTooltip:AddLine(" ")
+      GameTooltip:AddLine(L.TODO_HINT, 0.6, 0.6, 0.6)
+      GameTooltip:Show()
+    end)
+    b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    b:Hide()
+    f.lines[i] = b
+  end
+
+  local p = TodoDB().pos
+  if p and p.x then f:SetPoint(p.point or "CENTER", UIParent, p.point or "CENTER", p.x, p.y)
+  else f:SetPoint("RIGHT", UIParent, "RIGHT", -220, 120) end
+  f:Hide()
+  todoFrame = f
+  return f
+end
+
+RefreshTodo = function()
+  if not (todoFrame and todoFrame:IsShown()) then return end
+  local f = todoFrame
+  local ext = (DailyTrackerDB.view ~= "alts" and DailyTrackerDB.extension) or CURRENT_EXT
+  local items = GetRemaining(ext, TodoDB().daily)
+  f.title:SetText(ACCENT_HEX..L.TODO_TITLE.."|r |cFF888888"..(EXT_LABELS[ext] or ext).."|r")
+  f.count:SetText("|cFFFFD700"..#items.."|r")
+  local n = 0
+  if #items == 0 then
+    n = 1
+    local b = f.lines[1]
+    b._fac = nil ; b._q = nil
+    b.fs:SetText("|cFF4DCC72"..L.TODO_EMPTY.."|r")
+    b:Show()
+  else
+    for i, it in ipairs(items) do
+      if i > TODO_MAX then break end
+      n = i
+      local b = f.lines[i]
+      local tc = TYPE_COLORS[it.q.type] or {r=1,g=1,b=1}
+      b._fac = it.fac ; b._q = it.q ; b._ext = ext
+      b.fs:SetText(string.format("|cFF%02X%02X%02X-|r %s", math.floor(tc.r*255), math.floor(tc.g*255), math.floor(tc.b*255),
+        UnitLabel(it.fac, it.q)))
+      b:Show()
+    end
+    if #items > TODO_MAX then
+      n = n + 1
+      local b = f.lines[n]
+      b._fac = nil ; b._q = nil
+      b.fs:SetText("|cFF888888"..string.format(L.TODO_MORE, #items - TODO_MAX).."|r")
+      b:Show()
+    end
+  end
+  for i = n + 1, #f.lines do f.lines[i]:Hide() end
+  f:SetHeight(24 + n*14 + 8)
+end
+
+local function SetTodoShown(v)
+  TodoDB().shown = v and true or false
+  local f = BuildTodo()
+  if v then f:Show(); InvalidateCache(); RefreshTodo() else f:Hide() end
+end
+ToggleTodo = function() SetTodoShown(not TodoDB().shown) end
+
+-- ================================================================
+-- INSTANTANE DU PERSONNAGE (vue Alts), BADGE, RAPPEL
+-- ================================================================
+local function Snapshot()
+  if not MY_KEY then return end
+  local c = CharData()
+  local now = time()
+  c.level = UnitLevel and UnitLevel("player") or c.level
+  c.seen  = now
+  local ws, ds = SecUntilWeeklyReset(), SecUntilDailyReset()
+  c.wExp = ws > 0 and (now + ws) or nil
+  c.dExp = ds > 0 and (now + ds) or nil
+  local done = {}
   for _, extKey in ipairs(EXT_ORDER) do
-    print("|cFF9480FF== "..(EXT_FULLNAMES[extKey] or extKey).." ==|r")
+    ForEachUnit(extKey, nil, function(k, f, q)
+      if IsQuestComplete(extKey, f, q) then done[k] = true end
+    end)
+  end
+  c.done = done
+end
+
+UpdateBadge = function()
+  local TS = _G.TibiSuite
+  if not (HasCore() and TS.SetTabBadge) then return end
+  if DailyTrackerDB.badge == false then TS.SetTabBadge("Daily", 0); return end
+  local d, total = GetExtStats(CURRENT_EXT, "weekly")
+  TS.SetTabBadge("Daily", math.max(0, total - d))
+end
+
+-- Rappel avant le reset hebdo : une seule fois par reset et par personnage.
+-- verbose=true (bouton « Verifier maintenant ») : repond toujours, meme
+-- quand il n'y a rien a rappeler, pour que le test ne paraisse pas muet.
+local function CheckReminder(verbose)
+  local function say(msg) if verbose then print(ACCENT_HEX.."DailyTracker|r "..msg) end end
+  local hours = tonumber(DailyTrackerDB.remindHours)
+  if hours == nil then hours = 12 end
+  if hours <= 0 then return say(L.REMIND_OFF) end
+  if not MY_KEY then return end
+  local secs = SecUntilWeeklyReset()
+  if secs <= 0 then return end
+  local d, t = GetExtStats(CURRENT_EXT, "weekly")
+  local left = t - d
+  if left <= 0 then return say(L.REMIND_ALLDONE) end
+  if secs > hours*3600 then
+    return say(string.format(L.REMIND_NOTYET, FormatDuration(secs), hours, left))
+  end
+  local c = CharData()
+  local stamp = math.floor((time() + secs) / 3600)
+  if c.remindedFor == stamp and not verbose then return end
+  c.remindedFor = stamp
+  print(ACCENT_HEX.."DailyTracker|r "..string.format(L.REMIND_MSG, FormatDuration(secs), left))
+end
+
+-- Mise a jour d'arriere-plan regroupee (1 s) : meme fenetre fermee.
+local _bgPending = false
+RequestBackground = function()
+  if _bgPending then return end
+  _bgPending = true
+  C_Timer.After(1, function()
+    _bgPending = false
+    InvalidateCache()
+    Snapshot()
+    UpdateBadge()
+    RefreshTodo()
+    CheckReminder()
+  end)
+end
+
+-- ================================================================
+-- MIGRATION : suivi manuel du compte -> personnage (une seule fois)
+-- Avant cette version, les coches manuelles etaient partagees par tous
+-- les persos. Elles sont confiees au premier personnage qui se connecte
+-- (les autres repartent de zero). Les anciennes cles « donjon hebdo »
+-- des differentes factions fusionnent dans la cle partagee.
+-- ================================================================
+local function MigrateManual()
+  if DailyTrackerDB.manualMigrated or not MY_KEY then return end
+  local old = DailyTrackerDB.manual
+  local c = CharData()
+  if type(old) == "table" and next(old) then
+    local now = time()
+    for extKey, ext in pairs(DailyTrackerData) do
+      for _, fac in ipairs(ext.factions or {}) do
+        for _, q in ipairs(fac.quests or {}) do
+          local oldKey = extKey.."::"..fac.name.."::"..q.name
+          local v = old[oldKey]
+          if v and not (type(v)=="number" and now >= v) then
+            local nk = ManualKey(extKey, fac.name, q)
+            local cur = c.manual[nk]
+            if cur == nil or (type(v)=="number" and type(cur)=="number" and v > cur) then c.manual[nk] = v end
+          end
+        end
+      end
+    end
+  end
+  DailyTrackerDB.manual = {}
+  DailyTrackerDB.manualMigrated = true
+end
+
+-- ================================================================
+-- DIAGNOSTIC questID (asynchrone)
+-- Le client ne connait le titre d'une quete qu'apres l'avoir demandee au
+-- serveur : un premier passage immediat affichait donc « non resolu » pour
+-- des IDs parfaitement valides. On demande d'abord chaque quete, on attend
+-- la reponse (QUEST_DATA_LOAD_RESULT, jusqu'a 6 s), puis on classe :
+--   OK          : titre recu (affiche dans la langue du client)
+--   CACHEE      : le serveur confirme l'ID mais sans titre (drapeau interne)
+--   INTROUVABLE : le serveur repond que l'ID n'existe pas (a corriger)
+--   SANS REPONSE: aucune reponse dans le delai (relancer /dt check)
+-- N'invente aucune donnee.
+-- ================================================================
+local ourIDs, loadResult = {}, {}
+-- Titre connu du client pour un questID, ou nil s'il n'est pas encore charge.
+local function ClientTitle(id) return DisplayName({questID=id, name=false}) or nil end
+local function IndexQuestIDs()
+  wipe(ourIDs)
+  for _, extKey in ipairs(EXT_ORDER) do
     for _, fac in ipairs(GetActiveFactions(extKey)) do
       for _, q in ipairs(fac.quests or {}) do
-        if q.questID then
-          local title = getTitle and getTitle(q.questID) or nil
-          if title and title~="" then
-            print(string.format("  |cFF44CC44%s|r [%d] %s -> %s", L.CHECK_OK, q.questID, q.name, title))
-          else
-            print(string.format("  |cFFFF5555%s|r [%d] %s", L.CHECK_MISSING, q.questID, q.name))
-          end
-        else
-          print(string.format("  |cFF888888%s|r %s", L.CHECK_MANUAL, q.name))
-        end
+        if q.questID then ourIDs[q.questID] = true end
       end
     end
   end
-  if C_QuestLog and C_QuestLog.RequestLoadQuestByID then
-    -- Precharge les titres pour un second passage plus fiable
+end
+local function RequestTitles()
+  if not (C_QuestLog and C_QuestLog.RequestLoadQuestByID) then return end
+  for id in pairs(ourIDs) do
+    if not ClientTitle(id) then pcall(C_QuestLog.RequestLoadQuestByID, id) end
+  end
+end
+
+-- Heuristique « titre suspect » (client francais seulement, les donnees
+-- etant en francais) : le titre du jeu et notre nom doivent partager au
+-- moins un mot significatif (5 lettres et plus, sans accents). Sinon l'ID
+-- pointe tres probablement vers une autre quete (cas reel : les anciens IDs
+-- TWW renvoyaient « La Coupe de Kalimdor commence » pour un Pacte).
+local function Words(str)
+  local out = {}
+  local ui = _G.TibiMidnight
+  str = (ui and ui.Normalize) and ui.Normalize(str) or tostring(str):lower()
+  for w in str:gmatch("%w+") do if #w >= 5 then out[w] = true end end
+  return out
+end
+local function TitleLooksWrong(dataName, title)
+  if GetLocale and GetLocale() ~= "frFR" then return false end
+  local a, b = Words(dataName), Words(title)
+  if not next(a) or not next(b) then return false end
+  for w in pairs(a) do if b[w] then return false end end
+  return true
+end
+
+local checkRunning = false
+local function RunQuestIDCheck()
+  if checkRunning then return end
+  checkRunning = true
+  IndexQuestIDs()
+  print(ACCENT_HEX.."DailyTracker|r "..L.CHECK_HEADER)
+  print("  |cFF888888"..L.CHECK_WAIT.."|r")
+  RequestTitles()
+
+  local tries = 0
+  local function Report()
+    checkRunning = false
+    local nOK, nHidden, nBad, nWait, nManual, nSusp = 0, 0, 0, 0, 0, 0
     for _, extKey in ipairs(EXT_ORDER) do
+      print(ACCENT_HEX.."== "..(EXT_FULLNAMES[extKey] or extKey).." ==|r")
       for _, fac in ipairs(GetActiveFactions(extKey)) do
         for _, q in ipairs(fac.quests or {}) do
-          if q.questID then C_QuestLog.RequestLoadQuestByID(q.questID) end
+          if q.questID then
+            local src = q.fromRT and " |cFF88AADD(RenTracker)|r" or ""
+            local title = ClientTitle(q.questID)
+            if title and TitleLooksWrong(q.name, title) then
+              nSusp = nSusp + 1
+              print(string.format("  |cFFFF7733%s|r [%d] %s -> %s%s", L.CHECK_SUSPECT, q.questID, q.name, title, src))
+            elseif title then
+              nOK = nOK + 1
+              print(string.format("  |cFF44CC44%s|r [%d] %s -> %s%s", L.CHECK_OK, q.questID, q.name, title, src))
+            elseif loadResult[q.questID] == true then
+              nHidden = nHidden + 1
+              print(string.format("  |cFF88AADD%s|r [%d] %s%s", L.CHECK_HIDDEN, q.questID, q.name, src))
+            elseif loadResult[q.questID] == false then
+              nBad = nBad + 1
+              print(string.format("  |cFFFF5555%s|r [%d] %s%s", L.CHECK_INVALID, q.questID, q.name, src))
+            else
+              nWait = nWait + 1
+              print(string.format("  |cFFFFAA33%s|r [%d] %s%s", L.CHECK_NORESP, q.questID, q.name, src))
+            end
+          else
+            nManual = nManual + 1
+          end
         end
       end
     end
+    -- Pont de donnees RenTracker
+    if _G.RenTrackerData then
+      print(ACCENT_HEX.."== "..L.CHECK_BRIDGE.." ==|r")
+      print("  "..string.format(L.BRIDGE_IMPORT, bridge.imported))
+      if #bridge.diverge == 0 then
+        print("  |cFF44CC44"..L.CHECK_BRIDGE_OK.."|r")
+      else
+        for _, line in ipairs(bridge.diverge) do print("  |cFFFFAA33"..L.CHECK_DIVERGE.."|r "..line) end
+      end
+    end
+    print(ACCENT_HEX.."DailyTracker|r "..string.format(L.CHECK_SUMMARY, nOK, nHidden, nBad, nWait, nManual))
+    if nSusp > 0 then print(ACCENT_HEX.."DailyTracker|r "..string.format(L.CHECK_SUSPECT_SUM, nSusp)) end
   end
-  print("|cFFFFD700DailyTracker|r "..L.CHECK_DONE)
+
+  local function Poll()
+    tries = tries + 1
+    local pending = false
+    for id in pairs(ourIDs) do
+      if loadResult[id] == nil and not ClientTitle(id) then pending = true; break end
+    end
+    if pending and tries < 6 then C_Timer.After(1, Poll) else Report() end
+  end
+  C_Timer.After(1, Poll)
 end
 
 -- ================================================================
 -- SLASH
 -- ================================================================
+local function ToggleMain()
+  if not mainFrame then return end
+  if mainFrame:IsShown() then mainFrame:Hide(); DailyTrackerDB.open=false
+  else mainFrame:Show(); mainFrame:RefreshContent(); DailyTrackerDB.open=true end
+end
+
 SLASH_DAILYTRACKER1="/dt" ; SLASH_DAILYTRACKER2="/daily"
 SlashCmdList["DAILYTRACKER"]=function(msg)
   msg = (msg or ""):lower():gsub("^%s+",""):gsub("%s+$","")
   if msg=="check" or msg=="verify" then
     RunQuestIDCheck() ; return
   elseif msg=="help" then
-    print("|cFFFFD700DailyTracker|r "..L.HELP) ; return
+    print(ACCENT_HEX.."DailyTracker|r "..L.HELP) ; return
   elseif msg=="options" or msg=="config" then
     if DailyTracker_OpenOptions then DailyTracker_OpenOptions() end ; return
+  elseif msg=="todo" or msg=="list" or msg=="liste" then
+    ToggleTodo()
+    if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
+    return
+  elseif msg=="alts" then
+    if not mainFrame then return end
+    DailyTrackerDB.view = "alts"
+    mainFrame:Show(); DailyTrackerDB.open=true; mainFrame:RefreshContent()
+    return
   end
-  if not mainFrame then return end
-  if mainFrame:IsShown() then mainFrame:Hide(); DailyTrackerDB.open=false
-  else mainFrame:Show(); mainFrame:RefreshContent(); DailyTrackerDB.open=true end
+  ToggleMain()
 end
 
 -- ================================================================
--- REFRESH THROTTLE
+-- REFRESH THROTTLE (fenetre ouverte)
 -- ================================================================
 local _refreshPending=false
 local function RequestRefresh()
-  if not (mainFrame and mainFrame:IsShown() and mainFrame.RefreshContent) then return end
   if _refreshPending then return end
   _refreshPending=true
   C_Timer.After(0.3,function()
@@ -1549,27 +2274,45 @@ local function RequestRefresh()
     if mainFrame and mainFrame:IsShown() and mainFrame.RefreshContent then
       mainFrame:RefreshContent()
     end
+    if todoFrame and todoFrame:IsShown() then InvalidateCache(); RefreshTodo() end
   end)
 end
+
+-- API interne pour DailyTracker_Suite.lua (options, recherche)
+NS.DisplayName = DisplayName
+NS.RefreshAll = function()
+  InvalidateCache()
+  if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
+  RefreshTodo()
+  UpdateBadge()
+end
+NS.SetTodoShown = function(v)
+  SetTodoShown(v)
+  if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
+end
+NS.ApplyTodoLock = function() end   -- verrou lu a chaque glisser, rien a appliquer
+NS.CheckReminderNow = function() InvalidateCache(); CheckReminder(true) end
 
 -- ================================================================
 -- EVENEMENTS
 -- ================================================================
 local evFrame=CreateFrame("Frame")
 evFrame:RegisterEvent("ADDON_LOADED") ; evFrame:RegisterEvent("PLAYER_LOGIN")
+evFrame:RegisterEvent("PLAYER_LOGOUT")
 evFrame:RegisterEvent("QUEST_TURNED_IN") ; evFrame:RegisterEvent("QUEST_LOG_UPDATE")
 evFrame:RegisterEvent("MAJOR_FACTION_RENOWN_LEVEL_CHANGED") ; evFrame:RegisterEvent("UPDATE_FACTION")
-evFrame:RegisterEvent("ZONE_CHANGED") ; evFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-evFrame:RegisterEvent("ZONE_CHANGED_INDOORS")
+evFrame:RegisterEvent("QUEST_DATA_LOAD_RESULT")
 
-evFrame:SetScript("OnEvent",function(_,event,arg1)
+evFrame:SetScript("OnEvent",function(_,event,arg1,arg2)
   if event=="ADDON_LOADED" and arg1==ADDON then
     if not DailyTrackerDB.sections then DailyTrackerDB.sections={weekly=true,daily=true,onetime=false} end
     if not DailyTrackerDB.filter   then DailyTrackerDB.filter="all" end
     if not DailyTrackerDB.groups   then DailyTrackerDB.groups={principale=true,secondaire=true,pvp=false} end
     if DailyTrackerDB.hideCompleted==nil then DailyTrackerDB.hideCompleted=false end
     if type(DailyTrackerDB.manual)~="table" then DailyTrackerDB.manual={} end
-    PurgeExpiredManual()
+    if type(DailyTrackerDB.chars)~="table"  then DailyTrackerDB.chars={} end
+    if DailyTrackerDB.remindHours==nil then DailyTrackerDB.remindHours=12 end
+    if DailyTrackerData[DailyTrackerDB.extension or ""]==nil then DailyTrackerDB.extension=CURRENT_EXT end
 
     BuildUI() ; BuildMinimapButton()
     local p=DailyTrackerDB.pos
@@ -1578,24 +2321,62 @@ evFrame:SetScript("OnEvent",function(_,event,arg1)
       mainFrame:SetPoint(p.point or "CENTER",UIParent,p.point or "CENTER",p.x,p.y)
     else mainFrame:SetPoint("CENTER",UIParent,"CENTER",0,0) end
 
-    -- evolution 8 : on respecte l'etat ouvert/ferme memorise
-    if DailyTrackerDB.open then
-      mainFrame:Show() ; mainFrame:RefreshContent()
-    end
-
   elseif event=="ADDON_LOADED" and arg1=="TibiSuite" then
     if minimapBtn then minimapBtn:Hide() end
 
   elseif event=="PLAYER_LOGIN" then
-    C_Timer.After(2,function()
-      print(L.LOGIN_MSG)
-      if mainFrame and mainFrame:IsShown() and mainFrame.RefreshContent then mainFrame:RefreshContent() end
+    -- Le nom du perso n'est fiable qu'ici : migration, purge et etat ouvert.
+    InitCharacter()
+    MigrateManual()
+    PurgeExpiredManual()
+    BridgeRenTracker()
+    -- Titres des quetes dans la langue du client : demandes des maintenant.
+    IndexQuestIDs()
+    RequestTitles()
+    InvalidateCache()
+    Snapshot()
+    if DailyTrackerDB.open and mainFrame then
+      mainFrame:Show() ; mainFrame:RefreshContent()
+    end
+    if TodoDB().shown then SetTodoShown(true) end
+    C_Timer.After(3, function()
+      -- Message de connexion : en suite, on suit le reglage du core
+      -- (TibiSuiteDB.loginMsg : full / one / none) ; seul « full » fait
+      -- parler les modules. En autonome, message complet.
+      local mode = "full"
+      if HasCore() then mode = (TibiSuiteDB and TibiSuiteDB.loginMsg) or "one" end
+      InvalidateCache()
+      if mode=="full" then
+        print(string.format(L.LOGIN_MSG, VERSION))
+        local d, t = GetExtStats(CURRENT_EXT, "weekly")
+        if t - d > 0 then
+          print(ACCENT_HEX.."DailyTracker|r "..string.format(L.RECAP, t - d, FormatDuration(SecUntilWeeklyReset())))
+        end
+      end
+      RequestBackground()
     end)
+    -- Le badge d'onglet a besoin de la barre du core, construite apres coup.
+    C_Timer.After(8, function() if UpdateBadge then UpdateBadge() end end)
+    -- Filet de 5 min : rappel avant reset et passage du reset quotidien.
+    C_Timer.NewTicker(300, function() RequestBackground() end)
 
-  elseif event=="QUEST_TURNED_IN" or event=="QUEST_LOG_UPDATE"
-      or event=="MAJOR_FACTION_RENOWN_LEVEL_CHANGED" or event=="UPDATE_FACTION"
-      or event=="ZONE_CHANGED" or event=="ZONE_CHANGED_NEW_AREA" or event=="ZONE_CHANGED_INDOORS" then
+  elseif event=="PLAYER_LOGOUT" then
+    InvalidateCache()
+    Snapshot()
+
+  elseif event=="QUEST_DATA_LOAD_RESULT" then
+    -- arg1 = questID, 2e argument = succes. Seulement nos quetes.
+    if arg1 and ourIDs[arg1] then
+      loadResult[arg1] = arg2 and true or false
+      if mainFrame and mainFrame:IsShown() then RequestRefresh() end
+    end
+
+  elseif event=="QUEST_TURNED_IN" then
     RequestRefresh()
+    RequestBackground()
+
+  elseif event=="QUEST_LOG_UPDATE" or event=="MAJOR_FACTION_RENOWN_LEVEL_CHANGED" or event=="UPDATE_FACTION" then
+    if mainFrame and mainFrame:IsShown() then RequestRefresh() end
   end
 end)
 
@@ -1603,13 +2384,5 @@ end)
 -- TOGGLE PUBLIC -- appele par TibiSuite
 -- ================================================================
 function DailyTracker_Toggle()
-  if not mainFrame then return end
-  if mainFrame:IsShown() then
-    mainFrame:Hide()
-    DailyTrackerDB.open = false
-  else
-    mainFrame:Show()
-    mainFrame:RefreshContent()
-    DailyTrackerDB.open = true
-  end
+  ToggleMain()
 end

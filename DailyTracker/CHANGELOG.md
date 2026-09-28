@@ -1,5 +1,42 @@
 # Changelog
 
+## 7.1.5.34 (en préparation)
+Mise à jour 12.1 complète, en trois lots.
+
+**Données et fiabilité 12.1**
+- Forces de Zul'Jarra enfin suivies automatiquement : ID de faction 2772, carte de l'Île annelée, quêtes méta hebdo *Purging the Vaults* et *Turn Back the Surge* reconnues seules, repaire de Nymrissa, coffres de Gouffre, trésors, rares et objets de lore (valeurs alignées sur RenTracker).
+- Nouvelle faction : Capitaine Tokka (réputation amitié de pêche).
+- La quête de donjon hebdo, commune à plusieurs factions, se coche une fois et ne compte plus qu'une fois.
+- Les quêtes « au choix » (Pierres-Runes de Lune-d'Argent, Pactes des Fils Tranchés) comptent pour une seule activité : faire l'une valide les autres, la faction peut enfin atteindre 100 %.
+- Le suivi manuel est désormais propre à chaque personnage (avant, cocher sur un perso cochait pour tous). Les anciennes coches sont confiées au premier personnage connecté.
+- Point de passage natif de la carte quand TomTom n'est pas installé.
+- The War Within : les 8 questID d'origine étaient faux (2 inexistants, 6 pointant vers des quêtes sans rapport, qui cochaient ou décochaient les lignes au hasard). Troupe de théâtre, Éveil de la Machine et Spreading the Light utilisent maintenant les IDs vérifiés sur Wowhead ; Pactes, coffre Bountiful et Défense de Beledar repassent en suivi manuel.
+- Noms des quêtes Midnight alignés sur les titres du client français (« En haute estime », « Renforcement des pierres runiques », « Légendes oubliées »...). La recherche trouve aussi le titre affiché par le jeu.
+- Les quêtes suivies par questID s'affichent sous leur vrai titre, dans la langue du client (ex. « Nettoyage des caveaux », « Assaut de Fulgarion »).
+- `/dt check` fiable : il attend la réponse du serveur avant de conclure et distingue les IDs valides, les quêtes cachées (valides mais sans titre), les IDs introuvables et l'absence de réponse, avec un bilan chiffré. Il signale aussi un « titre suspect » quand le jeu renvoie une quête sans rapport avec la ligne (client français). Avant, un ID valide mais pas encore chargé apparaissait à tort « non résolu ».
+- Message de connexion aligné sur le réglage de la suite (complet / une ligne / aucun) ; version lue dans le .toc.
+- Couleur violette d'origine retirée, socle embarqué synchronisé en v12 (barres de défilement habillées).
+
+**Optimisation**
+- Cache de complétion et listes de factions triées une seule fois par extension.
+- Événements de zone inutiles retirés ; minuteur des resets actif seulement fenêtre ouverte.
+- Hauteur des conseils mesurée (et non plus estimée sur les octets, que les accents faussaient).
+- Un seul fichier habille la fenêtre (doublon retiré).
+
+**Synergie avec la suite**
+- Pont de données avec RenTracker : les IDs qui nous manquent sont complétés depuis ses données, et `/dt check` signale toute divergence.
+- Badge sur l'onglet Daily : nombre d'activités hebdo restantes.
+- La recherche globale ouvre directement la faction et défile jusqu'à la quête.
+
+**Nouveautés**
+- Vue Personnages (onglet ALTS, `/dt alts`) : progression hebdo et quotidienne de chaque perso, ce qu'il reste à faire en infobulle, détection d'un reset passé.
+- Liste « À faire » compacte à épingler à l'écran (onglet LISTE, `/dt todo`).
+- Renom réel (ou rang d'amitié) affiché sur chaque faction.
+- Nombre de quêtes du monde disponibles compté en direct par zone.
+- Rappel avant le reset hebdo s'il reste des activités (réglable, 0 = désactivé).
+- Interface en 10 langues (traductions hors FR/EN non relues par des natifs).
+- Nouveau fichier `Locales.lua` : redémarrage complet du client requis la première fois.
+
 ## 7.1.5.33
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir RepBar 7.1.5.33 pour le detail : mise a jour 12.1, barre native de nouveau masquee, panneau d'options unique, 10 langues, reputation par heure et temps restant, coffres de Parangon, recompense du prochain renom, factions epinglees et historique au clic).
 
