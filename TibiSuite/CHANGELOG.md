@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.34 (en préparation)
+- Socle d'interface v12 : les barres de défilement des panneaux d'options, du champ de recherche et de la fenêtre de recherche sont habillées au style de la suite (rail fin, curseur à la couleur d'accent du module, chevrons plats). Fini les flèches carrées grises de Blizzard. Le fonctionnement (molette, glisser, clics) reste celui du jeu.
+
 ## 7.1.5.33
 - Fenetre Quoi de neuf : notes de la version 7.1.5.33 (RepBar). Pour le reste, bump de version pour aligner le numero sur l'ensemble de la suite (voir RepBar 7.1.5.33 pour le detail : mise a jour 12.1, barre native de nouveau masquee, panneau d'options unique, 10 langues, reputation par heure et temps restant, coffres de Parangon, recompense du prochain renom, factions epinglees et historique au clic).
 

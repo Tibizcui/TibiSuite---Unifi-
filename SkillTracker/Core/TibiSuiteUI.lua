@@ -29,7 +29,7 @@
   le socle du core evolue (bump NS_VERSION cote core -> reporter ici).
 ============================================================================]]
 
-local NS_VERSION = 10
+local NS_VERSION = 12
 
 if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
   return
@@ -223,6 +223,88 @@ function UI.MakeButton(parent, w, h, text)
 end
 
 -- ============================================================================
+-- BARRE DE DEFILEMENT PLATE
+-- Habille la barre du modele Blizzard UIPanelScrollFrameTemplate (fleches
+-- grises carrees, texture de fond) sans toucher a son fonctionnement : la
+-- molette, le glisser et les clics restent geres par Blizzard. On masque
+-- seulement ses textures et on dessine par-dessus : rail fin, curseur a la
+-- couleur d'accent, chevrons traces avec deux traits (aucune texture externe).
+--   UI.SkinScrollBar(scrollFrame, accent)   -- accent {r,g,b} ou nil
+-- ============================================================================
+local function Chevron(btn, up)
+  local holder = {}
+  for i = 1, 2 do
+    local t = btn:CreateTexture(nil, "OVERLAY")
+    t:SetSize(6, 1.5)
+    t:SetColorTexture(1, 1, 1, 1)
+    local sign = (i == 1) and -1 or 1
+    t:SetPoint("CENTER", btn, "CENTER", sign * 2, 0)
+    -- « ^ » : trait gauche monte vers la droite (+45 deg), trait droit descend.
+    local rot = math.rad(45) * (i == 1 and 1 or -1) * (up and 1 or -1)
+    if t.SetRotation then t:SetRotation(rot) end
+    holder[i] = t
+  end
+  return holder
+end
+
+function UI.SkinScrollBar(scroll, accent)
+  if not scroll or scroll._tibiScrollSkinned then return end
+  local name = scroll.GetName and scroll:GetName()
+  local bar = scroll.ScrollBar or (name and _G[name .. "ScrollBar"])
+  if type(bar) ~= "table" or not bar.GetRegions then return end
+  scroll._tibiScrollSkinned = true
+  accent = accent or UI.C.GOLD
+
+  local thumb = (bar.GetThumbTexture and bar:GetThumbTexture()) or bar.ThumbTexture
+  -- Textures d'origine de la barre (fond, bords) : effacees.
+  for _, r in ipairs({ bar:GetRegions() }) do
+    if r ~= thumb and r.SetAlpha then r:SetAlpha(0) end
+  end
+
+  -- Rail fin
+  local rail = bar:CreateTexture(nil, "BACKGROUND")
+  rail:SetColorTexture(1, 1, 1, 0.06)
+  rail:SetWidth(4)
+  rail:SetPoint("TOP", bar, "TOP", 0, 0)
+  rail:SetPoint("BOTTOM", bar, "BOTTOM", 0, 0)
+
+  -- Curseur a la couleur d'accent
+  if thumb and thumb.SetColorTexture then
+    thumb:SetColorTexture(accent[1], accent[2], accent[3], 0.85)
+    thumb:SetWidth(4)
+    if thumb:GetHeight() < 16 then thumb:SetHeight(24) end
+  end
+
+  -- Fleches : on vide les textures du modele et on trace un chevron plat.
+  local function skinArrow(btn, up)
+    if type(btn) ~= "table" or not btn.GetRegions then return end
+    for _, r in ipairs({ btn:GetRegions() }) do if r.SetAlpha then r:SetAlpha(0) end end
+    local bg = btn:CreateTexture(nil, "BACKGROUND")
+    bg:SetPoint("TOPLEFT", 2, -2); bg:SetPoint("BOTTOMRIGHT", -2, 2)
+    bg:SetColorTexture(1, 1, 1, 0.05)
+    local lines = Chevron(btn, up)
+    local function paint(hover)
+      local on = (not btn.IsEnabled) or btn:IsEnabled()
+      local a = on and (hover and 1 or 0.75) or 0.20
+      for _, t in ipairs(lines) do
+        if hover and on then t:SetVertexColor(accent[1], accent[2], accent[3], a)
+        else t:SetVertexColor(0.90, 0.91, 0.94, a) end
+      end
+      bg:SetColorTexture(1, 1, 1, (hover and on) and 0.10 or 0.05)
+    end
+    paint(false)
+    btn:HookScript("OnEnter", function() paint(true) end)
+    btn:HookScript("OnLeave", function() paint(false) end)
+    btn:HookScript("OnEnable", function() paint(false) end)
+    btn:HookScript("OnDisable", function() paint(false) end)
+  end
+  local upBtn = bar.ScrollUpButton or (bar.GetName and bar:GetName() and _G[bar:GetName() .. "ScrollUpButton"])
+  local dnBtn = bar.ScrollDownButton or (bar.GetName and bar:GetName() and _G[bar:GetName() .. "ScrollDownButton"])
+  skinArrow(upBtn, true)
+  skinArrow(dnBtn, false)
+end
+
+-- ============================================================================
 -- BOUTON D'EN-TETE (roue, loupe, croix...) - plat, sans bordure
 -- ============================================================================
 function UI.HeaderIcon(parent, glyph, tooltip, onClick)
@@ -309,6 +391,7 @@ function UI.MakeSearchField(parent, cfg)
   local scroll = CreateFrame("ScrollFrame", nil, drop, "UIPanelScrollFrameTemplate")
   scroll:SetPoint("TOPLEFT", 4, -4)
   scroll:SetPoint("BOTTOMRIGHT", -24, 4)
+  UI.SkinScrollBar(scroll, cfg and cfg.accent)
   local content = CreateFrame("Frame", nil, scroll)
   content:SetSize(DW - 30, 10)
   scroll:SetScrollChild(content)
@@ -554,6 +637,7 @@ function UI.CreateOptionsPanel(cfg)
   local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
   scroll:SetPoint("TOPLEFT", 10, -42)
   scroll:SetPoint("BOTTOMRIGHT", -30, 12)
+  UI.SkinScrollBar(scroll, accent)
   local content = CreateFrame("Frame", nil, scroll)
   content:SetSize(280, 10)
   scroll:SetScrollChild(content)
@@ -583,6 +667,37 @@ function UI.CreateOptionsPanel(cfg)
     fs:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
     fs:SetWidth(260); fs:SetJustifyH("LEFT"); fs:SetText(text)
     advance((fs:GetStringHeight() or 12) + 10); fit(); return self
+  end
+
+  -- Champ texte en lecture seule mais SELECTIONNABLE (Ctrl+C) : un EditBox
+  -- qui réécrit son propre texte si l'utilisateur tente de le modifier.
+  -- Utile pour une URL ou un code a copier depuis un panneau d'options.
+  function panel:SelectableText(label, text)
+    if label then
+      local cap = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+      cap:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
+      cap:SetText(label)
+      advance(16)
+    end
+    local box = CreateFrame("EditBox", nil, content, "BackdropTemplate")
+    box:SetSize(258, 20)
+    box:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
+    box:SetBackdrop(UI.FlatBackdrop())
+    box:SetBackdropColor(0.02, 0.02, 0.03, 0.9)
+    box:SetBackdropBorderColor(1, 1, 1, 0.15)
+    box:SetAutoFocus(false)
+    box:SetFontObject("GameFontHighlightSmall")
+    box:SetTextInsets(6, 6, 0, 0)
+    box:SetText(text or "")
+    box:SetCursorPosition(0)
+    box:SetScript("OnEditFocusGained", function(s) s:HighlightText() end)
+    box:SetScript("OnEscapePressed", function(s) s:ClearFocus() end)
+    box:SetScript("OnEnterPressed", function(s) s:ClearFocus() end)
+    box:SetScript("OnTextChanged", function(s)
+      if s:GetText() ~= (text or "") then s:SetText(text or ""); s:HighlightText() end
+    end)
+    advance(28); fit()
+    return box
   end
 
   function panel:Check(label, getFn, setFn, tooltip)
@@ -692,6 +807,7 @@ function UI.CreateSearchPopup(cfg)
   local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
   scroll:SetPoint("TOPLEFT", 12, -78)
   scroll:SetPoint("BOTTOMRIGHT", -30, 12)
+  UI.SkinScrollBar(scroll, cfg.accent)
   local content = CreateFrame("Frame", nil, scroll)
   content:SetSize(300, 10)
   scroll:SetScrollChild(content)
