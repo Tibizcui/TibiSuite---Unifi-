@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.29
+- Nouveau : checklist hebdo automatique. Compteur "faites / suivies" sur chaque ligne de faction et dans l'en-tete des quetes hebdomadaires, total des hebdos restantes dans le recap. Les 4 Pierres-Runes de la Cour comptent pour une seule hebdo (les autres variantes s'affichent "autre choix fait").
+- Nouveau : estimation du temps restant. Rythme de gain moyen (jours joues des 7 derniers jours) et delai jusqu'au prochain rang, au Renom max ou au prochain coffre de Paragon. Reputations de Bataillon mesurees au niveau du compte, les autres par personnage. Estimation affichee apres 2 jours de jeu avec gain.
+
 ## 7.1.5.28
 - Nouveau : coffre de Paragon pret. Badge sur l'onglet Rep. (ou sur le bouton minimap en mode autonome), icone sur la ligne de la faction, mention sur la barre de reputation et alerte dans le chat (desactivable dans /rt config).
 - Nouveau : bouton Itineraire vers le quartier-maitre (factions Midnight), point de passage natif sans addon. Le clic sur une quete place aussi un point de passage natif si TomTom est absent.

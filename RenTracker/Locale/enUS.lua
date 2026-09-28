@@ -96,3 +96,22 @@ L["OPT_PARAGON_ALERT"]   = "Chat alert: Paragon cache ready"
 L["WAYPOINT_BTN"]        = "Waypoint"
 L["WAYPOINT_TIP"]        = "Set a waypoint to the quartermaster"
 L["WAYPOINT_SET"]        = "Waypoint: %s (%.1f, %.1f)"
+
+-- Checklist hebdo (7.1.5.29)
+L["WEEKLY_TIP"]          = "Weeklies done: %d / %d"
+L["WEEKLY_OTHER_CHOICE"] = "(other choice done)"
+L["WEEKLY_DONE_LABEL"]   = "done"
+L["WEEKLY_SHORT"]        = "Weekly:"
+L["WEEKLY_OK"]           = "done"
+
+-- Estimation du temps restant (7.1.5.29)
+L["ETA_LT_DAY"]     = "under 1 day"
+L["ETA_GT_YEAR"]    = "over 1 year"
+L["ETA_DAYS"]       = "~%d d"
+L["ETA_NEXT_CHEST"] = "Next cache"
+L["ETA_RENOWN"]     = "Renown %d"
+L["ETA_NEXT_RANK"]  = "Next rank"
+L["ETA_COLLECTING"] = "Estimate: collecting data (needs 2 play days with gains)"
+L["ETA_RATE"]       = "Pace ~"
+L["ETA_PER_DAY"]    = "rep/day"
+L["ETA_IN"]         = "in"

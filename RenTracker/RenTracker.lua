@@ -1,5 +1,5 @@
 -- ================================================================
--- RenTracker v7.1.5.28
+-- RenTracker v7.1.5.29
 -- Suivi des reputations | Toutes les extensions depuis vanilla
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
@@ -75,6 +75,194 @@ local function IsParagonRewardPending(factionID)
   local ok2, _, _, _, hasRewardPending, tooLowLevel =
     pcall(C_Reputation.GetFactionParagonInfo, factionID)
   return ok2 and hasRewardPending == true and not tooLowLevel
+end
+
+-- ================================================================
+-- RYTHME DE GAIN (estimation du temps restant)
+-- A chaque scan, on lit la valeur CUMULEE de chaque faction et on ajoute
+-- l'ecart avec la lecture precedente au gain du jour. Stockage :
+--   RenTrackerDB.repTrack[scope] = { last = {[id]={m=mode,v=valeur}},
+--                                    gains = {[id]={["AAAA-MM-JJ"]=n}} }
+-- scope = "*" pour une reputation de Bataillon (commune au compte : un
+-- reroll ne doit pas "gagner" ce que le main a fait), sinon "Nom-Royaume".
+-- mode : "std" (progression normale) ou "par" (cumul Paragon) ; un
+-- changement de mode repart d'une nouvelle base sans compter de gain.
+-- ================================================================
+local GAIN_KEEP_DAYS = 14
+local RATE_WINDOW    = 7
+
+local function DayKey(t) return date("%Y-%m-%d", t or time()) end
+
+local function CharKey()
+  local n, r = UnitName("player"), GetRealmName()
+  return (n or "?") .. "-" .. (r or "?")
+end
+
+local function RepScope(factionID)
+  if C_Reputation and C_Reputation.IsAccountWideReputation then
+    local ok, wide = pcall(C_Reputation.IsAccountWideReputation, factionID)
+    if ok and wide then return "*" end
+  end
+  return CharKey()
+end
+
+-- Valeur cumulee (monotone tant que le mode ne change pas) ou nil
+local function ReadCumulative(fac)
+  local id = fac.id
+  if not id then return nil end
+  if fac.friendship then
+    if C_GossipInfo and C_GossipInfo.GetFriendshipReputation then
+      local ok, fr = pcall(C_GossipInfo.GetFriendshipReputation, id)
+      if ok and fr and fr.friendshipFactionID and fr.friendshipFactionID ~= 0 and fr.standing then
+        return "std", fr.standing
+      end
+    end
+    return nil
+  end
+  -- Cumul Paragon (le total ne repart pas a zero a chaque coffre), lu
+  -- SEULEMENT une fois la faction au max, comme GetRenownData
+  local function ParagonTotal()
+    if C_Reputation and C_Reputation.IsFactionParagon and C_Reputation.GetFactionParagonInfo then
+      local ok, isPar = pcall(C_Reputation.IsFactionParagon, id)
+      if ok and isPar then
+        local ok2, pCur = pcall(C_Reputation.GetFactionParagonInfo, id)
+        if ok2 and pCur then return pCur end
+      end
+    end
+    return nil
+  end
+  if C_MajorFactions and C_MajorFactions.GetMajorFactionData then
+    local ok, d = pcall(C_MajorFactions.GetMajorFactionData, id)
+    if ok and d and d.renownLevel then
+      local atMax = false
+      if C_MajorFactions.HasMaximumRenown then
+        local ok2, m = pcall(C_MajorFactions.HasMaximumRenown, id)
+        atMax = ok2 and m or false
+      end
+      if atMax then
+        local p = ParagonTotal()
+        if p then return "par", p end
+        return nil  -- au max sans Paragon : plus rien a mesurer
+      end
+      local thr = d.renownLevelThreshold or 2500
+      return "std", d.renownLevel * thr + (d.renownReputationEarned or 0)
+    end
+  end
+  if C_Reputation and C_Reputation.GetFactionDataByID then
+    local ok, d = pcall(C_Reputation.GetFactionDataByID, id)
+    if ok and d and d.currentStanding then
+      if (d.reaction or 0) >= 8 then
+        local p = ParagonTotal()
+        if p then return "par", p end
+      end
+      return "std", d.currentStanding
+    end
+  end
+  return nil
+end
+
+local function GetTrackScope(scope)
+  RenTrackerDB.repTrack = RenTrackerDB.repTrack or {}
+  local t = RenTrackerDB.repTrack[scope]
+  if not t then
+    t = { last = {}, gains = {} }
+    RenTrackerDB.repTrack[scope] = t
+  end
+  return t
+end
+
+-- Echantillonne toutes les factions connues (appele par le scan differe)
+local function SampleReputationGains()
+  if not (RenTrackerData and RenTrackerDB) then return end
+  local today = DayKey()
+  local oldest = DayKey(time() - GAIN_KEEP_DAYS * 86400)
+  local seen = {}
+  for _, ext in pairs(RenTrackerData) do
+    if type(ext) == "table" and ext.factions then
+      for _, fac in ipairs(ext.factions) do
+        local id = fac.id
+        if id and not seen[id] then
+          seen[id] = true
+          local mode, value = ReadCumulative(fac)
+          if mode then
+            local t = GetTrackScope(RepScope(id))
+            local last = t.last[id]
+            if last and last.m == mode and value > last.v then
+              t.gains[id] = t.gains[id] or {}
+              local g = t.gains[id]
+              g[today] = (g[today] or 0) + (value - last.v)
+              -- Purge des jours trop anciens (cles AAAA-MM-JJ : ordre lexical = chronologique)
+              for day in pairs(g) do
+                if day < oldest then g[day] = nil end
+              end
+            end
+            t.last[id] = { m = mode, v = value }
+          end
+        end
+      end
+    end
+  end
+end
+
+-- Rythme moyen par JOUR ACTIF sur les RATE_WINDOW derniers jours.
+-- Retourne rate, activeDays (rate = nil si aucun gain dans la fenetre).
+local function GetGainRate(factionID)
+  if not (factionID and RenTrackerDB and RenTrackerDB.repTrack) then return nil, 0 end
+  local t = RenTrackerDB.repTrack[RepScope(factionID)]
+  local g = t and t.gains and t.gains[factionID]
+  if not g then return nil, 0 end
+  local since = DayKey(time() - (RATE_WINDOW - 1) * 86400)
+  local sum, days = 0, 0
+  for day, n in pairs(g) do
+    if day >= since and n > 0 then
+      sum = sum + n
+      days = days + 1
+    end
+  end
+  if days == 0 then return nil, 0 end
+  return sum / days, days
+end
+
+-- ================================================================
+-- CHECKLIST HEBDO
+-- Seules les hebdos avec un questID sont comptees (le jeu remet lui-meme
+-- le drapeau a zero au reset hebdo). Une "unite" = une quete, ou un groupe
+-- de quetes exclusives (champ group, ex. les 4 Pierres-Runes de la Cour) :
+-- le groupe est fait des qu'une de ses quetes l'est.
+-- ================================================================
+local function IsQuestDone(qid)
+  if not qid then return false end
+  if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
+    return C_QuestLog.IsQuestFlaggedCompleted(qid) and true or false
+  end
+  return IsQuestFlaggedCompleted and IsQuestFlaggedCompleted(qid) and true or false
+end
+
+-- Ajoute les unites hebdo de fac dans units[cle] = true/false (fait ?).
+-- La cle (group ou questID) dedoublonne les quetes partagees entre
+-- factions (ex. "Aider l'Accord" de Dragonflight, presente 4 fois).
+local function CollectWeeklyUnits(fac, units)
+  for _, q in ipairs(fac.quests or {}) do
+    if q.type == "weekly" and q.questID then
+      local key = q.group or q.questID
+      units[key] = units[key] or IsQuestDone(q.questID)
+    end
+  end
+  return units
+end
+
+-- Retourne done, total, groupDone (table group -> true) pour une faction
+local function GetWeeklyStatus(fac)
+  local units = CollectWeeklyUnits(fac, {})
+  local done, total, groupDone = 0, 0, {}
+  for key, isDone in pairs(units) do
+    total = total + 1
+    if isDone then
+      done = done + 1
+      if type(key) == "string" then groupDone[key] = true end
+    end
+  end
+  return done, total, groupDone
 end
 
 -- ================================================================
@@ -656,6 +844,66 @@ local function GetExtRepCounts(extKey)
   return done, total
 end
 
+-- ================================================================
+-- TEXTE D'ESTIMATION (ligne sous la barre de reputation)
+-- ================================================================
+local function FormatRep(n)
+  n = math.floor(n + 0.5)
+  if BreakUpLargeNumbers then return BreakUpLargeNumbers(n) end
+  return tostring(n)
+end
+
+local function FormatDays(d)
+  if d < 1 then return T("ETA_LT_DAY", "moins d'1 j") end
+  if d > 365 then return T("ETA_GT_YEAR", "plus d'1 an") end
+  return string.format(T("ETA_DAYS", "~%d j"), math.ceil(d))
+end
+
+-- Retourne le texte a afficher, ou nil s'il n'y a rien a estimer
+local function BuildEtaText(fac, rd)
+  if not (fac and fac.id and rd and rd.found) then return nil end
+  local chest = T("ETA_NEXT_CHEST", "Prochain coffre")
+  local targets = {}  -- { {libelle, rep restante}, ... }
+  if rd.system == "renown" then
+    if rd.liveParagon then
+      targets[1] = { chest, rd.max - rd.cur }
+    elseif rd.rank < rd.cap then
+      local toNext = rd.max - rd.cur
+      targets[1] = { string.format(T("ETA_RENOWN", "Renom %d"), rd.rank + 1), toNext }
+      if rd.rank + 1 < rd.cap then
+        targets[2] = { string.format(T("ETA_RENOWN", "Renom %d"), rd.cap),
+                       toNext + (rd.cap - rd.rank - 1) * rd.max }
+      end
+    end
+  elseif rd.system == "classic" then
+    if rd.liveParagon then
+      targets[1] = { chest, rd.max - rd.cur }
+    elseif not rd.exalted then
+      local nxt = CLASSIC_LEVELS[(rd.reaction or 3) + 1]
+      targets[1] = { nxt and nxt.name or "?", rd.max - rd.cur }
+    end
+  elseif rd.system == "friendship" then
+    if not rd.capped then
+      targets[1] = { T("ETA_NEXT_RANK", "Rang suivant"), rd.max - rd.cur }
+    end
+  end
+  if #targets == 0 then return nil end
+
+  local rate, days = GetGainRate(fac.id)
+  if not rate or days < 2 then
+    return "|cFF888888" .. T("ETA_COLLECTING", "Estimation : collecte en cours (2 jours de jeu avec gain nécessaires)") .. "|r"
+  end
+  local parts = { string.format("|cFF888888" .. T("ETA_RATE", "Rythme ~") .. "|r |cFFFFFFFF%s|r |cFF888888" ..
+    T("ETA_PER_DAY", "rep/jour") .. "|r", FormatRep(rate)) }
+  for _, tg in ipairs(targets) do
+    if tg[2] > 0 then
+      parts[#parts + 1] = string.format("|cFFCCBB88%s|r |cFF888888%s|r |cFF99CCFF%s|r",
+        tg[1], T("ETA_IN", "dans"), FormatDays(tg[2] / rate))
+    end
+  end
+  return table.concat(parts, "  |cFF555555-|r  ")
+end
+
 local function BuildUI()
 
   -- ================================================================
@@ -1118,9 +1366,14 @@ local function BuildUI()
     row.mbarFill:SetPoint("LEFT", row.mbarBg, "LEFT", 0, 0)
     row.mbarFill:SetHeight(5)
     row.mbarFill:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+    -- Compteur hebdo "2/3" (cache si la faction n'a aucune hebdo suivie)
+    row.weeklyFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.weeklyFS:SetPoint("RIGHT", row.mbarBg, "LEFT", -4, 0)
+    row.weeklyFS:SetWidth(26)
+    row.weeklyFS:SetJustifyH("RIGHT")
+    row.weeklyFS:Hide()
     -- Icone "coffre de Paragon pret" (cachee par defaut)
     row.chest = row:CreateTexture(nil, "OVERLAY")
-    row.chest:SetPoint("RIGHT", row.mbarBg, "LEFT", -3, 0)
     row.chest:SetSize(13, 13)
     if row.chest.SetAtlas then row.chest:SetAtlas("ParagonReputation_Bag") end
     row.chest:Hide()
@@ -1218,8 +1471,23 @@ local function BuildUI()
 
           row.dot:SetVertexColor(col.r, col.g, col.b, 0.9)
 
-          -- Le nom laisse la place a l'icone de coffre quand elle est visible
-          row.nameFS:SetPoint("RIGHT", row, "RIGHT", chestReady and -120 or -105, 0)
+          -- Compteur hebdo, puis icone de coffre a sa gauche ; le nom
+          -- laisse la place a ce qui est visible
+          local wDone, wTotal = GetWeeklyStatus(fac)
+          local hasWeekly = wTotal > 0
+          if hasWeekly then
+            row.weeklyFS:SetText(string.format(wDone >= wTotal and "|cFF44CC44%d/%d|r" or "|cFF4D99FF%d/%d|r",
+              wDone, wTotal))
+          end
+          row.weeklyFS:SetShown(hasWeekly)
+          row.chest:ClearAllPoints()
+          if hasWeekly then
+            row.chest:SetPoint("RIGHT", row.weeklyFS, "LEFT", -3, 0)
+          else
+            row.chest:SetPoint("RIGHT", row.mbarBg, "LEFT", -3, 0)
+          end
+          row.nameFS:SetPoint("RIGHT", row, "RIGHT",
+            -105 - (hasWeekly and 30 or 0) - (chestReady and 15 or 0), 0)
           local nameCol = isSel
             and string.format("|cFF%02X%02X%02X", r8, g8, b8)
             or  string.format("|cFF%02X%02X%02X",
@@ -1255,6 +1523,10 @@ local function BuildUI()
             GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
             GameTooltip:AddLine(facRef.name, col.r, col.g, col.b)
             GameTooltip:AddLine(T("ZONE_LABEL", "Zone :") .. " "..facRef.zone, 0.8, 0.8, 0.8)
+            if hasWeekly then
+              GameTooltip:AddLine(string.format(T("WEEKLY_TIP", "Hebdos faites : %d / %d"), wDone, wTotal),
+                0.30, 0.60, 1.00)
+            end
             if chestReady then
               GameTooltip:AddLine(T("PARAGON_READY", "Coffre de Paragon à récupérer !"), 1.0, 0.85, 0.10)
             end
@@ -1314,6 +1586,12 @@ local function BuildUI()
 
   mainFrame.barText = barBg:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   mainFrame.barText:SetPoint("CENTER", barBg, "CENTER")
+
+  -- Ligne d'estimation du temps restant (sous la barre, cachee si rien a estimer)
+  mainFrame.etaLine = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  mainFrame.etaLine:SetHeight(14)
+  mainFrame.etaLine:SetJustifyH("LEFT")
+  mainFrame.etaLine:SetWordWrap(false)
 
   -- ================================================================
   -- ZONE INFO FACTION (PNJ Quartier-maître)
@@ -1499,6 +1777,22 @@ local function BuildUI()
           summary = summary .. string.format("   |cFF888888" .. T("ACHIEV_LABEL", "HF :") .. "|r |cFFFFD700%d|r|cFF666666/%d|r", aDone, aTot)
         end
       end
+      -- Hebdos restantes sur l'extension affichee (dedoublonnees entre factions)
+      local units = {}
+      for _, f in ipairs(GetActiveFactions()) do CollectWeeklyUnits(f, units) end
+      local wLeft, wAll = 0, 0
+      for _, isDone in pairs(units) do
+        wAll = wAll + 1
+        if not isDone then wLeft = wLeft + 1 end
+      end
+      if wAll > 0 then
+        -- Format court : la ligne partage la largeur avec le nom de l'extension
+        if wLeft == 0 then
+          summary = summary .. "   |cFF888888" .. T("WEEKLY_SHORT", "Hebdo :") .. "|r |cFF44CC44" .. T("WEEKLY_OK", "ok") .. "|r"
+        else
+          summary = summary .. string.format("   |cFF888888" .. T("WEEKLY_SHORT", "Hebdo :") .. "|r |cFF4D99FF%d|r", wLeft)
+        end
+      end
       self.globalSummary:SetText(summary)
     end
 
@@ -1534,6 +1828,7 @@ local function BuildUI()
       self.barText:SetText("")
       if self.barFill then self.barFill:SetWidth(3) end
       self._qmBtn:Hide()
+      self.etaLine:Hide()
       return
     end
 
@@ -1551,7 +1846,19 @@ local function BuildUI()
     self._barBg:SetPoint("TOPLEFT",  CX,  barY2)
     self._barBg:SetPoint("TOPRIGHT", -14, barY2)
 
-    local infoY = barY2 - 34
+    -- Données réputation (lues ici : la ligne d'estimation en depend)
+    local rd  = GetRenownData(fac.id, fac)
+
+    -- Estimation du temps restant : 16 px de plus seulement si affichee
+    local etaText = BuildEtaText(fac, rd)
+    local etaH = etaText and 16 or 0
+    self.etaLine:ClearAllPoints()
+    self.etaLine:SetPoint("TOPLEFT",  CX,  barY2 - 30)
+    self.etaLine:SetPoint("TOPRIGHT", -14, barY2 - 30)
+    self.etaLine:SetText(etaText or "")
+    self.etaLine:SetShown(etaText ~= nil)
+
+    local infoY = barY2 - 34 - etaH
     self.infoLine1:ClearAllPoints()
     self.infoLine1:SetPoint("TOPLEFT",  CX,  infoY)
     self.infoLine1:SetPoint("TOPRIGHT", -14, infoY)
@@ -1587,8 +1894,6 @@ local function BuildUI()
     self.scrollBg:SetPoint("TOPLEFT",  CX,  questY - 38)
     self.scrollBg:SetPoint("TOPRIGHT", -14, questY - 38)
 
-    -- Données réputation
-    local rd  = GetRenownData(fac.id, fac)
     local col = rd.color
 
     -- Barre de réputation
@@ -1688,13 +1993,8 @@ local function BuildUI()
     local y     = 0
     local contentHeight = 0
 
-    local function IsQuestDone(qid)
-      if not qid then return false end
-      if C_QuestLog and C_QuestLog.IsQuestFlaggedCompleted then
-        return C_QuestLog.IsQuestFlaggedCompleted(qid)
-      end
-      return IsQuestFlaggedCompleted and IsQuestFlaggedCompleted(qid) or false
-    end
+    -- Etat hebdo de la faction (IsQuestDone est defini en tete de fichier)
+    local wDone, wTotal, groupDone = GetWeeklyStatus(fac)
 
     local TYPE_COLORS = {
       weekly  = {r=0.30, g=0.60, b=1.00},
@@ -1712,6 +2012,10 @@ local function BuildUI()
       local tc      = TYPE_COLORS[quest.type] or {r=1,g=1,b=1}
       local tlbl    = TYPE_LABELS[quest.type] or ""
       local done    = IsQuestDone(quest.questID)
+      -- Quete d'un groupe exclusif dont une autre variante est deja faite
+      -- cette semaine : affichee grisee comme faite, avec une mention
+      local altDone = (not done) and quest.group and groupDone[quest.group] or false
+      if altDone then done = true end
       local nameCol = done and "|cFF888888" or "|cFFEEEEEE"
 
       -- Hauteur dynamique : chaque élément a son espace propre
@@ -1739,7 +2043,9 @@ local function BuildUI()
         row:SetBackdropBorderColor(tc.r*0.4, tc.g*0.4, tc.b*0.4, 0.6)
       end
 
-      if done then
+      if altDone then
+        row.typeTag:SetText("|cFF555555"..tlbl.." " .. T("WEEKLY_OTHER_CHOICE", "(autre choix fait)") .. "|r")
+      elseif done then
         row.typeTag:SetText("|cFF555555"..tlbl.." v|r")
       else
         row.typeTag:SetText(string.format("|cFF%02X%02X%02X%s|r",
@@ -1879,9 +2185,15 @@ local function BuildUI()
         header:SetBackdropColor(tc.r*0.15, tc.g*0.15, tc.b*0.15, 0.95)
         header:SetBackdropBorderColor(tc.r*0.5, tc.g*0.5, tc.b*0.5, 0.7)
         header.arrow:SetText(isOpen and "|cFFFFD700-|r" or "|cFF888888+|r")
-        header.hTxt:SetText(string.format("|cFF%02X%02X%02X%s|r  |cFF888888(%d)|r",
+        local hLabel = string.format("|cFF%02X%02X%02X%s|r  |cFF888888(%d)|r",
           math.floor(tc.r*255), math.floor(tc.g*255), math.floor(tc.b*255),
-          grp.label, #grp.quests))
+          grp.label, #grp.quests)
+        -- Hebdos : ajouter l'avancement "faites / suivies"
+        if grp.key == "weekly" and wTotal > 0 then
+          hLabel = hLabel .. string.format(wDone >= wTotal and "   |cFF44CC44%s %d/%d|r" or "   |cFF4D99FF%s %d/%d|r",
+            T("WEEKLY_DONE_LABEL", "faites"), wDone, wTotal)
+        end
+        header.hTxt:SetText(hLabel)
 
         -- Lignes construites seulement si le groupe est ouvert (un groupe
         -- replie n'occupe que la hauteur de son en-tete)
@@ -1927,7 +2239,7 @@ local function BuildUI()
                  + 5 + TAB_H_LOCAL
                  + 20
     -- questY dynamique : baseY - 18 (repHeader) - 18 (barY2) - 34 (infoY) - 52
-    local questYabs     = math.abs(baseY) + 18 + 18 + 34 + 52
+    local questYabs     = math.abs(baseY) + 18 + 18 + 34 + etaH + 52
     local contentNeeded = questYabs + 38 + questH + 20
     local newH = math.max(colH, contentNeeded, 450)
     -- Ajuste la hauteur max a l'ecran disponible (evite de deborder haut/bas)
@@ -2311,6 +2623,7 @@ local function ScheduleParagonScan(delay)
   C_Timer.After(delay or 1, function()
     paragonScanPending = false
     ScanParagonRewards()
+    pcall(SampleReputationGains)  -- rythme de gain (estimation du temps restant)
     ScheduleRefresh()
   end)
 end
@@ -2358,7 +2671,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- zone) si la connexion est deja effective. Aucun impact sur les donnees.
     if IsLoggedIn() then
       if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-        print("|cFF4D99FFRenTracker|r v7.1.5.28 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+        print("|cFF4D99FFRenTracker|r v7.1.5.29 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
       ScheduleParagonScan(3)
@@ -2366,7 +2679,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
 
   elseif event == "PLAYER_LOGIN" then
     if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-      print("|cFF4D99FFRenTracker|r v7.1.5.28 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFRenTracker|r v7.1.5.29 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)
