@@ -1,5 +1,5 @@
 -- ================================================================
--- RenTracker v7.1.5.27
+-- RenTracker v7.1.5.28
 -- Suivi des reputations | Toutes les extensions depuis vanilla
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
@@ -30,6 +30,87 @@ local function ScheduleRefresh()
       mainFrame:RefreshContent()
     end
   end)
+end
+
+-- ================================================================
+-- POOL DE FRAMES
+-- WoW ne detruit jamais une frame : recreer les lignes a chaque
+-- rafraichissement faisait grossir la memoire toute la session. Le pool
+-- garde les frames deja creees et les reutilise ; ReleaseAll se contente
+-- de les cacher et de remettre le compteur a zero.
+-- ================================================================
+local function NewPool(createFn)
+  return { items = {}, used = 0, create = createFn }
+end
+local function PoolAcquire(pool)
+  pool.used = pool.used + 1
+  local f = pool.items[pool.used]
+  if not f then
+    f = pool.create()
+    pool.items[pool.used] = f
+  end
+  f:ClearAllPoints()
+  f:Show()
+  return f
+end
+local function PoolReleaseAll(pool)
+  for i = 1, #pool.items do pool.items[i]:Hide() end
+  pool.used = 0
+end
+
+-- ================================================================
+-- COFFRES DE PARAGON EN ATTENTE
+-- paragonPending[factionID] = true quand un coffre attend d'etre recupere.
+-- Rempli par ScanParagonRewards (plus bas), lu par l'affichage des lignes.
+-- ================================================================
+local paragonPending = {}
+
+local function IsParagonRewardPending(factionID)
+  if not (factionID and C_Reputation and C_Reputation.IsFactionParagon
+          and C_Reputation.GetFactionParagonInfo) then
+    return false
+  end
+  local ok, isPar = pcall(C_Reputation.IsFactionParagon, factionID)
+  if not ok or not isPar then return false end
+  local ok2, _, _, _, hasRewardPending, tooLowLevel =
+    pcall(C_Reputation.GetFactionParagonInfo, factionID)
+  return ok2 and hasRewardPending == true and not tooLowLevel
+end
+
+-- ================================================================
+-- POINT DE PASSAGE (quartier-maitre, quetes)
+-- TomTom s'il est installe, sinon le point de passage natif de la carte
+-- (C_Map.SetUserWaypoint + suivi C_SuperTrack) : aucun addon requis.
+-- ================================================================
+local function ParseCoords(s)
+  local x, y = (s or ""):match("([%d%.]+)%s*,%s*([%d%.]+)")
+  return tonumber(x), tonumber(y)
+end
+
+local function PlaceWaypoint(mapID, coords, title)
+  local x, y = ParseCoords(coords)
+  if not (mapID and x and y) then return false end
+  if TomTom and TomTom.AddWaypoint then
+    TomTom:AddWaypoint(mapID, x/100, y/100, { title = title, persistent = false })
+    return true
+  end
+  if not (C_Map and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates) then
+    return false
+  end
+  if C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID) then
+    return false
+  end
+  local ok = pcall(function()
+    C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(mapID, x/100, y/100))
+    if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
+      C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+    end
+  end)
+  if ok then
+    print(string.format("|cFF4D99FFRenTracker|r " .. T("WAYPOINT_SET", "Point de passage : %s (%.1f, %.1f)"),
+      title or "", x, y))
+  end
+  return ok
 end
 
 -- ================================================================
@@ -145,7 +226,7 @@ RenTrackerDB = RenTrackerDB or {
 
 -- Normalise la DB : garantit que les sous-tables et options existent
 -- meme pour les profils sauvegardes avant l'ajout de ces champs.
-local OPTION_DEFAULTS = { autoTrack=true, loginMsg=true, sound=false }
+local OPTION_DEFAULTS = { autoTrack=true, loginMsg=true, sound=false, paragonAlert=true }
 local function EnsureDB()
   RenTrackerDB.renown   = RenTrackerDB.renown   or {}
   RenTrackerDB.sections = RenTrackerDB.sections or {weekly=false, onetime=false, daily=false}
@@ -987,8 +1068,76 @@ local function BuildUI()
     end
   end
 
-  -- Conteneur de tous les widgets de groupes (pour pouvoir les effacer)
-  mainFrame.groupFrames = {}
+  -- Pools des widgets de groupes (reutilises a chaque rafraichissement)
+  local groupHeaderPool = NewPool(function()
+    local gh = CreateFrame("Button", nil, mainFrame, "BackdropTemplate")
+    gh:SetHeight(GH_H)
+    gh:SetBackdrop({
+      bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+      edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+      tile=true, tileSize=8, edgeSize=6,
+      insets={left=2,right=2,top=2,bottom=2},
+    })
+    gh.arrow = gh:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    gh.arrow:SetPoint("LEFT", gh, "LEFT", 6, 0)
+    gh.label = gh:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    gh.label:SetPoint("LEFT", gh, "LEFT", 18, 0)
+    gh.badge = gh:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    gh.badge:SetPoint("RIGHT", gh, "RIGHT", -6, 0)
+    return gh
+  end)
+
+  local MBAR_W = 56
+  local facRowPool = NewPool(function()
+    local row = CreateFrame("Button", nil, mainFrame, "BackdropTemplate")
+    row:SetHeight(ROW_H)
+    row:SetBackdrop({
+      bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+      edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+      tile=true, tileSize=8, edgeSize=5,
+      insets={left=1,right=1,top=1,bottom=1},
+    })
+    -- Dot coloré catégorie
+    row.dot = row:CreateTexture(nil, "OVERLAY")
+    row.dot:SetPoint("LEFT", row, "LEFT", 5, 0)
+    row.dot:SetSize(5, 5)
+    row.dot:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+    -- Nom de la faction
+    row.nameFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.nameFS:SetPoint("LEFT", row, "LEFT", 14, 0)
+    row.nameFS:SetHeight(ROW_H)
+    row.nameFS:SetJustifyH("LEFT")
+    row.nameFS:SetWordWrap(false)
+    -- Mini-barre de progression
+    row.mbarBg = row:CreateTexture(nil, "ARTWORK")
+    row.mbarBg:SetPoint("RIGHT", row, "RIGHT", -44, 0)
+    row.mbarBg:SetSize(MBAR_W, 5)
+    row.mbarBg:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+    row.mbarBg:SetVertexColor(0.08, 0.06, 0.12, 0.9)
+    row.mbarFill = row:CreateTexture(nil, "OVERLAY")
+    row.mbarFill:SetPoint("LEFT", row.mbarBg, "LEFT", 0, 0)
+    row.mbarFill:SetHeight(5)
+    row.mbarFill:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+    -- Icone "coffre de Paragon pret" (cachee par defaut)
+    row.chest = row:CreateTexture(nil, "OVERLAY")
+    row.chest:SetPoint("RIGHT", row.mbarBg, "LEFT", -3, 0)
+    row.chest:SetSize(13, 13)
+    if row.chest.SetAtlas then row.chest:SetAtlas("ParagonReputation_Bag") end
+    row.chest:Hide()
+    -- Label de niveau
+    row.lvlFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.lvlFS:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+    row.lvlFS:SetWidth(38)
+    row.lvlFS:SetJustifyH("RIGHT")
+    row.lvlFS:SetHeight(ROW_H)
+    return row
+  end)
+
+  -- Séparateur sous les groupes (unique, repositionne a chaque passe)
+  local sepGroups = mainFrame:CreateTexture(nil, "ARTWORK")
+  sepGroups:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+  sepGroups:SetHeight(1)
+  sepGroups:SetVertexColor(0.72, 0.60, 0.28, 0.9)
 
   -- Sélection courante : {cat, name}
   local function GetSelectedFac()
@@ -1001,12 +1150,11 @@ local function BuildUI()
   end
 
   -- ================================================================
-  -- RebuildGroups : recrée tous les groupes depuis zéro
+  -- RebuildGroups : repeint tous les groupes (widgets pris dans les pools)
   -- ================================================================
   local function RebuildGroups()
-    -- Cacher et supprimer les anciens widgets
-    for _, f in ipairs(mainFrame.groupFrames) do f:Hide() end
-    mainFrame.groupFrames = {}
+    PoolReleaseAll(groupHeaderPool)
+    PoolReleaseAll(facRowPool)
 
     if not RenTrackerDB.groups then
       RenTrackerDB.groups = {principale=true, secondaire=true, pvp=false}
@@ -1028,35 +1176,14 @@ local function BuildUI()
       local b8  = math.floor(col.b*255)
 
       -- === HEADER DU GROUPE ===
-      local gh = CreateFrame("Button", nil, mainFrame, "BackdropTemplate")
+      local gh = PoolAcquire(groupHeaderPool)
       gh:SetPoint("TOPLEFT",  CX,   curY)
       gh:SetPoint("TOPRIGHT", -14,  curY)
-      gh:SetHeight(GH_H)
-      gh:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile=true, tileSize=8, edgeSize=6,
-        insets={left=2,right=2,top=2,bottom=2},
-      })
       gh:SetBackdropColor(col.r*0.18, col.g*0.18, col.b*0.18, 1.0)
       gh:SetBackdropBorderColor(col.r*0.55, col.g*0.55, col.b*0.55, 0.9)
-      table.insert(mainFrame.groupFrames, gh)
-
-      -- Flèche
-      local arrow = gh:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-      arrow:SetPoint("LEFT", gh, "LEFT", 6, 0)
-      arrow:SetText(isOpen and "|cFF888888-|r" or "|cFF888888+|r")
-      gh.arrow = arrow
-
-      -- Label catégorie
-      local ghLabel = gh:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-      ghLabel:SetPoint("LEFT", gh, "LEFT", 18, 0)
-      ghLabel:SetText(string.format("|cFF%02X%02X%02X%s|r", r8, g8, b8, cd.label))
-
-      -- Badge compteur
-      local ghBadge = gh:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-      ghBadge:SetPoint("RIGHT", gh, "RIGHT", -6, 0)
-      ghBadge:SetText(string.format("|cFF%02X%02X%02X%d|r", r8, g8, b8, nbFac))
+      gh.arrow:SetText(isOpen and "|cFF888888-|r" or "|cFF888888+|r")
+      gh.label:SetText(string.format("|cFF%02X%02X%02X%s|r", r8, g8, b8, cd.label))
+      gh.badge:SetText(string.format("|cFF%02X%02X%02X%d|r", r8, g8, b8, nbFac))
 
       gh:SetScript("OnClick", function()
         RenTrackerDB.groups[cat] = not RenTrackerDB.groups[cat]
@@ -1076,17 +1203,11 @@ local function BuildUI()
         for _, fac in ipairs(factions) do
           local isSel = (selCat == cat and selName == fac.name)
           local pct, lvlLbl, lr, lg, lb = GetMiniBarData(fac)
+          local chestReady = (fac.id and paragonPending[fac.id]) and true or false
 
-          local row = CreateFrame("Button", nil, mainFrame, "BackdropTemplate")
+          local row = PoolAcquire(facRowPool)
           row:SetPoint("TOPLEFT",  CX,  curY)
           row:SetPoint("TOPRIGHT", -14, curY)
-          row:SetHeight(ROW_H)
-          row:SetBackdrop({
-            bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-            tile=true, tileSize=8, edgeSize=5,
-            insets={left=1,right=1,top=1,bottom=1},
-          })
           if isSel then
             row:SetBackdropColor(col.r*0.28, col.g*0.28, col.b*0.28, 1.0)
             row:SetBackdropBorderColor(col.r, col.g, col.b, 1.0)
@@ -1094,60 +1215,31 @@ local function BuildUI()
             row:SetBackdropColor(col.r*0.06, col.g*0.06, col.b*0.06, 0.95)
             row:SetBackdropBorderColor(col.r*0.20, col.g*0.20, col.b*0.20, 0.7)
           end
-          table.insert(mainFrame.groupFrames, row)
 
-          -- Dot coloré catégorie
-          local dot = row:CreateTexture(nil, "OVERLAY")
-          dot:SetPoint("LEFT", row, "LEFT", 5, 0)
-          dot:SetSize(5, 5)
-          dot:SetTexture("Interface\\BUTTONS\\WHITE8X8")
-          dot:SetVertexColor(col.r, col.g, col.b, 0.9)
+          row.dot:SetVertexColor(col.r, col.g, col.b, 0.9)
 
-          -- Nom de la faction
-          local nameFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-          nameFS:SetPoint("LEFT",  row, "LEFT",  14, 0)
-          nameFS:SetPoint("RIGHT", row, "RIGHT", -105, 0)
-          nameFS:SetHeight(ROW_H)
-          nameFS:SetJustifyH("LEFT")
-          nameFS:SetWordWrap(false)
+          -- Le nom laisse la place a l'icone de coffre quand elle est visible
+          row.nameFS:SetPoint("RIGHT", row, "RIGHT", chestReady and -120 or -105, 0)
           local nameCol = isSel
             and string.format("|cFF%02X%02X%02X", r8, g8, b8)
             or  string.format("|cFF%02X%02X%02X",
                   math.floor(col.r*0.72*255),
                   math.floor(col.g*0.72*255),
                   math.floor(col.b*0.72*255))
-          nameFS:SetText(nameCol..fac.name.."|r")
+          row.nameFS:SetText(nameCol..fac.name.."|r")
 
-          -- Mini-barre de progression
-          local MBAR_W = 56
-          local mbarBg = row:CreateTexture(nil, "ARTWORK")
-          mbarBg:SetPoint("RIGHT", row, "RIGHT", -44, 0)
-          mbarBg:SetSize(MBAR_W, 5)
-          mbarBg:SetTexture("Interface\\BUTTONS\\WHITE8X8")
-          mbarBg:SetVertexColor(0.08, 0.06, 0.12, 0.9)
-
-          local mbarFill = row:CreateTexture(nil, "OVERLAY")
-          mbarFill:SetPoint("LEFT", mbarBg, "LEFT", 0, 0)
-          mbarFill:SetHeight(5)
-          local fillW = math.max(1, math.floor(MBAR_W * pct))
-          mbarFill:SetWidth(fillW)
-          mbarFill:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+          row.mbarFill:SetWidth(math.max(1, math.floor(MBAR_W * pct)))
           if pct >= 1.0 then
-            mbarFill:SetVertexColor(0.78, 0.27, 1.00, 1.0)
+            row.mbarFill:SetVertexColor(0.78, 0.27, 1.00, 1.0)
           else
-            mbarFill:SetVertexColor(lr, lg, lb, 0.9)
+            row.mbarFill:SetVertexColor(lr, lg, lb, 0.9)
           end
+          row.chest:SetShown(chestReady)
 
-          -- Label de niveau
-          local lvlFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-          lvlFS:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-          lvlFS:SetWidth(38)
-          lvlFS:SetJustifyH("RIGHT")
-          lvlFS:SetHeight(ROW_H)
           if pct >= 1.0 then
-            lvlFS:SetText("|cFFC090FF"..lvlLbl.."|r")
+            row.lvlFS:SetText("|cFFC090FF"..lvlLbl.."|r")
           else
-            lvlFS:SetText(string.format("|cFF%02X%02X%02X%s|r",
+            row.lvlFS:SetText(string.format("|cFF%02X%02X%02X%s|r",
               math.floor(lr*255), math.floor(lg*255), math.floor(lb*255), lvlLbl))
           end
 
@@ -1163,6 +1255,9 @@ local function BuildUI()
             GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
             GameTooltip:AddLine(facRef.name, col.r, col.g, col.b)
             GameTooltip:AddLine(T("ZONE_LABEL", "Zone :") .. " "..facRef.zone, 0.8, 0.8, 0.8)
+            if chestReady then
+              GameTooltip:AddLine(T("PARAGON_READY", "Coffre de Paragon à récupérer !"), 1.0, 0.85, 0.10)
+            end
             GameTooltip:Show()
           end)
           row:SetScript("OnLeave", function(s)
@@ -1180,13 +1275,9 @@ local function BuildUI()
     end
 
     -- Séparateur sous les groupes
-    local sepGroups = mainFrame:CreateTexture(nil, "ARTWORK")
-    sepGroups:SetTexture("Interface\\BUTTONS\\WHITE8X8")
+    sepGroups:ClearAllPoints()
     sepGroups:SetPoint("TOPLEFT",  CX,  curY)
     sepGroups:SetPoint("TOPRIGHT", -14, curY)
-    sepGroups:SetHeight(1)
-    sepGroups:SetVertexColor(0.72, 0.60, 0.28, 0.9)
-    table.insert(mainFrame.groupFrames, sepGroups)
 
     -- Stocker le Y final pour que RefreshContent positionne les blocs dessous
     mainFrame._groupsBottomY = curY - 6
@@ -1273,6 +1364,82 @@ local function BuildUI()
   mainFrame.questContent:SetPoint("TOPRIGHT", scrollBg, "TOPRIGHT", -6, -6)
   mainFrame.questContent:SetHeight(200)
   mainFrame.scrollBg = scrollBg
+
+  -- Pools du panneau quetes (en-tetes d'accordeon + lignes de quete)
+  local questContent = mainFrame.questContent
+  mainFrame._questHeaderPool = NewPool(function()
+    local header = CreateFrame("Button", nil, questContent, "BackdropTemplate")
+    header:SetHeight(26)
+    header:SetBackdrop({
+      bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+      edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+      tile=true, tileSize=8, edgeSize=6,
+      insets={left=2,right=2,top=2,bottom=2},
+    })
+    header.arrow = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    header.arrow:SetPoint("LEFT", header, "LEFT", 8, 0)
+    header.hTxt = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    header.hTxt:SetPoint("LEFT", header, "LEFT", 24, 0)
+    return header
+  end)
+
+  mainFrame._questRowPool = NewPool(function()
+    local row = CreateFrame("Button", nil, questContent, "BackdropTemplate")
+    row:SetBackdrop({
+      bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+      edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+      tile=true, tileSize=8, edgeSize=6,
+      insets={left=2, right=2, top=2, bottom=2},
+    })
+    row:EnableMouse(true)
+    row.typeTag = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.typeTag:SetPoint("TOPLEFT", row, "TOPLEFT", 10, -6)
+    row.qName = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.qName:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -18)
+    row.qName:SetJustifyH("LEFT")
+    row.npcStr = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.npcStr:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -32)
+    row.npcStr:SetJustifyH("LEFT")
+    row.repStr = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.repStr:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -44)
+    row.repStr:SetJustifyH("LEFT")
+    row.tipStr = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.tipStr:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -62)
+    row.tipStr:SetJustifyH("LEFT")
+    row.tipStr:SetWordWrap(true)
+    row.itemHeader = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.itemHeader:SetText("|cFFFFD700" .. T("ITEMS_TO_COLLECT", "Items a collecter :") .. "|r")
+    row.itemRows = {}
+    return row
+  end)
+
+  -- Bouton "Itinéraire" vers le quartier-maitre (visible seulement si la
+  -- faction declare qm_mapID + des coordonnees exploitables)
+  local qmBtn = CreateFrame("Button", nil, mainFrame, "BackdropTemplate")
+  qmBtn:SetSize(78, 16)
+  qmBtn:SetBackdrop({
+    bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile=true, tileSize=8, edgeSize=5,
+    insets={left=1,right=1,top=1,bottom=1},
+  })
+  qmBtn:SetBackdropColor(0.10, 0.20, 0.30, 0.95)
+  qmBtn:SetBackdropBorderColor(0.40, 0.60, 0.80, 0.8)
+  qmBtn.text = qmBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  qmBtn.text:SetPoint("CENTER")
+  qmBtn.text:SetText("|cFF99CCFF" .. T("WAYPOINT_BTN", "Itinéraire") .. "|r")
+  qmBtn:SetScript("OnEnter", function(s)
+    s:SetBackdropBorderColor(0.60, 0.85, 1.00, 1.0)
+    GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(T("WAYPOINT_TIP", "Placer un point de passage vers le quartier-maître"), 1, 1, 1)
+    GameTooltip:Show()
+  end)
+  qmBtn:SetScript("OnLeave", function(s)
+    s:SetBackdropBorderColor(0.40, 0.60, 0.80, 0.8)
+    GameTooltip:Hide()
+  end)
+  qmBtn:Hide()
+  mainFrame._qmBtn = qmBtn
 
   -- ================================================================
   -- REFRESH CONTENT
@@ -1366,6 +1533,7 @@ local function BuildUI()
       self.infoLine2:SetText("")
       self.barText:SetText("")
       if self.barFill then self.barFill:SetWidth(3) end
+      self._qmBtn:Hide()
       return
     end
 
@@ -1388,9 +1556,21 @@ local function BuildUI()
     self.infoLine1:SetPoint("TOPLEFT",  CX,  infoY)
     self.infoLine1:SetPoint("TOPRIGHT", -14, infoY)
 
+    -- Bouton Itinéraire : seulement si mapID + coordonnees du quartier-maitre
+    local qmX = ParseCoords(fac.qm_coord)
+    local canRoute = fac.qm_mapID and qmX and true or false
     self.infoLine2:ClearAllPoints()
     self.infoLine2:SetPoint("TOPLEFT",  CX,  infoY - 18)
-    self.infoLine2:SetPoint("TOPRIGHT", -14, infoY - 18)
+    self.infoLine2:SetPoint("TOPRIGHT", canRoute and -98 or -14, infoY - 18)
+    self._qmBtn:ClearAllPoints()
+    self._qmBtn:SetPoint("TOPRIGHT", -14, infoY - 18)
+    self._qmBtn:SetShown(canRoute)
+    if canRoute then
+      local facRef = fac
+      self._qmBtn:SetScript("OnClick", function()
+        PlaceWaypoint(facRef.qm_mapID, facRef.qm_coord, facRef.qm_name)
+      end)
+    end
 
     self._sep3:ClearAllPoints()
     self._sep3:SetPoint("TOPLEFT",  CX,  infoY - 38)
@@ -1468,6 +1648,12 @@ local function BuildUI()
       end
     end
 
+    -- Coffre de Paragon en attente : signale directement sur la barre
+    if fac.id and paragonPending[fac.id] then
+      self.barText:SetText((self.barText:GetText() or "") ..
+        "  |A:ParagonReputation_Bag:14:14|a |cFFFFD700" .. T("PARAGON_READY_SHORT", "Coffre prêt") .. "|r")
+    end
+
     if self.barDoneLabel then self.barDoneLabel:Hide() end
 
     -- Infos PNJ
@@ -1478,9 +1664,9 @@ local function BuildUI()
       "|cFF888888" .. T("LOCATION_LABEL", "Localisation :") .. "|r |cFF99CCFF"..fac.qm_zone..
       "  ("..fac.qm_coord..")|r")
 
-    -- Nettoyer quetes
-    for _, c in pairs({self.questContent:GetChildren()})  do c:Hide() end
-    for _, r in pairs({self.questContent:GetRegions()})   do r:Hide() end
+    -- Nettoyer quetes (les widgets retournent dans leurs pools)
+    PoolReleaseAll(self._questHeaderPool)
+    PoolReleaseAll(self._questRowPool)
 
     if not RenTrackerDB.sections then
       RenTrackerDB.sections = {weekly=false, onetime=false, daily=false}
@@ -1521,7 +1707,8 @@ local function BuildUI()
       daily   = T("TAG_DAILY", "[Quotidien]"),
     }
 
-    local function BuildQuestRow(parent, quest, yOff, faction)
+    local questRowPool = self._questRowPool
+    local function BuildQuestRow(quest, yOff, faction)
       local tc      = TYPE_COLORS[quest.type] or {r=1,g=1,b=1}
       local tlbl    = TYPE_LABELS[quest.type] or ""
       local done    = IsQuestDone(quest.questID)
@@ -1541,15 +1728,9 @@ local function BuildUI()
       local itemsH    = hasItems and (8 + #quest.itemTracking * 18) or 0
       local rowH      = baseH + tipH + itemsH + 6  -- +6 padding bas
 
-      local row = CreateFrame("Button", nil, parent, "BackdropTemplate")
-      row:SetPoint("TOPLEFT", parent, "TOPLEFT", 2, -yOff)
+      local row = PoolAcquire(questRowPool)
+      row:SetPoint("TOPLEFT", self.questContent, "TOPLEFT", 2, -yOff)
       row:SetSize(rowW, rowH)
-      row:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile=true, tileSize=8, edgeSize=6,
-        insets={left=2, right=2, top=2, bottom=2},
-      })
       if done then
         row:SetBackdropColor(0.05, 0.05, 0.05, 0.6)
         row:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.4)
@@ -1558,67 +1739,52 @@ local function BuildUI()
         row:SetBackdropBorderColor(tc.r*0.4, tc.g*0.4, tc.b*0.4, 0.6)
       end
 
-      local typeTag = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-      typeTag:SetPoint("TOPLEFT", row, "TOPLEFT", 10, -6)
       if done then
-        typeTag:SetText("|cFF555555"..tlbl.." v|r")
+        row.typeTag:SetText("|cFF555555"..tlbl.." v|r")
       else
-        typeTag:SetText(string.format("|cFF%02X%02X%02X%s|r",
+        row.typeTag:SetText(string.format("|cFF%02X%02X%02X%s|r",
           math.floor(tc.r*255), math.floor(tc.g*255), math.floor(tc.b*255), tlbl))
       end
 
-      local qName = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-      qName:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -18)
-      qName:SetSize(textW, 16)
-      qName:SetJustifyH("LEFT")
-      qName:SetText(nameCol..quest.name.."|r")
+      row.qName:SetSize(textW, 16)
+      row.qName:SetText(nameCol..quest.name.."|r")
 
-      local npcStr = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-      npcStr:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -32)
-      npcStr:SetSize(textW, 14)
-      npcStr:SetJustifyH("LEFT")
+      row.npcStr:SetSize(textW, 14)
       if done then
-        npcStr:SetText("|cFF555555" .. T("NPC_LABEL", "PNJ :") .. " "..quest.npc.."  " .. T("ZONE_COORD_LABEL", "Coord. de zone :") .. " "..quest.coords.."|r")
+        row.npcStr:SetText("|cFF555555" .. T("NPC_LABEL", "PNJ :") .. " "..quest.npc.."  " .. T("ZONE_COORD_LABEL", "Coord. de zone :") .. " "..quest.coords.."|r")
       else
-        npcStr:SetText(
+        row.npcStr:SetText(
           "|cFF888888" .. T("NPC_LABEL", "PNJ :") .. "|r |cFFCCBB88"..quest.npc..
           "|r  |cFF888888" .. T("ZONE_COORD_LABEL", "Coord. de zone :") .. "|r |cFF99CCFF"..quest.coords.."|r")
       end
 
-      local repStr = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-      repStr:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -44)
-      repStr:SetSize(textW, 14)
-      repStr:SetJustifyH("LEFT")
+      row.repStr:SetSize(textW, 14)
       local facR = math.floor(fac.color.r*255)
       local facG = math.floor(fac.color.g*255)
       local facB = math.floor(fac.color.b*255)
       if done then
-        repStr:SetText("|cFF555555" .. T("REP_LABEL", "Rep :") .. " +"..quest.rep.."|r")
+        row.repStr:SetText("|cFF555555" .. T("REP_LABEL", "Rep :") .. " +"..quest.rep.."|r")
       else
-        repStr:SetText(string.format("|cFF888888" .. T("REP_LABEL", "Rep :") .. "|r |cFF%02X%02X%02X+%s|r",
+        row.repStr:SetText(string.format("|cFF888888" .. T("REP_LABEL", "Rep :") .. "|r |cFF%02X%02X%02X+%s|r",
           facR, facG, facB, quest.rep))
       end
 
       -- Tip text (long, avec retour à la ligne)
       if quest.tip and quest.tip ~= "" then
-        local tipStr = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        tipStr:SetPoint("TOPLEFT", row, "TOPLEFT", 12, -62)
-        tipStr:SetSize(textW, tipLines * 14)
-        tipStr:SetJustifyH("LEFT")
-        tipStr:SetWordWrap(true)
-        if done then
-          tipStr:SetText("|cFF555555"..quest.tip.."|r")
-        else
-          tipStr:SetText("|cFF777777"..quest.tip.."|r")
-        end
+        row.tipStr:SetSize(textW, tipLines * 14)
+        row.tipStr:SetText((done and "|cFF555555" or "|cFF777777")..quest.tip.."|r")
+        row.tipStr:Show()
+      else
+        row.tipStr:Hide()
       end
 
       -- Tracking des items collectables (si défini)
-      if quest.itemTracking and #quest.itemTracking > 0 then
+      local nItems = 0
+      if hasItems then
         local itemStartY = -62 - tipLines * 14 - 6
-        local itemHeader = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        itemHeader:SetPoint("TOPLEFT", row, "TOPLEFT", 12, itemStartY)
-        itemHeader:SetText("|cFFFFD700" .. T("ITEMS_TO_COLLECT", "Items a collecter :") .. "|r")
+        row.itemHeader:ClearAllPoints()
+        row.itemHeader:SetPoint("TOPLEFT", row, "TOPLEFT", 12, itemStartY)
+        row.itemHeader:Show()
         for idx, item in ipairs(quest.itemTracking) do
           local inBag = 0
           -- C_Item.GetItemCount (11.0+) en priorite, global en secours
@@ -1630,9 +1796,13 @@ local function BuildUI()
             end
           end
           local needed  = item.needed or 0
-          local itemY   = itemStartY - (idx * 18)
-          local itemRow = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-          itemRow:SetPoint("TOPLEFT", row, "TOPLEFT", 20, itemY)
+          local itemRow = row.itemRows[idx]
+          if not itemRow then
+            itemRow = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            row.itemRows[idx] = itemRow
+          end
+          itemRow:ClearAllPoints()
+          itemRow:SetPoint("TOPLEFT", row, "TOPLEFT", 20, itemStartY - (idx * 18))
           itemRow:SetSize(textW - 8, 16)
           local colStr
           if needed == 0 then
@@ -1647,10 +1817,15 @@ local function BuildUI()
               item.name, inBag, needed, item.tip or "")
           end
           itemRow:SetText(colStr)
+          itemRow:Show()
+          nItems = idx
         end
+      else
+        row.itemHeader:Hide()
       end
+      -- Cacher les lignes d'objets restantes d'une utilisation precedente
+      for i = nItems + 1, #row.itemRows do row.itemRows[i]:Hide() end
 
-      row:EnableMouse(true)
       row:SetScript("OnClick", function()
         if faction and faction.id then
           if C_Reputation and C_Reputation.SetWatchedFactionByID then
@@ -1663,15 +1838,11 @@ local function BuildUI()
             end
           end
         end
-        if quest.coords and quest.coords ~= "" and TomTom then
-          local x, y2 = quest.coords:match("([%d%.]+),%s*([%d%.]+)")
-          if x and y2 then
-            local mapID2 = quest.mapID or C_Map.GetBestMapForUnit("player")
-            TomTom:AddWaypoint(mapID2, tonumber(x)/100, tonumber(y2)/100, {
-              title = quest.name, persistent = false,
-            })
-          end
-        end
+        -- Point de passage : TomTom si present (carte du joueur en secours,
+        -- comportement historique), sinon natif (exige un mapID declare)
+        local mapID2 = quest.mapID
+        if not mapID2 and TomTom and C_Map then mapID2 = C_Map.GetBestMapForUnit("player") end
+        PlaceWaypoint(mapID2, quest.coords, quest.name)
       end)
       row:SetScript("OnEnter", function(s)
         s:SetBackdropBorderColor(tc.r, tc.g, tc.b, 0.9)
@@ -1693,7 +1864,7 @@ local function BuildUI()
         end
       end)
 
-      return row
+      return row, rowH
     end -- BuildQuestRow
 
     for _, grp in ipairs(groups) do
@@ -1702,42 +1873,29 @@ local function BuildUI()
         local tc     = TYPE_COLORS[grp.key] or {r=1,g=1,b=1}
 
         -- En-tete de groupe (accordeon)
-        local header = CreateFrame("Button", nil, self.questContent, "BackdropTemplate")
+        local header = PoolAcquire(self._questHeaderPool)
         header:SetPoint("TOPLEFT", self.questContent, "TOPLEFT", 2, -y)
-        header:SetSize(rowW, 26)
-        header:SetBackdrop({
-          bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-          edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-          tile=true, tileSize=8, edgeSize=6,
-          insets={left=2,right=2,top=2,bottom=2},
-        })
+        header:SetWidth(rowW)
         header:SetBackdropColor(tc.r*0.15, tc.g*0.15, tc.b*0.15, 0.95)
         header:SetBackdropBorderColor(tc.r*0.5, tc.g*0.5, tc.b*0.5, 0.7)
-
-        local arrow = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        arrow:SetPoint("LEFT", header, "LEFT", 8, 0)
-        arrow:SetText(isOpen and "|cFFFFD700-|r" or "|cFF888888+|r")
-
-        local hTxt = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        hTxt:SetPoint("LEFT", header, "LEFT", 24, 0)
-        hTxt:SetText(string.format("|cFF%02X%02X%02X%s|r  |cFF888888(%d)|r",
+        header.arrow:SetText(isOpen and "|cFFFFD700-|r" or "|cFF888888+|r")
+        header.hTxt:SetText(string.format("|cFF%02X%02X%02X%s|r  |cFF888888(%d)|r",
           math.floor(tc.r*255), math.floor(tc.g*255), math.floor(tc.b*255),
           grp.label, #grp.quests))
 
-        -- Stocker refs pour toggle
-        local questRows = {}
-        local currentY  = y + 28
-        for _, quest in ipairs(grp.quests) do
-          local r = BuildQuestRow(self.questContent, quest, currentY, fac)
-          r:SetShown(isOpen)
-          table.insert(questRows, r)
-          -- Hauteur dynamique : lire la hauteur reelle du row
-          local rH = r:GetHeight() or 60
-          currentY = currentY + rH + 2
+        -- Lignes construites seulement si le groupe est ouvert (un groupe
+        -- replie n'occupe que la hauteur de son en-tete)
+        local currentY = y + 28
+        if isOpen then
+          for _, quest in ipairs(grp.quests) do
+            local _, rH = BuildQuestRow(quest, currentY, fac)
+            currentY = currentY + (rH or 60) + 2
+          end
         end
 
+        local grpKey = grp.key
         header:SetScript("OnClick", function()
-          RenTrackerDB.sections[grp.key] = not RenTrackerDB.sections[grp.key]
+          RenTrackerDB.sections[grpKey] = not RenTrackerDB.sections[grpKey]
           mainFrame:RefreshContent()
         end)
 
@@ -1995,7 +2153,7 @@ local optFrame
 
 local function BuildOptionsPanel()
   optFrame = CreateFrame("Frame", "RNTOptionsFrame", UIParent, "BackdropTemplate")
-  optFrame:SetSize(360, 200)
+  optFrame:SetSize(360, 232)
   optFrame:SetPoint("CENTER")
   optFrame:SetFrameStrata("DIALOG")
   optFrame:SetToplevel(true)
@@ -2040,6 +2198,7 @@ local function BuildOptionsPanel()
   AddCheck(-48,  T("OPT_AUTOTRACK", "Suivi automatique par zone"),           "autoTrack")
   AddCheck(-80,  T("OPT_LOGINMSG", "Message de connexion dans le chat"),    "loginMsg")
   AddCheck(-112, T("OPT_SOUND", "Son au passage de niveau de Renown"),   "sound")
+  AddCheck(-144, T("OPT_PARAGON_ALERT", "Alerte chat : coffre de Paragon prêt"), "paragonAlert")
 
   local hint = optFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   hint:SetPoint("BOTTOM", 0, 18)
@@ -2077,6 +2236,85 @@ end
 -- ================================================================
 -- EVENEMENTS
 -- ================================================================
+-- ================================================================
+-- COFFRES DE PARAGON : scan de toutes les extensions
+-- Met a jour paragonPending, le badge de l'onglet "Rep" (mode suite) ou
+-- celui du bouton minimap propre (mode autonome), et annonce dans le chat
+-- chaque nouveau coffre une seule fois par session. Le badge minimap du
+-- core n'est pas utilise : c'est un compteur unique deja pris par PostBox.
+-- ================================================================
+local paragonAnnounced = {}  -- factionID -> true (deja annonce cette session)
+
+local function SetOwnMinimapBadge(count)
+  if not minimapBtn then return end
+  if not minimapBtn.rntBadge then
+    local b = CreateFrame("Frame", nil, minimapBtn, "BackdropTemplate")
+    b:SetSize(16, 14)
+    b:SetPoint("TOPRIGHT", minimapBtn, "TOPRIGHT", 4, 4)
+    b:SetFrameLevel(minimapBtn:GetFrameLevel() + 3)
+    b:SetBackdrop({ bgFile = "Interface\\BUTTONS\\WHITE8X8", edgeFile = "Interface\\BUTTONS\\WHITE8X8", edgeSize = 1 })
+    b:SetBackdropColor(0.85, 0.65, 0.05, 0.95)
+    b:SetBackdropBorderColor(0, 0, 0, 0.8)
+    b.text = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    b.text:SetPoint("CENTER")
+    b.text:SetTextColor(0, 0, 0)
+    minimapBtn.rntBadge = b
+  end
+  if count > 0 then
+    minimapBtn.rntBadge.text:SetText(count > 9 and "9+" or tostring(count))
+    minimapBtn.rntBadge:Show()
+  else
+    minimapBtn.rntBadge:Hide()
+  end
+end
+
+local function ScanParagonRewards()
+  if not RenTrackerData then return end
+  wipe(paragonPending)
+  local count, newNames, seen = 0, {}, {}
+  for _, ext in pairs(RenTrackerData) do
+    if type(ext) == "table" and ext.factions and ext.hasParagon ~= false then
+      for _, fac in ipairs(ext.factions) do
+        local id = fac.id
+        if id and not fac.friendship and not seen[id] then
+          seen[id] = true
+          if IsParagonRewardPending(id) then
+            paragonPending[id] = true
+            count = count + 1
+            if not paragonAnnounced[id] then
+              paragonAnnounced[id] = true
+              table.insert(newNames, fac.name)
+            end
+          end
+        end
+      end
+    end
+  end
+
+  if _G.TibiSuite and _G.TibiSuite.SetTabBadge then
+    pcall(_G.TibiSuite.SetTabBadge, "Rep", count)
+  end
+  SetOwnMinimapBadge(count)
+
+  if #newNames > 0 and not (RenTrackerDB.options and RenTrackerDB.options.paragonAlert == false) then
+    table.sort(newNames)
+    print("|cFF4D99FFRenTracker|r |A:ParagonReputation_Bag:14:14|a |cFFFFD700" ..
+      T("PARAGON_ALERT", "Coffre de Paragon à récupérer :") .. "|r " .. table.concat(newNames, ", "))
+  end
+end
+
+-- Regroupe les rafales d'UPDATE_FACTION : un seul scan par seconde au plus
+local paragonScanPending = false
+local function ScheduleParagonScan(delay)
+  if paragonScanPending then return end
+  paragonScanPending = true
+  C_Timer.After(delay or 1, function()
+    paragonScanPending = false
+    ScanParagonRewards()
+    ScheduleRefresh()
+  end)
+end
+
 local evFrame = CreateFrame("Frame")
 evFrame:RegisterEvent("ADDON_LOADED")
 evFrame:RegisterEvent("PLAYER_LOGIN")
@@ -2120,17 +2358,19 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- zone) si la connexion est deja effective. Aucun impact sur les donnees.
     if IsLoggedIn() then
       if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-        print("|cFF4D99FFRenTracker|r v7.1.5.27 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+        print("|cFF4D99FFRenTracker|r v7.1.5.28 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
+      ScheduleParagonScan(3)
     end
 
   elseif event == "PLAYER_LOGIN" then
     if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-      print("|cFF4D99FFRenTracker|r v7.1.5.27 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFRenTracker|r v7.1.5.28 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)
+    ScheduleParagonScan(3)
 
   elseif event == "ZONE_CHANGED" or event == "ZONE_CHANGED_NEW_AREA" or event == "ZONE_CHANGED_INDOORS" then
     AutoTrackFactionByZone()
@@ -2143,8 +2383,11 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     end
     ScheduleRefresh()
 
-  elseif event == "UPDATE_FACTION" or event == "QUEST_TURNED_IN"
-      or event == "QUEST_LOG_UPDATE" then
+  elseif event == "UPDATE_FACTION" or event == "QUEST_TURNED_IN" then
+    ScheduleRefresh()
+    ScheduleParagonScan(1)  -- coffre apparu (rep) ou ouvert (quete rendue)
+
+  elseif event == "QUEST_LOG_UPDATE" then
     ScheduleRefresh()
   end
 

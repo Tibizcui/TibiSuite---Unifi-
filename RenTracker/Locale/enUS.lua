@@ -87,3 +87,12 @@ L["QUEST_SINGULAR"] = "quest"
 L["MODULE_LABEL"]   = "Rep."
 L["LOGIN_LOADED"]   = "loaded -- type"
 L["LOGIN_TO_OPEN"]  = "to open."
+
+-- Coffres de Paragon et point de passage (7.1.5.28)
+L["PARAGON_READY"]       = "Paragon cache ready to collect!"
+L["PARAGON_READY_SHORT"] = "Cache ready"
+L["PARAGON_ALERT"]       = "Paragon cache ready:"
+L["OPT_PARAGON_ALERT"]   = "Chat alert: Paragon cache ready"
+L["WAYPOINT_BTN"]        = "Waypoint"
+L["WAYPOINT_TIP"]        = "Set a waypoint to the quartermaster"
+L["WAYPOINT_SET"]        = "Waypoint: %s (%.1f, %.1f)"

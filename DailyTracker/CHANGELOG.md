@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.28
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir RenTracker 7.1.5.28 pour le detail : coffres de Paragon, itineraire vers le quartier-maitre, optimisation memoire).
+
 ## 7.1.5.27
 - Traduction : "Ile lovee" corrige en "Ile annelee", le nom officiel du client francais.
 

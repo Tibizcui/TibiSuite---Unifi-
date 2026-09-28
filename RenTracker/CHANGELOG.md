@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.1.5.28
+- Nouveau : coffre de Paragon pret. Badge sur l'onglet Rep. (ou sur le bouton minimap en mode autonome), icone sur la ligne de la faction, mention sur la barre de reputation et alerte dans le chat (desactivable dans /rt config).
+- Nouveau : bouton Itineraire vers le quartier-maitre (factions Midnight), point de passage natif sans addon. Le clic sur une quete place aussi un point de passage natif si TomTom est absent.
+- Optimisation : les lignes de la fenetre sont reutilisees au lieu d'etre recreees a chaque rafraichissement (memoire stable sur les longues sessions).
+
 ## 7.1.5.27
 - Mise a jour 12.1 : suivi auto par zone etendu a l'Ile annelee (bascule sur Forces de Zul'Jarra).
 - Hauts faits 12.1 ajoutes : Champion des Forces de Zul'Jarra, L'equipage du capitaine Tokka, Tresors des damnes.

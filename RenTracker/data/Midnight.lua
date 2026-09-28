@@ -21,6 +21,7 @@ RenTrackerData["Midnight"] = {
       qm_name  = "Caerdis Fairdawn",
       qm_coord = "43.4, 47.4",
       qm_zone  = "Havre de Saltheril, Bois des Chants eternels",
+      qm_mapID = 2395,
       color    = {r=0.95, g=0.55, b=0.75},
       quests   = {
         { name="Haute Estime (Hebdo)",
@@ -73,6 +74,7 @@ RenTrackerData["Midnight"] = {
       qm_name  = "Magovu",
       qm_coord = "45.8, 65.8",
       qm_zone  = "Village Amani'Zar, Zul'Aman",
+      qm_mapID = 2437,
       color    = {r=0.85, g=0.42, b=0.10},
       quests   = {
         { name="Offrandes abondantes (Hebdo)",
@@ -115,6 +117,7 @@ RenTrackerData["Midnight"] = {
       qm_name  = "Naynar",
       qm_coord = "51.0, 50.8",
       qm_zone  = "Le Repaire, Harandar",
+      qm_mapID = 2413,
       color    = {r=0.30, g=0.80, b=0.55},
       quests   = {
         { name="Légendes Perdues (Hebdo)",
@@ -157,6 +160,7 @@ RenTrackerData["Midnight"] = {
       qm_name  = "Chercheur du Vide Anomander",
       qm_coord = "52.6, 72.8",
       qm_zone  = "Crete Hurlante, Tempete du Vide",
+      qm_mapID = 2405,
       color    = {r=0.55, g=0.30, b=0.95},
       quests   = {
         { name="Assaut de Stormarion (Hebdo)",
@@ -219,6 +223,7 @@ RenTrackerData["Midnight"] = {
       qm_name  = "Jan'sari the Watchful",
       qm_coord = "51.4, 47.9",
       qm_zone  = "Tokka's Landing (nord), Île annelée",
+      qm_mapID = 2512,
       color    = {r=0.42, g=0.32, b=0.75},
       quests   = {
         { name="Purging the Vaults (Hebdo, meta)",
@@ -310,6 +315,7 @@ RenTrackerData["Midnight"] = {
       qm_name    = "Second Mate Sluggs",
       qm_coord   = "51.65, 49.79",
       qm_zone    = "Tokka's Folly, Île annelée",
+      qm_mapID   = 2512,
       color      = {r=0.20, g=0.70, b=0.55},
       quests     = {
         { name="Peche empoisonnee : la preuve est dans la vase (Deblocage)",
