@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.1.5.27
+- Mise a jour 12.1 : suivi auto par zone etendu a l'Ile annelee (bascule sur Forces de Zul'Jarra).
+- Hauts faits 12.1 ajoutes : Champion des Forces de Zul'Jarra, L'equipage du capitaine Tokka, Tresors des damnes.
+- Compteur d'objets a collecter : passage a l'API C_Item.GetItemCount (12.x), ancienne fonction en secours.
+- Traduction : "Ile lovee" corrige en "Ile annelee", le nom officiel du client francais.
+
 ## 7.1.5.26
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats et WeeklyCompass 7.1.5.26 : cartes Personnages et Fiche repliables sur le Dashboard web et dans Tibi Companion).
 

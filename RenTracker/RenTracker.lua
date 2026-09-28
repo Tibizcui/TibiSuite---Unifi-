@@ -1,5 +1,5 @@
 -- ================================================================
--- RenTracker v7.1.5.26
+-- RenTracker v7.1.5.27
 -- Suivi des reputations | Toutes les extensions depuis vanilla
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
@@ -166,6 +166,7 @@ local ZONE_FACTION_MAP = {
   [2437] = {ext="Midnight", fIdx=2},   -- Zul'Aman
   [2413] = {ext="Midnight", fIdx=3},   -- Harandar
   [2405] = {ext="Midnight", fIdx=4},   -- Tempete du Vide
+  [2512] = {ext="Midnight", fIdx=5},   -- Île annelée (12.1) : Forces de Zul'Jarra
   -- The War Within
   [2248] = {ext="TheWarWithin", fIdx=1},  -- Ile de Dorn
   [2255] = {ext="TheWarWithin", fIdx=2},  -- Profondeurs Sonnantes
@@ -1620,8 +1621,13 @@ local function BuildUI()
         itemHeader:SetText("|cFFFFD700" .. T("ITEMS_TO_COLLECT", "Items a collecter :") .. "|r")
         for idx, item in ipairs(quest.itemTracking) do
           local inBag = 0
-          if item.itemID and GetItemCount then
-            inBag = GetItemCount(item.itemID, true) or 0
+          -- C_Item.GetItemCount (11.0+) en priorite, global en secours
+          if item.itemID then
+            if C_Item and C_Item.GetItemCount then
+              inBag = C_Item.GetItemCount(item.itemID, true) or 0
+            elseif GetItemCount then
+              inBag = GetItemCount(item.itemID, true) or 0
+            end
           end
           local needed  = item.needed or 0
           local itemY   = itemStartY - (idx * 18)
@@ -2114,14 +2120,14 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- zone) si la connexion est deja effective. Aucun impact sur les donnees.
     if IsLoggedIn() then
       if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-        print("|cFF4D99FFRenTracker|r v7.1.5.26 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+        print("|cFF4D99FFRenTracker|r v7.1.5.27 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
     end
 
   elseif event == "PLAYER_LOGIN" then
     if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-      print("|cFF4D99FFRenTracker|r v7.1.5.26 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFRenTracker|r v7.1.5.27 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)

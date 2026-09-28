@@ -228,6 +228,12 @@ RenTrackerAchievements = {
       { id=21003,  name="La Tribu Amani",                      faction="Neutre" },
       { id=21004,  name="Les Hara'ti",                         faction="Neutre" },
       { id=21005,  name="La Singularité",                      faction="Neutre" },
+      -- Patch 12.1 "La malédiction d'Ula'tek" (ID confirmés Wowhead le
+      -- 28/09/2026 ; noms FR provisoires, les intitulés officiels du client
+      -- français n'ont pas pu être vérifiés)
+      { id=63838,  name="Champion des Forces de Zul'Jarra",    faction="Neutre" },
+      { id=63631,  name="L'équipage du capitaine Tokka",       faction="Neutre" },
+      { id=63512,  name="Trésors des damnés",                  faction="Neutre" },
     },
   },
 

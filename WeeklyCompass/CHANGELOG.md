@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.27
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir RenTracker 7.1.5.27 pour le detail : mise a jour 12.1 et traduction de l'Ile annelee).
+
 ## 7.1.5.26
 - Dashboard web et Tibi Companion : les cartes Cette semaine, Personnages et Fiche ont un bouton Deplier / Replier dans leur en-tete, pour garder la page lisible avec beaucoup de personnages. Repliees par defaut, un clic sur le titre les ouvre. Aucun changement dans le code de l'addon lui-meme.
 

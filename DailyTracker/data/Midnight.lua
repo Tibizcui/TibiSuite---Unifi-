@@ -168,7 +168,7 @@ DailyTrackerData["Midnight"] = {
     },
 
     -- ----------------------------------------------------------------
-    -- Forces de Zul'Jarra (Zul'Jarra's Forces) - Île lovée (Coiled Isle)
+    -- Forces de Zul'Jarra (Zul'Jarra's Forces) - Île annelée (Coiled Isle)
     -- Ajoutée par le patch 12.1 « La malédiction d'Ula'tek » (Midnight S2).
     -- /!\ DONNÉES PROVISOIRES : ID de faction, questID, coords, mapID et
     --     gains de rép exacts À CONFIRMER en jeu / via datamining.
@@ -179,27 +179,27 @@ DailyTrackerData["Midnight"] = {
       id       = nil,
       category = "secondaire",
       name     = "Forces de Zul'Jarra",
-      zone     = "Île lovée (Coiled Isle)",
+      zone     = "Île annelée (Coiled Isle)",
       color    = {r=0.42, g=0.32, b=0.75},
       quests   = {
         { name="Curse Surges : élites rares",
-          npc="Élites rares", coords="?", zone="Île lovée",
+          npc="Élites rares", coords="?", zone="Île annelée",
           rep=0, type="daily", questID=nil, mapID=nil,
           tip="Tuer les élites rares pendant les Curse Surges débloque des zones et la Pêche maudite. Gain de rép à confirmer." },
         { name="Événements publics",
-          npc="Événements de zone", coords="?", zone="Île lovée",
+          npc="Événements de zone", coords="?", zone="Île annelée",
           rep=0, type="daily", questID=nil, mapID=nil,
-          tip="Événements publics de l'Île lovée. Gain de rép à confirmer." },
+          tip="Événements publics de l'Île annelée. Gain de rép à confirmer." },
         { name="Vaults of Atal'Utek",
-          npc="À confirmer", coords="?", zone="Île lovée",
+          npc="À confirmer", coords="?", zone="Île annelée",
           rep=0, type="weekly", questID=nil, mapID=nil,
           tip="Activité récurrente de la zone. Gain de rép à confirmer." },
         { name="Pêche maudite : équipage de Tokka",
-          npc="Capitaine Tokka", coords="?", zone="Île lovée",
+          npc="Capitaine Tokka", coords="?", zone="Île annelée",
           rep=0, type="daily", questID=nil, mapID=nil,
           tip="La Pêche maudite donne de la rép à l'équipage de Tokka (réputation distincte des Forces de Zul'Jarra). Débloquée via les Curse Surges." },
-        { name="Campagne : Île lovée",
-          npc="À confirmer", coords="?", zone="Île lovée",
+        { name="Campagne : Île annelée",
+          npc="À confirmer", coords="?", zone="Île annelée",
           rep=0, type="onetime", questID=nil, mapID=nil,
           tip="Campagne principale du patch 12.1. Gain de rép à confirmer en jeu." },
       },

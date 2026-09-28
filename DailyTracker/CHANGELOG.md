@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.27
+- Traduction : "Ile lovee" corrige en "Ile annelee", le nom officiel du client francais.
+
 ## 7.1.5.26
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats et WeeklyCompass 7.1.5.26 : cartes Personnages et Fiche repliables sur le Dashboard web et dans Tibi Companion).
 
