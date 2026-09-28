@@ -1,5 +1,30 @@
 # Changelog
 
+## 7.1.5.33 (en préparation)
+Refonte complète pour la 12.1, en trois lots, sur le modèle d'XPBar 7.1.5.30.
+
+**Fiabilité 12.1**
+- La barre de réputation de Blizzard est de nouveau vraiment masquée : RepBar vise les emplacements du mode Édition de la 12.x (emplacement secondaire, et principal au niveau maximum), coupe la souris de la zone devenue invisible (hors combat), et rend l'affichage d'origine une seule fois quand on décoche l'option.
+- Coordination avec XPBar corrigée : RepBar ne s'efface que si XPBar masque réellement les barres natives.
+- « Masquer en combat » réagit dès l'entrée en combat.
+- Rafraîchissements regroupés : une quête qui touche plusieurs factions ne provoque plus qu'un seul calcul.
+- La bascule à la validation d'une quête trouve aussi les factions rangées dans une catégorie repliée.
+- Protection contre les messages « secrets » de Midnight en instance (plus d'erreur Lua possible).
+- Le message de connexion suit le réglage de la suite.
+
+**Un seul panneau d'options, 10 langues**
+- Maj+clic droit, /repbar et l'onglet de la suite ouvrent tous le même panneau.
+- Français, anglais, allemand, espagnol, italien, portugais du Brésil, russe, chinois simplifié et traditionnel, coréen (traductions non relues par des natifs).
+
+**Nouveautés**
+- Réputation gagnée dans la session, réputation par heure et temps estimé avant le prochain palier (barre et infobulle).
+- Texte flottant « +250 » à chaque gain.
+- Coffres de Parangon : halo sur la barre, icône cliquable (itinéraire vers le quartier-maître), liste des coffres en attente.
+- Récompenses du prochain rang de renom dans l'infobulle.
+- Jusqu'à 3 factions épinglées, en fines barres sous la barre principale (Alt+clic).
+- Historique des 5 dernières factions : clic pour passer à la suivante, clic droit pour la précédente. Ctrl+clic : itinéraire vers le quartier-maître.
+- Graduations tous les 10 %, styles Fine / Classique / Verticale, badge Bataillon, option « Coller sous XPBar ».
+
 ## 7.1.5.32
 - Nouveau logo dedie aux couleurs du module (il partageait jusqu'ici celui d'un autre module). Pour le reste, bump d'alignement sur la suite (voir TibiSuite 7.1.5.32 : nouvel installateur, modules decoches reellement desactives dans WoW, /ts doctor, /ts perf, profils).
 

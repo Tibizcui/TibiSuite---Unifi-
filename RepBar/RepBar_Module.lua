@@ -45,6 +45,8 @@ end
 -- Rattrapage cosmetique : habille la barre au style socle (bouton texte
 -- "Options"). Le handler PLAYER_LOGIN d'origine ne tourne plus en LoadOnDemand.
 local function Decorate()
+  -- Version de RepBar.lua (idempotente) si disponible, sinon repli local.
+  if _G.RepBar_Decorate then _G.RepBar_Decorate() ; return end
   local ui = GetUI() ; local f = _G[FRAME]
   if not (ui and f) then return end
   if f._tibiControls then return end
