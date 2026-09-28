@@ -73,7 +73,7 @@ LegTrackerData.Extensions = {
     items = {
       { itemID=32837, achievementID=426, raids={{instanceID=564, name="Temple noir", bosses="Illidan Hurlorage"}}, achievementName="Glaives de guerre d'Azzinoth", name="Glaive de guerre d'Azzinoth", classes={"WARRIOR","ROGUE","DEATHKNIGHT","MONK","DEMONHUNTER"}, source="Butin d'Illidan Hurlorage au Temple noir.", quests={}, trackers={} },
       { itemID=32838, achievementID=426, raids={{instanceID=564, name="Temple noir", bosses="Illidan Hurlorage"}}, achievementName="Glaives de guerre d'Azzinoth", name="Glaive de guerre d'Azzinoth", classes={"WARRIOR","ROGUE","DEATHKNIGHT","MONK","DEMONHUNTER"}, source="Butin d'Illidan Hurlorage au Temple noir.", quests={}, trackers={} },
-      { itemID=34334, achievementID=725, raids={{instanceID=580, name="Plateau du Puits de soleil", bosses="Kil'jaeden"}}, name="Thori'dal, la Fureur des étoiles", classes={"HUNTER","WARRIOR","ROGUE"}, source="Butin de Kil'jaeden au Plateau du Puits de soleil.", quests={}, trackers={} },
+      { itemID=34334, achievementID=725, raids={{instanceID=580, name="Le Puits de soleil", bosses="Kil'jaeden"}}, name="Thori'dal, la Fureur des étoiles", classes={"HUNTER","WARRIOR","ROGUE"}, source="Butin de Kil'jaeden au Plateau du Puits de soleil.", quests={}, trackers={} },
     },
   },
   {
@@ -212,7 +212,7 @@ LegTrackerData.Extensions = {
       -- (derniere quete de Nasz'uro) et 77093 (premiere quete de Fyr'alath,
       -- declenchee en equipant la hache) viennent de Wowhead, noms FR verifies
       -- en jeu ; coordonnees non verifiees, donc pas de waypoint.
-      { itemID=204177, raids={{instanceID=2569, name="Aberrus, le Creuset ombreux", bosses="Sarkareth"}}, name="Nasz'uro, l'Héritage délié", classes={"EVOKER"}, source="Légendaire Évocateur obtenu via Sarkareth puis suite de quêtes.", quests={{id=74924,name="Nasz'uro, l'Héritage délié",npc="Nozdormu",zone="Maelström (dernière quête de la suite)"}}, trackers={} },
+      { itemID=204177, raids={{instanceID=2569, name="Aberrus, le creuset de l'Ombre", bosses="Sarkareth"}}, name="Nasz'uro, l'Héritage délié", classes={"EVOKER"}, source="Légendaire Évocateur obtenu via Sarkareth puis suite de quêtes.", quests={{id=74924,name="Nasz'uro, l'Héritage délié",npc="Nozdormu",zone="Maelström (dernière quête de la suite)"}}, trackers={} },
       { itemID=206448, raids={{instanceID=2549, name="Amirdrassil, l'Espoir du Rêve", bosses="Fyrakk (Mythique)"}}, name="Fyr'alath le Pourfendeur de rêve", classes={"WARRIOR","PALADIN","DEATHKNIGHT"}, source="Hache légendaire obtenue via Fyrakka puis suite de quêtes de Dragonflight.", quests={{id=77093,name="La hache d'ombreflamme",npc="Eadweard Dalyngrigge",zone="Archives azérothiennes, Thaldraszus"}}, trackers={} },
     },
   },

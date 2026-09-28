@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.32 (en preparation)
+- Noms francais de deux raids alignes sur le client (Le Puits de soleil ; Aberrus, le creuset de l'Ombre), releves par /lt verify. Les 11 IDs de raids sont confirmes en jeu.
+
 ## 7.1.5.31
 - Carte "Legendaires" sur le Dashboard (Tibiscui.fr et Tibi Companion) : LegTracker ecrit a chaque scan un resume du compte (statut, personnages detenteurs, etape en cours), que Stats ajoute a son code d'export.
 - Vue Collection : les objets reserves a une seule classe affichent la classe (les quatre Atiesh se distinguent).
