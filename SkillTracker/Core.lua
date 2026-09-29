@@ -2,56 +2,61 @@
 --  SkillTracker  -  Core.lua
 --  Detection des metiers, scan par extension, reset au changement de
 --  metier, persistance SavedVariables, agregation multi-personnages,
---  export / import, evenements et commandes slash.
+--  export / import, API publique de la suite, evenements et commandes slash.
 --
 --  Aucune variable globale hormis les points d'entree publics attendus
 --  par TibiSuite : SkillTracker_Toggle, SkillTracker_OpenOptions, la
---  frame SkillTrackerMainFrame (creee dans UI.lua) et les fonctions du
---  compartiment d'addons. Tout le reste vit dans la table privee ST.
+--  frame SkillTrackerMainFrame (creee dans UI.lua), les fonctions du
+--  compartiment d'addons et l'API en lecture seule _G.SkillTrackerAPI.
+--  Tout le reste vit dans la table privee ST.
 -- ================================================================
 
 local ADDON, ST = ...
 local L = ST.L
 
 -- Version de schema des donnees sauvegardees (pour migrations futures).
-local SCHEMA = 2
+local SCHEMA = 3
+
+ST.VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version"))
+  or (GetAddOnMetadata and GetAddOnMetadata(ADDON, "Version")) or "?"
+ST.TAG = "|cFF00FF98SkillTracker|r"
 
 -- Etat runtime (non sauvegarde)
-ST.runtime = ST.runtime or {}
+ST.runtime = ST.runtime or { concAlerted = {}, concCids = {} }
+
+local function HasCore()
+  return _G.TibiSuite and _G.TibiSuite.RegisterModule and true or false
+end
+ST.HasCore = HasCore
 
 -- ================================================================
 -- ACCES BASE DE DONNEES
 -- ================================================================
--- Defauts des reglages compte.
 local DB_DEFAULTS = {
-  enabled     = true,
-  minimap     = true,
-  hideMaxed   = false,   -- masquer les paliers (extensions) au max
-  hideMaxProf = false,   -- masquer les metiers entierement au max
+  enabled      = true,
+  minimap      = true,
+  hideMaxed    = false,   -- masquer les paliers (extensions) au max
+  hideMaxProf  = false,   -- masquer les metiers entierement au max
   showAllChars = true,
-  showTodo    = true,    -- afficher la liste "a finir"
-  concAlert   = true,    -- alerter quand la concentration est pleine
-  mmAngle     = 210,
-  accountTag  = nil,     -- libelle libre pour distinguer ses comptes a l'import
-  metierView  = "current", -- bascule du panneau : "current" / "all" / "account"
+  showTodo     = true,    -- afficher la liste "a finir"
+  concAlert    = true,    -- alerter quand la concentration du perso connecte est pleine
+  concAltAlert = true,    -- au login, signaler les alts dont la concentration est pleine
+  badge        = true,    -- pastille sur l'onglet de la suite (concentrations pleines)
+  recipes      = true,    -- enregistrer les recettes connues (Recipes.lua)
+  recipeScope  = "current", -- "current" (extension en cours) / "all"
+  recipeTooltip = true,   -- "Tes personnages savent le fabriquer" dans l'info-bulle des objets
+  mmAngle      = 210,
+  accountTag   = nil,     -- libelle libre pour distinguer ses comptes a l'import
+  metierView   = "current", -- "current" / "all" / "account" / "conc" / "week"
 }
 
--- Prepare SkillTrackerDB et comble les champs manquants.
 local function InitDB()
   SkillTrackerDB = SkillTrackerDB or {}
   local db = SkillTrackerDB
 
-  -- Migration de schema (idempotente).
-  local wasSchema = db.schema
-  if wasSchema == nil then
-    -- Base neuve : rien a migrer.
-    db.schema = SCHEMA
-  end
+  if db.schema == nil then db.schema = SCHEMA end
   if (db.schema or 0) < 2 then
-    -- v1 -> v2 : le detail par extension est passe d'un mapping par ID (sans
-    -- nom) a la lecture directe du nom d'extension du jeu. On purge les anciens
-    -- paliers en cache (sans champ exp) pour repartir proprement ; ils se
-    -- rechargent au prochain scan. Evite les onglets fantomes "???".
+    -- v1 -> v2 : purge des anciens paliers sans nom d'extension (onglets "???").
     if type(db.chars) == "table" then
       for _, list in pairs(db.chars) do
         if type(list) == "table" then
@@ -67,6 +72,20 @@ local function InitDB()
     end
     db.schema = 2
   end
+  if db.schema < 3 then
+    -- v2 -> v3 : l'etat "alerte deja affichee" passe en memoire (plus dans
+    -- la sauvegarde) ; tout le reste est conserve tel quel.
+    if type(db.chars) == "table" then
+      for _, list in pairs(db.chars) do
+        for _, c in pairs(type(list) == "table" and list or {}) do
+          for _, prof in pairs(type(c) == "table" and type(c.professions) == "table" and c.professions or {}) do
+            if type(prof) == "table" then prof._concAlerted = nil end
+          end
+        end
+      end
+    end
+    db.schema = 3
+  end
   db.schema = SCHEMA
 
   db.settings = db.settings or {}
@@ -74,24 +93,22 @@ local function InitDB()
     if db.settings[k] == nil then db.settings[k] = v end
   end
 
-  -- Donnees locales (meme installation, tous persos du/des compte(s)).
-  db.chars = db.chars or {}          -- chars[realm][name] = { ... }
-  -- Donnees importees d'une autre installation (multi-comptes manuel).
-  db.imported = db.imported or {}    -- imported[accountTag][realm][name] = { ... }
+  db.chars     = db.chars or {}       -- chars[realm][name] = { ... }
+  db.imported  = db.imported or {}    -- imported[accountTag][realm][name] = { ... }
+  db.tierIndex = db.tierIndex or {}   -- skillLineID -> index d'extension (appris)
+  db.concRate  = db.concRate or {}    -- vitesse de recharge apprise (voir Concentration.lua)
+  db.recipeCache = db.recipeCache or {} -- recipeID -> { n, i, o, p, t } (voir Recipes.lua)
 
   ST.db = db
   ST.settings = db.settings
   return db
 end
 
--- Renvoie (realm, name) du personnage courant, robuste.
 local function CurrentCharKey()
-  local realm = GetRealmName() or "Unknown"
-  local name  = UnitName("player") or "Unknown"
-  return realm, name
+  return GetRealmName() or "Unknown", UnitName("player") or "Unknown"
 end
+ST.CurrentCharKey = CurrentCharKey
 
--- Renvoie (en le creant au besoin) l'enregistrement du perso courant.
 local function EnsureCurrentChar()
   local realm, name = CurrentCharKey()
   ST.db.chars[realm] = ST.db.chars[realm] or {}
@@ -105,11 +122,17 @@ local function EnsureCurrentChar()
   c.faction = UnitFactionGroup("player") or c.faction
   return c, realm, name
 end
+ST.EnsureCurrentChar = EnsureCurrentChar
+
+function ST.CurrentRec()
+  if not ST.db then return nil end
+  local realm, name = CurrentCharKey()
+  return ST.db.chars[realm] and ST.db.chars[realm][name]
+end
 
 -- ================================================================
--- CALCUL DE PROGRESSION (borne, jamais de division par zero)
+-- CALCUL DE PROGRESSION
 -- ================================================================
--- Renvoie un pourcentage entier 0..100 a partir de cur/max.
 function ST.Percent(cur, max)
   cur = tonumber(cur) or 0
   max = tonumber(max) or 0
@@ -119,84 +142,63 @@ function ST.Percent(cur, max)
   return p
 end
 
+-- Palier de l'extension en cours d'un metier (ou nil).
+function ST.CurrentLine(prof)
+  if type(prof) ~= "table" then return nil end
+  local cur = ST.CurrentExpIndex()
+  for id, ln in pairs(prof.lines or {}) do
+    if ST.LineIndex(ln) == cur then return ln, id end
+  end
+  return nil
+end
+
 -- ================================================================
 -- SCAN DES METIERS
--- ----------------------------------------------------------------
--- Source d'autorite pour "quels metiers sont connus MAINTENANT" :
--- GetProfessions() (fonctionne sans ouvrir de fenetre). Le detail par
--- extension vient de C_TradeSkillUI, qui n'a de donnees qu'apres l'ouverture
--- d'une fenetre de metier ; on le fusionne quand il est disponible, et on
--- conserve le cache existant sinon (jamais de perte de donnees).
+-- GetProfessions() dit quels metiers sont connus MAINTENANT (sans fenetre).
+-- Le detail par extension vient de C_TradeSkillUI, disponible apres
+-- l'ouverture d'une fenetre de metier : on fusionne quand il est la et on
+-- conserve le cache sinon (jamais de perte de donnees).
 -- ================================================================
-
--- Recupere l'ensemble des metiers connus via le grimoire.
---   Renvoie une table known[parentSkillLineID] = { name, cur, max, isPrimary }
---   plus l'info archeologie separee (arch = { cur, max } ou nil).
 local function GatherKnownProfessions()
-  local known = {}
-  local arch = nil
-
-  if type(GetProfessions) ~= "function" then
-    return known, arch
-  end
-
+  local known, arch = {}, nil
+  if type(GetProfessions) ~= "function" then return known, arch end
   local p1, p2, archIdx, fishIdx, cookIdx = GetProfessions()
 
   local function readInto(idx, isPrimary)
     if not idx then return end
     local name, _, cur, max, _, _, skillLine = GetProfessionInfo(idx)
     if skillLine and name then
-      known[skillLine] = {
-        name = name, cur = cur or 0, max = max or 0, isPrimary = isPrimary,
-      }
+      known[skillLine] = { name = name, cur = cur or 0, max = max or 0, isPrimary = isPrimary }
     end
   end
-
   readInto(p1, true)
   readInto(p2, true)
   readInto(fishIdx, false)
   readInto(cookIdx, false)
 
-  -- Archeologie : traitee a part (ce n'est pas un tradeskill moderne).
-  -- Si l'index est nil, l'archeologie n'est pas apprise -> rien, pas d'erreur.
   if archIdx then
     local name, _, cur, max = GetProfessionInfo(archIdx)
-    if name then
-      arch = { name = name, cur = cur or 0, max = max or 0 }
-    end
+    if name then arch = { name = name, cur = cur or 0, max = max or 0 } end
   end
-
   return known, arch
 end
 
--- Fusionne le detail par extension depuis C_TradeSkillUI.
--- Le jeu fournit un nom d'extension FIABLE (champ expansionName), on le stocke
--- tel quel : c'est lui qui sert ensuite au regroupement par onglet. On rattache
--- chaque palier a son metier parent connu (via parentProfessionID, sinon par
--- prefixe de nom). Deux sources complementaires :
---   1) GetBaseProfessionInfo + GetChildProfessionInfos : le metier OUVERT
---      (fiable, seul moyen d'obtenir les paliers des metiers secondaires).
---   2) GetAllProfessionTradeSkillLines : tous les metiers PRINCIPAUX d'un coup,
---      des qu'une fenetre de metier a ete ouverte dans la session.
---   char / known : cf. ScanProfessions.
 local function StartsWith(s, prefix)
   return type(s) == "string" and type(prefix) == "string"
     and prefix ~= "" and s:sub(1, #prefix) == prefix
 end
 
+-- Fusionne le detail par extension depuis C_TradeSkillUI.
 local function MergeExpansionDetail(char, known)
   local api = C_TradeSkillUI
   if not api then return end
-  local UNKNOWN = _G.UNKNOWN  -- "Inconnu"/"Unknown" : lignes speciales a ignorer
+  local UNKNOWN = _G.UNKNOWN
 
-  -- Nom parent -> skillLine parent (pour rattachement par prefixe de nom).
   local nameToParent = {}
   for sl, info in pairs(known) do
     if info.name then nameToParent[info.name] = sl end
   end
 
-  -- Enregistre un palier pour un parent connu. Ignore les lignes vides ou
-  -- "speciales" (expansionName = Inconnu : lignes de base ou mini-metiers).
   local function storeLine(parent, id, cur, max, exp)
     if not parent or not known[parent] then return end
     if (max or 0) <= 0 or not id then return end
@@ -205,14 +207,16 @@ local function MergeExpansionDetail(char, known)
     local prof = char.professions[parent]
     if not prof then return end
     prof.lines = prof.lines or {}
-    prof.lines[id] = { cur = cur or 0, max = max or 0, exp = exp }
+    local ln = prof.lines[id] or {}
+    ln.cur, ln.max, ln.exp = cur or 0, max or 0, exp
+    prof.lines[id] = ln   -- on garde ln.kp / ln.idx deja connus
   end
 
   -- Source 1 : metier actuellement ouvert (inclut Cuisine / Peche).
   if api.GetBaseProfessionInfo and api.GetChildProfessionInfos then
-    local base = api.GetBaseProfessionInfo()
-    local kids = api.GetChildProfessionInfos()
-    if base and base.professionID and type(kids) == "table" then
+    local ok, base = pcall(api.GetBaseProfessionInfo)
+    local ok2, kids = pcall(api.GetChildProfessionInfos)
+    if ok and ok2 and base and base.professionID and type(kids) == "table" then
       for _, k in ipairs(kids) do
         storeLine(base.professionID, k.professionID, k.skillLevel, k.maxSkillLevel, k.expansionName)
       end
@@ -221,13 +225,11 @@ local function MergeExpansionDetail(char, known)
 
   -- Source 2 : toutes les lignes de metiers principaux.
   if api.GetAllProfessionTradeSkillLines and api.GetProfessionInfoBySkillLineID then
-    local lines = api.GetAllProfessionTradeSkillLines()
-    if type(lines) == "table" then
+    local ok, lines = pcall(api.GetAllProfessionTradeSkillLines)
+    if ok and type(lines) == "table" then
       for _, id in ipairs(lines) do
         local i = api.GetProfessionInfoBySkillLineID(id)
         if i and (i.maxSkillLevel or 0) > 0 then
-          -- Determiner le parent : parentProfessionID en priorite, sinon par
-          -- prefixe du nom du palier ("Herboristerie de Midnight" -> Herboristerie).
           local parent = i.parentProfessionID
           if not (parent and known[parent]) then
             parent = nil
@@ -243,35 +245,37 @@ local function MergeExpansionDetail(char, known)
 end
 
 -- ================================================================
--- CONCENTRATION + POINTS DE CONNAISSANCE
--- ----------------------------------------------------------------
--- Concentration : FIABLE. C_TradeSkillUI.GetConcentrationCurrencyID(skillLine)
--- renvoie un currencyID lu via C_CurrencyInfo.GetCurrencyInfo (actuel / max).
--- Connaissance : les points non depenses sont une monnaie. On tente d'obtenir
--- la monnaie d'arbre du metier via C_ProfSpecs + C_Traits, en pcall : si la
--- chaine ne repond pas, on n'affiche RIEN (aucune valeur inventee).
+-- CONCENTRATION + POINTS DE CONNAISSANCE (lecture brute)
+-- Une lecture absente (fenetre de metier fermee, donnees pas chargees)
+-- ne remplace JAMAIS une valeur deja connue : le cache est conserve.
 -- ================================================================
 
--- Concentration pour une liste de skillLineID candidats. Renvoie {cur,max} ou nil.
-local function ReadConcentration(skillLineIDs)
-  if not (C_TradeSkillUI and C_TradeSkillUI.GetConcentrationCurrencyID and C_CurrencyInfo) then
-    return nil
+-- Concentration : on tente GetConcentrationCurrencyID sur les paliers (le
+-- plus recent d'abord), puis la monnaie deja memorisee (prof.concCid), lue
+-- directement via C_CurrencyInfo : c'est ce qui permet une lecture a la
+-- connexion, sans ouvrir le metier (a confirmer en jeu).
+local function ReadConcentration(prof, skillLineIDs)
+  if not C_CurrencyInfo then return nil end
+  local function read(cid)
+    local ci = C_CurrencyInfo.GetCurrencyInfo(cid)
+    if ci and (ci.maxQuantity or 0) > 0 then
+      return { cur = ci.quantity or 0, max = ci.maxQuantity or 0, currencyID = cid }
+    end
   end
-  for _, sl in ipairs(skillLineIDs) do
-    local ok, cid = pcall(C_TradeSkillUI.GetConcentrationCurrencyID, sl)
-    if ok and type(cid) == "number" and cid > 0 then
-      local ci = C_CurrencyInfo.GetCurrencyInfo(cid)
-      if ci and (ci.maxQuantity or 0) > 0 then
-        return { cur = ci.quantity or 0, max = ci.maxQuantity or 0, currencyID = cid }
+  if C_TradeSkillUI and C_TradeSkillUI.GetConcentrationCurrencyID then
+    for _, sl in ipairs(skillLineIDs) do
+      local ok, cid = pcall(C_TradeSkillUI.GetConcentrationCurrencyID, sl)
+      if ok and type(cid) == "number" and cid > 0 then
+        local r = read(cid)
+        if r then prof.concCid = cid; return r end
       end
     end
   end
+  if type(prof.concCid) == "number" then return read(prof.concCid) end
   return nil
 end
 
--- Points de connaissance non depenses pour UN palier (skillLineID).
--- C_ProfSpecs.GetCurrencyInfoForSkillLine renvoie { currencyName, numAvailable }.
--- Renvoie le nombre de points non depenses (numAvailable), ou nil.
+-- Points de connaissance non depenses pour UN palier (nil si illisible).
 local function ReadLineKnowledge(sl)
   if type(C_ProfSpecs) ~= "table" or type(C_ProfSpecs.GetCurrencyInfoForSkillLine) ~= "function" then
     return nil
@@ -293,59 +297,67 @@ local function ReadLineKnowledge(sl)
   return nil
 end
 
--- Lit concentration + connaissances pour les metiers principaux du perso.
 local function ReadProfessionMeta(char, known)
+  wipe(ST.runtime.concCids)
   for parent, kinfo in pairs(known) do
-    if kinfo.isPrimary then
-      local prof = char.professions[parent]
-      if prof then
-        -- Candidats skillLine, du palier le plus recent au plus ancien puis le
-        -- parent : la concentration ne concerne que l'extension courante, on la
-        -- veut donc en priorite.
-        local ordered = {}
-        for id, ln in pairs(prof.lines or {}) do
-          ordered[#ordered + 1] = { id = id, idx = ST.NameToIndex(ln.exp) or -1 }
-        end
-        table.sort(ordered, function(a, b) return a.idx > b.idx end)
-        local ids = {}
-        for _, o in ipairs(ordered) do ids[#ids + 1] = o.id end
-        ids[#ids + 1] = parent
-        prof.conc = ReadConcentration(ids)
+    local prof = char.professions[parent]
+    if kinfo.isPrimary and prof then
+      -- Candidats : palier le plus recent d'abord, puis le parent.
+      local ordered = {}
+      for id, ln in pairs(prof.lines or {}) do
+        ordered[#ordered + 1] = { id = id, idx = ST.LineIndex(ln) or -1 }
+      end
+      table.sort(ordered, function(a, b) return a.idx > b.idx end)
+      local ids = {}
+      for _, o in ipairs(ordered) do ids[#ids + 1] = o.id end
+      ids[#ids + 1] = parent
 
-        -- Points de connaissance : lus PAR PALIER (plusieurs extensions
-        -- peuvent en avoir), stockes sur chaque ligne et sommes pour le total.
-        local total, hasKp = 0, false
-        for id, ln in pairs(prof.lines or {}) do
-          local q = ReadLineKnowledge(id)
-          if type(q) == "number" then
-            ln.kp = (q > 0) and q or nil
-            hasKp = true
-            total = total + q
-          else
-            ln.kp = nil
-          end
-        end
-        prof.kp = hasKp and total or nil
+      local reading = ReadConcentration(prof, ids)
+      if reading and ST.ConcRecord then ST.ConcRecord(prof, reading) end
+      if prof.concCid then ST.runtime.concCids[prof.concCid] = true end
 
-        -- Alerte concentration pleine : une seule fois par passage a plein.
-        if ST.settings and ST.settings.concAlert and prof.conc and prof.conc.max > 0 then
-          if prof.conc.cur >= prof.conc.max then
-            if not prof._concAlerted then
-              prof._concAlerted = true
-              print("|cFF00FF98SkillTracker|r "
-                .. string.format(ST.L.CONC_FULL_ALERT, prof.name or "?", prof.conc.cur, prof.conc.max))
-            end
-          else
-            prof._concAlerted = nil
+      -- Points de connaissance : par palier, total = somme des lisibles.
+      -- Palier illisible : on garde la derniere valeur connue.
+      local anyRead = false
+      for id, ln in pairs(prof.lines or {}) do
+        local q = ReadLineKnowledge(id)
+        if type(q) == "number" then
+          anyRead = true
+          ln.kp = (q > 0) and q or nil
+        end
+      end
+      if anyRead then
+        local total = 0
+        for _, ln in pairs(prof.lines or {}) do total = total + (ln.kp or 0) end
+        prof.kp = total
+        prof.kpT = time()
+      end
+
+      -- Arbres de specialisation du palier courant (Knowledge.lua).
+      if ST.ReadSpecTree then
+        local _, curID = ST.CurrentLine(prof)
+        if curID then
+          local spent, max = ST.ReadSpecTree(curID)
+          if spent then prof.tree = { spent = spent, max = max, t = time() } end
+        end
+      end
+
+      -- Alerte concentration pleine du perso connecte : une fois par passage a plein.
+      if ST.settings.concAlert and prof.conc and (prof.conc.max or 0) > 0 then
+        local key = tostring(parent)
+        if prof.conc.cur >= prof.conc.max then
+          if not ST.runtime.concAlerted[key] then
+            ST.runtime.concAlerted[key] = true
+            print(ST.TAG .. " " .. string.format(L.CONC_FULL_ALERT, prof.name or "?", prof.conc.cur, prof.conc.max))
           end
+        else
+          ST.runtime.concAlerted[key] = nil
         end
       end
     end
   end
 end
 
--- Scan complet : met a jour le perso courant, applique le reset, fusionne
--- le detail par extension, horodate. Ne tourne jamais en boucle.
 function ST.ScanProfessions()
   if not ST.db then return end
   if ST.settings and ST.settings.enabled == false then return end
@@ -353,21 +365,17 @@ function ST.ScanProfessions()
   local char = EnsureCurrentChar()
   local known, arch = GatherKnownProfessions()
 
-  -- Securite : si GetProfessions n'a rien renvoye (cas anormal), on ne purge
-  -- rien pour ne pas effacer un cache valide par accident.
   local knownCount = 0
   for _ in pairs(known) do knownCount = knownCount + 1 end
 
   if knownCount > 0 then
-    -- RESET au changement de metier : tout parent stocke mais plus connu
-    -- est remis a zero (supprime), pas fige.
+    -- RESET au changement de metier : un parent stocke mais plus connu est supprime.
     for parent in pairs(char.professions) do
       if not known[parent] then
         char.professions[parent] = nil
+        if char.recipes then char.recipes[parent] = nil end
       end
     end
-
-    -- Creation / mise a jour des metiers connus (infos de base du grimoire).
     for parent, kinfo in pairs(known) do
       local p = char.professions[parent]
       if not p then
@@ -376,58 +384,45 @@ function ST.ScanProfessions()
       end
       p.lines     = p.lines or {}
       p.name      = kinfo.name or p.name
-      p.parent    = parent   -- skillLine parent (pour ouvrir la fenetre du metier)
+      p.parent    = parent
       p.isPrimary = kinfo.isPrimary and true or false
-      -- Valeur agregee du grimoire (repli d'affichage tant que le detail
-      -- par extension n'est pas charge).
-      p.base = { cur = kinfo.cur or 0, max = kinfo.max or 0 }
+      p.base      = { cur = kinfo.cur or 0, max = kinfo.max or 0 }
     end
   end
 
-  -- Detail par extension (si une fenetre de metier a deja ete ouverte).
   MergeExpansionDetail(char, known)
-
-  -- Concentration + points de connaissance (metiers principaux uniquement).
+  for _, p in pairs(char.professions) do ST.ResolveLineIndexes(p, ST.db.tierIndex) end
   ReadProfessionMeta(char, known)
 
-  -- Archeologie : reset propre si absente, sinon mise a jour.
   if arch then
     char.archaeology = { cur = arch.cur or 0, max = arch.max or 0, name = arch.name }
   else
     char.archaeology = nil
   end
 
+  if ST.UpdateWeeklyAuto then ST.UpdateWeeklyAuto(char) end
   char.lastScan = time()
 
-  -- Rafraichit l'UI si elle est ouverte.
+  if ST.UpdateBadge then ST.UpdateBadge() end
   if ST.RefreshUI then ST.RefreshUI() end
 end
 
--- Scan debounce : plusieurs evenements peuvent tomber d'un coup. On coalesce
--- en un seul scan differe (aucun OnUpdate, aucune boucle serree).
+-- Scan differe et coalesce (aucun OnUpdate, aucune boucle serree).
 function ST.RequestScan(delay)
   if ST.runtime.scanPending then return end
   ST.runtime.scanPending = true
   C_Timer.After(delay or 1.0, function()
     ST.runtime.scanPending = false
-    -- pcall : une erreur d'API ne doit jamais casser la chaine d'evenements.
     local ok, err = pcall(ST.ScanProfessions)
     if not ok and ST.runtime.debug then
-      print("|cFF00FF98SkillTracker|r scan error: " .. tostring(err))
+      print(ST.TAG .. " scan error: " .. tostring(err))
     end
   end)
 end
 
 -- ================================================================
 -- AGREGATION MULTI-PERSONNAGES
--- ----------------------------------------------------------------
--- Parcourt les persos locaux (meme installation) + les persos importes,
--- et construit, par metier (nom normalise), la liste des persos qui le
--- possedent avec leur progression globale.
 -- ================================================================
-
--- Progression globale d'un metier pour un perso : moyenne des paliers connus,
--- sinon la valeur de base du grimoire. Renvoie un pourcentage 0..100.
 local function ProfessionOverallPercent(prof)
   if prof.lines then
     local sum, n = 0, 0
@@ -442,12 +437,17 @@ local function ProfessionOverallPercent(prof)
 end
 ST.ProfessionOverallPercent = ProfessionOverallPercent
 
--- ================================================================
--- LISTE DES PERSONNAGES (locaux + importes) pour la vue multi-perso.
--- Renvoie une liste triee (perso courant en tete, puis locaux, puis importes) :
---   { { key, name, realm, class, imported, accountTag, rec, current }, ... }
--- La classe (jeton "MAGE"...) sert a colorer chaque perso a sa couleur.
--- ================================================================
+-- Nombre de paliers connus et de paliers au max d'un metier.
+function ST.LineCounts(prof)
+  local n, maxed = 0, 0
+  for _, ln in pairs(prof.lines or {}) do
+    n = n + 1
+    if ST.Percent(ln.cur, ln.max) >= 100 then maxed = maxed + 1 end
+  end
+  return n, maxed
+end
+
+-- Liste des personnages (locaux + importes), perso courant en tete.
 function ST.BuildCharList()
   local out = {}
   local curRealm, curName = CurrentCharKey()
@@ -469,18 +469,15 @@ function ST.BuildCharList()
     end
   end
   table.sort(out, function(a, b)
-    if a.current ~= b.current then return a.current end          -- courant en tete
-    if a.imported ~= b.imported then return not a.imported end   -- locaux avant importes
+    if a.current ~= b.current then return a.current end
+    if a.imported ~= b.imported then return not a.imported end
     if (a.name or "") ~= (b.name or "") then return (a.name or "") < (b.name or "") end
     return (a.realm or "") < (b.realm or "")
   end)
   return out
 end
 
--- ================================================================
--- LISTE "A FINIR" : tous les paliers < 100% de tous les persos locaux,
--- tries du plus avance au moins avance (les quasi-finis d'abord).
--- ================================================================
+-- Liste "A finir" : paliers < 100% de tous les persos locaux.
 function ST.BuildTodo()
   local out = {}
   for realm, list in pairs(ST.db.chars) do
@@ -492,7 +489,7 @@ function ST.BuildTodo()
             if pct < 100 then
               out[#out + 1] = {
                 char = name, realm = realm, prof = prof.name or "?",
-                exp = ln.exp, idx = ST.NameToIndex(ln.exp),
+                exp = ln.exp, idx = ST.LineIndex(ln),
                 cur = ln.cur, max = ln.max, pct = pct,
               }
             end
@@ -512,146 +509,156 @@ end
 -- ================================================================
 -- EXPORT / IMPORT  (multi-comptes, installations separees)
 -- ----------------------------------------------------------------
--- Format texte simple, sans loadstring (aucune execution de code importe).
--- On serialise uniquement les persos LOCAUX. Chaque champ est echappe.
+-- STEXPORT2 : une seule ligne (la zone de saisie du jeu n'accepte pas les
+-- retours a la ligne : l'ancien format multi-lignes etait tronque au collage).
+-- Enregistrements separes par ";", champs par ",", encodage %XX pour les
+-- caracteres reserves. Jamais de "|" (caractere d'echappement du jeu).
+-- STEXPORT1 (ancien, multi-lignes) reste lisible a l'import.
+-- Aucun loadstring : aucune execution de code importe.
 -- ================================================================
-local EXPORT_HEADER = "STEXPORT1"
+local EXPORT_V1, EXPORT_V2 = "STEXPORT1", "STEXPORT2"
 
-local function esc(s)
+local function enc(s)
   s = tostring(s or "")
-  s = s:gsub("\\", "\\\\"):gsub("|", "\\p"):gsub("\n", "\\n")
-  return s
+  return (s:gsub("[%%,;|\n\r~]", function(c) return string.format("%%%02X", c:byte()) end))
 end
-local function unesc(s)
+local function dec(s)
+  s = tostring(s or "")
+  return (s:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end))
+end
+local function unescV1(s)
   s = tostring(s or "")
   s = s:gsub("\\n", "\n"):gsub("\\p", "|"):gsub("\\\\", "\\")
   return s
 end
 
--- Serialise tous les persos locaux en une chaine.
 function ST.ExportString()
-  local tag = (ST.settings.accountTag and ST.settings.accountTag ~= "" )
+  local tag = (ST.settings.accountTag and ST.settings.accountTag ~= "")
     and ST.settings.accountTag or (GetRealmName() or "account")
-  local parts = { EXPORT_HEADER, "T|" .. esc(tag) }
+  local recs = { EXPORT_V2, "T," .. enc(tag) }
   local any = false
+  local function add(...) recs[#recs + 1] = table.concat({ ... }, ",") end
 
   for realm, list in pairs(ST.db.chars) do
     for name, rec in pairs(list) do
       any = true
-      parts[#parts + 1] = "C|" .. esc(realm) .. "|" .. esc(name)
-        .. "|" .. esc(rec.class or "") .. "|" .. esc(rec.faction or "")
+      add("C", enc(realm), enc(name), enc(rec.class or ""), enc(rec.faction or ""))
       for parent, prof in pairs(rec.professions or {}) do
-        parts[#parts + 1] = "P|" .. tostring(parent) .. "|" .. esc(prof.name or "")
-          .. "|" .. (prof.isPrimary and "1" or "0")
-        if prof.base then
-          parts[#parts + 1] = "B|" .. tostring(prof.base.cur or 0) .. "|" .. tostring(prof.base.max or 0)
-        end
+        add("P", tostring(parent), enc(prof.name or ""), prof.isPrimary and "1" or "0")
+        if prof.base then add("B", tostring(prof.base.cur or 0), tostring(prof.base.max or 0)) end
         for id, ln in pairs(prof.lines or {}) do
-          parts[#parts + 1] = "L|" .. tostring(id) .. "|" .. tostring(ln.cur or 0)
-            .. "|" .. tostring(ln.max or 0) .. "|" .. esc(ln.exp or "")
+          add("L", tostring(id), tostring(ln.cur or 0), tostring(ln.max or 0), enc(ln.exp or ""))
+        end
+        if prof.conc then
+          add("K", tostring(prof.conc.cur or 0), tostring(prof.conc.max or 0), tostring(prof.conc.t or 0))
         end
       end
       if rec.archaeology then
-        parts[#parts + 1] = "A|" .. tostring(rec.archaeology.cur or 0)
-          .. "|" .. tostring(rec.archaeology.max or 0) .. "|" .. esc(rec.archaeology.name or "")
+        add("A", tostring(rec.archaeology.cur or 0), tostring(rec.archaeology.max or 0),
+          enc(rec.archaeology.name or ""))
       end
     end
   end
-
   if not any then return nil end
-  return table.concat(parts, "\n")
+  return table.concat(recs, ";")
 end
 
--- Parse une chaine exportee et fusionne dans db.imported[tag].
---   Renvoie (true, nbPersos) ou (false, nil) si invalide.
 function ST.ImportString(str)
   if type(str) ~= "string" then return false end
-  str = str:gsub("^%s+", ""):gsub("%s+$", "")
-  local lines = {}
-  for line in (str .. "\n"):gmatch("(.-)\n") do
-    lines[#lines + 1] = line
+  str = str:gsub("||", "|"):gsub("^%s+", ""):gsub("%s+$", "")
+
+  -- Decoupage selon le format : liste de { kind, fields... } deja decodes.
+  local records = {}
+  if str:sub(1, #EXPORT_V2) == EXPORT_V2 then
+    for rec in (str .. ";"):gmatch("(.-);") do
+      if rec ~= "" and rec ~= EXPORT_V2 then
+        local f = {}
+        for field in (rec .. ","):gmatch("(.-),") do f[#f + 1] = dec(field) end
+        records[#records + 1] = f
+      end
+    end
+  elseif str:sub(1, #EXPORT_V1) == EXPORT_V1 then
+    for line in (str .. "\n"):gmatch("(.-)\n") do
+      if line ~= "" and line ~= EXPORT_V1 then
+        local f = {}
+        for field in (line .. "|"):gmatch("(.-)|") do f[#f + 1] = unescV1(field) end
+        records[#records + 1] = f
+      end
+    end
+  else
+    return false
   end
-  if lines[1] ~= EXPORT_HEADER then return false end
 
   local tag, dest, curChar, curProf
   local count = 0
-  local ok = true
-
-  for i = 2, #lines do
-    local raw = lines[i]
-    if raw ~= "" then
-      local kind = raw:match("^(%a)|") or raw
-      local rest = raw:sub(3)
-      local f = {}
-      for field in (rest .. "|"):gmatch("(.-)|") do f[#f + 1] = field end
-
-      if kind == "T" then
-        tag = unesc(f[1]) ; if tag == "" then tag = "import" end
-        ST.db.imported[tag] = {}   -- remplace l'ancien import de ce tag
-        dest = ST.db.imported[tag]
-      elseif kind == "C" and dest then
-        local realm = unesc(f[1]); local name = unesc(f[2])
-        if realm ~= "" and name ~= "" then
-          dest[realm] = dest[realm] or {}
-          curChar = { professions = {}, class = unesc(f[3]), faction = unesc(f[4]) }
-          dest[realm][name] = curChar
-          count = count + 1
-        else
-          curChar = nil
-        end
-        curProf = nil
-      elseif kind == "P" and curChar then
-        local parent = tonumber(f[1])
-        if parent then
-          curProf = { name = unesc(f[2]), isPrimary = (f[3] == "1"), lines = {} }
-          curChar.professions[parent] = curProf
-        else
-          curProf = nil
-        end
-      elseif kind == "B" and curProf then
-        curProf.base = { cur = tonumber(f[1]) or 0, max = tonumber(f[2]) or 0 }
-      elseif kind == "L" and curProf then
-        local id = tonumber(f[1])
-        if id then
-          local exp = unesc(f[4]); if exp == "" then exp = nil end
-          curProf.lines[id] = { cur = tonumber(f[2]) or 0, max = tonumber(f[3]) or 0, exp = exp }
-        end
-      elseif kind == "A" and curChar then
-        curChar.archaeology = {
-          cur = tonumber(f[1]) or 0, max = tonumber(f[2]) or 0, name = unesc(f[3]),
-        }
+  for _, f in ipairs(records) do
+    local kind = f[1]
+    if kind == "T" then
+      tag = f[2]; if not tag or tag == "" then tag = "import" end
+      ST.db.imported[tag] = {}   -- remplace l'ancien import de ce tag
+      dest = ST.db.imported[tag]
+    elseif kind == "C" and dest then
+      local realm, name = f[2] or "", f[3] or ""
+      if realm ~= "" and name ~= "" then
+        dest[realm] = dest[realm] or {}
+        curChar = { professions = {}, class = f[4], faction = f[5] }
+        dest[realm][name] = curChar
+        count = count + 1
+      else
+        curChar = nil
       end
+      curProf = nil
+    elseif kind == "P" and curChar then
+      local parent = tonumber(f[2])
+      if parent then
+        curProf = { name = f[3], isPrimary = (f[4] == "1"), lines = {}, parent = parent }
+        curChar.professions[parent] = curProf
+      else
+        curProf = nil
+      end
+    elseif kind == "B" and curProf then
+      curProf.base = { cur = tonumber(f[2]) or 0, max = tonumber(f[3]) or 0 }
+    elseif kind == "L" and curProf then
+      local id = tonumber(f[2])
+      if id then
+        local exp = f[5]; if exp == "" then exp = nil end
+        curProf.lines[id] = { cur = tonumber(f[3]) or 0, max = tonumber(f[4]) or 0, exp = exp }
+      end
+    elseif kind == "K" and curProf then
+      curProf.conc = { cur = tonumber(f[2]) or 0, max = tonumber(f[3]) or 0, t = tonumber(f[4]) or 0 }
+    elseif kind == "A" and curChar then
+      curChar.archaeology = { cur = tonumber(f[2]) or 0, max = tonumber(f[3]) or 0, name = f[4] }
     end
   end
 
-  if not tag then ok = false end
+  if not tag then return false end
+  for _, realms in pairs(ST.db.imported) do
+    for _, list in pairs(realms) do
+      for _, rec in pairs(list) do
+        for _, prof in pairs(rec.professions or {}) do ST.ResolveLineIndexes(prof, ST.db.tierIndex) end
+      end
+    end
+  end
   if ST.RefreshUI then ST.RefreshUI() end
-  return ok, count
+  return true, count
 end
 
--- Efface les donnees du perso courant (garde les reglages).
 function ST.WipeCurrentChar()
   local realm, name = CurrentCharKey()
-  if ST.db.chars[realm] then
-    ST.db.chars[realm][name] = nil
-  end
+  if ST.db.chars[realm] then ST.db.chars[realm][name] = nil end
   ST.RequestScan(0.1)
 end
 
 -- ================================================================
--- DIAGNOSTIC  /skt dump
--- Teste toutes les sources possibles de nom de palier, pour identifier
--- laquelle expose "Herboristerie de Midnight", "de Khaz Algar", etc.
+-- DIAGNOSTIC  /skt dump  et  /skt kpdump
 -- Ouvrir un metier en jeu AVANT de lancer la commande.
 -- ================================================================
 local function p(s) print("|cFF00FF98ST|r " .. tostring(s)) end
+ST.p = p
 
 function ST.Dump()
   local api = C_TradeSkillUI or {}
   p("=== DUMP (ouvrez un metier avant) ===")
-
-  -- 1) Grimoire : GetProfessions + GetProfessionInfo (11e retour = skillLineName)
-  p("-- GetProfessionInfo (grimoire) --")
   if type(GetProfessions) == "function" then
     local p1, p2, arch, fish, cook = GetProfessions()
     for _, idx in ipairs({ p1, p2, arch, fish, cook }) do
@@ -663,8 +670,6 @@ function ST.Dump()
       end
     end
   end
-
-  -- 2) GetBaseProfessionInfo (metier ouvert)
   if api.GetBaseProfessionInfo then
     local b = api.GetBaseProfessionInfo()
     if b then
@@ -673,27 +678,23 @@ function ST.Dump()
         tostring(b.expansionName), tostring(b.skillLevel), tostring(b.maxSkillLevel)))
     end
   end
-
-  -- 3) GetChildProfessionInfos (alimente le menu deroulant des paliers)
   if api.GetChildProfessionInfos then
     local kids = api.GetChildProfessionInfos()
     p("-- GetChildProfessionInfos : " .. (type(kids) == "table" and #kids or "nil") .. " --")
     if type(kids) == "table" then
       for _, k in ipairs(kids) do
-        p(string.format("profID=%s name=%s exp=%s cur=%s/%s",
-          tostring(k.professionID), tostring(k.professionName),
-          tostring(k.expansionName), tostring(k.skillLevel), tostring(k.maxSkillLevel)))
+        p(string.format("profID=%s name=%s exp=%s idx=%s cur=%s/%s",
+          tostring(k.professionID), tostring(k.professionName), tostring(k.expansionName),
+          tostring(ST.NameToIndex(k.expansionName)), tostring(k.skillLevel), tostring(k.maxSkillLevel)))
       end
     end
   end
-
-  -- 4) GetAllProfessionTradeSkillLines + GetProfessionInfoBySkillLineID
   if api.GetAllProfessionTradeSkillLines then
     local lines = api.GetAllProfessionTradeSkillLines() or {}
     p("-- GetAllProfessionTradeSkillLines : " .. #lines .. " --")
     for _, id in ipairs(lines) do
       local i = api.GetProfessionInfoBySkillLineID and api.GetProfessionInfoBySkillLineID(id)
-      if i then
+      if i and (i.maxSkillLevel or 0) > 0 then
         p(string.format("id=%s name=%s exp=%s cur=%s/%s",
           tostring(id), tostring(i.professionName),
           tostring(i.expansionName), tostring(i.skillLevel), tostring(i.maxSkillLevel)))
@@ -703,12 +704,8 @@ function ST.Dump()
   p("=== FIN DUMP ===")
 end
 
--- Diagnostic dedie aux points de connaissance et a la concentration.
--- Liste d'abord les fonctions reellement disponibles sur le client (decouverte
--- fiable), puis tente des lectures en pcall (aucune erreur possible).
 function ST.KPDump()
   p("=== KP / CONCENTRATION ===")
-
   if type(C_ProfSpecs) == "table" then
     local names = {}
     for k, v in pairs(C_ProfSpecs) do if type(v) == "function" then names[#names + 1] = k end end
@@ -717,21 +714,6 @@ function ST.KPDump()
   else
     p("C_ProfSpecs absent")
   end
-
-  -- Fonctions liees a la concentration dans C_TradeSkillUI
-  if type(C_TradeSkillUI) == "table" then
-    local names = {}
-    for k, v in pairs(C_TradeSkillUI) do
-      if type(v) == "function" and (k:find("oncentration") or k:find("nowledge")) then
-        names[#names + 1] = k
-      end
-    end
-    table.sort(names)
-    p("C_TradeSkillUI conc/know: " .. (table.concat(names, ", ") ~= "" and table.concat(names, ", ") or "aucune"))
-  end
-
-  -- Test cible sur les PALIERS du metier actuellement ouvert (les fonctions
-  -- veulent l'id du palier courant, pas le metier de base).
   local api = C_TradeSkillUI or {}
   if api.GetBaseProfessionInfo and api.GetChildProfessionInfos then
     local base = api.GetBaseProfessionInfo()
@@ -741,7 +723,6 @@ function ST.KPDump()
       for _, k in ipairs(kids) do
         local id = k.professionID
         local line = "tier " .. tostring(id) .. " [" .. tostring(k.expansionName) .. "]"
-
         if api.GetConcentrationCurrencyID then
           local ok, cid = pcall(api.GetConcentrationCurrencyID, id)
           line = line .. " | concCid=" .. tostring(ok and cid)
@@ -750,7 +731,6 @@ function ST.KPDump()
             if ci then line = line .. "(" .. tostring(ci.quantity) .. "/" .. tostring(ci.maxQuantity) .. ")" end
           end
         end
-
         if C_ProfSpecs and C_ProfSpecs.GetCurrencyInfoForSkillLine then
           local ok, r = pcall(C_ProfSpecs.GetCurrencyInfoForSkillLine, id)
           line = line .. " | kp=" .. tostring(ok and r)
@@ -760,6 +740,10 @@ function ST.KPDump()
             table.sort(keys)
             line = line .. " {" .. table.concat(keys, ",") .. "}"
           end
+        end
+        if ST.ReadSpecTree then
+          local spent, max = ST.ReadSpecTree(id)
+          line = line .. " | tree=" .. tostring(spent) .. "/" .. tostring(max)
         end
         p(line)
       end
@@ -792,53 +776,125 @@ function ST.SetupLDB()
 end
 
 -- ================================================================
--- RECHERCHE GLOBALE (integration a la loupe TibiSuite, si presente)
+-- RECHERCHE GLOBALE (loupe TibiSuite) : par metier OU par personnage,
+-- sur tous les persos locaux. La ligne rappelle la concentration projetee.
 -- ================================================================
 local function BuildSearchProvider()
   local UI = _G.TibiMidnight
   if not UI or not UI.RegisterSearch then return end
-  -- Annuaire : cherche un metier sur TOUS les persos locaux du compte.
   UI.RegisterSearch("SkillTracker", "SkillTracker", function(q)
     local res = {}
     for realm, list in pairs(ST.db.chars) do
       for name, rec in pairs(list) do
+        local charHit = UI.Match(name, q)
         for _, prof in pairs(rec.professions or {}) do
-          if UI.Match(prof.name or "", q) then
+          if charHit or UI.Match(prof.name or "", q) then
+            local extra = ""
+            local pr = ST.ConcProject and ST.ConcProject(prof)
+            if pr then
+              extra = "  |cFF888888" .. L.CONCENTRATION .. " " .. pr.cur .. "/" .. pr.max .. "|r"
+            end
             res[#res + 1] = {
               text = UI.Hex(ST.COLOR[1], ST.COLOR[2], ST.COLOR[3]) .. (prof.name or "?") .. "|r  "
                 .. name .. " |cFF888888" .. realm .. "|r  "
-                .. ProfessionOverallPercent(prof) .. "%",
+                .. ProfessionOverallPercent(prof) .. "%" .. extra,
               onClick = function() if ST.Toggle then ST.Toggle(true) end end,
             }
           end
         end
       end
     end
-    return res
-  end)
-end
-
--- Ancienne version (perso courant uniquement), conservee mais inutilisee.
-local function BuildSearchProvider_Legacy()
-  local UI = _G.TibiMidnight
-  if not UI or not UI.RegisterSearch then return end
-  UI.RegisterSearch("SkillTracker", "SkillTracker", function(q)
-    local res = {}
-    local realm, name = CurrentCharKey()
-    local rec = ST.db.chars[realm] and ST.db.chars[realm][name]
-    if not rec then return res end
-    for _, prof in pairs(rec.professions or {}) do
-      if UI.Match(prof.name or "", q) then
+    -- Recettes (3 lettres minimum : sinon la liste devient un mur).
+    if ST.RecipeSearch and type(q) == "string" and #q >= 3 then
+      local found = ST.RecipeSearch(q, 10)
+      for _, r in ipairs(found) do
         res[#res + 1] = {
-          text = UI.Hex(ST.COLOR[1], ST.COLOR[2], ST.COLOR[3]) .. (prof.name or "?") .. "|r  "
-            .. ProfessionOverallPercent(prof) .. "%",
-          onClick = function() if ST.Toggle then ST.Toggle(true) end end,
+          text = (r.icon and ("|T" .. r.icon .. ":14|t ") or "") .. r.name .. "  " .. ST.OwnersText(r.owners, 3),
+          onClick = function() if ST.OpenView then ST.OpenView("recipes", r.name) end end,
         }
       end
     end
     return res
   end)
 end
+
+-- ================================================================
+-- API PUBLIQUE EN LECTURE SEULE (suite TibiSuite : Stats, WeeklyCompass)
+-- Ne renvoie que des copies : aucun appelant ne peut modifier SkillTrackerDB.
+-- ================================================================
+local function ProfSummary(prof)
+  local s = {
+    name = prof.name, isPrimary = prof.isPrimary and true or false,
+    pct = ProfessionOverallPercent(prof), kp = prof.kp,
+  }
+  local ln = ST.CurrentLine(prof)
+  if ln then s.cur, s.max = ln.cur, ln.max
+  elseif prof.base then s.cur, s.max = prof.base.cur, prof.base.max end
+  if ST.ConcProject then
+    local pr = ST.ConcProject(prof)
+    if pr then
+      s.conc = { cur = pr.cur, max = pr.max, full = pr.full, fullIn = pr.fullIn,
+                 seenAt = prof.conc.t, projected = pr.hasRate }
+    end
+  end
+  if prof.tree then s.tree = { spent = prof.tree.spent, max = prof.tree.max } end
+  return s
+end
+
+local function FindRec(realm, name)
+  if not ST.db or not realm or not name then return nil end
+  return ST.db.chars[realm] and ST.db.chars[realm][name]
+end
+
+_G.SkillTrackerAPI = {
+  version = 1,
+  -- Resume des metiers d'un perso local, tries principaux d'abord, ou nil.
+  GetCharSummary = function(realm, name)
+    local rec = FindRec(realm, name)
+    if not rec then return nil end
+    local list = {}
+    for parent, prof in pairs(rec.professions or {}) do
+      local s = ProfSummary(prof)
+      if ST.WeeklyCount and prof.isPrimary then
+        local done, total = ST.WeeklyCount(rec, parent)
+        if total > 0 then s.week = { done = done, total = total } end
+      end
+      list[#list + 1] = s
+    end
+    table.sort(list, function(a, b)
+      if a.isPrimary ~= b.isPrimary then return a.isPrimary end
+      return (a.name or "") < (b.name or "")
+    end)
+    return list
+  end,
+  -- Table exportable pour Stats : les metiers d'un perso + concentration
+  -- (valeur lue, date de lecture, duree de recharge apprise) + semaine en cours.
+  ExportProfessions = function(rec)
+    if type(rec) ~= "table" or type(rec.professions) ~= "table" then return nil end
+    local out = {}
+    for parent, prof in pairs(rec.professions) do
+      local e = { name = prof.name, isPrimary = prof.isPrimary, base = prof.base, kp = prof.kp, lines = {} }
+      for id, ln in pairs(prof.lines or {}) do
+        e.lines[id] = { cur = ln.cur, max = ln.max, exp = ln.exp, kp = ln.kp }
+      end
+      if prof.conc then
+        -- fullSec : duree apprise de vide a plein (s), plus lisible qu'une vitesse.
+        local rate = ST.ConcRate and ST.ConcRate()
+        e.conc = { cur = prof.conc.cur, max = prof.conc.max, t = prof.conc.t,
+                   fullSec = rate and math.floor(1 / rate + 0.5) or nil }
+      end
+      if prof.tree then e.tree = { spent = prof.tree.spent, max = prof.tree.max } end
+      if ST.WeeklyCount and prof.isPrimary then
+        local done, total = ST.WeeklyCount(rec, parent)
+        if total > 0 then e.week = { done = done, total = total } end
+      end
+      out[parent] = e
+    end
+    return out
+  end,
+  -- Vitesse de recharge apprise (fraction du max par seconde), ou nil.
+  GetConcRate = function() return ST.ConcRate and ST.ConcRate() or nil end,
+}
 
 -- ================================================================
 -- POINTS D'ENTREE PUBLICS (attendus par TibiSuite)
@@ -851,19 +907,27 @@ function SkillTracker_OpenOptions()
   if ST.OpenOptions then ST.OpenOptions() end
 end
 
--- Compartiment d'addons Blizzard
 function SkillTracker_OnAddonCompartmentClick()
   if ST.Toggle then ST.Toggle() end
 end
 function SkillTracker_OnAddonCompartmentEnter(btn)
   GameTooltip:SetOwner(btn, "ANCHOR_LEFT")
-  GameTooltip:AddLine("|cFF00FF98SkillTracker|r")
+  GameTooltip:AddLine(ST.TAG)
   GameTooltip:AddLine(L.PANEL_SUBTITLE, 0.9, 0.9, 0.9)
   GameTooltip:Show()
 end
 function SkillTracker_OnAddonCompartmentLeave()
   GameTooltip:Hide()
 end
+
+-- Ouvre le panneau directement sur une vue (query : recherche de recette).
+local function OpenView(v, query)
+  if not ST.settings then return end
+  ST.settings.metierView = v
+  if query then ST.runtime.recipeQuery = query end
+  if ST.Toggle then ST.Toggle(true) end
+end
+ST.OpenView = OpenView
 
 -- ================================================================
 -- COMMANDES SLASH  /skilltracker  /skt
@@ -876,17 +940,34 @@ SlashCmdList["SKILLTRACKER"] = function(msg)
     SkillTracker_OpenOptions()
   elseif msg == "scan" or msg == "rescan" then
     ST.RequestScan(0.1)
-    print("|cFF00FF98SkillTracker|r " .. L.OPT_RESCAN)
+    print(ST.TAG .. " " .. L.OPT_RESCAN)
   elseif msg == "dump" then
     ST.Dump()
   elseif msg == "kpdump" then
     ST.KPDump()
+  elseif msg == "conc" or msg == "concentration" then
+    OpenView("conc")
+  elseif msg == "week" or msg == "semaine" then
+    OpenView("week")
+  elseif msg == "recipe" or msg == "recette" or msg:match("^recipe%s") or msg:match("^recette%s") or msg:match("^r%s") then
+    OpenView("recipes", msg:match("^%S+%s+(.+)$") or "")
+  elseif msg == "check" then
+    if ST.RunQuestCheck then ST.RunQuestCheck() end
+  elseif msg == "mark" then
+    if ST.QuestMark then ST.QuestMark() end
+  elseif msg == "diff" then
+    if ST.QuestDiff then ST.QuestDiff() end
   elseif msg == "help" or msg == "?" then
-    print("|cFF00FF98SkillTracker|r " .. L.SLASH_HELP)
+    print(ST.TAG .. " " .. L.SLASH_HELP)
     print("  |cFFFFD700/skt|r : " .. L.SLASH_TOGGLE)
     print("  |cFFFFD700/skt config|r : " .. L.SLASH_CONFIG)
     print("  |cFFFFD700/skt scan|r : " .. L.SLASH_SCAN)
-    print("  |cFFFFD700/skt kpdump|r : diagnostic points de connaissance / concentration")
+    print("  |cFFFFD700/skt conc|r : " .. L.SLASH_CONC)
+    print("  |cFFFFD700/skt week|r : " .. L.SLASH_WEEK)
+    print("  |cFFFFD700/skt recipe <...>|r : " .. L.SLASH_RECIPE)
+    print("  |cFFFFD700/skt check|r : " .. L.SLASH_CHECK)
+    print("  |cFFFFD700/skt mark|r, |cFFFFD700/skt diff|r : " .. L.SLASH_DIFF)
+    print("  |cFFFFD700/skt dump|r, |cFFFFD700/skt kpdump|r : " .. L.SLASH_DUMP)
   else
     SkillTracker_Toggle()
   end
@@ -894,10 +975,34 @@ end
 
 -- ================================================================
 -- INITIALISATION ET EVENEMENTS
--- ----------------------------------------------------------------
--- Scan declenche sur : connexion, entree en jeu, ouverture d'un metier,
--- changement de liste de competences, montee de competence. Jamais en boucle.
 -- ================================================================
+local loginDone = false
+local function OnLogin()
+  if loginDone then return end
+  loginDone = true
+  ST.RequestScan(1.0)
+  if ST.OnPlayerLogin then ST.OnPlayerLogin() end
+  ST.SetupLDB()
+  if ST.HookItemTooltips then ST.HookItemTooltips() end
+  C_Timer.After(3, function()
+    -- En suite, seul le reglage "full" du core fait parler les modules.
+    local mode = "full"
+    if HasCore() then mode = (TibiSuiteDB and TibiSuiteDB.loginMsg) or "one" end
+    if mode == "full" then
+      print(ST.TAG .. " v" .. ST.VERSION .. " " .. L.LOADED_MSG
+        .. "  -  |cFFFFD700/skt|r, |cFFFFD700/skt help|r.")
+    end
+  end)
+  -- Alts a la concentration pleine + pastille : apres le premier scan, quand
+  -- la barre du core est construite.
+  C_Timer.After(8, function()
+    if ST.AltConcAlert then ST.AltConcAlert() end
+    if ST.UpdateBadge then ST.UpdateBadge() end
+  end)
+  -- La projection avance avec le temps : pastille recalculee toutes les 10 min.
+  C_Timer.NewTicker(600, function() if ST.UpdateBadge then ST.UpdateBadge() end end)
+end
+
 local ev = CreateFrame("Frame")
 ev:RegisterEvent("ADDON_LOADED")
 ev:RegisterEvent("PLAYER_LOGIN")
@@ -906,42 +1011,47 @@ ev:RegisterEvent("TRADE_SKILL_SHOW")
 ev:RegisterEvent("TRADE_SKILL_LIST_UPDATE")
 ev:RegisterEvent("SKILL_LINES_CHANGED")
 ev:RegisterEvent("CHAT_MSG_SKILL")
+ev:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
+ev:RegisterEvent("TRAIT_CONFIG_UPDATED")
+ev:RegisterEvent("QUEST_TURNED_IN")
+ev:RegisterEvent("QUEST_DATA_LOAD_RESULT")
+ev:RegisterEvent("TRADE_SKILL_CLOSE")
+ev:RegisterEvent("NEW_RECIPE_LEARNED")
 
-ev:SetScript("OnEvent", function(_, event, arg1)
+ev:SetScript("OnEvent", function(_, event, arg1, arg2)
   if event == "ADDON_LOADED" then
     if arg1 == ADDON then
       InitDB()
       BuildSearchProvider()
       if ST.OnDBReady then ST.OnDBReady() end
-      -- Rattrapage LoadOnDemand : quand TibiSuite charge ce module a la demande,
-      -- PLAYER_LOGIN est deja passe et sa branche ci-dessous ne se declenchera
-      -- plus. On rejoue donc ici le travail de login (scan initial + LDB) si la
-      -- connexion est deja effective. N'affecte pas les donnees.
-      if IsLoggedIn() then
-        ST.RequestScan(1.0)
-        if ST.OnPlayerLogin then ST.OnPlayerLogin() end
-        ST.SetupLDB()
-        print("|cFF00FF98SkillTracker|r v7.1.5.34 " .. L.LOADED_MSG
-          .. "  -  |cFFFFD700/skt|r, |cFFFFD700/skt config|r.")
-      end
+      -- Chargement a la demande par le core : PLAYER_LOGIN est deja passe.
+      if IsLoggedIn() then OnLogin() end
     end
+    return
+  end
+  if not ST.db then return end
 
-  elseif event == "PLAYER_LOGIN" then
-    -- Les donnees de metier ne sont pas toujours pretes ici ; on tente
-    -- quand meme (GetProfessions marche) et on reessaie apres l'entree en jeu.
-    ST.RequestScan(1.0)
-    if ST.OnPlayerLogin then ST.OnPlayerLogin() end
-    ST.SetupLDB()
-    print("|cFF00FF98SkillTracker|r v7.1.5.34 " .. L.LOADED_MSG
-      .. "  -  |cFFFFD700/skt|r, |cFFFFD700/skt config|r.")
-
+  if event == "PLAYER_LOGIN" then
+    OnLogin()
   elseif event == "PLAYER_ENTERING_WORLD" then
     ST.RequestScan(2.0)
-
+  elseif event == "CURRENCY_DISPLAY_UPDATE" then
+    -- Seulement nos monnaies de concentration (sinon on ignore : evenement tres frequent).
+    if arg1 and ST.runtime.concCids[arg1] then ST.RequestScan(1.0) end
+  elseif event == "QUEST_TURNED_IN" then
+    ST.RequestScan(1.5)
+  elseif event == "QUEST_DATA_LOAD_RESULT" then
+    if ST.OnQuestDataLoad then ST.OnQuestDataLoad(arg1, arg2) end
+  elseif event == "TRADE_SKILL_CLOSE" then
+    if ST.CancelRecipeScan then ST.CancelRecipeScan() end
+  elseif event == "NEW_RECIPE_LEARNED" then
+    if ST.OnRecipeLearned then ST.OnRecipeLearned(arg1) end
+    ST.RequestScan(0.5)
   else
-    -- TRADE_SKILL_SHOW / TRADE_SKILL_LIST_UPDATE / SKILL_LINES_CHANGED /
-    -- CHAT_MSG_SKILL : une fenetre de metier est ouverte ou une competence
-    -- a bouge -> c'est le bon moment pour capter le detail par extension.
+    if (event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_LIST_UPDATE") and ST.RequestRecipeScan then
+      ST.RequestRecipeScan(2.0)
+    end
+    -- TRADE_SKILL_* / SKILL_LINES_CHANGED / CHAT_MSG_SKILL / TRAIT_CONFIG_UPDATED
     ST.RequestScan(0.5)
   end
 end)

@@ -1,8 +1,8 @@
 ## Interface: 120100, 120007, 120005
 ## Title: SkillTracker
 ## Title-frFR: SkillTracker
-## Notes: Tracks profession progression per expansion (current / max + %), for all your characters. Module of the TibiSuite suite by Tibiscui.
-## Notes-frFR: Suit la progression des metiers par extension (actuel / max + %), pour tous vos personnages. Module de la suite TibiSuite par Tibiscui.
+## Notes: Profession progress by expansion, concentration of all your characters and weekly knowledge. Module of the TibiSuite suite by Tibiscui.
+## Notes-frFR: Progression des métiers par extension, concentration de tous tes personnages et connaissances de la semaine. Module de la suite TibiSuite par Tibiscui.
 ## Author: Tibizcui - Kirin Tor
 ## Version: 7.1.5.34
 ## X-Curse-Project-ID: 1651940
@@ -39,6 +39,9 @@ Core\TibiSuiteUI.lua
 Locales.lua
 Constants.lua
 Core.lua
+Concentration.lua
+Knowledge.lua
+Recipes.lua
 UI.lua
 ## Glue TibiSuite : inscription comme onglet du catalogue unifie
 SkillTracker_Module.lua

@@ -173,6 +173,10 @@ ns:AddLocale("deDE", {
     SHEET_NO_RAIDS        = "Kein Schlachtzug gesperrt",
     SHEET_MORE            = "+ %d weitere",
     SHEET_CURRENCIES      = "Saisonwährungen",
+    SHEET_PROFESSIONS     = "Berufe",
+    SHEET_CONC            = "Konz. %d/%d",
+    SHEET_CONC_FULL       = "VOLL",
+    SHEET_PROF_WEEK       = "Woche %d/%d",
     SHEET_NO_DATA         = "Noch kein Detailblatt für diesen Charakter. Logge dich einmal mit ihm ein, um es zu füllen (Ausrüstung, Set, Werte).",
 
     -- Talents (fiche detaillee)

@@ -1,5 +1,20 @@
 # Changelog
 
+## 7.1.5.35
+- Nouveau : vue Concentration. La concentration de tous tes personnages, même déconnectés, projetée à l'instant : « pleine dans 14 h » ou « PLEINE depuis 2 j ». La vitesse de recharge est apprise à partir de tes propres relevés (aucune valeur inventée). Alerte à la connexion pour les alts à la concentration pleine, et pastille sur l'onglet de la suite.
+- Nouveau : la concentration se relit à la connexion, sans ouvrir le métier, une fois la monnaie du métier connue.
+- Nouveau : vue Semaine. Sources de connaissances par personnage et par métier (quête, traité, butins, Foire de Sombrelune), la Foire étant détectée automatiquement ; les autres se cochent à la main et se décochent seules au reset hebdo.
+- Nouveau : rangs dépensés dans les arbres de spécialisation du métier.
+- Nouveau : « Qui sait crafter ça ? ». Les recettes apprises de chaque personnage sont enregistrées à l'ouverture de ses métiers (extension en cours par défaut, option pour toutes). Vue Recettes avec recherche, résultats dans la loupe de la suite, /skt recipe <texte>, et ligne « Tes personnages savent le fabriquer » dans l'info-bulle des objets. Clic pour ouvrir la recette, Maj+clic pour la lier dans la discussion.
+- Nouveau : recherche globale par nom de personnage, commandes /skt conc, /skt week, /skt check, /skt mark et /skt diff.
+- Nouveau : SkillTracker disponible en 10 langues.
+- Synergie : la fiche personnage de WeeklyCompass affiche les métiers (niveau, concentration, semaine) ; l'export Stats envoie la concentration et la semaine au Dashboard et à Tibi Companion.
+- Correction 12.1 : la vue « Toutes les extensions » affichait « Extension 11 » pour The War Within et Midnight ; elle utilise maintenant le nom fourni par le jeu et range les paliers par extension.
+- Correction : la concentration et les connaissances ne sont plus effacées à chaque connexion (le cache est conservé quand le jeu ne les fournit pas).
+- Correction : l'export multi-comptes tient sur une seule ligne (l'ancien format était tronqué au collage) ; les anciens exports restent lisibles.
+- Correction : noms d'extension reconnus en allemand, espagnol, italien, portugais et russe, avec déduction de secours pour les paliers récents.
+- Correction : suppression d'un hook sur la fermeture de la fenêtre qui pouvait provoquer la fenêtre « action réservée à l'IU de Blizzard » avec Échap.
+
 ## 7.1.5.34
 - Socle d'interface embarque passe en v12 : les barres de defilement des options et de la recherche sont habillees aux couleurs du module. Pour le reste, bump de version pour aligner le numero sur l'ensemble de la suite (voir DailyTracker 7.1.5.34 pour le detail : mise a jour 12.1, suivi par personnage, vue Personnages, liste A faire a l'ecran, rappel avant le reset, 10 langues).
 

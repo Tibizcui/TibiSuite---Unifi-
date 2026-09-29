@@ -416,6 +416,11 @@ local function buildRight()
     ui.curTitle = newSection(frame)
     ui.cur = {}
     for i = 1, 5 do ui.cur[i] = newPair(frame) end
+
+    -- Metiers (colonne de gauche, sous l'equipement), lus dans SkillTracker.
+    ui.profTitle = newSection(frame)
+    ui.profs = {}
+    for i = 1, 4 do ui.profs[i] = newPair(frame) end
 end
 
 local function build()
@@ -806,6 +811,47 @@ local function fillCurrencies(y, sheet)
     return y - math.min(#list, #ui.cur) * 16
 end
 
+-- Metiers : resume fourni par SkillTracker (API en lecture seule
+-- _G.SkillTrackerAPI, SkillTracker 7.1.5.35+). Concentration PROJETEE a
+-- l'instant avec la vitesse de recharge que SkillTracker a apprise ; rien
+-- n'est affiche si SkillTracker est absent ou ne connait pas le perso.
+local function fillProfessions(y, char)
+    for _, p in ipairs(ui.profs) do hidePair(p) end
+    local api = _G.SkillTrackerAPI
+    local ok, list = false, nil
+    if api and api.GetCharSummary and char then
+        ok, list = pcall(api.GetCharSummary, char.realm, char.name)
+    end
+    if not ok or type(list) ~= "table" or #list == 0 then
+        hideSection(ui.profTitle)
+        return y
+    end
+    y = placeSection(ui.profTitle, L["SHEET_PROFESSIONS"], PAD, y, COL_L_W)
+    local n = math.min(#list, #ui.profs)
+    for i = 1, n do
+        local p = list[i]
+        local left = p.name or "?"
+        if p.cur and p.max and p.max > 0 then
+            left = left .. ("  |cff8a8a8a%d/%d|r"):format(p.cur, p.max)
+        end
+        if p.week then
+            left = left .. "  |cff8a8a8a" .. L["SHEET_PROF_WEEK"]:format(p.week.done, p.week.total) .. "|r"
+        end
+        local right, rc = "", GREY
+        if p.conc then
+            if p.conc.full then
+                right, rc = L["SHEET_CONC_FULL"], ORANGE
+            else
+                right, rc = L["SHEET_CONC"]:format(p.conc.cur, p.conc.max), GREEN
+            end
+        end
+        placePair(ui.profs[i], PAD, y - (i - 1) * 16, COL_L_W, left, right, nil, rc)
+        ui.profs[i].right:SetWidth(120)
+        ui.profs[i].left:SetWidth(COL_L_W - 120)
+    end
+    return y - n * 16
+end
+
 -- Place la fiche contre le tableau : a droite s'il y a la place, sinon a gauche.
 local function anchor()
     frame:ClearAllPoints()
@@ -849,6 +895,7 @@ function Sheet:Refresh()
         ui.empty:Show()
         leftBottom = ly - (ui.empty:GetStringHeight() or 40) - 8
     end
+    leftBottom = fillProfessions(leftBottom - 6, char)
     local y = top
     if sheet then
         y = fillSet(y, sheet.set) - 6

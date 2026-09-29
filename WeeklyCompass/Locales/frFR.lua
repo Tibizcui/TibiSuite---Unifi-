@@ -171,6 +171,10 @@ ns:AddLocale("frFR", {
     SHEET_NO_RAIDS        = "Aucun raid verrouillé",
     SHEET_MORE            = "+ %d autre(s)",
     SHEET_CURRENCIES      = "Monnaies de la saison",
+    SHEET_PROFESSIONS     = "Métiers",
+    SHEET_CONC            = "Conc. %d/%d",
+    SHEET_CONC_FULL       = "PLEINE",
+    SHEET_PROF_WEEK       = "sem. %d/%d",
     SHEET_NO_DATA         = "Pas encore de fiche détaillée pour ce personnage. Connecte-toi une fois dessus pour la remplir (équipement, ensemble, statistiques).",
 
     -- Talents (fiche detaillee)

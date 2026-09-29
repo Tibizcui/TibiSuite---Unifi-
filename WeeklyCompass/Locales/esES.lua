@@ -173,6 +173,10 @@ local tbl = {
     SHEET_NO_RAIDS        = "Ninguna banda bloqueada",
     SHEET_MORE            = "+ %d más",
     SHEET_CURRENCIES      = "Monedas de la temporada",
+    SHEET_PROFESSIONS     = "Profesiones",
+    SHEET_CONC            = "Conc. %d/%d",
+    SHEET_CONC_FULL       = "LLENA",
+    SHEET_PROF_WEEK       = "sem. %d/%d",
     SHEET_NO_DATA         = "Todavía no hay ficha detallada para este personaje. Conéctate una vez con él para rellenarla (equipo, conjunto, estadísticas).",
 
     -- Talents (fiche detaillee)

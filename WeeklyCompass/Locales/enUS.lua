@@ -176,6 +176,10 @@ ns:AddLocale("enUS", {
     SHEET_NO_RAIDS        = "No raid locked",
     SHEET_MORE            = "+ %d more",
     SHEET_CURRENCIES      = "Season currencies",
+    SHEET_PROFESSIONS     = "Professions",
+    SHEET_CONC            = "Conc. %d/%d",
+    SHEET_CONC_FULL       = "FULL",
+    SHEET_PROF_WEEK       = "week %d/%d",
     SHEET_NO_DATA         = "No detailed sheet yet for this character. Log in on it once to fill it in (equipment, set, stats).",
 
     -- Talents (fiche detaillee)

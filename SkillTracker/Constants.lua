@@ -1,24 +1,25 @@
 -- ================================================================
 --  SkillTracker  -  Constants.lua
---  Couleurs, identite visuelle, et mapping skillLineID -> extension.
+--  Couleurs, identite des extensions, et resolution "palier de metier ->
+--  index d'extension".
 --
 --  Patch cible : Interface 120100 (Midnight 12.1) + retro 12.0.x.
---  Fonctions de jeu utilisees par le module (verifiees sur Warcraft Wiki) :
---    - GetProfessions()                        -> prof1, prof2, arch, fishing, cooking
---    - GetProfessionInfo(index)                -> name, icon, cur, max, ..., skillLine
---    - C_TradeSkillUI.GetAllProfessionTradeSkillLines()  -> { skillLineID, ... }
---    - C_TradeSkillUI.GetProfessionInfoBySkillLineID(id) -> ProfessionInfo
+--  Fonctions de jeu utilisees par le module :
+--    - GetProfessions() / GetProfessionInfo(index)     (grimoire, sans fenetre)
+--    - C_TradeSkillUI.GetChildProfessionInfos()        (paliers du metier ouvert)
+--    - C_TradeSkillUI.GetAllProfessionTradeSkillLines() + GetProfessionInfoBySkillLineID
 --
---  IMPORTANT (honnetete technique) :
---  Le champ ProfessionInfo.expansionName est bogue cote Blizzard (renvoie
---  toujours "Unknown"). Il n'existe donc aucun moyen 100% fiable de nommer
---  une extension sans une table skillLineID -> index d'extension. Les ID de
---  base et ceux de Dragonflight ci-dessous sont stables et connus. Les ID de
---  The War Within et Midnight n'ont PAS ete verifies contre une source sure :
---  ils ne sont donc PAS codes en dur ici. Pour ces extensions, le module
---  retombe proprement sur le nom localise de l'extension courante (via
---  GetExpansionLevel) pour le palier le plus recent, ou sur "Extension N".
---  Voir le README (macro de dump) pour completer la table sans erreur.
+--  Resolution de l'extension d'un palier (ST.ResolveLineIndexes), dans
+--  l'ordre, sans jamais inventer :
+--    1) le nom d'extension fourni par le jeu (champ expansionName, ex :
+--       "Khaz Algar", "Îles aux Dragons") traduit via ST.EXP_NAME_INDEX
+--       (10 langues, comparaison tolerante casse / accents) ;
+--    2) un skillLineID deja resolu une fois (table apprise SkillTrackerDB.tierIndex,
+--       plus les ID Dragonflight connus ci-dessous) ;
+--    3) deduction par rang, marquee "inferred" : les paliers modernes
+--       (ID >= 2750 : Shadowlands, Dragonflight, TWW, Midnight...) ont des ID
+--       croissants par extension.
+--  Le libelle affiche reste toujours le nom fourni par le jeu quand il existe.
 -- ================================================================
 
 local _, ST = ...
@@ -29,60 +30,21 @@ ST.COLOR = { 0.0, 1.0, 0.596 }
 -- Nom de la texture du logo (WoW resout .blp/.tga automatiquement, PAS .png)
 ST.LOGO = "Interface\\AddOns\\SkillTracker\\media\\Logo"
 
--- Index d'extension WoW -> chaine globale localisee _G["EXPANSION_NAME"..i]
---   0 Classic, 1 TBC, 2 Wrath, 3 Cata, 4 MoP, 5 WoD, 6 Legion,
---   7 BfA, 8 Shadowlands, 9 Dragonflight, 10 The War Within, 11 Midnight
--- On lit le nom via la globale du jeu -> automatiquement traduit EN/FR.
+-- Seuil des paliers "modernes" (Shadowlands et apres) : ID croissants.
+ST.MODERN_TIER_ID = 2750
+ST.MODERN_FIRST_INDEX = 8   -- Shadowlands
 
--- Mapping skillLineID -> index d'extension.
--- Seedes uniquement avec des valeurs stables et largement documentees.
+-- skillLineID -> index d'extension, pour les seuls ID surs (Dragonflight).
+-- Le reste est appris a l'execution (SkillTrackerDB.tierIndex).
 ST.EXP_INDEX = {
-  -- Lignes de base (tier "Classic")
-  [171] = 0,  -- Alchemy
-  [164] = 0,  -- Blacksmithing
-  [333] = 0,  -- Enchanting
-  [202] = 0,  -- Engineering
-  [182] = 0,  -- Herbalism
-  [773] = 0,  -- Inscription
-  [755] = 0,  -- Jewelcrafting
-  [165] = 0,  -- Leatherworking
-  [186] = 0,  -- Mining
-  [393] = 0,  -- Skinning
-  [197] = 0,  -- Tailoring
-  [185] = 0,  -- Cooking
-  [356] = 0,  -- Fishing
-
-  -- Tier Dragonflight (Dragon Isles) - ID stables
-  [2823] = 9, -- Alchemy
-  [2822] = 9, -- Blacksmithing
-  [2825] = 9, -- Enchanting
-  [2827] = 9, -- Engineering
-  [2832] = 9, -- Herbalism
-  [2828] = 9, -- Inscription
-  [2829] = 9, -- Jewelcrafting
-  [2830] = 9, -- Leatherworking
-  [2833] = 9, -- Mining
-  [2834] = 9, -- Skinning
-  [2831] = 9, -- Tailoring
-  [2824] = 9, -- Cooking
-  [2826] = 9, -- Fishing
-
-  -- The War Within (10) et Midnight (11) : non verifies -> volontairement
-  -- absents. Le repli runtime s'en charge. Completez via la macro du README :
-  -- ST.EXP_INDEX[<id>] = 10  (ou 11)
+  [2823] = 9, [2822] = 9, [2825] = 9, [2827] = 9, [2832] = 9, [2828] = 9,
+  [2829] = 9, [2830] = 9, [2833] = 9, [2834] = 9, [2831] = 9, [2824] = 9,
+  [2826] = 9,
 }
 
--- Table d'override remplie a chaud si l'utilisateur ajoute des ID via la
--- console ou un futur reglage. Prioritaire sur ST.EXP_INDEX.
-ST.EXP_INDEX_OVERRIDE = ST.EXP_INDEX_OVERRIDE or {}
-
 -- ================================================================
--- IDENTITE DES EXTENSIONS (sigles, noms, couleurs)
--- Reprend a l'identique le referentiel de RenTracker pour rester
--- coherent dans toute la suite TibiSuite. Le sélecteur d'onglets du
--- panneau s'appuie dessus.
+-- IDENTITE DES EXTENSIONS (sigles, noms, couleurs), identique a RenTracker
 -- ================================================================
--- Index d'extension WoW -> cle interne
 ST.EXT_KEY = {
   [0]  = "Vanilla",
   [1]  = "TheBurningCrusade",
@@ -98,7 +60,6 @@ ST.EXT_KEY = {
   [11] = "Midnight",
 }
 
--- Sigles courts affiches dans l'onglet
 ST.EXT_LABELS = {
   Vanilla            = "CLA",
   TheBurningCrusade  = "TBC",
@@ -114,12 +75,11 @@ ST.EXT_LABELS = {
   Midnight           = "MID",
 }
 
--- Noms complets pour les tooltips
 ST.EXT_FULLNAMES = {
   Vanilla            = "Classic (1.0)",
   TheBurningCrusade  = "The Burning Crusade (2.0)",
   WrathOfTheLichKing = "Wrath of the Lich King (3.0)",
-  Cataclysme         = "Cataclysme (4.0)",
+  Cataclysme         = "Cataclysm (4.0)",
   MistsOfPandaria    = "Mists of Pandaria (5.0)",
   WarlordsOfDraenor  = "Warlords of Draenor (6.0)",
   Legion             = "Legion (7.0)",
@@ -130,77 +90,106 @@ ST.EXT_FULLNAMES = {
   Midnight           = "Midnight (12.0)",
 }
 
--- Couleurs emblematiques par extension (identiques a RenTracker)
 ST.EXT_COLORS = {
-  Vanilla            = { r=0.75, g=0.72, b=0.55 },  -- or patine Classic
-  TheBurningCrusade  = { r=0.20, g=0.75, b=0.28 },  -- vert portail TBC
-  WrathOfTheLichKing = { r=0.65, g=0.85, b=1.00 },  -- bleu glace de Northrend
-  Cataclysme         = { r=0.95, g=0.35, b=0.10 },  -- rouge feu de Deathwing
-  MistsOfPandaria    = { r=0.20, g=0.65, b=0.45 },  -- vert jade de Pandarie
-  WarlordsOfDraenor  = { r=0.85, g=0.50, b=0.10 },  -- orange/brun Draenor
-  Legion             = { r=0.60, g=0.15, b=0.85 },  -- violet Feu Leger
-  BattleForAzeroth   = { r=0.85, g=0.25, b=0.25 },  -- rouge guerre
-  Shadowlands        = { r=0.45, g=0.55, b=0.95 },  -- bleu spectral
-  Dragonflight       = { r=0.95, g=0.45, b=0.10 },  -- orange dragon
-  TheWarWithin       = { r=0.55, g=0.75, b=0.95 },  -- bleu acier de Khaz Algar
-  Midnight           = { r=0.58, g=0.30, b=0.95 },  -- violet nuit de Quel'Thalas
+  Vanilla            = { r=0.75, g=0.72, b=0.55 },
+  TheBurningCrusade  = { r=0.20, g=0.75, b=0.28 },
+  WrathOfTheLichKing = { r=0.65, g=0.85, b=1.00 },
+  Cataclysme         = { r=0.95, g=0.35, b=0.10 },
+  MistsOfPandaria    = { r=0.20, g=0.65, b=0.45 },
+  WarlordsOfDraenor  = { r=0.85, g=0.50, b=0.10 },
+  Legion             = { r=0.60, g=0.15, b=0.85 },
+  BattleForAzeroth   = { r=0.85, g=0.25, b=0.25 },
+  Shadowlands        = { r=0.45, g=0.55, b=0.95 },
+  Dragonflight       = { r=0.95, g=0.45, b=0.10 },
+  TheWarWithin       = { r=0.55, g=0.75, b=0.95 },
+  Midnight           = { r=0.58, g=0.30, b=0.95 },
 }
 
 -- ================================================================
--- CORRESPONDANCE NOM D'EXTENSION -> INDEX
--- Le jeu fournit un nom d'extension fiable (champ expansionName de
--- C_TradeSkillUI, ex : "Midnight", "Khaz Algar", "Îles aux Dragons").
--- Ce sont des noms de REGION, pas les noms produit ; on les traduit en
--- index d'extension. Couvre FR et EN (les deux langues cibles de l'addon).
+-- NOM D'EXTENSION (fourni par le jeu) -> INDEX
+-- Ce sont surtout des noms de REGION ("Khaz Algar", "Îles aux Dragons").
+-- FR/EN confirmes en jeu ; DE/ES/IT/PT/RU a confirmer (un nom absent ne
+-- casse rien : on retombe sur l'ID appris puis sur la deduction par rang).
 -- ================================================================
 ST.EXP_NAME_INDEX = {
-  -- Classic / Vanilla
-  ["Classic"]            = 0, ["Classique"] = 0, ["Vanilla"] = 0,
-  -- The Burning Crusade
-  ["Outland"]            = 1, ["Outreterre"] = 1,
-  -- Wrath of the Lich King
-  ["Northrend"]          = 2, ["Norfendre"] = 2,
-  -- Cataclysm
-  ["Cataclysm"]          = 3, ["Cataclysme"] = 3,
-  -- Mists of Pandaria
-  ["Pandaria"]           = 4, ["Pandarie"] = 4,
-  -- Warlords of Draenor
-  ["Draenor"]            = 5,
-  -- Legion
-  ["Legion"]             = 6, ["Légion"] = 6,
-  -- Battle for Azeroth
-  ["Zandalar"]           = 7, ["Kul Tiras"] = 7, ["Kul Tiran"] = 7,
-  ["Battle for Azeroth"] = 7,
-  -- Shadowlands
-  ["Shadowlands"]        = 8, ["Ombreterre"] = 8,
-  -- Dragonflight
-  ["Dragon Isles"]       = 9, ["Îles aux Dragons"] = 9, ["Dragonflight"] = 9,
-  -- The War Within
-  ["Khaz Algar"]         = 10, ["The War Within"] = 10,
-  -- Midnight
-  ["Midnight"]           = 11,
+  -- 0 Classic
+  ["Classic"] = 0, ["Classique"] = 0, ["Vanilla"] = 0, ["Klassisch"] = 0,
+  ["Clásico"] = 0, ["Classico"] = 0, ["Clássico"] = 0, ["Классика"] = 0,
+  -- 1 The Burning Crusade
+  ["Outland"] = 1, ["Outreterre"] = 1, ["Scherbenwelt"] = 1, ["Terrallende"] = 1,
+  ["Terre Esterne"] = 1, ["Terralém"] = 1, ["Запределье"] = 1,
+  -- 2 Wrath of the Lich King
+  ["Northrend"] = 2, ["Norfendre"] = 2, ["Nordend"] = 2, ["Rasganorte"] = 2,
+  ["Nordania"] = 2, ["Nortúndria"] = 2, ["Нордскол"] = 2,
+  -- 3 Cataclysm
+  ["Cataclysm"] = 3, ["Cataclysme"] = 3, ["Kataklysmus"] = 3, ["Cataclisma"] = 3,
+  ["Cataclismo"] = 3, ["Катаклизм"] = 3,
+  -- 4 Mists of Pandaria
+  ["Pandaria"] = 4, ["Pandarie"] = 4, ["Pandária"] = 4, ["Пандария"] = 4,
+  -- 5 Warlords of Draenor
+  ["Draenor"] = 5, ["Дренор"] = 5,
+  -- 6 Legion
+  ["Legion"] = 6, ["Légion"] = 6, ["Legión"] = 6, ["Legione"] = 6,
+  ["Legião"] = 6, ["Легион"] = 6,
+  -- 7 Battle for Azeroth
+  ["Zandalar"] = 7, ["Kul Tiras"] = 7, ["Kul Tiran"] = 7, ["Battle for Azeroth"] = 7,
+  ["Кул-Тирас"] = 7, ["Зандалар"] = 7,
+  -- 8 Shadowlands
+  ["Shadowlands"] = 8, ["Ombreterre"] = 8, ["Schattenlande"] = 8,
+  ["Tierras Sombrías"] = 8, ["Terretetre"] = 8, ["Terras Sombrias"] = 8,
+  ["Темные Земли"] = 8, ["Тёмные Земли"] = 8,
+  -- 9 Dragonflight
+  ["Dragon Isles"] = 9, ["Îles aux Dragons"] = 9, ["Dragonflight"] = 9,
+  ["Dracheninseln"] = 9, ["Islas Dragón"] = 9, ["Isole dei Draghi"] = 9,
+  ["Ilhas do Dragão"] = 9, ["Драконьи острова"] = 9,
+  -- 10 The War Within
+  ["Khaz Algar"] = 10, ["The War Within"] = 10, ["Каз Алгар"] = 10,
+  -- 11 Midnight
+  ["Midnight"] = 11, ["Medianoche"] = 11, ["Mezzanotte"] = 11,
+  ["Meia-noite"] = 11, ["Полночь"] = 11,
 }
+
+-- Index normalise construit a la premiere demande (casse / accents ignores).
+local normIndex
+local function Norm(s)
+  local UI = _G.TibiMidnight
+  if UI and UI.Normalize then return UI.Normalize(s) end
+  return tostring(s):lower()
+end
 
 -- Traduit un nom d'extension (fourni par le jeu) en index. nil si inconnu.
 function ST.NameToIndex(name)
   if type(name) ~= "string" or name == "" then return nil end
   local idx = ST.EXP_NAME_INDEX[name]
   if idx ~= nil then return idx end
-  -- Repli tolerant (casse / accents) via le normaliseur de la lib UI.
-  local UI = _G.TibiMidnight
-  if UI and UI.Normalize then
-    local n = UI.Normalize(name)
-    for k, v in pairs(ST.EXP_NAME_INDEX) do
-      if UI.Normalize(k) == n then return v end
-    end
+  if not normIndex then
+    normIndex = {}
+    for k, v in pairs(ST.EXP_NAME_INDEX) do normIndex[Norm(k)] = v end
   end
+  return normIndex[Norm(name)]
+end
+
+-- Index d'extension courant du client, borne par celui du serveur (un compte
+-- qui a precommande l'extension suivante ne doit pas sauter a 12 trop tot).
+function ST.CurrentExpIndex()
+  local lvl = (GetExpansionLevel and GetExpansionLevel()) or 11
+  local srv = GetServerExpansionLevel and GetServerExpansionLevel()
+  if type(srv) == "number" and srv < lvl then lvl = srv end
+  return lvl
+end
+
+-- Renvoie le nom localise d'une extension a partir de son index, ou nil.
+function ST.ExpansionNameByIndex(idx)
+  if type(idx) ~= "number" then return nil end
+  local name = _G["EXPANSION_NAME" .. idx]
+  if type(name) == "string" and name ~= "" then return name end
   return nil
 end
 
--- Metadonnees d'un "bucket" d'extension : renvoie label, nom complet, couleur.
+-- Metadonnees d'un "bucket" d'extension : renvoie sigle, nom complet, couleur.
 --   bucket : un index numerique, ou la chaine "other" (paliers non identifies).
 function ST.BucketMeta(bucket)
-  if bucket == "other" then
+  if bucket == "other" or type(bucket) ~= "number" then
     local w = (ST.L and ST.L.EXPANSION) or "Expansion"
     return "???", w, { 0.55, 0.57, 0.60 }
   end
@@ -211,31 +200,56 @@ function ST.BucketMeta(bucket)
   return label, full, { c.r, c.g, c.b }
 end
 
--- Renvoie le nom localise d'une extension a partir de son index, ou nil.
-function ST.ExpansionNameByIndex(idx)
-  if type(idx) ~= "number" then return nil end
-  local key = "EXPANSION_NAME" .. idx
-  local name = _G[key]
-  if type(name) == "string" and name ~= "" then return name end
-  return nil
+-- Resout (et stocke dans ln.idx) l'index d'extension de chaque palier d'un
+-- metier. learn : table apprise id -> index (SkillTrackerDB.tierIndex), ou nil.
+function ST.ResolveLineIndexes(prof, learn)
+  if type(prof) ~= "table" or type(prof.lines) ~= "table" then return end
+  local unresolved = {}
+  for id, ln in pairs(prof.lines) do
+    local idx = ST.NameToIndex(ln.exp)
+    if idx ~= nil then
+      ln.idx, ln.inferred = idx, nil
+      if learn then learn[id] = idx end
+    else
+      idx = ST.EXP_INDEX[id] or (learn and learn[id])
+      if idx ~= nil then
+        ln.idx, ln.inferred = idx, nil
+      else
+        ln.idx = nil
+        unresolved[#unresolved + 1] = id
+      end
+    end
+  end
+  if #unresolved == 0 then return end
+
+  -- Deduction par rang sur les paliers modernes : on range tous les paliers
+  -- modernes du metier par ID croissant, a partir de Shadowlands.
+  local modern = {}
+  for id in pairs(prof.lines) do
+    if id >= ST.MODERN_TIER_ID then modern[#modern + 1] = id end
+  end
+  table.sort(modern)
+  local cur = ST.CurrentExpIndex()
+  for rank, id in ipairs(modern) do
+    local ln = prof.lines[id]
+    local guess = ST.MODERN_FIRST_INDEX + rank - 1
+    if ln.idx == nil and guess <= cur then
+      ln.idx, ln.inferred = guess, true
+    end
+  end
 end
 
--- Resout un libelle d'extension pour un skillLineID.
---   ordinal  : position (1..n) de la ligne dans son metier (tri par ID croissant)
---   isNewest : true si c'est la ligne au plus grand ID pour ce metier
--- Ne renvoie jamais nil ; ne fabrique jamais un nom d'extension invente.
-function ST.ExpansionLabel(skillLineID, ordinal, isNewest)
-  local idx = ST.EXP_INDEX_OVERRIDE[skillLineID] or ST.EXP_INDEX[skillLineID]
-  local name = ST.ExpansionNameByIndex(idx)
-  if name then return name end
+-- Index d'un palier deja resolu (repli : nom du jeu).
+function ST.LineIndex(ln)
+  if type(ln) ~= "table" then return nil end
+  if ln.idx ~= nil then return ln.idx end
+  return ST.NameToIndex(ln.exp)
+end
 
-  -- Repli 1 : le palier le plus recent inconnu = extension courante du client.
-  if isNewest and GetExpansionLevel then
-    local cur = GetExpansionLevel()
-    local curName = ST.ExpansionNameByIndex(cur)
-    if curName then return curName end
-  end
-
-  -- Repli 2 : libelle generique localise, jamais faux.
-  return (ST.L and ST.L.EXPANSION or "Expansion") .. " " .. tostring(ordinal or "?")
+-- Libelle d'affichage d'un palier : le nom du jeu s'il existe, sinon le nom
+-- localise de l'extension deduite, sinon "Extension".
+function ST.LineLabel(ln)
+  if type(ln) == "table" and type(ln.exp) == "string" and ln.exp ~= "" then return ln.exp end
+  local idx = ST.LineIndex(ln)
+  return ST.ExpansionNameByIndex(idx) or ((ST.L and ST.L.EXPANSION) or "Expansion")
 end
