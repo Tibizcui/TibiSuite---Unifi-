@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.1.5.35
+- Correction : les clés Mythique+ sont de nouveau enregistrées. La fonction de fin de clé utilisée (GetCompletionInfo) a disparu du jeu en 11.0 : Stats n'enregistrait plus aucune clé depuis. Remplacée par GetChallengeCompletionInfo.
+- Export : les métiers passent par la nouvelle API de SkillTracker (concentration datée, vitesse de recharge apprise, connaissances de la semaine), avec repli sur l'ancien format.
+- Export : ajout des données de leveling de LvlHistory par personnage (chronologie des niveaux, 12 dernières sessions, origine de l'XP, XP reposée), pour la nouvelle carte Leveling du Dashboard. Ajout additif, un site pas à jour les ignore.
+
 ## 7.1.5.34
 - Socle d'interface embarque passe en v12 : les barres de defilement des options et de la recherche sont habillees aux couleurs du module. Pour le reste, bump de version pour aligner le numero sur l'ensemble de la suite (voir DailyTracker 7.1.5.34 pour le detail : mise a jour 12.1, suivi par personnage, vue Personnages, liste A faire a l'ecran, rappel avant le reset, 10 langues).
 

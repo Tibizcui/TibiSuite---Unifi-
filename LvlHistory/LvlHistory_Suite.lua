@@ -37,6 +37,20 @@ local function BuildOptions()
       local f = _G[FRAME]; if f then f:SetAlpha(v / 100) end
     end)
 
+  panel:Section(T("OPT_SEC_TRACKING", "Suivi"))
+  panel:Check(T("OPT_LEVEL_ALERT", "Message a chaque niveau (temps passe au niveau)"),
+    function() local s = Settings(); return not s or s.levelAlert ~= false end,
+    function(v) local s = Settings(); if s then s.levelAlert = v and true or false end end)
+  panel:Check(T("OPT_RESUME", "Un /reload ne coupe pas la session (reprise sous 10 min)"),
+    function() local s = Settings(); return not s or s.resumeSession ~= false end,
+    function(v) local s = Settings(); if s then s.resumeSession = v and true or false end end)
+  panel:Check(T("OPT_SESSION_ALERT", "Message au passage en mode Farming"),
+    function() local s = Settings(); return not s or s.sessionAlert ~= false end,
+    function(v) local s = Settings(); if s then s.sessionAlert = v and true or false end end)
+  panel:Button(T("OPT_OPEN_LEVELS", "Ouvrir la chronologie des niveaux"), function()
+    if LvlHistory.UI and LvlHistory.UI.OpenTab then LvlHistory.UI.OpenTab(6) end
+  end)
+
   panel:Section(T("OPT_SEC_FLOATING", "Boutons flottants (barre TibiSuite)"))
   panel:Check(T("OPT_HIDE_OPTIONS_BTN", "Masquer le bouton Options"),
     function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("LvlHistoryMainFrame", "options") end,
@@ -55,28 +69,44 @@ function LvlHistory_OpenOptions()
 end
 
 -- ---------------------------------------------------------------- Recherche
--- On cherche parmi les personnages suivis et, si presentes, leurs zones.
+-- On cherche parmi les personnages suivis, leurs zones, donjons et gouffres ;
+-- un clic ouvre la fenetre sur l'onglet correspondant.
+local function OpenOn(tab)
+  return function()
+    if LvlHistory.UI and LvlHistory.UI.OpenTab then LvlHistory.UI.OpenTab(tab)
+    elseif _G.LvlHistory_Toggle then _G.LvlHistory_Toggle() end
+  end
+end
+
 local function provider(q)
   local out, ui = {}, GetUI()
   local db = _G.LvlHistoryDB
   if not ui or type(db) ~= "table" or type(db.chars) ~= "table" then return out end
+  local seen = {}
+  local function add(text, tab)
+    if seen[text] then return end
+    seen[text] = true
+    out[#out + 1] = { text = text, onClick = OpenOn(tab) }
+  end
   for key, char in pairs(db.chars) do
-    local label = (type(char) == "table" and char.name) or key
-    if ui.Match(label, q) then
-      out[#out + 1] = { text = tostring(label),
-        onClick = function()
-          local f = _G[FRAME]
-          if _G.LvlHistory_Toggle and (not f or not f:IsShown()) then _G.LvlHistory_Toggle() end
-        end }
-    end
-    if type(char) == "table" and type(char.zones) == "table" then
-      for zname in pairs(char.zones) do
+    if type(char) == "table" then
+      local label = tostring(key)
+      if ui.Match(label, q) then
+        add(label .. "  |cff808080" .. T("SEARCH_LEVEL_FMT", "niv. ") .. tostring(char.level or "?") .. "|r", 3)
+      end
+      for zname in pairs(type(char.zones) == "table" and char.zones or {}) do
         if type(zname) == "string" and ui.Match(zname, q) then
-          out[#out + 1] = { text = zname .. "  |cff808080" .. tostring(label) .. "|r",
-            onClick = function()
-              local f = _G[FRAME]
-              if _G.LvlHistory_Toggle and (not f or not f:IsShown()) then _G.LvlHistory_Toggle() end
-            end }
+          add(zname .. "  |cff808080" .. label .. "|r", 2)
+        end
+      end
+      for dname in pairs(type(char.dgnRuns) == "table" and char.dgnRuns or {}) do
+        if type(dname) == "string" and ui.Match(dname, q) then
+          add(dname .. "  |cff808080" .. T("SEARCH_DUNGEON", "donjon") .. "|r", 4)
+        end
+      end
+      for vname in pairs(type(char.delveRuns) == "table" and char.delveRuns or {}) do
+        if type(vname) == "string" and ui.Match(vname, q) then
+          add(vname .. "  |cff808080" .. T("SEARCH_DELVE", "gouffre") .. "|r", 4)
         end
       end
     end
@@ -91,7 +121,7 @@ local function OpenSearch()
   if not searchPopup then
     searchPopup = ui.CreateSearchPopup({
       name = "LvlHistorySearchPopup",
-      title = "|cFF9480FFLvlHistory|r  " .. T("SEARCH_TITLE", "Recherche"), accent = ACCENT, logo = LOGO, provider = provider })
+      title = "|cFF5EE223LvlHistory|r  " .. T("SEARCH_TITLE", "Recherche"), accent = ACCENT, logo = LOGO, provider = provider })
   end
   searchPopup.Toggle()
 end

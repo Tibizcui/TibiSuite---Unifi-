@@ -58,7 +58,7 @@ local C = {
 -- Noms des onglets
 local TAB_LABELS = {
   Loc("TAB_SESSION", "Session"), Loc("TAB_ZONES", "Zones"), Loc("TAB_ALTS", "Alts"),
-  Loc("TAB_DUNGEONS", "Donjons"), Loc("TAB_STATS", "Stats"),
+  Loc("TAB_DUNGEONS", "Donjons"), Loc("TAB_STATS", "Stats"), Loc("TAB_LEVELS", "Niveaux"),
 }
 
 -- ─────────────────────────────────────────────
@@ -78,6 +78,11 @@ local opacPopup   = nil    -- popup slider opacite
 -- 4=Donjons), pour l'auto-hauteur de la fenetre. Les onglets fixes (Session,
 -- Stats) restent a la taille de base.
 local listContentH = {}
+-- Donnees modifiees depuis le dernier rendu (voir UI.MarkDirty) : seuls
+-- Session et Niveaux (chronos) sont redessines chaque seconde, les autres
+-- onglets uniquement quand leurs donnees changent (ou toutes les 15 s).
+local dirty = true
+local sinceFull = 0
 
 -- ─────────────────────────────────────────────
 -- Primitives
@@ -191,6 +196,7 @@ local function ShowTab(idx)
     end
     local fn = UI["RefreshTab" .. idx]
     if fn then fn() end
+    dirty, sinceFull = false, 0
     ResizeToActive()
 end
 
@@ -452,13 +458,16 @@ local function BuildTabSession(ca)
         { lbl = Loc("LBL_CURRENT_ZONE", "Zone actuelle"), key = "zone"   },
         { lbl = Loc("LBL_QUESTS", "Quetes"),               key = "quests" },
         { lbl = Loc("LBL_GOLD_GAINED", "Or gagne"),        key = "gold"   },
+        { lbl = Loc("LBL_ETA_MAX", "Niveau max dans"),     key = "extra1" },
+        { lbl = Loc("LBL_XP_SOURCES", "Origine de l'XP"),  key = "extra2" },
     }
-    s1.info = {}
+    s1.info, s1.infoLbl = {}, {}
     for i, row in ipairs(infoRows) do
         local y = sep2Y - (i - 1) * 22 - 8
         local lbl = FS(f, "GameFontNormalSmall", "TOPLEFT", PAD, y)
         lbl:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
         lbl:SetText(row.lbl)
+        s1.infoLbl[row.key] = lbl
 
         local val = FS(f, "GameFontNormalSmall", "TOPRIGHT", -PAD, y)
         val:SetTextColor(C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3])
@@ -501,7 +510,10 @@ function UI.RefreshTab1()
         s1.blk.main.num:SetText(U.FormatXPH(xph))
         NumColor(s1.blk.main.num, xph, xph > 0 and "good" or nil)
         s1.blk.main.lbl:SetText(Loc("LBL_XPH", "XP / heure"))
-        s1.blk.main.sub:SetText("")
+        -- XP/h "en direct" d'XPBar (fenetre glissante), si le module est la
+        local live = LvlHistory.Leveling.GetLiveXPH and LvlHistory.Leveling.GetLiveXPH()
+        s1.blk.main.sub:SetText(live and string.format(Loc("LBL_LIVE_XPBAR_FMT", "direct : %s (XPBar)"),
+            (U.FormatXPH(live):gsub(" XP/h", ""))) or "")
     else
         local gph = db.farming.goldPerHour or 0
         -- Afficher -- si or/h est negatif (depenses > gains en cours de session)
@@ -559,7 +571,8 @@ function UI.RefreshTab1()
     -- Info rows
     s1.info.zone:SetText(db.session.zone or GetRealZoneText() or "--")
     s1.info.zone:SetTextColor(C.BLUE[1], C.BLUE[2], C.BLUE[3])
-    s1.info.quests:SetText(tostring(db.session.questCount or 0))
+    local qc, dc = db.session.questCount or 0, db.session.dailyCount or 0
+    s1.info.quests:SetText(dc > 0 and string.format(Loc("QUESTS_DAILY_FMT", "%d  (%d journ.)"), qc, dc) or tostring(qc))
     local goldNet = GetMoney() - (db.session.goldAtStart or GetMoney())
     -- Ne pas afficher de valeur negative (depenses en cours de session)
     if goldNet > 0 then
@@ -570,20 +583,58 @@ function UI.RefreshTab1()
         s1.info.gold:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
     end
 
-    -- Reputation
-    local repName, repPct = "--", 0
-    if db.farming and db.farming.rep then
-        for name, data in pairs(db.farming.rep) do
-            if (data.gained or 0) > 0 then
-                repName = name
-                repPct  = math.min((data.value or 0) / math.max(data.max or 42000, 1), 1)
-                break
-            end
+    -- Lignes 4-5 : selon le mode
+    if isLev then
+        s1.infoLbl.extra1:SetText(Loc("LBL_ETA_MAX", "Niveau max dans"))
+        local etaMax = LvlHistory.Leveling.EstimateToMax(xph)
+        s1.info.extra1:SetText(etaMax and ("~" .. U.FormatTime(etaMax, true)) or "--")
+        s1.info.extra1:SetTextColor(C.PURP_LT[1], C.PURP_LT[2], C.PURP_LT[3])
+        s1.infoLbl.extra2:SetText(Loc("LBL_XP_SOURCES", "Origine de l'XP"))
+        s1.info.extra2:SetText(UI.XPSourceText(db.session.xpSrc))
+        s1.info.extra2:SetTextColor(C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3])
+    else
+        s1.infoLbl.extra1:SetText(Loc("LBL_DGN_DELVES_SESSION", "Donjons / gouffres"))
+        s1.info.extra1:SetText(string.format("%d  /  %d", db.session.dungeons or 0, db.session.delves or 0))
+        s1.info.extra1:SetTextColor(C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3])
+        s1.infoLbl.extra2:SetText(Loc("LBL_TOP_CURRENCY", "Monnaie la plus gagnee"))
+        local topN, topG = nil, 0
+        for name, cu in pairs(db.farming.currencies or {}) do
+            if (cu.gained or 0) > topG then topN, topG = name, cu.gained end
         end
+        s1.info.extra2:SetText(topN and string.format("%s  +%s", topN, U.FormatNumber(topG)) or "--")
+        s1.info.extra2:SetTextColor(C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3])
     end
-    s1.repName:SetText(repName == "--" and Loc("LBL_REPUTATION", "Reputation") or repName)
-    s1.repStanding:SetText(repName == "--" and "--" or Loc("LBL_GAINED", "Gagnee"))
+
+    -- Reputation : faction la plus gagnee cette session, part dans le total
+    local repName, repGain, repPH, repTotal = nil, 0, 0, 0
+    for name, data in pairs((db.farming and db.farming.rep) or {}) do
+        local g = data.gained or 0
+        repTotal = repTotal + g
+        if g > repGain then repName, repGain, repPH = name, g, data.perHour or 0 end
+    end
+    s1.repName:SetText(repName or Loc("LBL_REPUTATION", "Reputation"))
+    if repName then
+        s1.repStanding:SetText(string.format("+%s  (%s/h)", U.FormatNumber(repGain), U.FormatNumber(repPH)))
+    else
+        s1.repStanding:SetText("--")
+    end
+    local repPct = repTotal > 0 and (repGain / repTotal) or 0
     s1.repFill:SetSize(math.max(1, math.floor(s1.repBarW * repPct)), 4)
+end
+
+--- "Quetes 62 %  Donjons 20 %  ..." (parts non nulles, ordre fixe)
+function UI.XPSourceText(src)
+    if not src then return "--" end
+    local q, d, g, o = src.quest or src.q or 0, src.dungeon or src.d or 0, src.delve or src.g or 0, src.other or src.o or 0
+    local total = q + d + g + o
+    if total <= 0 then return "--" end
+    local parts = {}
+    local function add(v, key, def)
+        if v > 0 then parts[#parts + 1] = string.format("%s %d%%", Loc(key, def), math.floor(v / total * 100 + 0.5)) end
+    end
+    add(q, "SRC_QUEST", "Quetes"); add(d, "SRC_DUNGEON", "Donjons")
+    add(g, "SRC_DELVE", "Gouffres"); add(o, "SRC_OTHER", "Autre")
+    return table.concat(parts, "  ")
 end
 
 -- ─────────────────────────────────────────────
@@ -629,6 +680,7 @@ local zoneList
 local s2 = {}   -- stats row widgets
 local zonesExpanded = false
 local ZONES_LIMIT = 12
+local zoneRows, zoneToggle = {}, nil
 
 local function BuildTabZones(ca)
     local f = CreateFrame("Frame", nil, ca)
@@ -683,11 +735,7 @@ function UI.RefreshTab2()
         s2.blks[3].sub:SetText(topZone ~= "--" and topZone or "")
     end
 
-    -- ── Liste ───────────────────────────────────
-    for _, c in ipairs({ zoneList:GetChildren() }) do
-        c:Hide(); c:SetParent(UIParent)
-    end
-
+    -- ── Liste (lignes recyclees : aucune frame creee au rafraichissement) ──
     local sorted, maxDur = {}, 1
     for zone, dur in pairs(db.zones or {}) do
         table.insert(sorted, { zone = zone, dur = dur })
@@ -705,67 +753,67 @@ function UI.RefreshTab2()
     ResizeToActive()
 
     for i = 1, showCount do
-        local e = sorted[i]
-        local row = CreateFrame("Frame", nil, zoneList)
-        row:SetPoint("TOPLEFT", zoneList, "TOPLEFT", 0, -(i - 1) * rowH)
-        row:SetSize(listW, rowH)
-
-        -- Nom (top zone en gold vif, les autres en gold dim)
-        local nameLbl = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        nameLbl:SetPoint("LEFT", row, "LEFT", 4, 0)
-        if i == 1 then
-            nameLbl:SetTextColor(C.GOLD[1], C.GOLD[2], C.GOLD[3])
-        else
-            nameLbl:SetTextColor(C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3])
+        local e   = sorted[i]
+        local row = zoneRows[i]
+        if not row then
+            row = CreateFrame("Frame", nil, zoneList)
+            row:SetSize(listW, rowH)
+            row.name = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            row.name:SetPoint("LEFT", row, "LEFT", 4, 0)
+            row.name:SetPoint("RIGHT", row, "RIGHT", -140, 0)
+            row.name:SetJustifyH("LEFT")
+            row.name:SetWordWrap(false)
+            row.barBG = row:CreateTexture(nil, "BACKGROUND")
+            row.barBG:SetColorTexture(C.BAR_BG[1], C.BAR_BG[2], C.BAR_BG[3], 1)
+            row.barBG:SetSize(80, 3)
+            row.barBG:SetPoint("RIGHT", row, "RIGHT", -52, 0)
+            row.fill = row:CreateTexture(nil, "ARTWORK")
+            row.fill:SetPoint("LEFT", row.barBG, "LEFT", 0, 0)
+            row.time = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            row.time:SetPoint("RIGHT", row, "RIGHT", -4, 0)
+            row.sep = HLine(row, -rowH + 1, 0, 0, C.SEP2)
+            zoneRows[i] = row
         end
-        nameLbl:SetText(e.zone)
-
-        -- Barre proportionnelle (violet → or sur la top zone)
-        local pct    = e.dur / maxDur
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", zoneList, "TOPLEFT", 0, -(i - 1) * rowH)
+        local col = (i == 1) and C.GOLD or C.GOLD_DIM
+        row.name:SetTextColor(col[1], col[2], col[3])
+        row.name:SetText(e.zone)
         local barClr = (i == 1) and C.GOLD or C.PURPLE
-        local barBG  = row:CreateTexture(nil, "BACKGROUND")
-        barBG:SetColorTexture(C.BAR_BG[1], C.BAR_BG[2], C.BAR_BG[3], 1)
-        barBG:SetSize(80, 3)
-        barBG:SetPoint("RIGHT", row, "RIGHT", -52, 0)
-
-        local barFill = row:CreateTexture(nil, "ARTWORK")
-        barFill:SetColorTexture(barClr[1], barClr[2], barClr[3], 1)
-        barFill:SetPoint("LEFT", barBG, "LEFT", 0, 0)
-        barFill:SetSize(math.max(1, math.floor(80 * pct)), 3)
-
-        local timeLbl = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        timeLbl:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-        timeLbl:SetTextColor(i == 1 and C.GOLD[1] or C.GOLD_DIM[1],
-                             i == 1 and C.GOLD[2] or C.GOLD_DIM[2],
-                             i == 1 and C.GOLD[3] or C.GOLD_DIM[3])
-        timeLbl:SetText(LvlHistory.Utils.FormatTime(e.dur, true))
-
-        if i < showCount or hasToggle then HLine(row, -rowH + 1, 0, 0, C.SEP2) end
+        row.fill:SetColorTexture(barClr[1], barClr[2], barClr[3], 1)
+        row.fill:SetSize(math.max(1, math.floor(80 * e.dur / maxDur)), 3)
+        row.time:SetTextColor(col[1], col[2], col[3])
+        row.time:SetText(LvlHistory.Utils.FormatTime(e.dur, true))
+        row.sep:SetShown(i < showCount or hasToggle)
+        row:Show()
     end
+    for i = showCount + 1, #zoneRows do zoneRows[i]:Hide() end
 
     -- Bouton depli/repli si la liste depasse la limite affichee
-    if hasToggle then
-        local btnRow = CreateFrame("Button", nil, zoneList)
-        btnRow:SetPoint("TOPLEFT", zoneList, "TOPLEFT", 0, -showCount * rowH)
-        btnRow:SetSize(listW, rowH)
-
-        local btnLbl = btnRow:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        btnLbl:SetPoint("CENTER", btnRow, "CENTER", 0, 0)
-        btnLbl:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
-        if zonesExpanded then
-            btnLbl:SetText(Loc("BTN_COLLAPSE_LIST", "- Reduire"))
-        else
-            btnLbl:SetText(string.format(Loc("BTN_SHOW_MORE_FMT", "+ Voir plus (%d zones)"), #sorted - ZONES_LIMIT))
-        end
-
-        btnRow:SetScript("OnEnter", function() btnLbl:SetTextColor(C.GOLD[1], C.GOLD[2], C.GOLD[3]) end)
-        btnRow:SetScript("OnLeave", function()
-            btnLbl:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
-        end)
-        btnRow:SetScript("OnClick", function()
+    if not zoneToggle then
+        zoneToggle = CreateFrame("Button", nil, zoneList)
+        zoneToggle:SetSize(listW, rowH)
+        zoneToggle.lbl = zoneToggle:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        zoneToggle.lbl:SetPoint("CENTER", zoneToggle, "CENTER", 0, 0)
+        zoneToggle.lbl:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
+        zoneToggle:SetScript("OnEnter", function(self) self.lbl:SetTextColor(C.GOLD[1], C.GOLD[2], C.GOLD[3]) end)
+        zoneToggle:SetScript("OnLeave", function(self) self.lbl:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3]) end)
+        zoneToggle:SetScript("OnClick", function()
             zonesExpanded = not zonesExpanded
             UI.RefreshTab2()
         end)
+    end
+    if hasToggle then
+        zoneToggle:ClearAllPoints()
+        zoneToggle:SetPoint("TOPLEFT", zoneList, "TOPLEFT", 0, -showCount * rowH)
+        if zonesExpanded then
+            zoneToggle.lbl:SetText(Loc("BTN_COLLAPSE_LIST", "- Reduire"))
+        else
+            zoneToggle.lbl:SetText(string.format(Loc("BTN_SHOW_MORE_FMT", "+ Voir plus (%d zones)"), #sorted - ZONES_LIMIT))
+        end
+        zoneToggle:Show()
+    else
+        zoneToggle:Hide()
     end
 end
 
@@ -795,38 +843,63 @@ local function BuildTabAlts(ca)
     return f
 end
 
+-- Classe -> couleur (Blizzard), repli or
+local function ClassRGB(token)
+    local c = token and RAID_CLASS_COLORS and RAID_CLASS_COLORS[token]
+    if c then return c.r, c.g, c.b end
+    return C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3]
+end
+
+--- Perso a monter en priorite : celui (hors perso connecte, pas au max) qui a
+--- le plus d'XP reposee en fraction de niveau. Renvoie cle, fraction.
+function UI.SuggestAlt()
+    local maxLvl = LvlHistory.MaxLevel()
+    local best, bestFrac
+    for key, data in pairs((LvlHistoryDB and LvlHistoryDB.chars) or {}) do
+        if key ~= LvlHistory.charKey and (data.level or 0) < maxLvl then
+            local _, frac = LvlHistory.EstimateRested(data, false)
+            if frac and frac > 0.05 and (not bestFrac or frac > bestFrac) then
+                best, bestFrac = key, frac
+            end
+        end
+    end
+    return best, bestFrac
+end
+
+local altRows = {}
+
 function UI.RefreshTab3()
     if not altList then return end
 
-    local chars = LvlHistoryDB and LvlHistoryDB.chars or {}
-    local list  = {}
+    local chars  = LvlHistoryDB and LvlHistoryDB.chars or {}
+    local maxLvl = LvlHistory.MaxLevel()
+    local U      = LvlHistory.Utils
+    local list   = {}
     for key, data in pairs(chars) do
-        table.insert(list, { key = key, data = data })
+        local lvl = (key == LvlHistory.charKey) and UnitLevel("player") or (data.level or 0)
+        table.insert(list, { key = key, data = data, lvl = lvl })
     end
     table.sort(list, function(a, b)
-        return (a.data.level or 0) > (b.data.level or 0)
+        if a.lvl ~= b.lvl then return a.lvl > b.lvl end
+        return a.key < b.key
     end)
 
     -- ── Stats row ───────────────────────────────
     if s3.blks then
-        local U       = LvlHistory.Utils
-        local maxLvl  = GetMaxPlayerLevel()
-        local altCount, totalTime, topLvl, topName = 0, 0, 0, "--"
+        local totalTime, topLvl, topName = 0, 0, "--"
         for _, entry in ipairs(list) do
-            altCount  = altCount + 1
             totalTime = totalTime + (entry.data.totalPlayTime or 0)
-            local lvl = entry.data.level or 0
-            if lvl > topLvl then
-                topLvl  = lvl
+            if entry.lvl > topLvl then
+                topLvl  = entry.lvl
                 topName = entry.key:match("^([^%-]+)") or entry.key
             end
         end
 
-        -- Bloc 1 : alts suivis (bleu)
-        s3.blks[1].num:SetText(tostring(altCount))
-        NumColor(s3.blks[1].num, altCount, "info")
+        -- Bloc 1 : alts suivis (bleu) + temps cumule
+        s3.blks[1].num:SetText(tostring(#list))
+        NumColor(s3.blks[1].num, #list, "info")
         s3.blks[1].lbl:SetText(Loc("LBL_ALTS_TRACKED", "Alts suivis"))
-        s3.blks[1].sub:SetText("")
+        s3.blks[1].sub:SetText(totalTime > 0 and (U.FormatTime(totalTime, true) .. " " .. Loc("LBL_CUMUL_SHORT", "cumulees")) or "")
 
         -- Bloc 2 : niveau max (vert si max level, violet sinon)
         s3.blks[2].num:SetText(topLvl > 0 and tostring(topLvl) or "--")
@@ -834,99 +907,125 @@ function UI.RefreshTab3()
         s3.blks[2].lbl:SetText(Loc("LBL_MAX_LEVEL", "Niveau max"))
         s3.blks[2].sub:SetText(topName ~= "--" and topName or "")
 
-        -- Bloc 3 : temps cumule tous persos (or)
-        s3.blks[3].num:SetText(totalTime > 0 and U.FormatTime(totalTime, true) or "--")
-        NumColor(s3.blks[3].num, totalTime, "neutral")
-        s3.blks[3].lbl:SetText(Loc("LBL_TOTAL_TIME_CUMUL", "Temps cumule"))
-        s3.blks[3].sub:SetText(Loc("LBL_ALL_CHARS", "tous persos"))
+        -- Bloc 3 : perso a monter ce soir (XP reposee)
+        local sug, frac = UI.SuggestAlt()
+        if sug then
+            s3.blks[3].num:SetText(sug:match("^([^%-]+)") or sug)
+            NumColor(s3.blks[3].num, 1, "good")
+            s3.blks[3].sub:SetText(string.format(Loc("LBL_RESTED_PCT_FMT", "%d %% de niveau repose"), math.floor(frac * 100 + 0.5)))
+        else
+            s3.blks[3].num:SetText("--")
+            NumColor(s3.blks[3].num, 0)
+            s3.blks[3].sub:SetText(Loc("LBL_NO_RESTED", "aucun alt repose"))
+        end
+        s3.blks[3].lbl:SetText(Loc("LBL_TONIGHT", "A monter ce soir"))
     end
 
-    -- ── Liste ───────────────────────────────────
-    for _, c in ipairs({ altList:GetChildren() }) do
-        c:Hide(); c:SetParent(UIParent)
-    end
-
+    -- ── Liste (lignes recyclees) ────────────────
     local rowH   = 52
     local listW  = FW - PAD * 2 - 22
-    local maxLvl = GetMaxPlayerLevel()
     local altH   = math.max(#list * (rowH + 4), 10)
     altList:SetHeight(altH)
     listContentH[3] = altH
     ResizeToActive()
 
     for i, entry in ipairs(list) do
-        local lvl   = entry.data.level or 0
-        local isMax = lvl >= maxLvl
-        local pct   = math.min(lvl / maxLvl, 1)
-        local mode  = entry.data.mode or "leveling"
+        local row = altRows[i]
+        if not row then
+            row = CreateFrame("Frame", nil, altList)
+            row:SetSize(listW, rowH)
+            row.sep = HLine(row, 0, 0, 0, C.SEP)
 
-        local row = CreateFrame("Frame", nil, altList)
+            local initBox = CreateFrame("Frame", nil, row)
+            initBox:SetSize(34, 34)
+            initBox:SetPoint("LEFT", row, "LEFT", 0, 0)
+            FillBG(initBox, C.BG_HDR[1], C.BG_HDR[2], C.BG_HDR[3])
+            row.init = initBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            row.init:SetAllPoints(initBox)
+            row.init:SetJustifyH("CENTER")
+            row.init:SetJustifyV("MIDDLE")
+
+            row.name = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            row.name:SetPoint("TOPLEFT", row, "TOPLEFT", 44, -6)
+
+            row.info = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            row.info:SetPoint("TOPLEFT", row, "TOPLEFT", 44, -22)
+            row.info:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+
+            local barW = listW - 44 - 54
+            row.barBG = row:CreateTexture(nil, "BACKGROUND")
+            row.barBG:SetColorTexture(C.BAR_BG[1], C.BAR_BG[2], C.BAR_BG[3], 1)
+            row.barBG:SetPoint("TOPLEFT", row, "TOPLEFT", 44, -38)
+            row.barBG:SetSize(barW, 2)
+            row.barW = barW
+            row.fill = row:CreateTexture(nil, "ARTWORK")
+            row.fill:SetPoint("LEFT", row.barBG, "LEFT", 0, 0)
+            -- XP reposee : segment bleu apres le remplissage
+            row.rest = row:CreateTexture(nil, "ARTWORK")
+            row.rest:SetPoint("LEFT", row.fill, "RIGHT", 0, 0)
+            row.rest:SetColorTexture(C.BLUE[1], C.BLUE[2], C.BLUE[3], 0.8)
+
+            row.lvl = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            row.lvl:SetPoint("RIGHT", row, "RIGHT", 0, -4)
+            altRows[i] = row
+        end
+        row:ClearAllPoints()
         row:SetPoint("TOPLEFT", altList, "TOPLEFT", 0, -(i - 1) * (rowH + 4))
-        row:SetSize(listW, rowH)
+        row.sep:SetShown(i > 1)
 
-        -- Separateur haut (sauf premier)
-        if i > 1 then
-            HLine(row, 0, 0, 0, C.SEP)
-        end
-
-        -- Initiales
-        local initBox = CreateFrame("Frame", nil, row)
-        initBox:SetSize(34, 34)
-        initBox:SetPoint("LEFT", row, "LEFT", 0, 0)
-        FillBG(initBox, C.BG_HDR[1], C.BG_HDR[2], C.BG_HDR[3])
-        local borderT = initBox:CreateTexture(nil, "BORDER")
-        borderT:SetAllPoints(initBox)
-        borderT:SetColorTexture(C.SEP[1], C.SEP[2], C.SEP[3], 1)
-
-        local initLbl = initBox:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        initLbl:SetAllPoints(initBox)
-        initLbl:SetJustifyH("CENTER")
-        initLbl:SetJustifyV("MIDDLE")
-        initLbl:SetTextColor(C.GOLD[1], C.GOLD[2], C.GOLD[3])
-        -- Initiales : 2 premiers caracteres du nom (avant le tiret realm)
+        local data  = entry.data
+        local lvl   = entry.lvl
+        local isMax = lvl >= maxLvl
+        local isCur = (entry.key == LvlHistory.charKey)
         local firstName = entry.key:match("^([^%-]+)") or entry.key
-        initLbl:SetText(string.upper(string.sub(firstName, 1, 2)))
 
-        -- Nom
-        local nameLbl = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        nameLbl:SetPoint("TOPLEFT", row, "TOPLEFT", 44, -6)
-        nameLbl:SetTextColor(C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3])
-        nameLbl:SetText(entry.key)
+        row.init:SetText(string.upper(string.sub(firstName, 1, 2)))
+        row.init:SetTextColor(ClassRGB(data.class))
+        row.name:SetText(entry.key .. (isCur and ("  |cff38b870" .. Loc("LBL_CONNECTED", "(connecte)") .. "|r") or ""))
+        row.name:SetTextColor(ClassRGB(data.class))
 
-        -- Info : mode + temps total joué
-        local totalT  = entry.data.totalPlayTime or 0
-        local infoLbl = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        infoLbl:SetPoint("TOPLEFT", row, "TOPLEFT", 44, -22)
-        infoLbl:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
-        infoLbl:SetText(string.format("%s  -  %s",
-            mode == "farming" and Loc("MODE_FARMING", "Farming") or Loc("MODE_LEVELING", "Leveling"),
-            totalT > 0 and LvlHistory.Utils.FormatTime(totalT, true) or "--"))
-
-        -- Barre de niveau
-        local barW    = listW - 44 - 54
-        local barClr  = isMax and C.GREEN or C.PURP_LT
-        local barBG   = row:CreateTexture(nil, "BACKGROUND")
-        barBG:SetColorTexture(C.BAR_BG[1], C.BAR_BG[2], C.BAR_BG[3], 1)
-        barBG:SetPoint("TOPLEFT", row, "TOPLEFT", 44, -38)
-        barBG:SetSize(barW, 2)
-
-        local barFill = row:CreateTexture(nil, "ARTWORK")
-        barFill:SetColorTexture(barClr[1], barClr[2], barClr[3], 0.9)
-        barFill:SetPoint("LEFT", barBG, "LEFT", 0, 0)
-        barFill:SetSize(math.max(1, math.floor(barW * pct)), 2)
-
-        -- Niveau (droite)
-        local lvlLbl = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-        lvlLbl:SetPoint("RIGHT", row, "RIGHT", 0, -4)
-        if isMax then
-            lvlLbl:SetText("|cff38b870" .. tostring(lvl) .. "|r")
-        else
-            lvlLbl:SetTextColor(C.GOLD[1], C.GOLD[2], C.GOLD[3])
-            lvlLbl:SetText(tostring(lvl))
+        -- Info : mode, temps joue, XP reposee estimee, montee
+        local totalT = data.totalPlayTime or 0
+        local parts = {
+            (data.mode == "farming") and Loc("MODE_FARMING", "Farming") or Loc("MODE_LEVELING", "Leveling"),
+            totalT > 0 and U.FormatTime(totalT, true) or "--",
+        }
+        local restFrac = 0
+        if not isMax then
+            local _, frac = LvlHistory.EstimateRested(data, isCur)
+            if frac then
+                restFrac = frac
+                parts[#parts + 1] = string.format(Loc("LBL_RESTED_SHORT_FMT", "repose %d %%"), math.floor(frac * 100 + 0.5))
+            end
         end
+        local race = LvlHistory.API.GetRace(data, maxLvl)
+        if race then
+            parts[#parts + 1] = string.format(Loc("LBL_RACE_SHORT_FMT", "montee %s"), U.FormatTime(race, true))
+        end
+        row.info:SetText(table.concat(parts, "  -  "))
 
-        -- (temps total déjà affiché dans la ligne info, on ne le duplique pas)
+        -- Barre : progression vers le max (fraction d'XP pour le perso connecte)
+        local pct = math.min(lvl / maxLvl, 1)
+        if isCur and not isMax and UnitXPMax("player") > 0 then
+            pct = math.min((lvl - 1 + UnitXP("player") / UnitXPMax("player")) / maxLvl, 1)
+        end
+        local barClr = isMax and C.GREEN or C.PURP_LT
+        local fillW  = math.max(1, math.floor(row.barW * pct))
+        row.fill:SetColorTexture(barClr[1], barClr[2], barClr[3], 0.9)
+        row.fill:SetSize(fillW, 2)
+        local restW = math.floor(row.barW / maxLvl * math.min(restFrac, 1.5))
+        row.rest:SetSize(math.max(1, math.min(restW, row.barW - fillW)), 2)
+        row.rest:SetShown(restW > 0 and fillW < row.barW)
+
+        if isMax then
+            row.lvl:SetTextColor(C.GREEN[1], C.GREEN[2], C.GREEN[3])
+        else
+            row.lvl:SetTextColor(C.GOLD[1], C.GOLD[2], C.GOLD[3])
+        end
+        row.lvl:SetText(tostring(lvl))
+        row:Show()
     end
+    for i = #list + 1, #altRows do altRows[i]:Hide() end
 end
 
 -- ─────────────────────────────────────────────
@@ -1087,6 +1186,72 @@ end
 local dgnList
 local dgnRows = {}
 local s4      = {}
+local dgnMeasFS, mapNameToID
+local delveTitle, delveRows = nil, {}
+local MAX_DELVE_ROWS = 20
+
+-- Clic sur un donjon : ouvre DgnTracker (guide du donjon) s'il est installe
+local function OpenDgnTracker()
+    if _G.DgnTracker_Toggle then
+        local f = _G.DGNMainFrame
+        if not (f and f:IsShown()) then _G.DgnTracker_Toggle() end
+    end
+end
+
+--- Section "Gouffres les plus joues" sous la liste des donjons. Renvoie la
+--- hauteur occupee. Lignes creees une fois, recyclees ensuite.
+function UI.RefreshDelves(db, top)
+    local sorted = {}
+    for name, n in pairs(db.delveRuns or {}) do
+        sorted[#sorted + 1] = { name = name, n = n, tier = (db.delveBest or {})[name] }
+    end
+    table.sort(sorted, function(a, b)
+        if a.n ~= b.n then return a.n > b.n end
+        return a.name < b.name
+    end)
+    if not delveTitle then
+        delveTitle = dgnList:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        delveTitle:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
+        delveTitle:SetText(Loc("LBL_TOP_DELVES", "Gouffres les plus joues"))
+    end
+    delveTitle:ClearAllPoints()
+    delveTitle:SetPoint("TOPLEFT", dgnList, "TOPLEFT", 8, -(top + 10))
+    if #sorted == 0 then
+        delveTitle:Hide()
+        for _, r in ipairs(delveRows) do r:Hide() end
+        return 0
+    end
+    delveTitle:Show()
+    local rowH, rowW = 22, FW - PAD * 2 - 22
+    local shown = math.min(#sorted, MAX_DELVE_ROWS)
+    for i = 1, shown do
+        local r = delveRows[i]
+        if not r then
+            r = CreateFrame("Frame", nil, dgnList)
+            r:SetSize(rowW, rowH)
+            r.name = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            r.name:SetPoint("LEFT", r, "LEFT", 6, 0)
+            r.name:SetTextColor(C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3])
+            r.tier = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            r.tier:SetPoint("RIGHT", r, "RIGHT", -60, 0)
+            r.tier:SetTextColor(0.94, 0.75, 0.25, 1)
+            r.count = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            r.count:SetPoint("RIGHT", r, "RIGHT", -4, 0)
+            r.count:SetTextColor(0.95, 0.42, 0.42, 1)
+            HLine(r, -rowH + 1, 0, 0, C.SEP2)
+            delveRows[i] = r
+        end
+        local e = sorted[i]
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", dgnList, "TOPLEFT", 0, -(top + 32 + (i - 1) * rowH))
+        r.name:SetText(e.name)
+        r.tier:SetText(e.tier and string.format(Loc("LBL_TIER_FMT", "palier %d"), e.tier) or "")
+        r.count:SetText(tostring(e.n))
+        r:Show()
+    end
+    for i = shown + 1, #delveRows do delveRows[i]:Hide() end
+    return 32 + shown * rowH + 8
+end
 
 local function BuildTabDungeons(ca)
     local f = CreateFrame("Frame", nil, ca)
@@ -1101,7 +1266,7 @@ local function BuildTabDungeons(ca)
 
     local rowW    = FW - PAD * 2 - 22
     local content = CreateFrame("Frame", nil, scroll)
-    content:SetSize(rowW, DGN_TITLE_H + MAX_DGN_ROWS * DGN_ROW_H)
+    content:SetSize(rowW, DGN_TITLE_H + MAX_DGN_ROWS * DGN_ROW_H + 32 + MAX_DELVE_ROWS * 22)
     scroll:SetScrollChild(content)
     dgnList = content
 
@@ -1136,7 +1301,18 @@ local function BuildTabDungeons(ca)
     -- Pre-construire MAX_DGN_ROWS lignes (cachees, comme SkyMythicHistory)
     dgnRows = {}
     for i = 1, MAX_DGN_ROWS do
-        dgnRows[i] = CreateDgnRow(content, i, rowW)
+        local row = CreateDgnRow(content, i, rowW)
+        row:EnableMouse(true)
+        row:SetScript("OnEnter", function(self)
+            if not _G.DgnTracker_Toggle then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(self.Name:GetText() or "", 1, 1, 1)
+            GameTooltip:AddLine(Loc("TT_OPEN_DGNTRACKER", "Clic : ouvrir DgnTracker"), 0.7, 0.7, 0.7)
+            GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row:SetScript("OnMouseUp", function() OpenDgnTracker() end)
+        dgnRows[i] = row
     end
 
     return f
@@ -1161,7 +1337,8 @@ function UI.RefreshTab4()
             end
             d.total = d.total + count
             local dl = diff:lower()
-            if     dl:find("%+")                             then d.mp     = d.mp     + count
+            if     dl:find("%+") or dl:find("keystone") or dl:find("clé")
+                or dl:find("schlüssel") or dl:find("piedra")     then d.mp     = d.mp     + count
             elseif dl:find("mythique") or dl:find("mythic")  then d.mythic = d.mythic + count
             elseif dl:find("hero")                            then d.heroic = d.heroic + count
             elseif dl:find("normal")                          then d.normal = d.normal + count
@@ -1191,7 +1368,10 @@ function UI.RefreshTab4()
         s4.blks[2].num:SetText(tostring(sess))
         NumColor(s4.blks[2].num, sess, "good")
         s4.blks[2].lbl:SetText(Loc("LBL_THIS_SESSION_CAP", "Cette session"))
-        s4.blks[2].sub:SetText("")
+        local dvTotal = 0
+        for _, n in pairs(db.delveRuns or {}) do dvTotal = dvTotal + n end
+        s4.blks[2].sub:SetText(string.format(Loc("LBL_DELVES_SUB_FMT", "gouffres : %d (total %d)"),
+            db.session.delves or 0, dvTotal))
         s4.blks[3].num:SetText(topCount > 0 and ("x"..topCount) or "--")
         NumColor(s4.blks[3].num, topCount, "neutral")
         s4.blks[3].lbl:SetText(Loc("LBL_FAVORITE_DUNGEON", "Donjon favori"))
@@ -1216,15 +1396,17 @@ function UI.RefreshTab4()
     -- ── Mesure dynamique de la largeur des noms ──────────────────────────────
     -- On mesure la largeur naturelle de chaque nom pour eviter les chevauchements.
     local bestKeyDB = db.dgnBestKey or {}
-    local measFS = dgnList:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    measFS:SetWidth(0)  -- sans contrainte = texte non tronque
+    if not dgnMeasFS then
+        dgnMeasFS = dgnList:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        dgnMeasFS:Hide()
+    end
+    local measFS = dgnMeasFS
     local maxNamePx = DGN_NAME_W
     for _, d in ipairs(sorted) do
         measFS:SetText(d.name)
         local w = math.ceil(measFS:GetStringWidth())
         if w > maxNamePx then maxNamePx = w end
     end
-    measFS:Hide()
     -- Clamp : min 100, max 220 (evite un nom ultra-long de tout ecraser)
     local nameW = math.max(100, math.min(220, maxNamePx + 4))
 
@@ -1240,15 +1422,16 @@ function UI.RefreshTab4()
         return string.format("%d:%02d", math.floor(s / 60), s % 60)
     end
 
-    -- Table nom→mapChallengeModeID depuis l'API Blizzard
-    local mapNameToID = {}
-    if C_ChallengeMode and C_ChallengeMode.GetMapTable then
+    -- Table nom→mapChallengeModeID : construite une seule fois (la liste des
+    -- donjons M+ de la saison ne change pas en cours de session). Le mapID
+    -- memorise a la fin d'une cle (db.dgnMapID) reste prioritaire.
+    if not mapNameToID and C_ChallengeMode and C_ChallengeMode.GetMapTable then
+        local t = {}
         for _, mapID in ipairs(C_ChallengeMode.GetMapTable() or {}) do
             local name = C_ChallengeMode.GetMapUIInfo(mapID)
-            if name and name ~= "" then
-                mapNameToID[name] = mapID
-            end
+            if name and name ~= "" then t[name] = mapID end
         end
+        if next(t) then mapNameToID = t end
     end
 
     -- ── Mise a jour des lignes pre-construites ───────────────────────────────
@@ -1290,20 +1473,31 @@ function UI.RefreshTab4()
             row.Status:SetText(table.concat(parts, " "))
 
             -- ── Difficulte et Temps depuis les donnees Blizzard ──────────────
-            local mapID   = mapNameToID[d.name]
-            local bestRun = nil
+            local mapID   = (db.dgnMapID and db.dgnMapID[d.name]) or (mapNameToID and mapNameToID[d.name])
+            local bestRun, overTime = nil, false
             if mapID and C_MythicPlus and C_MythicPlus.GetSeasonBestForMap then
-                bestRun = C_MythicPlus.GetSeasonBestForMap(mapID)
+                local ok, inTime, outTime = pcall(C_MythicPlus.GetSeasonBestForMap, mapID)
+                if ok then
+                    if type(inTime) == "table" and (inTime.level or 0) > 0 then
+                        bestRun = inTime
+                    elseif type(outTime) == "table" and (outTime.level or 0) > 0 then
+                        bestRun, overTime = outTime, true
+                    end
+                end
             end
 
-            if bestRun and bestRun.keystoneLevel and bestRun.keystoneLevel > 0 then
-                -- Donnees live Blizzard
-                row.Diff:SetText("+" .. bestRun.keystoneLevel)
+            if bestRun then
+                -- Donnees live Blizzard (record de la saison en cours)
+                row.Diff:SetText("+" .. bestRun.level)
                 row.Diff:SetTextColor(0.94, 0.75, 0.25, 1)
-                local ms = bestRun.completionMilliseconds
-                if ms and ms > 0 then
-                    row.Time:SetText(FmtMs(ms))
-                    row.Time:SetTextColor(0.22, 0.72, 0.44, 1)
+                local sec = bestRun.durationSec
+                if sec and sec > 0 then
+                    row.Time:SetText(FmtMs(sec * 1000))
+                    if overTime then
+                        row.Time:SetTextColor(0.90, 0.40, 0.30, 1)
+                    else
+                        row.Time:SetTextColor(0.22, 0.72, 0.44, 1)
+                    end
                 else
                     row.Time:SetText("--")
                     row.Time:SetTextColor(0.44, 0.41, 0.35, 1)
@@ -1338,9 +1532,10 @@ function UI.RefreshTab4()
         end
     end
 
-    -- Hauteur du scroll adapte au nombre de lignes visibles
-    local h = DGN_TITLE_H + visibleRows * DGN_ROW_H
-    local dgnH = math.max(h, DGN_TITLE_H + DGN_ROW_H)
+    -- Section Gouffres, sous les donjons
+    local h = DGN_TITLE_H + math.max(visibleRows, 1) * DGN_ROW_H
+    h = h + UI.RefreshDelves(db, h)
+    local dgnH = h
     dgnList:SetHeight(dgnH)
     listContentH[4] = dgnH
     ResizeToActive()
@@ -1401,6 +1596,7 @@ local function BuildTabStats(ca)
         { lbl = Loc("LBL_FAVORITE_ZONE", "Zone favorite"),               key = "topZone"   },
         { lbl = Loc("LBL_TOTAL_GOLD", "Or total gagne"),                 key = "totalGold" },
         { lbl = Loc("LBL_BEST_GOLD_SESSION", "Record or / session"),     key = "bestGold"  },
+        { lbl = Loc("LBL_BEST_GOLDH", "Meilleur or / h"),                key = "bestGoldH" },
         { lbl = Loc("LBL_BEST_DGN_SESSION", "Record donjons / session"), key = "bestDgn" },
     }
     s5.rec = {}
@@ -1418,6 +1614,60 @@ local function BuildTabStats(ca)
             HLine(f, y - 14, PAD, -PAD, C.SEP2)
         end
     end
+
+    -- Mini-graphique : 20 dernieres sessions (barres survolables)
+    local spY = recY - 8 - #recDefs * 22 - 22
+    HLine(f, spY + 6, PAD, -PAD, C.SEP)
+    s5.spTitle = FS(f, "GameFontNormalSmall", "TOPLEFT", PAD, spY - 2)
+    s5.spTitle:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
+    local SP_N, SP_H = 20, 40
+    local slotW = math.floor((FW - PAD * 2) / SP_N)
+    s5.spH = SP_H
+    s5.bars = {}
+    for i = 1, SP_N do
+        local b = CreateFrame("Button", nil, f)
+        b:SetSize(slotW, SP_H)
+        b:SetPoint("TOPLEFT", f, "TOPLEFT", PAD + (i - 1) * slotW, spY - 18)
+        local bg = b:CreateTexture(nil, "BACKGROUND")
+        bg:SetPoint("BOTTOMLEFT", b, "BOTTOMLEFT", 2, 0)
+        bg:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -2, 0)
+        bg:SetHeight(SP_H)
+        bg:SetColorTexture(C.BAR_BG[1], C.BAR_BG[2], C.BAR_BG[3], 1)
+        b.fill = b:CreateTexture(nil, "ARTWORK")
+        b.fill:SetPoint("BOTTOMLEFT", b, "BOTTOMLEFT", 2, 0)
+        b.fill:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", -2, 0)
+        b.fill:SetHeight(1)
+        b:SetScript("OnEnter", function(self)
+            local ses = self.session
+            if not ses then return end
+            local U = LvlHistory.Utils
+            GameTooltip:SetOwner(self, "ANCHOR_TOP")
+            GameTooltip:SetText(date("%d/%m %H:%M", ses.date or 0), 1, 1, 1)
+            GameTooltip:AddDoubleLine(Loc("LBL_DURATION", "Duree"), U.FormatTime(ses.duration or 0, true), 0.7, 0.7, 0.7, 1, 1, 1)
+            if ses.mode == "leveling" then
+                GameTooltip:AddDoubleLine(Loc("LBL_XPH", "XP / heure"), U.FormatXPH(ses.xph or 0), 0.7, 0.7, 0.7, 1, 1, 1)
+                if ses.levelStart and ses.levelEnd and ses.levelEnd > ses.levelStart then
+                    GameTooltip:AddDoubleLine(Loc("LBL_LEVELS", "Niveaux"),
+                        ses.levelStart .. " > " .. ses.levelEnd, 0.7, 0.7, 0.7, 1, 1, 1)
+                end
+            end
+            local g = ses.goldEarned or ses.goldGained or 0
+            if g > 0 then
+                GameTooltip:AddDoubleLine(Loc("LBL_GOLD_GAINED", "Or gagne"), U.FormatGold(g, true), 0.7, 0.7, 0.7, 1, 1, 1)
+            end
+            if (ses.quests or 0) > 0 then
+                GameTooltip:AddDoubleLine(Loc("LBL_QUESTS", "Quetes"), tostring(ses.quests), 0.7, 0.7, 0.7, 1, 1, 1)
+            end
+            if ses.zone and ses.zone ~= "" then
+                GameTooltip:AddLine(ses.zone, 0.5, 0.6, 0.8)
+            end
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        s5.bars[i] = b
+    end
+    -- Hauteur utile de l'onglet (auto-hauteur de la fenetre, chrome 186)
+    listContentH[5] = math.max(0, -(spY - 18 - SP_H - PAD) - 100)
 
     return f
 end
@@ -1489,8 +1739,186 @@ function UI.RefreshTab5()
         s5.rec.totalGold:SetText(totalGold > 0 and U.FormatGold(totalGold, true) or "--")
         s5.rec.bestGold:SetText(bestGold  > 0 and U.FormatGold(bestGold,  true) or "--")
         s5.rec.bestDgn:SetText(bestDgn   > 0 and tostring(bestDgn) or "--")
+        local _, bestGoldH = LvlHistory.API.GetRecords(db)
+        s5.rec.bestGoldH:SetText(bestGoldH > 0 and U.FormatGold(bestGoldH, true) or "--")
+    end
+
+    -- Mini-graphique des 20 dernieres sessions
+    if s5.bars then
+        local n = #s5.bars
+        local recent = {}
+        for i = math.max(1, #sessions - n + 1), #sessions do recent[#recent + 1] = sessions[i] end
+        local useXP = false
+        for _, ses in ipairs(recent) do
+            if ses.mode == "leveling" and (ses.xph or 0) > 0 then useXP = true; break end
+        end
+        local function val(ses)
+            if useXP then return ses.mode == "leveling" and (ses.xph or 0) or 0 end
+            local g = ses.goldEarned or ses.goldGained or 0
+            return (ses.duration or 0) > 0 and g / ses.duration * 3600 or 0
+        end
+        local maxV = 0
+        for _, ses in ipairs(recent) do maxV = math.max(maxV, val(ses)) end
+        s5.spTitle:SetText(string.format(Loc("LBL_SPARK_FMT", "%d dernieres sessions : %s"), #recent,
+            useXP and Loc("LBL_XPH", "XP / heure") or Loc("LBL_GOLDH", "Or / heure")))
+        local col = useXP and C.GREEN or C.GOLD
+        local offset = n - #recent
+        for i, b in ipairs(s5.bars) do
+            local ses = recent[i - offset]
+            b.session = ses
+            if ses then
+                local v = val(ses)
+                b.fill:SetHeight(math.max(1, maxV > 0 and math.floor(s5.spH * v / maxV) or 1))
+                b.fill:SetColorTexture(col[1], col[2], col[3], (i == n) and 1 or 0.7)
+                b.fill:Show()
+            else
+                b.fill:Hide()
+            end
+        end
     end
 end
+
+-- ─────────────────────────────────────────────
+-- TAB 6 — Niveaux (chronologie : temps de jeu passe a chaque niveau)
+-- ─────────────────────────────────────────────
+
+local lvlList
+local lvlRows = {}
+local s6 = {}
+
+local function BuildTabLevels(ca)
+    local f = CreateFrame("Frame", nil, ca)
+    f:SetAllPoints(ca)
+
+    s6.blks = StatRow(f)
+
+    local scrollTop = -(PAD + SROW_H + 8)
+    local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT",     f, "TOPLEFT",     PAD - 4, scrollTop)
+    scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -22, PAD)
+
+    local content = CreateFrame("Frame", nil, scroll)
+    content:SetSize(FW - PAD * 2 - 22, 1)
+    scroll:SetScrollChild(content)
+    lvlList = content
+
+    s6.empty = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    s6.empty:SetPoint("TOPLEFT", content, "TOPLEFT", 4, -6)
+    s6.empty:SetPoint("RIGHT", content, "RIGHT", -4, 0)
+    s6.empty:SetJustifyH("LEFT")
+    s6.empty:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+    s6.empty:SetText(Loc("LBL_LEVELS_EMPTY", "La chronologie se remplit a chaque niveau gagne a partir de maintenant."))
+
+    return f
+end
+
+function UI.RefreshTab6()
+    local db = LvlHistory.db
+    if not db or not lvlList then return end
+    local U      = LvlHistory.Utils
+    local maxLvl = LvlHistory.MaxLevel()
+    local lvl    = UnitLevel("player")
+
+    -- Donnees : niveaux termines, du plus recent au plus ancien
+    local list, maxT = {}, 1
+    for l, e in pairs(db.levelLog or {}) do
+        if type(l) == "number" and type(e) == "table" and e.t then
+            list[#list + 1] = { l = l, t = e.t, at = e.at, partial = e.partial }
+            if e.t > maxT then maxT = e.t end
+        end
+    end
+    table.sort(list, function(a, b) return a.l > b.l end)
+
+    -- ── Stats row ───────────────────────────────
+    local clk = db.levelClock
+    if lvl < maxLvl and clk then
+        s6.blks[1].num:SetText(U.FormatTime(clk.t or 0, true))
+        NumColor(s6.blks[1].num, clk.t or 0, "progress")
+        s6.blks[1].lbl:SetText(string.format(Loc("LBL_ON_LEVEL_FMT", "Au niveau %d"), lvl))
+        s6.blks[1].sub:SetText(clk.partial and Loc("LEVEL_UP_PARTIAL", "(suivi partiel)") or "")
+    else
+        s6.blks[1].num:SetText(tostring(lvl))
+        NumColor(s6.blks[1].num, 1, "good")
+        s6.blks[1].lbl:SetText(Loc("LBL_MAX_LEVEL", "Niveau max"))
+        s6.blks[1].sub:SetText("")
+    end
+
+    local sum, n = 0, 0
+    for i = 1, math.min(#list, 5) do
+        if not list[i].partial then sum = sum + list[i].t; n = n + 1 end
+    end
+    s6.blks[2].num:SetText(n > 0 and U.FormatTime(sum / n, true) or "--")
+    NumColor(s6.blks[2].num, n, "neutral")
+    s6.blks[2].lbl:SetText(Loc("LBL_AVG_LEVEL", "Moyenne / niveau"))
+    s6.blks[2].sub:SetText(n > 0 and string.format(Loc("LBL_LAST_N_FMT", "%d derniers niveaux"), n) or "")
+
+    local race = LvlHistory.API.GetRace(db, maxLvl)
+    local best, who = LvlHistory.API.GetBestRace()
+    if race then
+        s6.blks[3].num:SetText(U.FormatTime(race, true))
+        NumColor(s6.blks[3].num, race, "good")
+        s6.blks[3].sub:SetText(best and who ~= LvlHistory.charKey
+            and string.format(Loc("LBL_RECORD_BY_FMT", "record : %s"), (who:match("^([^%-]+)") or who)) or Loc("LBL_ACCOUNT_RECORD", "record du compte"))
+    elseif best then
+        s6.blks[3].num:SetText(U.FormatTime(best, true))
+        NumColor(s6.blks[3].num, best, "neutral")
+        s6.blks[3].sub:SetText(who:match("^([^%-]+)") or who)
+    else
+        s6.blks[3].num:SetText("--")
+        NumColor(s6.blks[3].num, 0)
+        s6.blks[3].sub:SetText(Loc("LBL_RACE_HINT", "suivi complet requis"))
+    end
+    s6.blks[3].lbl:SetText(string.format(Loc("LBL_RACE_FMT", "Montee 10 > %d"), maxLvl))
+
+    -- ── Liste (lignes recyclees) ────────────────
+    local rowH, listW = 24, FW - PAD * 2 - 22
+    s6.empty:SetShown(#list == 0)
+    local h = math.max(#list * rowH, 24)
+    lvlList:SetHeight(h)
+    listContentH[6] = h
+    ResizeToActive()
+
+    for i, e in ipairs(list) do
+        local r = lvlRows[i]
+        if not r then
+            r = CreateFrame("Frame", nil, lvlList)
+            r:SetSize(listW, rowH)
+            r.lvl = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            r.lvl:SetPoint("LEFT", r, "LEFT", 4, 0)
+            r.lvl:SetWidth(70)
+            r.lvl:SetJustifyH("LEFT")
+            r.barBG = r:CreateTexture(nil, "BACKGROUND")
+            r.barBG:SetColorTexture(C.BAR_BG[1], C.BAR_BG[2], C.BAR_BG[3], 1)
+            r.barBG:SetPoint("LEFT", r, "LEFT", 80, 0)
+            r.barBG:SetSize(150, 4)
+            r.fill = r:CreateTexture(nil, "ARTWORK")
+            r.fill:SetPoint("LEFT", r.barBG, "LEFT", 0, 0)
+            r.time = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            r.time:SetPoint("LEFT", r.barBG, "RIGHT", 10, 0)
+            r.date = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+            r.date:SetPoint("RIGHT", r, "RIGHT", -4, 0)
+            r.date:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+            HLine(r, -rowH + 1, 0, 0, C.SEP2)
+            lvlRows[i] = r
+        end
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", lvlList, "TOPLEFT", 0, -(i - 1) * rowH)
+        r.lvl:SetText(string.format("%d > %d", e.l, e.l + 1))
+        r.lvl:SetTextColor(C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3])
+        local col = e.partial and C.MUTED or C.PURP_LT
+        r.fill:SetColorTexture(col[1], col[2], col[3], 1)
+        r.fill:SetSize(math.max(1, math.floor(150 * e.t / maxT)), 4)
+        r.time:SetText((e.partial and "~" or "") .. U.FormatTime(e.t, true))
+        r.time:SetTextColor(e.partial and C.MUTED[1] or C.GOLD[1], e.partial and C.MUTED[2] or C.GOLD[2], e.partial and C.MUTED[3] or C.GOLD[3])
+        r.date:SetText(e.at and date("%d/%m/%y %H:%M", e.at) or "")
+        r:Show()
+    end
+    for i = #list + 1, #lvlRows do lvlRows[i]:Hide() end
+end
+
+--- Marque les donnees comme modifiees : l'onglet actif sera redessine au
+--- prochain tick (appele par le Bridge a chaque evenement).
+function UI.MarkDirty() dirty = true end
 
 -- Forward declaration : RefreshCompactBody est définie plus bas
 -- mais appelée par RefreshGlobal — on déclare le slot local ici
@@ -1682,6 +2110,17 @@ RefreshCompactBody = function()
         Cell(2, tostring(qt), Loc("LBL_TOTAL_QUESTS", "Quetes totales"), qt > 0 and C.BLUE or C.MUTED)
         Cell(3, tostring(dgnTotal), Loc("LBL_TOTAL_DUNGEONS", "Donjons totaux"), dgnTotal > 0 and C.GREEN or C.MUTED)
         Cell(4, tostring(sessCount), Loc("LBL_SESSIONS_SHORT", "Sessions"), sessCount > 0 and C.GOLD_DIM or C.MUTED)
+
+    elseif activeTab == 6 then
+        -- NIVEAUX : Au niveau | Niveau max dans | Niveau | Montee record
+        local clk = db.levelClock
+        local lvl = UnitLevel("player")
+        Cell(1, clk and U.FormatTime(clk.t or 0, true) or "--", string.format(Loc("LBL_ON_LEVEL_FMT", "Au niveau %d"), lvl), C.PURP_LT)
+        local eta = isLev and LvlHistory.Leveling.EstimateToMax(db.session.xph or 0)
+        Cell(2, eta and ("~" .. U.FormatTime(eta, true)) or "--", Loc("LBL_ETA_MAX", "Niveau max dans"), C.GOLD_DIM)
+        Cell(3, tostring(lvl), Loc("LBL_LEVEL_PREFIX", "Niveau "), C.GOLD)
+        local best = LvlHistory.API.GetBestRace()
+        Cell(4, best and U.FormatTime(best, true) or "--", Loc("LBL_RACE_SHORT", "Montee record"), C.GREEN)
     end
 end
 
@@ -1822,8 +2261,12 @@ local function Build()
         if not self:IsShown() then return end
         RefreshGlobal()
         if isCollapsed then return end
-        local fn = UI["RefreshTab" .. activeTab]
-        if fn then fn() end
+        sinceFull = sinceFull + 1
+        if activeTab == 1 or activeTab == 6 or dirty or sinceFull >= 15 then
+            dirty, sinceFull = false, 0
+            local fn = UI["RefreshTab" .. activeTab]
+            if fn then fn() end
+        end
     end)
 
     BuildHeader(mainFrame)
@@ -1838,11 +2281,13 @@ local function Build()
         BuildTabZones,
         BuildTabAlts,
         BuildTabDungeons,
-                BuildTabStats,
+        BuildTabStats,
+        BuildTabLevels,
     }
     for i, builder in ipairs(builders) do
         panels[i] = builder(ca)
     end
+    BuildCompactBody(mainFrame)
 
     ShowTab(1)
 end
@@ -1864,6 +2309,13 @@ end
 
 function UI.Hide()
     if mainFrame then mainFrame:Hide() end
+end
+
+--- Ouvre la fenetre (depliee) sur un onglet donne (recherche, /lvlh niveaux, API).
+function UI.OpenTab(idx)
+    if not mainFrame or not mainFrame:IsShown() then UI.Show() end
+    if isCollapsed then UI.Expand() end
+    if panels[idx] then ShowTab(idx) end
 end
 
 function UI.Toggle()

@@ -13,10 +13,13 @@ local B = LvlHistory.Bridge
 -- ─────────────────────────────────────────────
 
 local hooks = {
-    onRepGain     = {},  -- (factionName, gained, perHour)
-    onQuestTurnIn = {},  -- (questID, isDaily)
-    onModeSwitch  = {},  -- (oldMode, newMode)
-    onSessionEnd  = {},  -- (sessionSnapshot)
+    onRepGain          = {},  -- (factionName, gained, perHour)
+    onQuestTurnIn      = {},  -- (questID, isDaily, isWeekly)
+    onModeSwitch       = {},  -- (oldMode, newMode)
+    onSessionEnd       = {},  -- (sessionSnapshot)
+    onDungeonCompleted = {},  -- (dungeonName, totalRuns, difficultyName)
+    onDelveCompleted   = {},  -- (delveName, tier|nil, totalRuns)
+    onLevelUp          = {},  -- (newLevel, secondsSpentOnPreviousLevel|nil)
 }
 
 --- Enregistre un callback sur un événement LvlHistory
@@ -24,22 +27,34 @@ local hooks = {
 --- @param addonName string  — nom de l'addon abonné (pour debug)
 --- @param fn function       — callback à appeler
 function B.Register(event, addonName, fn)
+    if type(fn) ~= "function" then return end
     if not hooks[event] then
-        LvlHistory.Utils.LogError("Bridge.Register : event inconnu '%s' (demandé par %s)", event, addonName)
+        LvlHistory.Utils.LogError("Bridge.Register : event inconnu '%s' (demandé par %s)", tostring(event), tostring(addonName))
         return
     end
     table.insert(hooks[event], { name = addonName, fn = fn })
-    LvlHistory.Utils.Log("Bridge : %s abonné à '%s'", addonName, event)
+    LvlHistory.Utils.Log("Bridge : %s abonné à '%s'", tostring(addonName), event)
+end
+
+--- Liste des evenements disponibles (pour les addons abonnes)
+function B.Events()
+    local out = {}
+    for k in pairs(hooks) do out[#out + 1] = k end
+    table.sort(out)
+    return out
 end
 
 --- Émet un événement vers tous les abonnés (appel interne uniquement)
 --- pcall isole chaque abonné — une erreur d'un addon tiers ne casse pas LvlHistory.
+--- Toute emission signale aussi a la fenetre que ses donnees ont change.
 function B.Emit(event, ...)
+    local ui = LvlHistory.UI
+    if ui and ui.MarkDirty then ui.MarkDirty() end
     if not hooks[event] then return end
     for _, subscriber in ipairs(hooks[event]) do
         local ok, err = pcall(subscriber.fn, ...)
         if not ok then
-            LvlHistory.Utils.LogError("Bridge.Emit '%s' → %s : %s", event, subscriber.name, tostring(err))
+            LvlHistory.Utils.LogError("Bridge.Emit '%s' → %s : %s", event, tostring(subscriber.name), tostring(err))
         end
     end
 end

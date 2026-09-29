@@ -1,16 +1,17 @@
 -- Farming.lua
 -- LvlHistory — Logique MODE_FARMING
--- Trackée : or/h, réputation/h, ressources, journalières, zones
+-- Trackée : or/h (mode farming), réputation/h et monnaies (tous modes)
+-- (zones et quetes sont suivies par Core.lua, dans tous les modes)
 -- Auteur : Tibizcui | Famille : TibiSuite
 
 LvlHistory.Farming = LvlHistory.Farming or {}
 local F = LvlHistory.Farming
 
-local farmingFrame
-local isRunning = false
+local farmingFrame, repFrame
+local isRunning, repRunning = false, false
 
 -- ─────────────────────────────────────────────
--- Handlers d'events
+-- Or
 -- ─────────────────────────────────────────────
 
 local function OnMoneyUpdate()
@@ -25,191 +26,148 @@ local function OnMoneyUpdate()
     -- Les achats / réparations / enchantements réduisent l'or mais
     -- ne doivent pas impacter le calcul Or/h — on les ignore.
     if currentGold > lastGold then
-        local gained = currentGold - lastGold
-        db.farming.goldEarned = (db.farming.goldEarned or 0) + gained
+        db.farming.goldEarned = (db.farming.goldEarned or 0) + (currentGold - lastGold)
     end
     db.session.lastGold = currentGold
 
     if elapsed >= 10 and (db.farming.goldEarned or 0) > 0 then
         db.farming.goldPerHour = math.floor(db.farming.goldEarned / elapsed * 3600)
     end
-
     db.farming.gold = db.farming.goldEarned or 0
-
-    LvlHistory.Utils.Log("Or/h: %d | Gagne session: %d",
-        db.farming.goldPerHour or 0, db.farming.gold)
 end
 
--- Helpers réputation : encapsulés pour protéger contre les APIs instables en 12.x
-local function GetRepEarnedValue(data)
-    -- currentReactionThreshold peut être nil sur certaines réputations 12.x
-    return (data.currentReactionThreshold or 0) + (data.currentValue or 0)
-end
+-- ─────────────────────────────────────────────
+-- Réputation (tous modes). API 11.0.2+ : C_Reputation.GetNumFactions /
+-- GetFactionDataByIndex (meme chemin que RepBar). currentStanding = valeur
+-- absolue gagnee aupres de la faction. Les factions a renom repartent a zero
+-- a chaque rang : une baisse est donc traitee comme une nouvelle base.
+-- UPDATE_FACTION arrive en rafale : un seul balayage toutes les 2 s.
+-- ─────────────────────────────────────────────
 
 local function IterateFactions(callback)
-    -- Chemin 1 : API moderne Retail 10.x+
-    if C_Reputation and C_Reputation.GetAllFactionsByCriteria then
-        local ok, factionIDs = pcall(C_Reputation.GetAllFactionsByCriteria, {})
-        if ok and factionIDs then
-            for _, factionID in ipairs(factionIDs) do
-                local data = C_Reputation.GetFactionDataByID(factionID)
-                if data and not data.isHeader and data.name then
-                    callback(data.name, GetRepEarnedValue(data))
-                end
-            end
-            return
+    local R = C_Reputation
+    if not (R and R.GetNumFactions and R.GetFactionDataByIndex) then
+        if R and R.GetWatchedFactionData then
+            local d = R.GetWatchedFactionData()
+            if d and d.name then callback(d.name, d.currentStanding or 0) end
         end
+        return
     end
-    -- Chemin 2 : faction regardée uniquement (fallback sûr pour Retail 12.x)
-    -- GetNumFactions/GetFactionInfo sont cassés en 12.x — on les évite totalement.
-    if C_Reputation and C_Reputation.GetWatchedFactionData then
-        local data = C_Reputation.GetWatchedFactionData()
-        if data and data.name then
-            callback(data.name, (data.currentValue or 0))
+    local n = R.GetNumFactions() or 0
+    for i = 1, n do
+        local ok, d = pcall(R.GetFactionDataByIndex, i)
+        if ok and d and d.name and d.name ~= "" and (not d.isHeader or d.isHeaderWithRep) then
+            callback(d.name, d.currentStanding or 0)
         end
     end
 end
 
-local function OnFactionUpdate()
+local function ScanReputations()
     local db = LvlHistory.db
     if not db then return end
+    local elapsed = time() - db.session.startTime
 
-    IterateFactions(function(name, earnedValue)
+    IterateFactions(function(name, value)
         local prev = db.farming.rep[name]
-        if prev and prev.value and earnedValue > prev.value then
-            local gained = earnedValue - prev.value
+        if not prev then
+            db.farming.rep[name] = { value = value, gained = 0, perHour = 0 }
+        elseif prev.stale then
+            -- premiere lecture de la session : simple remise a niveau de la base
+            prev.value, prev.stale = value, nil
+        elseif value > (prev.value or 0) then
+            local gained = value - (prev.value or 0)
             prev.gained  = (prev.gained or 0) + gained
-            prev.value   = earnedValue
-
-            local elapsed = time() - db.session.startTime
+            prev.value   = value
+            prev.last    = time()
             if elapsed >= 10 then
                 prev.perHour = math.floor(prev.gained / elapsed * 3600)
             end
-
             LvlHistory.Bridge.Emit("onRepGain", name, gained, prev.perHour)
-        elseif not prev then
-            db.farming.rep[name] = { value = earnedValue, gained = 0, perHour = 0 }
+        elseif value < (prev.value or 0) then
+            prev.value = value   -- nouveau rang de renom : nouvelle base
         end
     end)
 end
 
-local function OnCurrencyUpdate()
-    local db = LvlHistory.db
-    if not db then return end
-
-    local numCurrencies = C_CurrencyInfo.GetCurrencyListSize()
-    for i = 1, numCurrencies do
-        local info = C_CurrencyInfo.GetCurrencyListInfo(i)
-        if info and not info.isHeader and info.name then
-            local name    = info.name
-            local current = info.quantity
-
-            if db.farming.currencies[name] then
-                local diff = current - db.farming.currencies[name].last
-                if diff > 0 then
-                    db.farming.currencies[name].gained = (db.farming.currencies[name].gained or 0) + diff
-                end
-                db.farming.currencies[name].last = current
-            else
-                db.farming.currencies[name] = { last = current, gained = 0 }
-            end
-        end
-    end
-end
-
-local function OnQuestTurnIn(questID)
-    local db = LvlHistory.db
-    if not db then return end
-
-    db.quests.total       = (db.quests.total or 0) + 1
-    db.session.questCount = (db.session.questCount or 0) + 1
-
-    local isRepeatableFn = C_QuestLog.IsQuestRepeatable or C_QuestLog.IsRepeatableQuest
-    local isDaily = questID and isRepeatableFn and isRepeatableFn(questID) or false
-    if isDaily then
-        db.quests.daily = (db.quests.daily or 0) + 1
-    end
-
-    LvlHistory.Bridge.Emit("onQuestTurnIn", questID, isDaily)
-end
-
-local function OnZoneChange()
-    local db = LvlHistory.db
-    if not db then return end
-
-    local newZone          = GetRealZoneText() or "Unknown"
-    local oldZone          = db.session.zone
-    local inInst, instType = IsInInstance()
-
-    -- N'enregistre le temps que si l'ancienne zone n'était PAS une instance.
-    -- Double protection :
-    --   1. db.session.zoneIsInstance : flag positionné à l'entrée de la zone précédente
-    --   2. db.dgnRuns[oldZone] : si le nom figure dans les donjons connus, on ignore aussi
-    local wasInstance = db.session.zoneIsInstance
-        or (db.dgnRuns and db.dgnRuns[oldZone] ~= nil)
-    if oldZone and oldZone ~= "" and not wasInstance then
-        local elapsed = time() - (db.session.zoneEnteredAt or db.session.startTime)
-        db.zones[oldZone] = (db.zones[oldZone] or 0) + elapsed
-    end
-
-    db.session.zone           = newZone
-    db.session.zoneEnteredAt  = time()
-    db.session.zoneIsInstance = inInst
-
-    LvlHistory.Utils.Log("Zone: %s%s", newZone, inInst and " [instance]" or "")
-end
-
--- ─────────────────────────────────────────────
--- Init des réputations au démarrage du mode
--- ─────────────────────────────────────────────
-
-local function SnapshotReputations()
-    local db = LvlHistory.db
-    if not db then return end
-
-    -- Snapshot initial via le même itérateur sécurisé qu'OnFactionUpdate
-    IterateFactions(function(name, earnedValue)
-        if not db.farming.rep[name] then
-            db.farming.rep[name] = { value = earnedValue, gained = 0, perHour = 0 }
-        end
+local scanQueued = false
+local function QueueRepScan()
+    if scanQueued then return end
+    scanQueued = true
+    C_Timer.After(2, function()
+        scanQueued = false
+        ScanReputations()
     end)
+end
+
+-- ─────────────────────────────────────────────
+-- Monnaies : lecture ciblee de la monnaie qui a change (arguments de
+-- CURRENCY_DISPLAY_UPDATE), plus de balayage de toute la liste.
+-- ─────────────────────────────────────────────
+
+local function OnCurrencyUpdate(currencyID, quantity, quantityChange)
+    local db = LvlHistory.db
+    if not db or not currencyID or not quantityChange or quantityChange <= 0 then return end
+    local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
+        and C_CurrencyInfo.GetCurrencyInfo(currencyID)
+    local name = info and info.name
+    if not name or name == "" then return end
+    local cu = db.farming.currencies[name]
+    if not cu then
+        cu = { last = quantity or 0, gained = 0 }
+        db.farming.currencies[name] = cu
+    end
+    cu.gained = (cu.gained or 0) + quantityChange
+    cu.last   = quantity or cu.last
+    cu.id     = currencyID
 end
 
 -- ─────────────────────────────────────────────
 -- API publique
 -- ─────────────────────────────────────────────
 
-function F.Start()
+--- Réputation et monnaies : suivies dans les deux modes.
+function F.StartRep()
+    if repRunning then return end
+    repRunning = true
+    local db = LvlHistory.db
+    if db then
+        -- Base initiale sans gain (les factions deja connues gardent leur base)
+        IterateFactions(function(name, value)
+            local prev = db.farming.rep[name]
+            if not prev then
+                db.farming.rep[name] = { value = value, gained = 0, perHour = 0 }
+            elseif prev.stale or value < (prev.value or 0) then
+                prev.value, prev.stale = value, nil
+            end
+        end)
+    end
+    repFrame = repFrame or CreateFrame("Frame", "LvlHistoryRepFrame", UIParent)
+    repFrame:RegisterEvent("UPDATE_FACTION")
+    repFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
+    repFrame:SetScript("OnEvent", function(_, event, ...)
+        if event == "UPDATE_FACTION" then QueueRepScan()
+        else OnCurrencyUpdate(...) end
+    end)
+end
+
+--- @param resume boolean  session reprise apres /reload : on garde les compteurs
+function F.Start(resume)
     if isRunning then return end
     isRunning = true
 
     local db = LvlHistory.db
     if db then
         local currentGold = GetMoney()
-        db.session.goldAtStart   = currentGold
-        db.session.lastGold      = currentGold   -- point de référence pour les deltas
-        db.farming.goldEarned    = 0             -- cumul gains uniquement (pas les achats)
-        db.farming.goldPerHour   = 0
-        db.session.zone          = GetRealZoneText() or "Unknown"
-        db.session.zoneEnteredAt = time()
-        SnapshotReputations()
+        db.session.lastGold = currentGold   -- point de référence pour les deltas
+        if not resume then
+            db.farming.goldEarned  = 0      -- cumul gains uniquement (pas les achats)
+            db.farming.goldPerHour = 0
+        end
     end
 
     farmingFrame = farmingFrame or CreateFrame("Frame", "LvlHistoryFarmingFrame", UIParent)
     farmingFrame:RegisterEvent("PLAYER_MONEY")
-    farmingFrame:RegisterEvent("UPDATE_FACTION")
-    farmingFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
-    farmingFrame:RegisterEvent("QUEST_TURNED_IN")
-    farmingFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-
-    farmingFrame:SetScript("OnEvent", function(self, event, ...)
-        if      event == "PLAYER_MONEY"           then OnMoneyUpdate()
-        elseif  event == "UPDATE_FACTION"          then OnFactionUpdate()
-        elseif  event == "CURRENCY_DISPLAY_UPDATE" then OnCurrencyUpdate()
-        elseif  event == "QUEST_TURNED_IN"         then OnQuestTurnIn(...)
-        elseif  event == "ZONE_CHANGED_NEW_AREA"   then OnZoneChange()
-        end
-    end)
+    farmingFrame:SetScript("OnEvent", function() OnMoneyUpdate() end)
 
     LvlHistory.Utils.Log("Mode FARMING démarré")
 end
@@ -217,11 +175,7 @@ end
 function F.Stop()
     if not isRunning then return end
     isRunning = false
-
-    if farmingFrame then
-        farmingFrame:UnregisterAllEvents()
-    end
-
+    if farmingFrame then farmingFrame:UnregisterAllEvents() end
     LvlHistory.Utils.Log("Mode FARMING arrêté")
 end
 

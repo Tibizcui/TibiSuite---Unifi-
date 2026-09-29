@@ -97,7 +97,7 @@ local function BuildButton()
     minimapButton:SetScript("OnEnter", function(self)
         if self._hl then self._hl:SetAlpha(1) end
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:AddLine(LvlHistory.Utils.Colorize("LvlHistory", "F0B429"))
+        GameTooltip:AddLine(LvlHistory.Utils.Colorize("LvlHistory", "5EE223"))
         GameTooltip:AddLine(" ")
 
         local db = LvlHistory.db
@@ -211,7 +211,7 @@ function MM.ShowContextMenu(anchor)
 
     local menuList = {
         {
-            text         = LvlHistory.Utils.Colorize("LvlHistory", "F0B429"),
+            text         = LvlHistory.Utils.Colorize("LvlHistory", "5EE223"),
             isTitle      = true,
             notCheckable = true,
         },
@@ -228,7 +228,7 @@ function MM.ShowContextMenu(anchor)
                 if LvlHistoryDB and LvlHistoryDB.settings then
                     LvlHistoryDB.settings.debug = LvlHistory.debug
                 end
-                CloseDropDownMenus()
+                if CloseDropDownMenus then CloseDropDownMenus() end
             end,
         },
         {
@@ -239,7 +239,7 @@ function MM.ShowContextMenu(anchor)
                 if LvlHistoryDB and LvlHistoryDB.settings then
                     LvlHistoryDB.settings.minimapButton = false
                 end
-                CloseDropDownMenus()
+                if CloseDropDownMenus then CloseDropDownMenus() end
                 LvlHistory.Utils.Log(Loc("BUTTON_HIDDEN_LOG", "Bouton masqué - /lvlh minimap pour réafficher"))
             end,
         },
@@ -248,14 +248,29 @@ function MM.ShowContextMenu(anchor)
             text         = "|cffFF4444" .. Loc("MENU_RESET_CHAR", "Réinitialiser ce perso") .. "|r",
             notCheckable = true,
             func         = function()
-                CloseDropDownMenus()
-                print(LvlHistory.Utils.Colorize("[LvlHistory]", "F0B429")
+                if CloseDropDownMenus then CloseDropDownMenus() end
+                print(LvlHistory.Utils.Colorize("[LvlHistory]", "5EE223")
                     .. " " .. Loc("RESET_CONFIRM_HINT", "Tapez |cffFFFFFF/lvlh reset confirm|r pour confirmer."))
             end,
         },
     }
 
-    EasyMenu(menuList, contextMenu, anchor, 0, 0, "MENU")
+    -- EasyMenu a disparu en 11.0 : menu natif MenuUtil, EasyMenu en repli
+    if MenuUtil and MenuUtil.CreateContextMenu then
+        MenuUtil.CreateContextMenu(anchor, function(_, root)
+            for _, item in ipairs(menuList) do
+                if item.isTitle then
+                    root:CreateTitle(item.text)
+                elseif item.disabled then
+                    root:CreateDivider()
+                else
+                    root:CreateButton(item.text, function() item.func() end)
+                end
+            end
+        end)
+    elseif EasyMenu then
+        EasyMenu(menuList, contextMenu, anchor, 0, 0, "MENU")
+    end
 end
 
 -- ─────────────────────────────────────────────

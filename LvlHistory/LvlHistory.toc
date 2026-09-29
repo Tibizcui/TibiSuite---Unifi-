@@ -35,16 +35,28 @@
 # egale ou superieure)
 Core\TibiSuiteUI.lua
 
-## Localisation FR (par defaut, en dur dans le code) / EN. Doit charger avant
-## tous les autres fichiers : certaines chaines (ex: TAB_LABELS) sont
-## construites une seule fois au chargement du fichier qui les utilise.
+## Localisation : francais par defaut (en dur dans le code), anglais pour
+## tous les autres clients, puis surcharge de la langue du client (10 langues).
+## Doit charger avant tous les autres fichiers : certaines chaines (ex:
+## TAB_LABELS) sont construites une seule fois au chargement du fichier.
+## NOUVEAUX FICHIERS : redemarrage complet du client requis la premiere fois.
 Locale\enUS.lua
+Locale\deDE.lua
+Locale\esES.lua
+Locale\itIT.lua
+Locale\ptBR.lua
+Locale\ruRU.lua
+Locale\koKR.lua
+Locale\zhCN.lua
+Locale\zhTW.lua
 
 Utils.lua
 Bridge.lua
 Core.lua
 Leveling.lua
 Farming.lua
+## API publique (_G.LvlHistoryAPI) + resume Dashboard (NOUVEAU FICHIER)
+API.lua
 Minimap.lua
 UI.lua
 ## Glue TibiSuite historique : recherche globale, options, habillage fenetre

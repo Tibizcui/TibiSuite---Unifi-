@@ -1111,10 +1111,30 @@ end
 -- ============================================================================
 -- ENREGISTREUR : MYTHIQUE+
 -- ============================================================================
+-- Lecture de la fin de cle. GetCompletionInfo a disparu en 11.0 (confirme en
+-- jeu le 2026-09-28 : /dump renvoie nil, la fonction sortait donc des la
+-- premiere ligne et plus aucune cle n'etait enregistree). Remplacee par
+-- GetChallengeCompletionInfo(), qui renvoie une TABLE. L'ancienne API reste
+-- en repli (valeurs multiples : mapID, level, time, onTime).
+local function ReadChallengeCompletion()
+  local CM = C_ChallengeMode
+  if not CM then return nil end
+  if CM.GetChallengeCompletionInfo then
+    local ok, info = pcall(CM.GetChallengeCompletionInfo)
+    if ok and type(info) == "table" and info.mapChallengeModeID then
+      return info.mapChallengeModeID, info.level, info.time, info.onTime
+    end
+  end
+  if CM.GetCompletionInfo then
+    local ok, mapID, level, ms, onTime = pcall(CM.GetCompletionInfo)
+    if ok then return mapID, level, ms, onTime end
+  end
+  return nil
+end
+
 local function OnChallengeModeCompleted()
-  if not (C_ChallengeMode and C_ChallengeMode.GetCompletionInfo) then return end
-  local ok, mapID, level, time_, onTime = pcall(C_ChallengeMode.GetCompletionInfo)
-  if not ok or not mapID then return end
+  local mapID, level, time_, onTime = ReadChallengeCompletion()
+  if not mapID then return end
   local mapName = mapID
   if C_ChallengeMode.GetMapUIInfo then
     local n = C_ChallengeMode.GetMapUIInfo(mapID)

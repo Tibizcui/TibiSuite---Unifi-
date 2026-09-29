@@ -2102,3 +2102,10 @@ tibiEv:RegisterEvent("PLAYER_LOGIN")
 tibiEv:SetScript("OnEvent", function()
     C_Timer.After(1.0, XPBar_Decorate)
 end)
+
+-- API publique minimale pour la suite (lecture seule). LvlHistory y lit
+-- l'XP/h "en direct" (fenetre glissante) au lieu de le recalculer.
+_G.XPBarAPI = _G.XPBarAPI or {}
+XPBarAPI.GetXPPerHour        = function() return GetEffectiveXPPerHour() end
+XPBarAPI.GetRollingXPPerHour = function() return GetRollingXPPerHour() end
+XPBarAPI.GetSessionXPPerHour = function() return GetXPPerHour() end

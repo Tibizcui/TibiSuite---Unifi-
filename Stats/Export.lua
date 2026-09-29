@@ -90,11 +90,16 @@ local function collectAllProfessions()
   if not _G.SkillTrackerDB then return nil end
   local ok, result = pcall(function()
     local db = _G.SkillTrackerDB
+    -- SkillTracker 7.1.5.35+ : copie nettoyee (sans champs internes) avec la
+    -- concentration datee, la duree de recharge apprise et la semaine en
+    -- cours. Repli sur la table brute pour un SkillTracker plus ancien.
+    local api = _G.SkillTrackerAPI
     local out = {}
     for realm, byName in pairs(db.chars or {}) do
       for name, rec in pairs(byName) do
         if type(rec) == "table" and rec.professions then
-          out[name .. "-" .. realm] = rec.professions
+          out[name .. "-" .. realm] = (api and api.ExportProfessions and api.ExportProfessions(rec))
+            or rec.professions
         end
       end
     end
@@ -301,6 +306,62 @@ local function collectLegendaries()
   return ok and res or nil
 end
 
+-- Leveling (LvlHistory 7.1.5.35) : recopie du resume que LvlHistory ecrit
+-- dans sa SavedVariable (LvlHistoryDB.dashboard, mis a jour a
+-- PLAYER_LEAVING_WORLD, donc avant ce PLAYER_LOGOUT). Meme principe que
+-- collectLegendaries : lecture seule de la SavedVariable, jamais du code de
+-- LvlHistory, copie champ par champ. Par personnage, meme cle "Nom-Royaume".
+-- Ajout additif, schema inchange : un site pas a jour ignore chars[k].leveling.
+local function collectLeveling()
+  local db = _G.LvlHistoryDB
+  local snap = db and db.dashboard
+  if type(snap) ~= "table" or type(snap.chars) ~= "table" then return nil end
+  local ok, res = pcall(function()
+    local out = {}
+    local function num(v) return tonumber(v) end
+    for key, c in pairs(snap.chars) do
+      if type(key) == "string" and type(c) == "table" then
+        local levels
+        if type(c.levels) == "table" then
+          levels = {}
+          for _, e in ipairs(c.levels) do
+            -- sans la date de chaque niveau : garde le code d'export compact
+            levels[#levels + 1] = { l = num(e.l), t = num(e.t), p = e.p and 1 or nil }
+          end
+        end
+        local sess
+        if type(c.sess) == "table" then
+          sess = {}
+          -- 12 dernieres sessions seulement (taille du code d'export)
+          for i = math.max(1, #c.sess - 11), #c.sess do
+            local e = c.sess[i]
+            sess[#sess + 1] = {
+              d = num(e.d), dur = num(e.dur), m = (e.m == "f") and "f" or "l",
+              xph = num(e.xph), gold = num(e.gold), l0 = num(e.l0), l1 = num(e.l1),
+              q = num(e.q), dg = num(e.dg), dv = num(e.dv),
+            }
+          end
+        end
+        local xs = type(c.xpSrc) == "table" and c.xpSrc or nil
+        local q = type(c.quests) == "table" and c.quests or {}
+        out[key] = {
+          at = num(snap.at), max = num(snap.max),
+          lvl = num(c.lvl), mode = c.mode == "farming" and "farming" or "leveling",
+          play = num(c.play), seen = num(c.seen), race = num(c.race), rest = num(c.rest),
+          onLevel = type(c.onLevel) == "table" and { l = num(c.onLevel.l), t = num(c.onLevel.t) } or nil,
+          levels = levels, sess = sess,
+          xpSrc = xs and { q = num(xs.q), d = num(xs.d), g = num(xs.g), o = num(xs.o) } or nil,
+          best = type(c.best) == "table" and { xph = num(c.best.xph), goldh = num(c.best.goldh) } or nil,
+          dgn = num(c.dgn), delves = num(c.delves),
+          quests = { t = num(q.t), d = num(q.d), w = num(q.w) },
+        }
+      end
+    end
+    return out
+  end)
+  return ok and res or nil
+end
+
 local function currentSpecName()
   local si = GetSpecialization and GetSpecialization()
   if not si then return nil end
@@ -319,6 +380,7 @@ function SX.CollectExportData()
   local allProfessions = collectAllProfessions()
   local allWeekly = collectWeekly()
   local allCompass, warband = collectCompass()
+  local allLeveling = collectLeveling()
   local chars = {}
   for _, key in ipairs(SX.GetCharKeys()) do
     local rec = StatsDB[key] or {}
@@ -367,6 +429,7 @@ function SX.CollectExportData()
       professions = allProfessions and allProfessions[key] or nil,
       weekly = allWeekly and allWeekly[key] or nil,
       compass = allCompass and allCompass[key] or nil,
+      leveling = allLeveling and allLeveling[key] or nil,
     }
   end
 

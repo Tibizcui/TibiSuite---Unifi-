@@ -144,7 +144,7 @@ end
 function U.Log(fmt, ...)
     if not LvlHistory.debug then return end
     local msg = select("#", ...) > 0 and string.format(fmt, ...) or fmt
-    print(U.Colorize("[LvlHistory]", "F0B429") .. " " .. msg)
+    print(U.Colorize("[LvlHistory]", "5EE223") .. " " .. msg)
 end
 
 --- Print d'erreur — toujours visible

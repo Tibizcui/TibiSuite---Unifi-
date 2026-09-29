@@ -1,6 +1,7 @@
 -- Leveling.lua
 -- LvlHistory — Logique MODE_LEVELING
--- Trackée : XP/h, zones, quêtes, donjons
+-- Trackée : XP gagnee, XP/h, origine de l'XP (quetes, donjons, gouffres, reste)
+-- (zones et quetes sont suivies par Core.lua, dans tous les modes)
 -- Auteur : Tibizcui | Famille : TibiSuite
 
 LvlHistory.Leveling = LvlHistory.Leveling or {}
@@ -9,118 +10,136 @@ local L = LvlHistory.Leveling
 local levelingFrame
 local isRunning = false
 
--- XP totale accumulée sur les niveaux passés pendant la session
--- (nécessaire car UnitXP() se remet à 0 à chaque level up)
-local levelXPAccumulated = 0
+-- Attribution quetes <-> XP : QUEST_TURNED_IN (qui porte l'XP reelle de la
+-- quete) et PLAYER_XP_UPDATE arrivent dans un ordre non garanti. On garde
+-- donc les deux cotes en attente quelques secondes pour les rapprocher.
+local QUEST_MATCH_WINDOW = 3
+local pendingQuestXP, pendingQuestAt = 0, 0
+local lastOtherXP, lastOtherAt = 0, 0
 
 -- ─────────────────────────────────────────────
--- Handlers d'events
+-- Origine de l'XP
 -- ─────────────────────────────────────────────
 
+local function AddSource(kind, amount)
+    local db = LvlHistory.db
+    if not db or amount <= 0 then return end
+    db.xpSrc[kind] = (db.xpSrc[kind] or 0) + amount
+    local ss = db.session.xpSrc
+    if ss then ss[kind] = (ss[kind] or 0) + amount end
+end
+
+local function MoveSource(from, to, amount)
+    local db = LvlHistory.db
+    if not db or amount <= 0 then return end
+    db.xpSrc[from] = math.max(0, (db.xpSrc[from] or 0) - amount)
+    db.xpSrc[to]   = (db.xpSrc[to] or 0) + amount
+    local ss = db.session.xpSrc
+    if ss then
+        ss[from] = math.max(0, (ss[from] or 0) - amount)
+        ss[to]   = (ss[to] or 0) + amount
+    end
+end
+
+local function Attribute(delta)
+    local ctx = LvlHistory.CurrentContext()
+    if ctx == "dungeon" or ctx == "delve" then
+        AddSource(ctx, delta)
+        return
+    end
+    local now = GetTime()
+    if pendingQuestXP > 0 and now - pendingQuestAt <= QUEST_MATCH_WINDOW then
+        local q = math.min(delta, pendingQuestXP)
+        pendingQuestXP = pendingQuestXP - q
+        AddSource("quest", q)
+        delta = delta - q
+    end
+    if delta > 0 then
+        AddSource("other", delta)
+        lastOtherXP, lastOtherAt = delta, now
+    end
+end
+
+--- Appele par Core.lua a chaque QUEST_TURNED_IN (xpReward = XP reelle).
+function L.OnQuestXP(xpReward)
+    if not isRunning or not xpReward or xpReward <= 0 then return end
+    if LvlHistory.CurrentContext() ~= "world" then return end
+    local now = GetTime()
+    -- XP deja arrivee juste avant et classee "reste" : on la reclasse
+    if lastOtherXP > 0 and now - lastOtherAt <= QUEST_MATCH_WINDOW then
+        local m = math.min(xpReward, lastOtherXP)
+        MoveSource("other", "quest", m)
+        lastOtherXP = lastOtherXP - m
+        xpReward = xpReward - m
+    end
+    if xpReward > 0 then
+        pendingQuestXP = pendingQuestXP + xpReward
+        pendingQuestAt = now
+    end
+end
+
+-- ─────────────────────────────────────────────
+-- XP de session
+-- ─────────────────────────────────────────────
+
+-- XP gagnee = somme des ecarts entre deux lectures. L'XP ne baisse jamais
+-- sauf au passage de niveau : une baisse signale donc un niveau franchi, et
+-- l'ecart vaut (reste du niveau precedent) + XP actuelle. Aucune dependance
+-- a l'ordre PLAYER_LEVEL_UP / PLAYER_XP_UPDATE.
 local function OnXPUpdate()
     local db = LvlHistory.db
     if not db then return end
+    local s = db.session
 
-    local currentXP   = UnitXP("player")
-    local totalGained = levelXPAccumulated + (currentXP - db.session.xpAtStart)
-    local elapsed     = time() - db.session.startTime
+    local cur, max = UnitXP("player"), UnitXPMax("player")
+    local delta = 0
+    if s.lastXP then
+        if cur >= s.lastXP then
+            delta = cur - s.lastXP
+        else
+            delta = math.max(0, (s.lastMax or 0) - s.lastXP) + cur
+        end
+    end
+    s.lastXP, s.lastMax = cur, max
 
+    if delta > 0 then
+        s.xpGain = (s.xpGain or 0) + delta
+        Attribute(delta)
+    end
+
+    local elapsed = time() - (s.startTime or time())
     if elapsed >= 10 then
-        db.session.xph = math.floor(totalGained / elapsed * 3600)
+        s.xph = math.floor((s.xpGain or 0) / elapsed * 3600)
     end
 
-    LvlHistory.Utils.Log("XP/h: %d", db.session.xph)
+    LvlHistory.Utils.Log("XP +%d | XP/h: %d", delta, s.xph or 0)
 end
-
-local function OnLevelUp(newLevel)
-    local db = LvlHistory.db
-    if not db then return end
-
-    -- Accumuler l'XP du niveau terminé avant que UnitXP() repart à 0
-    levelXPAccumulated = levelXPAccumulated + UnitXPMax("player")
-    db.session.xpAtStart = 0
-    db.level = newLevel
-
-    LvlHistory.Utils.Log("Level up -> %d | XP accumulée: %d", newLevel, levelXPAccumulated)
-end
-
-local function OnZoneChange()
-    local db = LvlHistory.db
-    if not db then return end
-
-    local newZone          = GetRealZoneText() or "Unknown"
-    local oldZone          = db.session.zone
-    local inInst, instType = IsInInstance()
-
-    -- N'enregistre le temps que si l'ancienne zone n'était PAS une instance.
-    -- Double protection :
-    --   1. db.session.zoneIsInstance : flag positionné à l'entrée de la zone précédente
-    --   2. db.dgnRuns[oldZone] : si le nom figure dans les donjons connus, on ignore aussi
-    local wasInstance = db.session.zoneIsInstance
-        or (db.dgnRuns and db.dgnRuns[oldZone] ~= nil)
-    if oldZone and oldZone ~= "" and not wasInstance then
-        local elapsed = time() - (db.session.zoneEnteredAt or db.session.startTime)
-        db.zones[oldZone] = (db.zones[oldZone] or 0) + elapsed
-    end
-
-    db.session.zone           = newZone
-    db.session.zoneEnteredAt  = time()
-    db.session.zoneIsInstance = inInst   -- mémorisé pour le prochain changement de zone
-
-    LvlHistory.Utils.Log("Zone: %s%s", newZone, inInst and " [instance]" or "")
-end
-
-local function OnQuestTurnIn(questID)
-    local db = LvlHistory.db
-    if not db then return end
-
-    db.quests.total       = (db.quests.total or 0) + 1
-    db.session.questCount = (db.session.questCount or 0) + 1
-
-    -- C_QuestLog.IsQuestRepeatable a été renommé selon les versions de WoW
-    local isRepeatableFn = C_QuestLog.IsQuestRepeatable or C_QuestLog.IsRepeatableQuest
-    local isDaily = questID and isRepeatableFn and isRepeatableFn(questID) or false
-    if isDaily then
-        db.quests.daily = (db.quests.daily or 0) + 1
-    end
-
-    LvlHistory.Bridge.Emit("onQuestTurnIn", questID, isDaily)
-    LvlHistory.Utils.Log("Quête rendue (ID: %s) | Total: %d", tostring(questID), db.quests.total)
-end
-
--- Note : le comptage des donjons (session + total) est gere de facon
--- mode-agnostique par Core.lua (dgnFrame / RecordDungeon). On n'ecoute donc
--- PAS CHALLENGE_MODE_COMPLETED ici, pour eviter un double comptage.
 
 -- ─────────────────────────────────────────────
 -- API publique
 -- ─────────────────────────────────────────────
 
-function L.Start()
+--- @param resume boolean  session reprise apres /reload : on garde les compteurs
+function L.Start(resume)
     if isRunning then return end
     isRunning = true
 
-    levelXPAccumulated = 0
+    local db = LvlHistory.db
+    if db then
+        local s = db.session
+        if not resume or not s.lastXP then
+            s.lastXP  = UnitXP("player")
+            s.lastMax = UnitXPMax("player")
+        else
+            -- Rattrape l'XP gagnee entre la derniere lecture et le /reload
+            OnXPUpdate()
+        end
+        s.xpGain = s.xpGain or 0
+    end
 
     levelingFrame = levelingFrame or CreateFrame("Frame", "LvlHistoryLevelingFrame", UIParent)
     levelingFrame:RegisterEvent("PLAYER_XP_UPDATE")
-    levelingFrame:RegisterEvent("PLAYER_LEVEL_UP")
-    levelingFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-    levelingFrame:RegisterEvent("QUEST_TURNED_IN")
-
-    levelingFrame:SetScript("OnEvent", function(self, event, ...)
-        if      event == "PLAYER_XP_UPDATE"        then OnXPUpdate()
-        elseif  event == "PLAYER_LEVEL_UP"          then OnLevelUp(...)
-        elseif  event == "ZONE_CHANGED_NEW_AREA"    then OnZoneChange()
-        elseif  event == "QUEST_TURNED_IN"          then OnQuestTurnIn(...)
-        end
-    end)
-
-    local db = LvlHistory.db
-    if db then
-        db.session.zone         = GetRealZoneText() or "Unknown"
-        db.session.zoneEnteredAt = time()
-    end
+    levelingFrame:SetScript("OnEvent", function() OnXPUpdate() end)
 
     LvlHistory.Utils.Log("Mode LEVELING démarré")
 end
@@ -128,48 +147,67 @@ end
 function L.Stop()
     if not isRunning then return end
     isRunning = false
-
-    if levelingFrame then
-        levelingFrame:UnregisterAllEvents()
-    end
-
-    -- Flush la zone courante
-    local db = LvlHistory.db
-    if db and db.session.zone and db.session.zone ~= "" then
-        local elapsed = time() - (db.session.zoneEnteredAt or db.session.startTime)
-        db.zones[db.session.zone] = (db.zones[db.session.zone] or 0) + elapsed
-    end
-
+    if levelingFrame then levelingFrame:UnregisterAllEvents() end
     LvlHistory.Utils.Log("Mode LEVELING arrêté")
 end
 
+--- Solde une derniere lecture (avant de figer la session au niveau max).
+function L.Flush()
+    if isRunning then OnXPUpdate() end
+end
+
+--- XP/h de la session. Si XPBar est la, son XP/h "en direct" (fenetre
+--- glissante) est disponible via GetLiveXPH, sans recalcul ici.
 function L.GetXPH()
     local db = LvlHistory.db
     return db and db.session.xph or 0
 end
 
---- XP totale gagnee sur la session courante, en tenant compte des level ups.
---- (UnitXP() repart a 0 a chaque niveau, d'ou l'accumulateur.)
-function L.GetSessionXP()
-    local db = LvlHistory.db
-    if not db then return 0 end
-    return levelXPAccumulated + (UnitXP("player") - (db.session.xpAtStart or 0))
+function L.GetLiveXPH()
+    local api = _G.XPBarAPI
+    local fn = api and (api.GetRollingXPPerHour or api.GetXPPerHour)
+    if fn then
+        local ok, v = pcall(fn)
+        if ok and type(v) == "number" and v > 0 then return v end
+    end
+    return nil
 end
 
---- Retourne le top N des zones par temps passé
-function L.GetTopZones(n)
+--- XP totale gagnee sur la session courante, level ups compris.
+function L.GetSessionXP()
     local db = LvlHistory.db
-    if not db then return {} end
+    return db and db.session.xpGain or 0
+end
 
-    local sorted = {}
-    for zone, duration in pairs(db.zones) do
-        table.insert(sorted, { zone = zone, duration = duration })
+--- Estimation du temps restant jusqu'au niveau max, a l'XP/h donnee.
+--- Le jeu ne donne l'XP requise que pour le niveau en cours : les niveaux
+--- suivants sont estimes a la meme valeur (legere sous-estimation, d'ou "~").
+--- Si la chronologie connait deja des niveaux complets, on prend le plus
+--- prudent des deux calculs.
+function L.EstimateToMax(xph)
+    local lvl, maxLvl = UnitLevel("player"), LvlHistory.MaxLevel()
+    if lvl >= maxLvl then return nil end
+    local cur, max = UnitXP("player"), UnitXPMax("player")
+    local remainingLevels = maxLvl - lvl - 1
+    local byXP
+    if xph and xph > 0 and max > 0 then
+        byXP = ((max - cur) + remainingLevels * max) / xph * 3600
     end
-    table.sort(sorted, function(a, b) return a.duration > b.duration end)
-
-    local result = {}
-    for i = 1, math.min(n or 5, #sorted) do
-        result[i] = sorted[i]
+    local byLog
+    local db = LvlHistory.db
+    if db and db.levelLog then
+        local sum, n = 0, 0
+        for l = lvl - 1, math.max(1, lvl - 5), -1 do
+            local e = db.levelLog[l]
+            if e and not e.partial and (e.t or 0) > 0 then sum = sum + e.t; n = n + 1 end
+        end
+        if n >= 2 then
+            local avg = sum / n
+            local clk = db.levelClock
+            local onLevel = clk and clk.t or 0
+            byLog = math.max(0, avg - onLevel) + remainingLevels * avg
+        end
     end
-    return result
+    if byXP and byLog then return math.max(byXP, byLog) end
+    return byXP or byLog
 end

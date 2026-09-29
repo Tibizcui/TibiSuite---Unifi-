@@ -1,5 +1,24 @@
 # Changelog
 
+## 7.1.5.35
+- Mise à jour 12.1 : meilleure clé et meilleur temps M+ de nouveau enregistrés (nouvelle API de fin de clé, l'ancienne rangeait l'identifiant de carte à la place du temps). Records de saison de Blizzard lus correctement (dans le temps, sinon hors temps en rouge).
+- Correction : l'XP de session n'est plus gonflée à chaque passage de niveau. Elle se calcule désormais par écarts successifs, quel que soit l'ordre des événements.
+- Correction : les quêtes journalières et hebdomadaires sont vraiment comptées (lues à l'ouverture de la fenêtre de récompense).
+- Correction : le Chercheur de raids et les scénarios ne comptent plus comme des donjons. Un run M+ n'est plus compté deux fois.
+- Correction : un /reload ne découpe plus l'historique. La session reprend si tu reviens en moins de 10 minutes (réglable), le temps hors jeu est retiré.
+- Correction : la réputation par heure lit la vraie valeur (C_Reputation 11.0.2+) et repart de zéro à chaque session. Le mode réduit de la fenêtre affiche enfin ses chiffres. Le menu du bouton minimap (clic droit) fonctionne à nouveau en 12.x.
+- Niveau max réel du compte (GetMaxLevelForPlayerExpansion).
+- Nouveau : suivi des Gouffres (nombre de runs et meilleur palier par gouffre).
+- Nouveau : onglet Niveaux. Temps de jeu passé à chaque niveau, moyenne des derniers niveaux et record de montée 10 > max (le tien et celui du compte). Message à chaque niveau gagné.
+- Nouveau : estimation du temps restant jusqu'au niveau max, d'après ton XP/h et ta chronologie.
+- Nouveau : origine de l'XP (quêtes, donjons, gouffres, reste), pour la session et à vie.
+- Nouveau : records de session (meilleur or par heure en plus) et mini-graphique des 20 dernières sessions, survolable.
+- Nouveau : onglet Alts enrichi. XP reposée estimée de chaque personnage, couleurs de classe, et suggestion « À monter ce soir ».
+- Synergie : XP/h en direct lu dans XPBar quand il est présent, clic sur un donjon pour ouvrir DgnTracker, recherche globale étendue aux donjons et gouffres, nouvelle API _G.LvlHistoryAPI et événements onLevelUp / onDungeonCompleted / onDelveCompleted.
+- Nouveau : carte Leveling sur le Dashboard TibiSuite et dans Tibi Companion (via Stats).
+- Optimisation : plus aucune fenêtre créée à chaque seconde (les onglets Zones et Alts en recréaient en continu, mémoire en hausse tant que la fenêtre restait ouverte). Seuls Session et Niveaux se redessinent chaque seconde, les autres onglets quand leurs données changent. Monnaies lues de façon ciblée.
+- 10 langues (français accentué, anglais, allemand, espagnol, italien, portugais, russe, coréen, chinois simplifié et traditionnel). Nouveaux fichiers : redémarrage complet du jeu nécessaire une fois.
+
 ## 7.1.5.34
 - Socle d'interface embarque passe en v12 : les barres de defilement des options et de la recherche sont habillees aux couleurs du module. Pour le reste, bump de version pour aligner le numero sur l'ensemble de la suite (voir DailyTracker 7.1.5.34 pour le detail : mise a jour 12.1, suivi par personnage, vue Personnages, liste A faire a l'ecran, rappel avant le reset, 10 langues).
 
