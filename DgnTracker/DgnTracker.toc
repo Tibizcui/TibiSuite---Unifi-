@@ -1,8 +1,8 @@
 ## Interface: 120100, 120007, 120005
 ## Title: DgnTracker
 ## Title-frFR: DgnTracker
-## Notes: Dungeon, Raid, Delve, Torghast entrance tracker. All expansions from Vanilla to Midnight.
-## Notes-frFR: Tracker des entrees d'instances (Donjons, Raids, Gouffres, Torghast) pour toutes les extensions. Vanilla -> Midnight.
+## Notes: Dungeon, raid and delve guide for every expansion, Vanilla to Midnight: entrances, waypoints, lockouts, Mythic+ season, bountiful delves.
+## Notes-frFR: Guide des donjons, raids et gouffres de toutes les extensions, de Vanilla a Midnight : entrees, points de route, verrous, saison Mythique+, gouffres abondants.
 ## Author: Tibizcui - Kirin Tor
 ## Version: 7.1.5.35
 ## X-Curse-Project-ID: 1533504
@@ -14,10 +14,10 @@
 # Pas de LoadOnDemand : ce module doit pouvoir se charger seul, sans le
 # core, pour fonctionner en addon independant. Dependance SOUPLE sur
 # TibiSuite (OptionalDeps) : voir DgnTracker_Module.lua pour la detection
-# a l'execution (HasCore()). Fusionne avec l'OptionalDeps TomTom existant :
-# une seule directive OptionalDeps par .toc (une deuxieme ecraserait la
+# a l'execution (HasCore()). TomTom est facultatif (lu au moment du clic).
+# Une seule directive OptionalDeps par .toc (une deuxieme ecraserait la
 # premiere au lieu de s'y ajouter).
-## OptionalDeps: TibiSuite
+## OptionalDeps: TibiSuite, TomTom
 ## Group: TibiSuite
 
 # INTOUCHABLE : le nom de dossier reste "DgnTracker", donc WoW continue de
@@ -42,10 +42,17 @@
 ## egale ou superieure)
 Core\TibiSuiteUI.lua
 
-## Localisation FR (par defaut, en dur dans DgnTracker.lua) / EN / DE / ES
+## Localisation FR (par defaut, en dur dans les .lua). enUS.lua = anglais
+## pour TOUT client non francais, puis surcharge de chaque langue.
 Locales\enUS.lua
 Locales\deDE.lua
 Locales\esES.lua
+Locales\itIT.lua
+Locales\ptBR.lua
+Locales\ruRU.lua
+Locales\koKR.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
 
 ## Les fichiers data sont charges en premier
 data\Midnight.lua
@@ -60,10 +67,18 @@ data\Cataclysme.lua
 data\WrathOfTheLichKing.lua
 data\TheBurningCrusade.lua
 data\Vanilla.lua
+## Conseils d'acces en anglais (tous les clients sauf frFR ; rien en francais)
+data\Access_enUS.lua
+
+## Donnees lues dans le jeu (noms traduits, coordonnees, verrous, M+, gouffres)
+Live.lua
 
 ## Interface principale
 DgnTracker.lua
 DgnTracker_Suite.lua
+
+## API publique (LvlHistory, WeeklyCompass, addons tiers)
+API.lua
 
 ## Glue TibiSuite : inscription comme onglet (recherche & options via _Suite)
 DgnTracker_Module.lua

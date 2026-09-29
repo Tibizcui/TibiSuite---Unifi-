@@ -1,69 +1,80 @@
 -- =============================================================================
--- DgnTracker - Locales/esES.lua
--- Surcharge ES. Ne s'applique que si le client tourne en espagnol.
+-- DgnTracker - Locales/esES.lua (Español, esES + esMX). Surcharge de
+-- l'anglais (enUS.lua). Traduction non relue par un joueur natif.
 -- =============================================================================
 
 if GetLocale() ~= "esES" and GetLocale() ~= "esMX" then return end
 DgnTrackerL = DgnTrackerL or {}
 local L = DgnTrackerL
 
-L["WP_NO_COORDS"]        = "coordenadas no disponibles para"
-L["WP_TOMTOM_LABEL"]     = "waypoint"
-L["WP_MAP_LABEL"]        = "waypoint"
-L["WP_MAP_WORD"]         = "mapa"
-L["WP_OPEN_MAP_HINT"]    = "(abre el mapa para verlo)"
-L["WP_NATIVE_FAIL"]      = "no se pudo colocar un waypoint nativo en esta zona. Instala |cFFFFD700TomTom|r para un puntero completo."
-L["WP_NONE_AVAILABLE"]   = "ningun sistema de waypoint disponible. Instala |cFFFFD700TomTom|r."
-L["DRAG_HINT"]           = "Arrastrar para mover"
-L["INSTANCES_WORD"]      = "instancia(s)"
-L["SEARCH_PLACEHOLDER"]  = "Buscar..."
-L["EXTENSION_LABEL"]     = "Expansion:"
-L["LEFT_CLICK_LABEL"]    = "Clic izquierdo"
-L["CLOSE_WORD"]          = "cerrar"
-L["SHOW_PATH_WORD"]      = "mostrar el camino"
-L["RIGHT_CLICK_LABEL"]   = "Clic derecho"
-L["SET_WAYPOINT_HINT"]   = "colocar un waypoint"
-L["NO_RESULT_FOR"]       = "Ningun resultado para"
-L["NO_INSTANCE_CATEGORY"]= "Ninguna instancia disponible para esta categoria."
-L["ACCESS_HEADER"]       = "-- Acceso (camino mas corto):"
-L["TIPS_HEADER"]         = "-- Consejos:"
-L["MM_TT_SUBTITLE"]      = "Seguimiento de mazmorras y bandas"
-L["TOGGLE_HINT"]         = "abrir / cerrar"
-L["DRAG_LABEL"]          = "Arrastrar"
-L["REPOSITION_HINT"]     = "reposicionar el icono"
-L["CLICK_LABEL"]         = "Clic"
-
-L["HELP_COMMANDS_LABEL"] = "comandos:"
-L["HELP_TOGGLE"]         = "Abrir/cerrar la ventana"
-L["HELP_OPTIONS"]        = "Abrir las opciones"
-L["HELP_MAP_ON"]         = "Waypoint automatico al abrir una instancia"
-L["HELP_MAP_OFF"]        = "Desactivar el waypoint automatico"
-L["HELP_EXTENSION"]      = "Ir a una expansion (ej.: tww, df, sl, van)"
-L["HELP_EXPAND"]         = "Expandir todo (expansion activa)"
-L["HELP_RESET"]          = "Contraer todo (acordeon)"
-L["HELP_TIP"]            = "Consejo: clic derecho en una instancia para colocar un waypoint."
-
-L["ACCORDION_RESET"]     = "acordeon reiniciado."
-L["EXPANDED_ALL_FOR"]    = "todo expandido para"
-L["AUTO_WAYPOINT_LABEL"] = "waypoint automatico"
-L["ENABLED_WORD"]        = "activado"
-L["ON_INSTANCE_OPEN"]    = "(al abrir una instancia)"
-L["DISABLED_WORD"]       = "desactivado"
-L["EXTENSION_ARROW"]     = "expansion ->"
-L["UNKNOWN_COMMAND"]     = "comando desconocido. Escribe |cFFFFD700/dg help|r."
-L["LOGIN_LOADED"]        = "cargado --"
-L["LOGIN_TO_OPEN"]       = "para abrir."
-
--- Opciones (DgnTracker_Suite.lua) y nombre del modulo
-L["OPT_SEC_WINDOW"]      = "Ventana"
-L["OPT_TOGGLE"]          = "Abrir / cerrar"
-L["OPT_RECENTER"]        = "Recentrar la ventana"
-L["OPT_SEC_BEHAVIOR"]    = "Comportamiento"
-L["OPT_AUTO_WAYPOINT"]   = "Waypoint automatico al abrir una instancia"
-L["OPT_SEC_FLOATING"]    = "Botones flotantes (barra TibiSuite)"
-L["OPT_HIDE_OPTIONS_BTN"]= "Ocultar el boton Opciones"
-L["OPT_HIDE_SEARCH_BTN"] = "Ocultar el campo de busqueda"
-L["OPT_FLOATING_NOTE"]   = "El boton Opciones y el campo de busqueda sobresalen encima de la ventana. Aunque esten ocultos, Mayus+clic derecho en la ventana abre estas opciones."
-L["OPT_NOTE"]            = "Consejo: clic derecho en la pestana Mazmorras de la barra TibiSuite tambien abre estas opciones."
-L["SEARCH_TITLE"]        = "Busqueda"
-L["MODULE_LABEL"]        = "Mazmorras"
+for k, v in pairs({
+  WP_NO_COORDS = "coordenadas no disponibles para", WP_TOMTOM_LABEL = "punto de ruta", WP_MAP_LABEL = "punto de ruta",
+  WP_MAP_WORD = "mapa", WP_OPEN_MAP_HINT = "(abre el mapa para verlo)",
+  WP_NATIVE_FAIL = "no se puede colocar un punto de ruta nativo en esta zona. Instala |cFFFFD700TomTom|r para una flecha completa.",
+  WP_NONE_AVAILABLE = "ningún sistema de puntos de ruta disponible. Instala |cFFFFD700TomTom|r.",
+  DRAG_HINT = "Arrastra para mover", INSTANCES_WORD = "instancia(s)", SEARCH_PLACEHOLDER = "Buscar...",
+  EXTENSION_LABEL = "Expansión:", VIEW_LABEL = "Vista:",
+  LEFT_CLICK_LABEL = "Clic izquierdo", CLOSE_WORD = "cerrar", SHOW_PATH_WORD = "mostrar el camino",
+  RIGHT_CLICK_LABEL = "Clic derecho", SET_WAYPOINT_HINT = "colocar un punto de ruta",
+  SHIFT_CLICK_LABEL = "Mayús+clic", CTRL_CLICK_LABEL = "Ctrl+clic",
+  FAV_ADD_HINT = "añadir a favoritos", FAV_REMOVE_HINT = "quitar de favoritos",
+  EJ_HINT = "abrir la Guía de aventura", EJ_UNKNOWN = "esta instancia no está vinculada a la Guía de aventura.",
+  EJ_COMBAT = "imposible en combate.",
+  NO_RESULT_FOR = "Sin resultados para", NO_INSTANCE_CATEGORY = "No hay instancias en esta categoría.",
+  EMPTY_SEASON = "Datos de temporada aún no recibidos del servidor. Vuelve a abrir la ventana en unos segundos.",
+  EMPTY_NEAR = "Ninguna instancia conocida en esta zona.",
+  EMPTY_FAVS = "Sin favoritos. Mayús+clic en una instancia para añadirla.",
+  ACCESS_HEADER = "-- Acceso (camino más corto):", TIPS_HEADER = "-- Consejos:", TIPS_FR_NOTE = "(en francés)",
+  DETECTED_NOTE = "Instancia detectada en el juego: aún sin consejos de acceso. El punto de ruta usa la posición dada por el juego.",
+  MPLUS_ONLY_NOTE = "Mazmorra de la rotación Mítica+ aún no incluida en DgnTracker: sin consejos de acceso por ahora.",
+  BOSSES_FMT = "Jefes (%d):", MPLUS_LABEL = "Mítica+",
+  MPLUS_BEST_FMT = "Mejor piedra de la temporada: %s+%d|r (%s)", MPLUS_OVERTIME = "fuera de tiempo",
+  MPLUS_SCORE_FMT = "puntuación %d", MPLUS_NONE = "ninguna piedra completada esta temporada",
+  LOCKED_LABEL = "Bloqueado", RESET_IN_FMT = "reinicio en %s", DELAY_DH = "%d d %d h", DELAY_H = "%d h %02d",
+  BOUNTIFUL_LINE = "Sima abundante hoy: cofre extra con una llave de arca.",
+  BADGE_BOUNTIFUL = "Abundante", BADGE_DETECTED = "detectada",
+  BTN_WAYPOINT = "Punto de ruta", BTN_JOURNAL = "Guía de aventura", BTN_FAV = "Añadir a favoritos", BTN_UNFAV = "Quitar favorito",
+  DIST_FMT = "%d m", SEASON_SCORE = "puntuación M+: %d", EXT_CATA = "Cataclysm (4.0)",
+  TAB_DUNGEON = "Mazmorra", TAB_RAID = "Banda", TAB_DELVE = "Sima", TAB_TORGHAST = "Torghast", TAB_MPLUS = "Mítica+",
+  VT_SEASON = "Temporada", VT_SEASON_FULL = "Temporada actual",
+  VT_SEASON_TT = "Mazmorras Mítica+ de la temporada, banda actual y simas (abundantes primero).",
+  VT_NEAR = "Cerca de mí", VT_NEAR_FULL = "Cerca de mí", VT_NEAR_TT = "Instancias de tu zona actual, la más cercana primero.",
+  VT_FAVS = "Favoritos", VT_FAVS_FULL = "Mis favoritos", VT_FAVS_TT = "Mayús+clic en una instancia para añadirla o quitarla.",
+  MM_TT_SUBTITLE = "Seguimiento de mazmorras y bandas", TOGGLE_HINT = "abrir / cerrar",
+  DRAG_LABEL = "Arrastrar", REPOSITION_HINT = "mover el icono",
+  HELP_COMMANDS_LABEL = "comandos:", HELP_TOGGLE = "Abrir/cerrar la ventana",
+  HELP_SEASON = "Temporada actual (Mítica+, banda, simas)", HELP_NEAR = "Instancias de tu zona actual",
+  HELP_FAVS = "Tus favoritos", HELP_FIND = "Abrir una instancia por su nombre", HELP_OPTIONS = "Abrir las opciones",
+  HELP_MAP_ON = "Punto de ruta automático al desplegar una instancia", HELP_MAP_OFF = "Desactivar el punto de ruta automático",
+  HELP_EXTENSION = "Ir a una expansión (ej.: mid, tww, df, sl, van)",
+  HELP_EXPAND = "Desplegar todo (expansión activa)", HELP_RESET = "Plegar todo",
+  HELP_PROBE = "Sonda: guarda lo que devuelve el juego (para corregir los datos)",
+  HELP_TIP = "Consejo: clic derecho en una instancia = punto de ruta.",
+  ACCORDION_RESET = "todo plegado.", EXPANDED_ALL_FOR = "todo desplegado para",
+  AUTO_WAYPOINT_LABEL = "punto de ruta automático", ENABLED_WORD = "activado", DISABLED_WORD = "desactivado",
+  ON_INSTANCE_OPEN = "(al desplegar una instancia)", EXTENSION_ARROW = "expansión ->",
+  UNKNOWN_COMMAND = "comando desconocido. Escribe |cFFFFD700/dg help|r.",
+  LOGIN_LOADED = "cargado --", LOGIN_TO_OPEN = "para abrir.",
+  PROBE_DONE = "sonda terminada: %d instancias reconocidas, %d añadidas desde el juego, %d sin coincidencia. /reload escribe el archivo DgnTracker.lua (SavedVariables).",
+  PROBE_CLEARED = "sonda borrada.",
+  OPT_SEC_WINDOW = "Ventana", OPT_TOGGLE = "Abrir / cerrar", OPT_RECENTER = "Centrar la ventana",
+  OPT_SEC_BEHAVIOR = "Comportamiento", OPT_AUTO_WAYPOINT = "Punto de ruta automático al desplegar una instancia",
+  OPT_BADGES = "Distintivos en las instancias (bloqueos, Mítica+, abundante)",
+  OPT_DETECT = "Añadir las instancias encontradas en el juego que faltan en la guía",
+  OPT_DETECT_NOTE = "Desmarcar se aplica en el próximo /reload.",
+  OPT_SEC_DATA = "Datos", OPT_PROBE = "Lanzar la sonda (/dg probe)",
+  OPT_PROBE_NOTE = "La sonda guarda lo que devuelve el juego (entradas, simas, temporada, bloqueos) para corregir la guía. Después haz /reload y envía el archivo WTF\\...\\SavedVariables\\DgnTracker.lua a Tibiscui.",
+  OPT_SEC_FLOATING = "Botones flotantes (barra TibiSuite)", OPT_HIDE_OPTIONS_BTN = "Ocultar el botón Opciones",
+  OPT_HIDE_SEARCH_BTN = "Ocultar el campo Buscar",
+  OPT_FLOATING_NOTE = "El botón Opciones y el campo Buscar sobresalen por encima de la ventana. Aunque estén ocultos, Mayús+clic derecho en la ventana abre estas opciones.",
+  OPT_NOTE = "Consejo: clic derecho en la casilla Mazmorras de la barra TibiSuite también abre estas opciones.",
+  TIPS_EN_NOTE = "(en inglés)",
+  CHECK_DONE = "control: %d fichas en su sitio, %d corregidas por el juego, %d no encontradas en el juego.",
+  CHECK_NOT_FOUND = "no encontrada",
+  CHECK_MORE = "... y %d más.",
+  CHECK_NOTE = "Los puntos de ruta ya siguen la posición del juego. Haz /reload y envía WTF\\...\\SavedVariables\\DgnTracker.lua a Tibiscui para corregir la guía.",
+  HELP_CHECK = "Control: compara cada ficha con la posición dada por el juego",
+  CHECK_MISSING_NOTE = "No encontradas: entrada ausente de los mapas del juego (retirada, de temporada o versión antigua). El punto de ruta usa la posición aproximada de la ficha.",
+  WP_OTHER_CONTINENT = "no estás en el continente correcto: la flecha aparecerá al llegar a esta zona.",
+  SEARCH_TITLE = "Buscar", MODULE_LABEL = "Mazmorras",
+}) do L[k] = v end

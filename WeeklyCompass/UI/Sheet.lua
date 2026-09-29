@@ -119,7 +119,7 @@ local function placePair(p, x, y, width, left, right, lc, rc, font)
     p.right:Show()
 end
 
-local function hidePair(p) p.left:Hide(); p.right:Hide() end
+local function hidePair(p) p.left:Hide(); p.right:Hide(); if p.hit then p.hit:Hide() end end
 
 local function hideSection(s) s.fs:Hide(); s.line:Hide() end
 
@@ -411,7 +411,27 @@ local function buildRight()
 
     ui.raidsTitle = newSection(frame)
     ui.raids = {}
-    for i = 1, 7 do ui.raids[i] = newPair(frame) end
+    for i = 1, 7 do
+        local p = newPair(frame)
+        -- Zone cliquable (invisible) : ouvre le raid dans DgnTracker, si son
+        -- API est chargee. Placee par fillRaids, masquee par hidePair.
+        p.hit = CreateFrame("Button", nil, frame)
+        p.hit:SetScript("OnClick", function(self)
+            local api = _G.DgnTrackerAPI
+            if api and api.OpenInstance and self.raidName then
+                api.OpenInstance({ name = self.raidName, type = "raid" })
+            end
+        end)
+        p.hit:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(self.raidName or "", 1, 1, 1)
+            GameTooltip:AddLine("|TInterface\\AddOns\\DgnTracker\\medias\\DgnTracker:14|t DgnTracker", 0.30, 0.60, 1.00)
+            GameTooltip:Show()
+        end)
+        p.hit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        p.hit:Hide()
+        ui.raids[i] = p
+    end
 
     ui.curTitle = newSection(frame)
     ui.cur = {}
@@ -776,6 +796,14 @@ local function fillRaids(y, by)
         local full = it.total > 0 and it.killed >= it.total
         placePair(ui.raids[i], COL_R_X, y - (i - 1) * 16, COL_R_W, it.name,
             ("%d/%d"):format(it.killed, it.total), { 1, 1, 1 }, full and GREEN or ORANGE)
+        local hit = ui.raids[i].hit
+        if hit and _G.DgnTrackerAPI then
+            hit.raidName = it.name
+            hit:ClearAllPoints()
+            hit:SetPoint("TOPLEFT", frame, "TOPLEFT", COL_R_X, y - (i - 1) * 16)
+            hit:SetSize(COL_R_W, 14)
+            hit:Show()
+        end
     end
     local n = shown
     if #items > shown then

@@ -11,6 +11,10 @@ local L        = DgnTrackerL or {}
 local function T(key, default) return L[key] or default end
 
 local function GetUI() return _G.TibiMidnight end
+local function RefreshMain()
+  local f = _G[FRAME]
+  if f and f:IsShown() and f.RefreshContent then f:RefreshContent() end
+end
 
 -- ---------------------------------------------------------------- Options
 local panel
@@ -33,6 +37,19 @@ local function BuildOptions()
   panel:Check(T("OPT_AUTO_WAYPOINT", "Waypoint auto à l'ouverture d'une instance"),
     function() return _G.DgnTrackerDB and _G.DgnTrackerDB.mapPins end,
     function(v) if _G.DgnTrackerDB then _G.DgnTrackerDB.mapPins = v end end)
+  panel:Check(T("OPT_BADGES", "Badges sur les instances (verrous, Mythique+, abondant)"),
+    function() return _G.DgnTrackerDB and _G.DgnTrackerDB.badges ~= false end,
+    function(v) if _G.DgnTrackerDB then if v then _G.DgnTrackerDB.badges = nil else _G.DgnTrackerDB.badges = false end; RefreshMain() end end)
+  panel:Check(T("OPT_DETECT", "Ajouter les instances trouvées dans le jeu et absentes des fiches"),
+    function() return _G.DgnTrackerDB and _G.DgnTrackerDB.detect ~= false end,
+    function(v) if _G.DgnTrackerDB then if v then _G.DgnTrackerDB.detect = nil else _G.DgnTrackerDB.detect = false end end end)
+  panel:Note(T("OPT_DETECT_NOTE", "Décocher prend effet au prochain /reload."))
+
+  panel:Section(T("OPT_SEC_DATA", "Données"))
+  panel:Button(T("OPT_PROBE", "Lancer la sonde (/dg probe)"), function()
+    if SlashCmdList and SlashCmdList["DGNTRACKER"] then SlashCmdList["DGNTRACKER"]("probe") end
+  end)
+  panel:Note(T("OPT_PROBE_NOTE", "La sonde enregistre ce que le jeu renvoie (entrées, gouffres, saison, verrous) dans la sauvegarde de DgnTracker, pour corriger les fiches. Faites /reload ensuite, puis envoyez le fichier WTF\\...\\SavedVariables\\DgnTracker.lua à Tibiscui."))
 
   panel:Section(T("OPT_SEC_FLOATING", "Boutons flottants (barre TibiSuite)"))
   panel:Check(T("OPT_HIDE_OPTIONS_BTN", "Masquer le bouton Options"),
@@ -54,16 +71,20 @@ end
 -- ---------------------------------------------------------------- Recherche
 local function provider(q)
   local out, ui = {}, GetUI()
-  local data = _G.DgnTrackerData
+  local data, Live = _G.DgnTrackerData, _G.DgnTrackerLive
   if not ui or type(data) ~= "table" then return out end
   for extKey, ext in pairs(data) do
     if type(ext) == "table" and ext.instances then
       for _, inst in ipairs(ext.instances) do
-        local hay = (inst.name or "") .. " " .. (inst.zone or "") .. " " .. (inst.region or "")
+        -- Nom de data\ ET nom du jeu (langue du client) : "Ara-Kara" se
+        -- trouve aussi bien sur un client francais qu'anglais.
+        local shown = Live and (Live.DisplayName(inst)) or inst.name or "?"
+        local hay = (inst.name or "") .. " " .. shown .. " " .. (inst.zone or "") .. " " .. (inst.region or "")
         if ui.Match(hay, q) then
           out[#out + 1] = {
-            text = (inst.name or "?") .. "  |cff808080" .. (inst.zone or tostring(extKey)) .. "|r",
+            text = shown .. "  |cff808080" .. (inst.zone or tostring(extKey)) .. "|r",
             onClick = function()
+              if _G.DgnTracker_OpenInstance and _G.DgnTracker_OpenInstance(inst) then return end
               local f = _G[FRAME]
               if _G.DgnTracker_Toggle and (not f or not f:IsShown()) then _G.DgnTracker_Toggle() end
             end }
@@ -92,6 +113,7 @@ local function Decorate()
   if not (ui and f) then return end
   if not f._tibiSkinned then
     ui.SkinFrame(f, ACCENT)
+    if ui.SkinScrollBar and f.scrollFrame then ui.SkinScrollBar(f.scrollFrame, ACCENT) end
     f._tibiSkinned = true
   end
   if f._tibiControls then return end

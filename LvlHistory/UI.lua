@@ -1190,8 +1190,14 @@ local dgnMeasFS, mapNameToID
 local delveTitle, delveRows = nil, {}
 local MAX_DELVE_ROWS = 20
 
--- Clic sur un donjon : ouvre DgnTracker (guide du donjon) s'il est installe
-local function OpenDgnTracker()
+-- Clic sur un donjon : ouvre DgnTracker (guide du donjon) s'il est installe,
+-- directement sur la fiche de ce donjon quand son API est presente (7.1.5.36+).
+local function OpenDgnTracker(name, mapID, kind)
+    local api = _G.DgnTrackerAPI
+    if api and api.OpenInstance and name
+        and api.OpenInstance({ name = name, challengeMapID = mapID, type = kind }) then
+        return
+    end
     if _G.DgnTracker_Toggle then
         local f = _G.DGNMainFrame
         if not (f and f:IsShown()) then _G.DgnTracker_Toggle() end
@@ -1239,12 +1245,26 @@ function UI.RefreshDelves(db, top)
             r.count:SetPoint("RIGHT", r, "RIGHT", -4, 0)
             r.count:SetTextColor(0.95, 0.42, 0.42, 1)
             HLine(r, -rowH + 1, 0, 0, C.SEP2)
+            -- Clic : fiche du gouffre dans DgnTracker (si son API est la)
+            r:EnableMouse(true)
+            r:SetScript("OnEnter", function(self)
+                if not _G.DgnTrackerAPI then return end
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:SetText(self.name:GetText() or "", 1, 1, 1)
+                GameTooltip:AddLine(Loc("TT_OPEN_DGNTRACKER", "Clic : ouvrir DgnTracker"), 0.7, 0.7, 0.7)
+                GameTooltip:Show()
+            end)
+            r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+            r:SetScript("OnMouseUp", function(self)
+                if self.delveName then OpenDgnTracker(self.delveName, nil, "delve") end
+            end)
             delveRows[i] = r
         end
         local e = sorted[i]
         r:ClearAllPoints()
         r:SetPoint("TOPLEFT", dgnList, "TOPLEFT", 0, -(top + 32 + (i - 1) * rowH))
         r.name:SetText(e.name)
+        r.delveName = e.name
         r.tier:SetText(e.tier and string.format(Loc("LBL_TIER_FMT", "palier %d"), e.tier) or "")
         r.count:SetText(tostring(e.n))
         r:Show()
@@ -1311,7 +1331,7 @@ local function BuildTabDungeons(ca)
             GameTooltip:Show()
         end)
         row:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        row:SetScript("OnMouseUp", function() OpenDgnTracker() end)
+        row:SetScript("OnMouseUp", function(self) OpenDgnTracker(self.dgnName, self.dgnMapID) end)
         dgnRows[i] = row
     end
 
@@ -1474,6 +1494,7 @@ function UI.RefreshTab4()
 
             -- ── Difficulte et Temps depuis les donnees Blizzard ──────────────
             local mapID   = (db.dgnMapID and db.dgnMapID[d.name]) or (mapNameToID and mapNameToID[d.name])
+            row.dgnName, row.dgnMapID = d.name, mapID   -- clic -> fiche DgnTracker
             local bestRun, overTime = nil, false
             if mapID and C_MythicPlus and C_MythicPlus.GetSeasonBestForMap then
                 local ok, inTime, outTime = pcall(C_MythicPlus.GetSeasonBestForMap, mapID)

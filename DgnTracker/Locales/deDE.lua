@@ -1,69 +1,80 @@
 -- =============================================================================
--- DgnTracker - Locales/deDE.lua
--- Surcharge DE. Ne s'applique que si le client tourne en allemand.
+-- DgnTracker - Locales/deDE.lua (Deutsch). Surcharge de l'anglais (enUS.lua).
+-- Traduction non relue par un joueur natif.
 -- =============================================================================
 
 if GetLocale() ~= "deDE" then return end
 DgnTrackerL = DgnTrackerL or {}
 local L = DgnTrackerL
 
-L["WP_NO_COORDS"]        = "keine Koordinaten verfuegbar fuer"
-L["WP_TOMTOM_LABEL"]     = "Wegpunkt"
-L["WP_MAP_LABEL"]        = "Wegpunkt"
-L["WP_MAP_WORD"]         = "Karte"
-L["WP_OPEN_MAP_HINT"]    = "(oeffne die Karte, um ihn zu sehen)"
-L["WP_NATIVE_FAIL"]      = "konnte keinen nativen Wegpunkt in dieser Zone setzen. Installiere |cFFFFD700TomTom|r fuer einen vollstaendigen Zeiger."
-L["WP_NONE_AVAILABLE"]   = "kein Wegpunktsystem verfuegbar. Installiere |cFFFFD700TomTom|r."
-L["DRAG_HINT"]           = "Ziehen zum Verschieben"
-L["INSTANCES_WORD"]      = "Instanz(en)"
-L["SEARCH_PLACEHOLDER"]  = "Suchen..."
-L["EXTENSION_LABEL"]     = "Erweiterung:"
-L["LEFT_CLICK_LABEL"]    = "Linksklick"
-L["CLOSE_WORD"]          = "schliessen"
-L["SHOW_PATH_WORD"]      = "Weg anzeigen"
-L["RIGHT_CLICK_LABEL"]   = "Rechtsklick"
-L["SET_WAYPOINT_HINT"]   = "einen Wegpunkt setzen"
-L["NO_RESULT_FOR"]       = "Kein Ergebnis fuer"
-L["NO_INSTANCE_CATEGORY"]= "Keine Instanz fuer diese Kategorie verfuegbar."
-L["ACCESS_HEADER"]       = "-- Zugang (kuerzester Weg):"
-L["TIPS_HEADER"]         = "-- Tipps:"
-L["MM_TT_SUBTITLE"]      = "Dungeon- und Schlachtzug-Tracker"
-L["TOGGLE_HINT"]         = "oeffnen / schliessen"
-L["DRAG_LABEL"]          = "Ziehen"
-L["REPOSITION_HINT"]     = "Symbol neu positionieren"
-L["CLICK_LABEL"]         = "Klick"
-
-L["HELP_COMMANDS_LABEL"] = "Befehle:"
-L["HELP_TOGGLE"]         = "Fenster oeffnen/schliessen"
-L["HELP_OPTIONS"]        = "Optionen oeffnen"
-L["HELP_MAP_ON"]         = "Automatischer Wegpunkt beim Betreten einer Instanz"
-L["HELP_MAP_OFF"]        = "Automatischen Wegpunkt deaktivieren"
-L["HELP_EXTENSION"]      = "Zu einer Erweiterung wechseln (z.B.: tww, df, sl, van)"
-L["HELP_EXPAND"]         = "Alles aufklappen (aktive Erweiterung)"
-L["HELP_RESET"]          = "Alles einklappen (Akkordeon)"
-L["HELP_TIP"]            = "Tipp: Rechtsklick auf eine Instanz setzt einen Wegpunkt."
-
-L["ACCORDION_RESET"]     = "Akkordeon zurueckgesetzt."
-L["EXPANDED_ALL_FOR"]    = "alles aufgeklappt fuer"
-L["AUTO_WAYPOINT_LABEL"] = "automatischer Wegpunkt"
-L["ENABLED_WORD"]        = "aktiviert"
-L["ON_INSTANCE_OPEN"]    = "(beim Betreten einer Instanz)"
-L["DISABLED_WORD"]       = "deaktiviert"
-L["EXTENSION_ARROW"]     = "Erweiterung ->"
-L["UNKNOWN_COMMAND"]     = "unbekannter Befehl. Tippe |cFFFFD700/dg help|r."
-L["LOGIN_LOADED"]        = "geladen --"
-L["LOGIN_TO_OPEN"]       = "zum Oeffnen."
-
--- Optionen (DgnTracker_Suite.lua) und Modulname
-L["OPT_SEC_WINDOW"]      = "Fenster"
-L["OPT_TOGGLE"]          = "Oeffnen / schliessen"
-L["OPT_RECENTER"]        = "Fenster zentrieren"
-L["OPT_SEC_BEHAVIOR"]    = "Verhalten"
-L["OPT_AUTO_WAYPOINT"]   = "Automatischer Wegpunkt beim Betreten einer Instanz"
-L["OPT_SEC_FLOATING"]    = "Schwebende Buttons (TibiSuite-Leiste)"
-L["OPT_HIDE_OPTIONS_BTN"]= "Options-Button ausblenden"
-L["OPT_HIDE_SEARCH_BTN"] = "Suchfeld ausblenden"
-L["OPT_FLOATING_NOTE"]   = "Der Options-Button und das Suchfeld stehen oberhalb des Fensters ueber. Auch ausgeblendet oeffnet Umschalt+Rechtsklick auf das Fenster diese Optionen."
-L["OPT_NOTE"]            = "Tipp: Rechtsklick auf die Dungeons-Kachel in der TibiSuite-Leiste oeffnet diese Optionen ebenfalls."
-L["SEARCH_TITLE"]        = "Suche"
-L["MODULE_LABEL"]        = "Dungeons"
+for k, v in pairs({
+  WP_NO_COORDS = "keine Koordinaten verfügbar für", WP_TOMTOM_LABEL = "Wegpunkt", WP_MAP_LABEL = "Wegpunkt",
+  WP_MAP_WORD = "Karte", WP_OPEN_MAP_HINT = "(Karte öffnen, um ihn zu sehen)",
+  WP_NATIVE_FAIL = "in dieser Zone kann kein nativer Wegpunkt gesetzt werden. Installiere |cFFFFD700TomTom|r für einen vollständigen Pfeil.",
+  WP_NONE_AVAILABLE = "kein Wegpunktsystem verfügbar. Installiere |cFFFFD700TomTom|r.",
+  DRAG_HINT = "Ziehen zum Verschieben", INSTANCES_WORD = "Instanz(en)", SEARCH_PLACEHOLDER = "Suchen...",
+  EXTENSION_LABEL = "Erweiterung:", VIEW_LABEL = "Ansicht:",
+  LEFT_CLICK_LABEL = "Linksklick", CLOSE_WORD = "schließen", SHOW_PATH_WORD = "Weg anzeigen",
+  RIGHT_CLICK_LABEL = "Rechtsklick", SET_WAYPOINT_HINT = "Wegpunkt setzen",
+  SHIFT_CLICK_LABEL = "Umschalt+Klick", CTRL_CLICK_LABEL = "Strg+Klick",
+  FAV_ADD_HINT = "zu Favoriten hinzufügen", FAV_REMOVE_HINT = "aus Favoriten entfernen",
+  EJ_HINT = "Abenteuerführer öffnen", EJ_UNKNOWN = "diese Instanz ist nicht mit dem Abenteuerführer verknüpft.",
+  EJ_COMBAT = "im Kampf nicht möglich.",
+  NO_RESULT_FOR = "Kein Ergebnis für", NO_INSTANCE_CATEGORY = "Keine Instanz in dieser Kategorie.",
+  EMPTY_SEASON = "Saisondaten noch nicht vom Server erhalten. Öffne das Fenster in ein paar Sekunden erneut.",
+  EMPTY_NEAR = "Keine bekannte Instanz in dieser Zone.",
+  EMPTY_FAVS = "Noch keine Favoriten. Umschalt+Klick auf eine Instanz, um sie hinzuzufügen.",
+  ACCESS_HEADER = "-- Zugang (kürzester Weg):", TIPS_HEADER = "-- Tipps:", TIPS_FR_NOTE = "(auf Französisch)",
+  DETECTED_NOTE = "Im Spiel erkannte Instanz: noch keine Zugangstipps. Der Wegpunkt nutzt die Position aus dem Spiel.",
+  MPLUS_ONLY_NOTE = "Mythisch+-Dungeon der Rotation, noch nicht in DgnTracker erfasst: vorerst keine Zugangstipps.",
+  BOSSES_FMT = "Bosse (%d):", MPLUS_LABEL = "Mythisch+",
+  MPLUS_BEST_FMT = "Bester Schlüssel der Saison: %s+%d|r (%s)", MPLUS_OVERTIME = "Zeit überschritten",
+  MPLUS_SCORE_FMT = "Wertung %d", MPLUS_NONE = "diese Saison noch kein Schlüssel abgeschlossen",
+  LOCKED_LABEL = "Gesperrt", RESET_IN_FMT = "Reset in %s", DELAY_DH = "%d T %d Std", DELAY_H = "%d Std %02d",
+  BOUNTIFUL_LINE = "Heute ergiebige Tiefe: Bonustruhe mit einem Kastenschlüssel.",
+  BADGE_BOUNTIFUL = "Ergiebig", BADGE_DETECTED = "erkannt",
+  BTN_WAYPOINT = "Wegpunkt", BTN_JOURNAL = "Abenteuerführer", BTN_FAV = "Zu Favoriten", BTN_UNFAV = "Favorit entfernen",
+  DIST_FMT = "%d m", SEASON_SCORE = "M+-Wertung: %d", EXT_CATA = "Cataclysm (4.0)",
+  TAB_DUNGEON = "Dungeon", TAB_RAID = "Schlachtzug", TAB_DELVE = "Tiefe", TAB_TORGHAST = "Torghast", TAB_MPLUS = "Mythisch+",
+  VT_SEASON = "Saison", VT_SEASON_FULL = "Aktuelle Saison",
+  VT_SEASON_TT = "Mythisch+-Dungeons der Saison, aktueller Schlachtzug und Tiefen (ergiebige zuerst).",
+  VT_NEAR = "In der Nähe", VT_NEAR_FULL = "In der Nähe", VT_NEAR_TT = "Instanzen deiner aktuellen Zone, die nächste zuerst.",
+  VT_FAVS = "Favoriten", VT_FAVS_FULL = "Meine Favoriten", VT_FAVS_TT = "Umschalt+Klick auf eine Instanz zum Hinzufügen oder Entfernen.",
+  MM_TT_SUBTITLE = "Dungeon- & Schlachtzug-Tracker", TOGGLE_HINT = "öffnen / schließen",
+  DRAG_LABEL = "Ziehen", REPOSITION_HINT = "Symbol verschieben",
+  HELP_COMMANDS_LABEL = "Befehle:", HELP_TOGGLE = "Fenster öffnen/schließen",
+  HELP_SEASON = "Aktuelle Saison (Mythisch+, Schlachtzug, Tiefen)", HELP_NEAR = "Instanzen deiner aktuellen Zone",
+  HELP_FAVS = "Deine Favoriten", HELP_FIND = "Instanz über ihren Namen öffnen", HELP_OPTIONS = "Optionen öffnen",
+  HELP_MAP_ON = "Automatischer Wegpunkt beim Aufklappen einer Instanz", HELP_MAP_OFF = "Automatischen Wegpunkt deaktivieren",
+  HELP_EXTENSION = "Zu einer Erweiterung springen (z. B. mid, tww, df, sl, van)",
+  HELP_EXPAND = "Alles aufklappen (aktive Erweiterung)", HELP_RESET = "Alles zuklappen",
+  HELP_PROBE = "Sonde: speichert, was das Spiel liefert (zur Datenkorrektur)",
+  HELP_TIP = "Tipp: Rechtsklick auf eine Instanz setzt einen Wegpunkt.",
+  ACCORDION_RESET = "alles zugeklappt.", EXPANDED_ALL_FOR = "alles aufgeklappt für",
+  AUTO_WAYPOINT_LABEL = "automatischer Wegpunkt", ENABLED_WORD = "aktiviert", DISABLED_WORD = "deaktiviert",
+  ON_INSTANCE_OPEN = "(beim Aufklappen einer Instanz)", EXTENSION_ARROW = "Erweiterung ->",
+  UNKNOWN_COMMAND = "unbekannter Befehl. Tippe |cFFFFD700/dg help|r.",
+  LOGIN_LOADED = "geladen --", LOGIN_TO_OPEN = "zum Öffnen.",
+  PROBE_DONE = "Sonde fertig: %d Instanzen zugeordnet, %d aus dem Spiel hinzugefügt, %d ohne Treffer. /reload schreibt die Datei DgnTracker.lua (SavedVariables).",
+  PROBE_CLEARED = "Sonde gelöscht.",
+  OPT_SEC_WINDOW = "Fenster", OPT_TOGGLE = "Öffnen / schließen", OPT_RECENTER = "Fenster zentrieren",
+  OPT_SEC_BEHAVIOR = "Verhalten", OPT_AUTO_WAYPOINT = "Automatischer Wegpunkt beim Aufklappen einer Instanz",
+  OPT_BADGES = "Abzeichen an Instanzen (Sperren, Mythisch+, ergiebig)",
+  OPT_DETECT = "Im Spiel gefundene, im Guide fehlende Instanzen hinzufügen",
+  OPT_DETECT_NOTE = "Das Abwählen wirkt nach dem nächsten /reload.",
+  OPT_SEC_DATA = "Daten", OPT_PROBE = "Sonde starten (/dg probe)",
+  OPT_PROBE_NOTE = "Die Sonde speichert, was das Spiel liefert (Eingänge, Tiefen, Saison, Sperren), um den Guide zu korrigieren. Danach /reload und die Datei WTF\\...\\SavedVariables\\DgnTracker.lua an Tibiscui schicken.",
+  OPT_SEC_FLOATING = "Schwebende Knöpfe (TibiSuite-Leiste)", OPT_HIDE_OPTIONS_BTN = "Optionen-Knopf ausblenden",
+  OPT_HIDE_SEARCH_BTN = "Suchfeld ausblenden",
+  OPT_FLOATING_NOTE = "Optionen-Knopf und Suchfeld ragen über das Fenster hinaus. Auch ausgeblendet öffnet Umschalt+Rechtsklick auf das Fenster diese Optionen.",
+  OPT_NOTE = "Tipp: Rechtsklick auf die Dungeon-Kachel der TibiSuite-Leiste öffnet ebenfalls diese Optionen.",
+  TIPS_EN_NOTE = "(auf Englisch)",
+  CHECK_DONE = "Prüfung: %d Einträge korrekt, %d vom Spiel korrigiert, %d im Spiel nicht gefunden.",
+  CHECK_NOT_FOUND = "nicht gefunden",
+  CHECK_MORE = "... und %d weitere.",
+  CHECK_NOTE = "Wegpunkte folgen bereits der Position aus dem Spiel. /reload und WTF\\...\\SavedVariables\\DgnTracker.lua an Tibiscui schicken, um den Guide zu korrigieren.",
+  HELP_CHECK = "Prüfung: vergleicht jeden Eintrag mit der Position aus dem Spiel",
+  CHECK_MISSING_NOTE = "Nicht gefunden: Eingang fehlt auf den Spielkarten (entfernt, saisonal oder alte Version). Der Wegpunkt nutzt die ungefähre Position des Eintrags.",
+  WP_OTHER_CONTINENT = "du bist nicht auf dem richtigen Kontinent: der Pfeil erscheint, sobald du diese Zone erreichst.",
+  SEARCH_TITLE = "Suche", MODULE_LABEL = "Dungeons",
+}) do L[k] = v end
