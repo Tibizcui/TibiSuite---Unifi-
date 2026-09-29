@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.35
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir LvlHistory et SkillTracker 7.1.5.35 pour le detail : LvlHistory mis a jour pour la 12.1 avec l'onglet Niveaux, l'origine de l'XP, les Gouffres et les alts reposes ; SkillTracker avec la concentration projetee, les connaissances de la semaine et "Qui sait crafter ca ?" ; cles M+ de nouveau enregistrees dans Stats).
+
 ## 7.1.5.34
 Mise à jour 12.1 complète, en trois lots.
 

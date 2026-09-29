@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.34
+-- TibiSuiteOptions v7.1.5.35
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -239,6 +239,11 @@ L.WN_LOG      = L.WN_LOG      or "Journal complet"
 L.WN_SETUP    = L.WN_SETUP    or "Relancer l'installation"
 L.WN_OK       = L.WN_OK       or "Compris"
 L.WN_NONE     = L.WN_NONE     or "Pas de note pour cette version."
+L.WN_35_1 = L.WN_35_1 or "LvlHistory mis à jour pour la 12.1 : clés M+ et records de saison de nouveau enregistrés, XP de session juste, journalières comptées, Gouffres suivis, et un /reload ne coupe plus la session."
+L.WN_35_2 = L.WN_35_2 or "Nouvel onglet Niveaux : temps passé à chaque niveau, record de montée 10 > max, temps restant jusqu'au max et origine de l'XP (quêtes, donjons, gouffres)."
+L.WN_35_3 = L.WN_35_3 or "Onglet Alts : XP reposée de chaque personnage et suggestion « À monter ce soir ». Nouvelle carte Leveling sur le Dashboard."
+L.WN_35_4 = L.WN_35_4 or "SkillTracker : concentration de tous tes personnages projetée à l'instant, connaissances de la semaine, et « Qui sait crafter ça ? » jusque dans les info-bulles."
+L.WN_35_5 = L.WN_35_5 or "Stats enregistre de nouveau tes clés Mythique+ (une fonction du jeu avait disparu en 11.0)."
 L.WN_34_1 = L.WN_34_1 or "DailyTracker mis à jour pour la 12.1 : Forces de Zul'Jarra et Capitaine Tokka, quêtes vérifiées en jeu sous leur vrai nom, suivi propre à chaque personnage."
 L.WN_34_2 = L.WN_34_2 or "Nouvelle vue Personnages : où en est chaque alt cette semaine, et ce qu'il lui reste à faire."
 L.WN_34_3 = L.WN_34_3 or "Liste « À faire » à épingler à l'écran, renom réel, quêtes du monde comptées en direct et rappel avant le reset."
@@ -287,6 +292,13 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.35"] = {
+    { key = "Lvl",   title = "LvlHistory",   text = L.WN_35_1, new = true },
+    { key = "Lvl",   title = "LvlHistory",   text = L.WN_35_2, new = true },
+    { key = "Lvl",   title = "LvlHistory",   text = L.WN_35_3, new = true },
+    { key = "Skill", title = "SkillTracker", text = L.WN_35_4, new = true },
+    { key = "Stats", title = "Stats",        text = L.WN_35_5 },
+  },
   ["7.1.5.34"] = {
     { key = "Daily", title = "DailyTracker", text = L.WN_34_1, new = true },
     { key = "Daily", title = "DailyTracker", text = L.WN_34_2, new = true },
