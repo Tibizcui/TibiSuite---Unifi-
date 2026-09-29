@@ -1,5 +1,18 @@
 # Changelog
 
+## 7.1.5.36
+- Mise a jour 12.1 : Ile annelee (nom aligne sur RenTracker), Midnight affiche par defaut, message de connexion qui suit le reglage de la suite.
+- Donnees lues dans le jeu : noms dans la langue du client, position exacte des entrees, boss du Journal d'aventure, instances manquantes ajoutees automatiquement.
+- Emplacements verifies en jeu : chaque fiche porte l'identifiant de son entree (Journal d'aventure ou point du gouffre) et la position exacte relevee dans le jeu. 203 instances au bon endroit (dont l'Allee du meurtre, dans Lune-d'Argent). Antorus, Tol Dagor, Caveau des Gardiens, Coeur du Magma, Ny'alotha et Palais Eternel corriges d'apres des releves en jeu.
+- Midnight reecrit : les 11 vrais gouffres avec leurs noms officiels, raids et donjons replaces. Environ 45 instances ajoutees (Operation Vannes ouvertes, Ecodome Al'dani, Tazavesh, gouffres de The War Within, Utgarde, Oculus, Glissecroc, Donjon de la Tempete, Onyxia...). 8 fiches qui n'existaient pas dans le jeu retirees.
+- Nouvelles vues : Saison (donjons Mythique+ avec votre meilleure cle et votre score, raid en cours et raids verrouilles, gouffres abondants en tete), Pres de moi (instances de votre zone, par distance), Favoris (Maj+clic).
+- Badges sur chaque ligne (verrou, meilleure cle M+, gouffre abondant) et fiche enrichie : boss, verrou et temps avant le reset, boutons Point de route, Journal d'aventure et Favori (Ctrl+clic ouvre aussi le Journal).
+- Point de route : la zone est indiquee dans le chat, avec un rappel si vous etes sur un autre continent (la fleche n'apparait qu'une fois sur place).
+- Commandes : /dg saison, /dg proche, /dg fav, /dg <nom d'instance>, /dg check (controle des emplacements), /dg probe.
+- Recherche sans accents, dans le nom, le nom du jeu et la zone ; un resultat de la recherche globale ouvre directement la fiche.
+- API publique _G.DgnTrackerAPI (OpenInstance, Find, OpenView) utilisee par LvlHistory et WeeklyCompass.
+- 10 langues ; conseils d'acces en anglais sur tous les clients non francais.
+
 ## 7.1.5.35
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir LvlHistory et SkillTracker 7.1.5.35 pour le detail : LvlHistory mis a jour pour la 12.1 avec l'onglet Niveaux, l'origine de l'XP, les Gouffres et les alts reposes ; SkillTracker avec la concentration projetee, les connaissances de la semaine et "Qui sait crafter ca ?" ; cles M+ de nouveau enregistrees dans Stats).
 

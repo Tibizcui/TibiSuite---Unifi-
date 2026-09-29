@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.36
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir DgnTracker 7.1.5.36 pour le detail : emplacements verifies en jeu, donnees lues dans le jeu, vues Saison / Pres de moi / Favoris, 10 langues).
+
 ## 7.1.5.35
 - Nouveau : vue Concentration. La concentration de tous tes personnages, même déconnectés, projetée à l'instant : « pleine dans 14 h » ou « PLEINE depuis 2 j ». La vitesse de recharge est apprise à partir de tes propres relevés (aucune valeur inventée). Alerte à la connexion pour les alts à la concentration pleine, et pastille sur l'onglet de la suite.
 - Nouveau : la concentration se relit à la connexion, sans ouvrir le métier, une fois la monnaie du métier connue.

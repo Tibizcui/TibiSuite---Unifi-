@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.36
+- Fenetre Quoi de neuf : notes de la version 7.1.5.36 (DgnTracker).
+
 ## 7.1.5.35
 - Fenetre Quoi de neuf : notes de la version 7.1.5.35 (LvlHistory, SkillTracker, Stats).
 

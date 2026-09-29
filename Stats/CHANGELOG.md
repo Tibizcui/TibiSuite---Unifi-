@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.36
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir DgnTracker 7.1.5.36 pour le detail : emplacements verifies en jeu, donnees lues dans le jeu, vues Saison / Pres de moi / Favoris, 10 langues).
+
 ## 7.1.5.35
 - Correction : les clés Mythique+ sont de nouveau enregistrées. La fonction de fin de clé utilisée (GetCompletionInfo) a disparu du jeu en 11.0 : Stats n'enregistrait plus aucune clé depuis. Remplacée par GetChallengeCompletionInfo.
 - Export : les métiers passent par la nouvelle API de SkillTracker (concentration datée, vitesse de recharge apprise, connaissances de la semaine), avec repli sur l'ancien format.

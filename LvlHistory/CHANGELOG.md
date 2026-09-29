@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.36
+- Cliquer un donjon ou un gouffre dans l'onglet Donjons ouvre directement sa fiche dans DgnTracker (au lieu de la seule fenetre).
+
 ## 7.1.5.35
 - Mise à jour 12.1 : meilleure clé et meilleur temps M+ de nouveau enregistrés (nouvelle API de fin de clé, l'ancienne rangeait l'identifiant de carte à la place du temps). Records de saison de Blizzard lus correctement (dans le temps, sinon hors temps en rouge).
 - Correction : l'XP de session n'est plus gonflée à chaque passage de niveau. Elle se calcule désormais par écarts successifs, quel que soit l'ordre des événements.

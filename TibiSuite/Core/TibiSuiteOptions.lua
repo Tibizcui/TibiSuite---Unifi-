@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.35
+-- TibiSuiteOptions v7.1.5.36
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -239,6 +239,10 @@ L.WN_LOG      = L.WN_LOG      or "Journal complet"
 L.WN_SETUP    = L.WN_SETUP    or "Relancer l'installation"
 L.WN_OK       = L.WN_OK       or "Compris"
 L.WN_NONE     = L.WN_NONE     or "Pas de note pour cette version."
+L.WN_36_1 = L.WN_36_1 or "DgnTracker mis à jour pour la 12.1 : points de route vérifiés en jeu (203 instances au bon endroit), noms et positions lus directement dans le jeu, et une quarantaine d'instances ajoutées."
+L.WN_36_2 = L.WN_36_2 or "Nouvelles vues Saison (donjons M+ avec votre meilleure clé, raid en cours, gouffres abondants), Près de moi et Favoris."
+L.WN_36_3 = L.WN_36_3 or "Chaque fiche affiche les boss, vos verrous et le temps avant le reset, avec les boutons Point de route et Journal d'aventure. /dg check contrôle les emplacements."
+L.WN_36_4 = L.WN_36_4 or "Cliquer un donjon dans LvlHistory ou un raid dans la fiche de WeeklyCompass ouvre directement sa fiche dans DgnTracker."
 L.WN_35_1 = L.WN_35_1 or "LvlHistory mis à jour pour la 12.1 : clés M+ et records de saison de nouveau enregistrés, XP de session juste, journalières comptées, Gouffres suivis, et un /reload ne coupe plus la session."
 L.WN_35_2 = L.WN_35_2 or "Nouvel onglet Niveaux : temps passé à chaque niveau, record de montée 10 > max, temps restant jusqu'au max et origine de l'XP (quêtes, donjons, gouffres)."
 L.WN_35_3 = L.WN_35_3 or "Onglet Alts : XP reposée de chaque personnage et suggestion « À monter ce soir ». Nouvelle carte Leveling sur le Dashboard."
@@ -292,6 +296,12 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.36"] = {
+    { key = "Dgn",    title = "DgnTracker",    text = L.WN_36_1, new = true },
+    { key = "Dgn",    title = "DgnTracker",    text = L.WN_36_2, new = true },
+    { key = "Dgn",    title = "DgnTracker",    text = L.WN_36_3, new = true },
+    { key = "Dgn",    title = "DgnTracker",    text = L.WN_36_4 },
+  },
   ["7.1.5.35"] = {
     { key = "Lvl",   title = "LvlHistory",   text = L.WN_35_1, new = true },
     { key = "Lvl",   title = "LvlHistory",   text = L.WN_35_2, new = true },

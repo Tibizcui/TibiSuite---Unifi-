@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.36
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir DgnTracker 7.1.5.36 pour le detail : emplacements verifies en jeu, donnees lues dans le jeu, vues Saison / Pres de moi / Favoris, 10 langues).
+
 ## 7.1.5.35
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir LvlHistory et SkillTracker 7.1.5.35 pour le detail : LvlHistory mis a jour pour la 12.1 avec l'onglet Niveaux, l'origine de l'XP, les Gouffres et les alts reposes ; SkillTracker avec la concentration projetee, les connaissances de la semaine et "Qui sait crafter ca ?" ; cles M+ de nouveau enregistrees dans Stats).
 

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.36
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir DgnTracker 7.1.5.36 pour le detail : emplacements verifies en jeu, donnees lues dans le jeu, vues Saison / Pres de moi / Favoris, 10 langues).
+
 ## 7.1.5.35
 - Nouveau : petite API publique _G.XPBarAPI (XP/h de session et XP/h glissant, lecture seule). LvlHistory l'utilise pour afficher l'XP/h en direct sans le recalculer.
 

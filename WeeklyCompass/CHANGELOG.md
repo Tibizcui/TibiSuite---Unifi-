@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.36
+- Fiche personnage : cliquer une ligne de raid verrouille ouvre sa fiche dans DgnTracker.
+
 ## 7.1.5.35
 - Nouveau : la fiche personnage affiche les metiers (niveau, concentration projetee, connaissances de la semaine), lus dans SkillTracker. Pour le reste, voir LvlHistory et SkillTracker 7.1.5.35.
 
