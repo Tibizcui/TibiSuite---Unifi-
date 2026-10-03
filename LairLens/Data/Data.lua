@@ -142,9 +142,11 @@ D.extension = {
                     -- Entree (method.gg, a confirmer en jeu) : Ile annelee 2512.
                     entrance = { uiMapID = 2512, x = 59.86, y = 66.28 },
 
-                    -- 5 hauts faits annonces (vaincre, Heroique, Mythique, version
-                    -- guilde Normal+ et Mythique). Leurs IDs sont lus en jeu.
-                    achievementCount = 5,
+                    -- 6 hauts faits VUS EN JEU (/ll fiche 2026-10-03, Blizzard en
+                    -- annoncait 5) : 3 personnels (Normal, Heroique, Mythique) et
+                    -- 3 de guilde "Viree en guilde chez Nymrissa Mande-vagues"
+                    -- (Normal, Heroique, Mythique). IDs lus en jeu par Journal.lua.
+                    achievementCount = 6,
 
                     bosses = {
                         {
