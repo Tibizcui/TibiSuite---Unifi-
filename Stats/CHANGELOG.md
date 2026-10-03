@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.38
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir TibiSuite 7.1.5.38 : la fenetre Quoi de neuf presente la synthese de la semaine, versions 7.1.5.26 a 7.1.5.38, une ligne par module).
+
 ## 7.1.5.37
 - Le code d'export inclut maintenant tes Repaires (LairLens) pour la nouvelle carte Repaires du Dashboard web.
 - Correction : le temps passé dans un Repaire n'est plus compté comme du temps en Gouffre (le jeu signale un « Gouffre actif » dans la Grotte des Marées, vu en jeu).

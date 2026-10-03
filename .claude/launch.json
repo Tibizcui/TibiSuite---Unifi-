@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8842", "--directory", "C:\\Users\\zenel\\Documents\\GitHub\\Tibiscui.fr"],
       "port": 8842
+    },
+    {
+      "name": "companion-renderer",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8843", "--directory", "C:\\Users\\zenel\\Documents\\GitHub\\Tibi-Companion\\src\\renderer"],
+      "port": 8843
     }
   ]
 }

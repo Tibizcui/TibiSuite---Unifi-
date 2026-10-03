@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.37
+-- TibiSuiteOptions v7.1.5.38
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -239,6 +239,23 @@ L.WN_LOG      = L.WN_LOG      or "Journal complet"
 L.WN_SETUP    = L.WN_SETUP    or "Relancer l'installation"
 L.WN_OK       = L.WN_OK       or "Compris"
 L.WN_NONE     = L.WN_NONE     or "Pas de note pour cette version."
+L.WN_38_0  = L.WN_38_0  or "La semaine en bref : versions 7.1.5.26 à 7.1.5.38, les 14 modules repassés au crible pour la 12.1. Voici l'essentiel, module par module."
+L.WN_38_1  = L.WN_38_1  or "Installateur en 6 étapes, modules décochés réellement désactivés par WoW, /ts doctor, /ts perf et profils de suite. Barres de défilement aux couleurs de chaque module."
+L.WN_38_2  = L.WN_38_2  or "La fiche personnage affiche tes métiers (SkillTracker) et tes Repaires (LairLens) ; cliquer un raid verrouillé ouvre sa fiche dans DgnTracker."
+L.WN_38_3  = L.WN_38_3  or "Mise à jour 12.1 (Île annelée, Forces de Zul'Jarra), coffres de Paragon signalés, itinéraire vers le quartier-maître, checklist de la semaine et temps restant estimé."
+L.WN_38_4  = L.WN_38_4  or "Refonte 12.1 : barre native de nouveau masquée, réputation par heure, temps avant le prochain palier, coffres de Parangon, 3 factions épinglées et historique."
+L.WN_38_5  = L.WN_38_5  or "XP réelle des quêtes à rendre, projection des quêtes en cours, historique par niveau, styles prêts à l'emploi et suivi de la réputation au niveau max."
+L.WN_38_6  = L.WN_38_6  or "Données vérifiées en jeu, détection sur tout le compte, vue Collection, farm de la semaine et alertes au butin."
+L.WN_38_7  = L.WN_38_7  or "Quêtes 12.1 vérifiées en jeu, suivi propre à chaque personnage, vue Personnages, liste « À faire » à épingler et rappel avant le reset."
+L.WN_38_8  = L.WN_38_8  or "Clés M+ et XP de session de nouveau justes, onglet Niveaux (temps par niveau, origine de l'XP), Gouffres suivis et XP reposée de chaque alt."
+L.WN_38_9  = L.WN_38_9  or "Concentration de tous tes personnages projetée à l'instant, connaissances de la semaine, recettes et « Qui sait crafter ça ? » dans les infobulles."
+L.WN_38_10 = L.WN_38_10 or "Plus de 200 instances placées au bon endroit et vérifiées en jeu, vues Saison, Près de moi et Favoris, fiches avec boss, verrous et point de route."
+L.WN_38_11 = L.WN_38_11 or "Détection réparée en français, fiche du Repaire (/ll fiche) avec le butin de ta spécialisation, hauts faits et records. Un /reload ne coupe plus un run."
+L.WN_38_12 = L.WN_38_12 or "Un seul moteur de prise, contre-remboursements protégés, mule automatique, boîte aux lettres de tous tes personnages et journal HV."
+L.WN_38_13 = L.WN_38_13 or "Gestionnaire de boutons, barre rapide, vue liste, mode tiroir, et pause automatique avec EllesmereUI, ElvUI ou Tukui."
+L.WN_38_14 = L.WN_38_14 or "Profils par personnage et par spécialisation, réglage à la molette directement sur l'écran, groupes liés et six nouveaux contextes."
+L.WN_38_15 = L.WN_38_15 or "Clés Mythique+ de nouveau enregistrées. Le code d'export porte maintenant tes légendaires, ton leveling et tes Repaires ; un Repaire n'est plus compté comme un Gouffre."
+L.WN_38_16 = L.WN_38_16 or "Nouvelles cartes Légendaires, Leveling et Repaires sur le Dashboard web et dans Tibi Companion, cartes Personnages et Fiche repliables. 10 langues partout."
 L.WN_36_1 = L.WN_36_1 or "DgnTracker mis à jour pour la 12.1 : points de route vérifiés en jeu (203 instances au bon endroit), noms et positions lus directement dans le jeu, et une quarantaine d'instances ajoutées."
 L.WN_36_2 = L.WN_36_2 or "Nouvelles vues Saison (donjons M+ avec votre meilleure clé, raid en cours, gouffres abondants), Près de moi et Favoris."
 L.WN_36_3 = L.WN_36_3 or "Chaque fiche affiche les boss, vos verrous et le temps avant le reset, avec les boutons Point de route et Journal d'aventure. /dg check contrôle les emplacements."
@@ -303,6 +320,26 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- Synthese de la semaine (7.1.5.26 a 7.1.5.38) : une ligne par module.
+  ["7.1.5.38"] = {
+    { key = "Suite",   title = "TibiSuite",            text = L.WN_38_0 },
+    { key = "Suite",   title = "TibiSuite",            text = L.WN_38_1, new = true },
+    { key = "Weekly",  title = "WeeklyCompass",        text = L.WN_38_2 },
+    { key = "Rep",     title = "RenTracker",           text = L.WN_38_3, new = true },
+    { key = "RepBar",  title = "RepBar",               text = L.WN_38_4, new = true },
+    { key = "XPBar",   title = "XPBar",                text = L.WN_38_5, new = true },
+    { key = "Leg",     title = "LegTracker",           text = L.WN_38_6, new = true },
+    { key = "Daily",   title = "DailyTracker",         text = L.WN_38_7, new = true },
+    { key = "Lvl",     title = "LvlHistory",           text = L.WN_38_8, new = true },
+    { key = "Skill",   title = "SkillTracker",         text = L.WN_38_9, new = true },
+    { key = "Dgn",     title = "DgnTracker",           text = L.WN_38_10, new = true },
+    { key = "Lair",    title = "LairLens",             text = L.WN_38_11, new = true },
+    { key = "Post",    title = "PostBox",              text = L.WN_38_12, new = true },
+    { key = "MiniHub", title = "MiniHub",              text = L.WN_38_13, new = true },
+    { key = "Opacity", title = "Opacity",              text = L.WN_38_14, new = true },
+    { key = "Stats",   title = "Stats",                text = L.WN_38_15 },
+    { key = "Stats",   title = "Dashboard & Companion", text = L.WN_38_16, new = true },
+  },
   ["7.1.5.37"] = {
     { key = "Post",    title = "PostBox",   text = L.WN_37_1, new = true },
     { key = "Post",    title = "PostBox",   text = L.WN_37_2, new = true },
@@ -1834,7 +1871,7 @@ function TibiSuite.ShowWhatsNew(force)
 
   if not wn then
     local f = CreateFrame("Frame", "TibiSuiteWhatsNew", UIParent, "BackdropTemplate")
-    f:SetWidth(560)
+    f:SetWidth(580)
     f:SetPoint("CENTER", 0, 40)
     f:SetFrameStrata("DIALOG")
     f:SetToplevel(true)
@@ -1853,7 +1890,13 @@ function TibiSuite.ShowWhatsNew(force)
     local sep = f:CreateTexture(nil, "ARTWORK"); sep:SetColorTexture(1, 1, 1, 0.10); sep:SetHeight(1)
     sep:SetPoint("TOPLEFT", 1, -64); sep:SetPoint("TOPRIGHT", -1, -64)
     local verFS = Text(f, "GameFontHighlight", "", COL.MUT); verFS:SetPoint("TOPLEFT", 18, -76)
-    local host = CreateFrame("Frame", nil, f); host:SetPoint("TOPLEFT", 18, -100); host:SetSize(524, 10)
+    -- 7.1.5.38 : les notes passent dans une zone defilante (la synthese de la
+    -- semaine compte 16 lignes, trop haut pour un petit ecran sans defilement).
+    local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 18, -100); scroll:SetSize(520, 10)
+    local host = CreateFrame("Frame", nil, scroll); host:SetSize(520, 10)
+    scroll:SetScrollChild(host)
+    if UI.SkinScrollBar then UI.SkinScrollBar(scroll, ACCENT_SUITE) end
     local sep2 = f:CreateTexture(nil, "ARTWORK"); sep2:SetColorTexture(1, 1, 1, 0.10); sep2:SetHeight(1)
     sep2:SetPoint("BOTTOMLEFT", 1, 50); sep2:SetPoint("BOTTOMRIGHT", -1, 50)
     local log = Btn(f, 120, 24, L.WN_LOG, "ghost"); log:SetPoint("BOTTOMLEFT", 14, 13)
@@ -1866,7 +1909,7 @@ function TibiSuite.ShowWhatsNew(force)
     -- PAS de HookScript("OnHide") ici : combine a UISpecialFrames, c'est le
     -- piege de taint documente (Echap / ToggleGameMenu). La version est donc
     -- marquee « vue » des l'affichage, plus bas.
-    wn = { frame = f, host = host, ver = verFS, rows = {} }
+    wn = { frame = f, host = host, scroll = scroll, ver = verFS, rows = {} }
   end
 
   for _, r in ipairs(wn.rows) do r:Hide() end
@@ -1878,21 +1921,21 @@ function TibiSuite.ShowWhatsNew(force)
   for _, m in ipairs(cat) do byKey[m.key] = m end
   local y = 0
   if not items then
-    local r = CreateFrame("Frame", nil, wn.host); r:SetSize(524, 24); r:SetPoint("TOPLEFT", 0, 0)
+    local r = CreateFrame("Frame", nil, wn.host); r:SetSize(520, 24); r:SetPoint("TOPLEFT", 0, 0)
     Text(r, "GameFontHighlight", L.WN_NONE, COL.MUT):SetPoint("LEFT")
     wn.rows[1] = r
     y = -30
   end
   for i, it in ipairs(items or {}) do
     local r = CreateFrame("Frame", nil, wn.host)
-    r:SetWidth(524)
+    r:SetWidth(520)
     local ic = r:CreateTexture(nil, "ARTWORK"); ic:SetSize(28, 28); ic:SetPoint("TOPLEFT", 0, -4)
     ic:SetTexture(logoOf(it.key))
     local m = byKey[it.key]
     local col = m and rgb(m) or COL.ACCHI
     local tt = Text(r, "GameFontNormal", it.title .. (it.new and ("   " .. HX.OK .. L.WN_NEW .. "|r") or ""), col)
     tt:SetPoint("TOPLEFT", ic, "TOPRIGHT", 10, 0)
-    local d = Text(r, "GameFontHighlightSmall", it.text, COL.MUT, 480)
+    local d = Text(r, "GameFontHighlightSmall", it.text, COL.MUT, 476)
     d:SetPoint("TOPLEFT", tt, "BOTTOMLEFT", 0, -3)
     local h = math.max(36, (d:GetStringHeight() or 12) + 26)
     r:SetHeight(h)
@@ -1905,7 +1948,14 @@ function TibiSuite.ShowWhatsNew(force)
     wn.rows[#wn.rows + 1] = r
   end
   wn.host:SetHeight(-y)
-  wn.frame:SetHeight(100 + (-y) + 60)
+  -- Hauteur visible plafonnee (au plus 520 px, et jamais plus des trois quarts
+  -- de l'ecran avec l'en-tete et le pied) ; au-dela, la zone defile.
+  local screenH = (UIParent and UIParent:GetHeight()) or 768
+  local maxVis = math.max(200, math.min(520, screenH * 0.75 - 160))
+  local vis = math.min(-y, maxVis)
+  wn.scroll:SetHeight(vis)
+  wn.scroll:SetVerticalScroll(0)
+  wn.frame:SetHeight(100 + vis + 60)
   wn.frame:Show()
   TibiSuiteDB.lastSeenVersion = ver   -- une seule apparition par version
 end

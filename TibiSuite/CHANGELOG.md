@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.38
+- Fenetre Quoi de neuf : synthese de la semaine (versions 7.1.5.26 a 7.1.5.38), une ligne par module, plus une ligne Dashboard et Tibi Companion (FR + EN).
+- Fenetre Quoi de neuf : les notes defilent quand elles depassent la hauteur de l'ecran (barre de defilement habillee aux couleurs de la suite).
+
 ## 7.1.5.37
 - Fenetre Quoi de neuf : notes de la version 7.1.5.37 (PostBox, MiniHub, Opacity, LairLens).
 - /ts doctor : chaque module peut maintenant ajouter sa propre ligne d'état (première utilisation : Opacity, avec son profil actif, ses fenêtres et celles en attente).

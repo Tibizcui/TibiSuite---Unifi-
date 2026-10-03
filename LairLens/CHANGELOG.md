@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.38
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir TibiSuite 7.1.5.38 : la fenetre Quoi de neuf presente la synthese de la semaine, versions 7.1.5.26 a 7.1.5.38, une ligne par module).
+
 ## 7.1.5.37
 Mise à jour 12.1 complète de LairLens, avec la fiche du Repaire et l'historique enrichi.
 
