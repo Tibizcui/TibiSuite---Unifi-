@@ -32,6 +32,7 @@ local Det = LL.Detection
 -- Identifiants de raid flex standards (Normal 14, Heroique 15, Mythique 16).
 -- Utilises seulement si le libelle n'a rien donne.
 local STANDARD_DIFF = {
+    [250] = C.DIFF.WORLD,   -- VERIFIE EN JEU (/ll probe 2026-10-03) : "Monde", raid 5-40
     [14] = C.DIFF.NORMAL,
     [15] = C.DIFF.HEROIC,
     [16] = C.DIFF.MYTHIC,
@@ -105,7 +106,7 @@ end
 
 -- --- Instance ----------------------------------------------------------------
 -- Renvoie cle, maniere ("map" | "journal" | "name" | "api").
-function Det:ResolveInstance(instanceMapID, instanceName)
+function Det:ResolveInstance(instanceMapID, instanceName, instanceType)
     local lrn = learned()
     if instanceMapID and lrn and lrn.maps[instanceMapID] then
         return lrn.maps[instanceMapID], "map"
@@ -129,11 +130,12 @@ function Det:ResolveInstance(instanceMapID, instanceName)
         end
     end
 
-    -- C_DelvesUI.IsInLair existe en 12.1 (sonde TibiProbe) mais sa portee exacte
-    -- n'est pas documentee : on l'ecarte pendant un Gouffre actif, et on ne
-    -- l'utilise que s'il n'existe qu'un seul Repaire (sinon on ne saurait pas
-    -- lequel). Hypothese a confirmer par la sonde.
-    if call(C_DelvesUI, "IsInLair") == true and call(C_DelvesUI, "HasActiveDelve") ~= true then
+    -- C_DelvesUI.IsInLair : VU EN JEU (/ll probe 2026-10-03) vrai dans la
+    -- Grotte, ou HasActiveDelve est AUSSI vrai (on ne peut donc pas s'en servir
+    -- pour ecarter les Gouffres). Un Repaire est une instance de type "raid",
+    -- un Gouffre un "scenario" : c'est ce critere qui departage. Utilise
+    -- seulement s'il n'existe qu'un seul Repaire (sinon on ne saurait pas lequel).
+    if instanceType == "raid" and call(C_DelvesUI, "IsInLair") == true then
         local only = D:GetSingleLair()
         if only then return only, "api" end
     end
@@ -164,7 +166,7 @@ function Det:Refresh()
 
     local instanceKey, how
     if instanceType and instanceType ~= "none" then
-        instanceKey, how = self:ResolveInstance(instanceMapID, name)
+        instanceKey, how = self:ResolveInstance(instanceMapID, name, instanceType)
     end
 
     local inScenario = instanceType == "scenario"

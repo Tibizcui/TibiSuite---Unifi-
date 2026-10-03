@@ -1178,6 +1178,19 @@ SX.DELVE_MAX_TIER = 8
 -- est disponible plus tot et plus fiablement.
 local cachedDelveTier = nil
 
+-- Vrai Gouffre en cours. VU EN JEU (sonde LairLens du 2026-10-03) : dans un
+-- Repaire 12.1 (La grotte des Marees), HasActiveDelve ET IsInLair repondent
+-- vrai alors que ce n'est pas un Gouffre. Un Repaire est une instance de type
+-- "raid", un Gouffre un "scenario" : on ecarte donc le type "raid", sinon le
+-- temps passe dans un Repaire tombait dans le compteur Gouffres.
+local function InRealDelve()
+  if not C_DelvesUI then return false end
+  local _, instType = GetInstanceInfo()
+  if instType == "raid" then return false end
+  return ((C_DelvesUI.HasActiveDelve and C_DelvesUI.HasActiveDelve())
+    or (C_DelvesUI.IsInLair and C_DelvesUI.IsInLair())) and true or false
+end
+
 -- Applique un palier lu (immediatement ou via le repli retarde ci-dessous)
 -- au record : tuile "Palier max" (global) ET entree du gouffre nomme
 -- concerne (tableau "Detail par gouffre").
@@ -1195,8 +1208,7 @@ end
 
 local function OnScenarioCompleted()
   if not C_DelvesUI then return end
-  local inDelve = (C_DelvesUI.HasActiveDelve and C_DelvesUI.HasActiveDelve())
-    or (C_DelvesUI.IsInLair and C_DelvesUI.IsInLair())
+  local inDelve = InRealDelve()
   if not inDelve then return end
   local tier
   if C_DelvesUI.GetActiveDelveTier then
@@ -2040,8 +2052,7 @@ local playtimeEnteredAt = nil
 -- "party" a l'interieur d'un gouffre ; sans cette priorite, un gouffre
 -- pourrait etre classe "donjon" par erreur.
 local function CurrentPlaytimeActivity()
-  if C_DelvesUI and ((C_DelvesUI.HasActiveDelve and C_DelvesUI.HasActiveDelve())
-      or (C_DelvesUI.IsInLair and C_DelvesUI.IsInLair())) then
+  if InRealDelve() then
     -- Rafraichit cachedDelveTier (cf. section GOUFFRES plus haut) tant que le
     -- gouffre est actif, pour qu'OnScenarioCompleted ait deja une valeur
     -- disponible au moment ou le gouffre se termine.

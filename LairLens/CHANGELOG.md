@@ -7,7 +7,9 @@ Mise à jour 12.1 complète de LairLens, avec la fiche du Repaire et l'historiqu
 - Récompenses renseignées : ilvl du butin (Monde 279, Normal 292, Héroïque 305, Mythique 318), Écu de brume de la difficulté, et rappel que chaque kill compte pour la Grande Chambre forte.
 - Verrouillages du jeu lus par identifiant (plus seulement par nom anglais).
 - Panneau d'audit : ilvl moyen du groupe face à l'ilvl conseillé, taille du groupe (le Mythique exige 15 joueurs), bouton Annoncer (chat du groupe, sur clic, jamais en combat).
-- Difficulté Monde : le panneau suit le scénario (étape et objectifs) au lieu d'auditer un groupe formé par le jeu.
+- Identifiants de la Grotte des Marées vérifiés en jeu (instance, difficulté Monde, Journal, rencontre) et inscrits en dur.
+- Un run n'est plus coupé en deux par un écran de chargement ou un /reload : il reprend là où il en était.
+- Si un scénario est actif, le panneau suit ses étapes et objectifs.
 - Nouvelle fiche du Repaire (/ll fiche) : entrée avec point sur la carte, ouverture dans DgnTracker et dans le Journal, état de la semaine par difficulté, butin filtré pour ta spécialisation, hauts faits, tes records.
 - Historique : temps de kill, meilleur kill, wipes avant le premier kill, objets reçus.
 - Sonde /ll probe (et capture automatique à chaque entrée) pour vérifier ce que dit le jeu.

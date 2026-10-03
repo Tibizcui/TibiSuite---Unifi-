@@ -96,6 +96,18 @@ function J:Discover(force)
     end
     if not next(todo) then return end
 
+    -- jid verifie en jeu dans Data.lua : lecture directe, sans parcourir les paliers.
+    local direct = false
+    for key, inst in pairs(todo) do
+        if inst.journalInstanceID then
+            fill(key, inst.journalInstanceID)
+            todo[key] = nil
+            direct = true
+        end
+    end
+    if direct then LL:Emit("JOURNAL_READY") end
+    if not next(todo) then return end
+
     local prevTier = type(EJ_GetCurrentTier) == "function" and EJ_GetCurrentTier() or nil
     local okTiers, nTiers = pcall(EJ_GetNumTiers)
     if not okTiers or not nTiers then return end

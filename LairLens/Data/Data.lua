@@ -131,8 +131,13 @@ D.extension = {
                     -- journal et ses hauts faits.
                     bossFragment = "nymrissa",
 
-                    instanceMapID = nil,     -- appris en jeu (learned.maps)
-                    journalInstanceID = nil, -- lu dans le journal (learned.journal)
+                    -- VERIFIES EN JEU par /ll probe (2026-10-03, build 12.1.0.69933,
+                    -- client frFR) : instanceMapID de GetInstanceInfo, jid du
+                    -- journal, carte interieure 2632, file LFG 3245.
+                    instanceMapID = 2987,
+                    journalInstanceID = 1317,
+                    innerUiMapID = 2632,
+                    lfgDungeonID = 3245,
 
                     -- Entree (method.gg, a confirmer en jeu) : Ile annelee 2512.
                     entrance = { uiMapID = 2512, x = 59.86, y = 66.28 },
@@ -146,7 +151,11 @@ D.extension = {
                             key = "nymrissa_wavecaller",
                             name = "Nymrissa Wavecaller",
                             npcID = 252959,    -- VERIFIE (Wowhead npc=252959). ID de creature.
-                            encounterID = nil, -- DungeonEncounterID : lu dans le journal.
+                            -- VERIFIES EN JEU (/ll probe 2026-10-03) : DungeonEncounterID
+                            -- (celui d'ENCOUNTER_END) et ID de rencontre du journal.
+                            -- Nom francais du journal : "Nymrissa Mande-vagues".
+                            encounterID = 3379,
+                            journalEncounterID = 2849,
                         },
                     },
                 },

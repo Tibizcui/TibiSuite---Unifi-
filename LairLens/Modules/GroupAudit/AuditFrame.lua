@@ -500,8 +500,10 @@ function Audit:Update()
     local ctx = LL.Detection:GetContext()
     local header = buildHeader(ctx.instanceKey, ctx.difficultyKey, false)
 
-    -- Difficulte Monde : groupe forme par le jeu, on suit le scenario.
-    if ctx.inLair and (ctx.scenario or ctx.difficultyKey == C.DIFF.WORLD) then
+    -- Scenario actif : on suit ses etapes. VU EN JEU (2026-10-03) : la
+    -- difficulte Monde est une instance "raid" sans scenario (groupe de file de
+    -- 5 a 40) ; elle garde donc l'audit classique tant qu'aucun scenario n'existe.
+    if ctx.inLair and ctx.scenario then
         renderScenario(header)
         frame:Show()
         return

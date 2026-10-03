@@ -2,6 +2,7 @@
 
 ## 7.1.5.37
 - Le code d'export inclut maintenant tes Repaires (LairLens) pour la nouvelle carte Repaires du Dashboard web.
+- Correction : le temps passé dans un Repaire n'est plus compté comme du temps en Gouffre (le jeu signale un « Gouffre actif » dans la Grotte des Marées, vu en jeu).
 
 ## 7.1.5.36
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir DgnTracker 7.1.5.36 pour le detail : emplacements verifies en jeu, donnees lues dans le jeu, vues Saison / Pres de moi / Favoris, 10 langues).

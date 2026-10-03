@@ -142,9 +142,15 @@ local function startRun(ctx)
     snapshotGroup()
 end
 
-local function finalizeRun()
+local exitAt = nil       -- time() de la sortie du Repaire (delai de grace en cours)
+local EXIT_GRACE = 30    -- s : un ecran de chargement ou un changement de phase
+                         -- ne coupe plus le run (vu en jeu 2026-10-03 : un passage
+                         -- coupe en 2 runs de 6 s et 47 s)
+local RESUME_WINDOW = 600 -- s : un run sauve au /reload reprend s'il revient vite
+
+local function finalizeRun(endAt)
     if not active then return end
-    active.endTime = time()
+    active.endTime = endAt or time()
     active.duration = math.max(0, active.endTime - (active.startTime or active.endTime))
     active.result = (active.kills > 0) and C.RUN.KILL or C.RUN.INCOMPLETE
     -- Taille du groupe au moment du run (sert au Dashboard web).
@@ -154,6 +160,7 @@ local function finalizeRun()
     LL.RunHistory:AddRun(active)
     active = nil
     pullAt = nil
+    exitAt = nil
     wipe(inspectQueue)
     inspecting = false
 end
@@ -167,11 +174,40 @@ local function onContext(ctx)
 
     local nowIn = ctx and ctx.inLair and ctx.instanceKey
 
+    -- Reprise d'un run sauve au /reload (ou a une deconnexion breve).
+    local pend = LL.db.pendingRun
+    if pend and not active then
+        LL.db.pendingRun = nil
+        local run = pend.run
+        local fresh = (time() - (tonumber(pend.savedAt) or 0)) <= RESUME_WINDOW
+        if type(run) == "table" then
+            if fresh and nowIn and run.instanceKey == ctx.instanceKey and run.difficulty == ctx.difficultyKey then
+                active = run
+                snapshotGroup()
+                return
+            end
+            active = run
+            finalizeRun(tonumber(pend.savedAt))
+        end
+    end
+
     if active then
-        local changed = (not nowIn)
-            or active.instanceKey ~= ctx.instanceKey
-            or active.difficulty ~= ctx.difficultyKey
-        if changed then finalizeRun() end
+        if not nowIn then
+            -- Sortie : on attend EXIT_GRACE avant de clore (retour rapide = meme run).
+            if not exitAt then
+                exitAt = time()
+                local mark = exitAt
+                C_Timer.After(EXIT_GRACE, function()
+                    if active and exitAt == mark then finalizeRun(mark) end
+                end)
+            end
+            return
+        end
+        if active.instanceKey ~= ctx.instanceKey or active.difficulty ~= ctx.difficultyKey then
+            finalizeRun(exitAt)
+        else
+            exitAt = nil  -- revenu a temps : le run continue
+        end
     end
 
     if nowIn and not active then
@@ -219,6 +255,15 @@ end
 -- --- Cablage -----------------------------------------------------------------
 local function wire()
     LL:On("LAIR_CONTEXT_CHANGED", onContext)
+    -- Run mis de cote au /reload alors qu'on est deja sorti : Detection ne
+    -- signale aucun changement (hors Repaire avant et apres), on le clot ici.
+    LL:On("READY", function()
+        C_Timer.After(5, function()
+            if LL.db and LL.db.pendingRun and not LL.Detection:IsInLair() then
+                onContext(LL.Detection:GetContext())
+            end
+        end)
+    end)
 
     -- Le roster bouge (joueur qui rejoint/quitte) : on rafraichit l'instantane.
     LL:On("ROSTER_CHANGED", function()
@@ -280,7 +325,19 @@ local function wire()
             inspecting = false
             C_Timer.After(0.3, processInspect)
         elseif event == "PLAYER_LOGOUT" then
-            finalizeRun()  -- ne pas perdre un run en cours a la deconnexion
+            -- /reload ou deconnexion : le run est mis de cote. Au retour, il
+            -- reprend si l'on est toujours dans le meme Repaire (moins de 10 min),
+            -- sinon il est clos a l'heure de la sauvegarde. Plus de run coupe
+            -- en deux par un /reload.
+            if active and LL.db then
+                if exitAt then
+                    finalizeRun(exitAt)
+                else
+                    for _, m in ipairs(active.group or {}) do m.unit = nil end
+                    LL.db.pendingRun = { run = active, savedAt = time() }
+                    active = nil
+                end
+            end
         end
     end)
 end
