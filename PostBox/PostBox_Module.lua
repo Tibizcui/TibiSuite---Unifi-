@@ -1,29 +1,16 @@
 --[[============================================================================
-  PostBox_Module - Glue "mode double".
+  PostBox_Module - Glue "mode double" + evenements de la boite aux lettres.
 
   DETECTION A L'EXECUTION :
-    - TibiSuite (core) present et charge -> MODE MODULE : s'enregistre via
-      TibiSuite.RegisterModule (onglet de la barre unifiee, pas de bouton
-      minimap propre, recherche globale partagee, panneau d'options du socle).
-    - TibiSuite absent -> MODE STANDALONE : construit son propre bouton
-      minimap (orbite/drag classique), sa propre commande slash /postbox,
-      ouvre sa fenetre directement.
+    - TibiSuite (core) present -> MODE MODULE : onglet de la barre unifiee,
+      pas de bouton minimap propre, recherche globale partagee.
+    - TibiSuite absent -> MODE STANDALONE : bouton minimap propre.
   PostBoxDB ne change JAMAIS de forme entre les deux modes.
 
-  POURQUOI CE .toc N'EST PAS LoadOnDemand (contrairement a tous les autres
-  modules de la suite) : LoadOnDemand=1 empeche tout chargement automatique
-  au demarrage tant que rien n'appelle explicitement C_AddOns.LoadAddOn() sur
-  cet addon. En mode integre, c'est le core qui fait cet appel pour chaque
-  module active - mais en mode STANDALONE (sans le core), rien ne
-  declencherait jamais ce chargement : l'addon resterait inerte pour
-  toujours. PostBox doit donc se charger normalement (comme un addon
-  classique) pour honorer sa promesse de fonctionner seul.
-  CONSEQUENCE ASSUMEE : contrairement aux autres modules, decocher "PostBox"
-  dans le panneau Modules de TibiSuite ne l'empeche pas d'etre CHARGE par
-  WoW au /reload suivant (impossible a eviter sans LoadOnDemand) ; ce fichier
-  simule neanmoins la meme promesse fonctionnelle en restant silencieux et
-  inactif (aucune fenetre, aucun evenement de courrier accroche) tant que le
-  module est explicitement desactive dans TibiSuiteDB.enabledModules.
+  Aucun module de la suite n'est LoadOnDemand (mode double) : depuis la
+  7.1.5.32, decocher PostBox dans TibiSuite le desactive reellement dans WoW
+  au /reload suivant. Tant que le /reload n'est pas fait, ce fichier reste
+  silencieux (P.enabled = false : aucun evenement de courrier traite).
 ============================================================================]]
 
 local P = PostBox
@@ -34,26 +21,15 @@ local function HasCore()
   return _G.TibiSuite and _G.TibiSuite.RegisterModule and true or false
 end
 
--- Rappel du site officiel, 10s apres le login, UNIQUEMENT en mode standalone
--- (sans core) : si TibiSuite est present, c'est LUI qui affiche ce message
--- une seule fois (voir TibiSuiteCore.lua) - sinon il apparaitrait jusqu'a
--- 12 fois, une par module.
-if not HasCore() then
-  C_Timer.After(45, function()
-    print("|cFFC41F3BTibiSuite|r : plus d'infos sur |cFFFFD700https://www.tibiscui.fr|r")
-    print("|cFFC41F3BTibiSuite|r : télécharge Tibi-Companion sur |cFFFFD700https://tibiscui.fr/tibi-companion.html|r")
-  end)
-end
-
--- Le core a-t-il explicitement desactive PostBox ? Convention du core :
--- enabledModules == nil (jamais configure) => tout est active par defaut ;
--- enabledModules est une table => seule la presence de [key]=true active.
+-- enabledModules == nil (jamais configure) => tout est actif par defaut.
 local function IsEnabledByCore()
   if not (TibiSuiteDB and type(TibiSuiteDB.enabledModules) == "table") then
-    return true  -- pas encore configure (avant le premier assistant) : actif par defaut
+    return true
   end
   return TibiSuiteDB.enabledModules.Post == true
 end
+
+P.enabled = false
 
 -- ============================================================================
 -- MODE STANDALONE : bouton minimap orbitant (drag pour repositionner)
@@ -79,15 +55,12 @@ local function BuildStandaloneMinimapButton()
   icon:SetPoint("CENTER", 0, 1)
   icon:SetTexture("Interface\\AddOns\\PostBox\\medias\\Logo")
 
-  -- Badge (nombre de courriers en attente) - mis a jour par P.UpdateBadges(),
-  -- appele a chaque P.RefreshCache(). Masque quand le compteur est a 0.
-  local badge = CreateFrame("Frame", nil, btn, "BackdropTemplate")
+  local badge = CreateFrame("Frame", nil, btn)
   badge:SetSize(16, 14)
   badge:SetPoint("TOPRIGHT", btn, "TOPRIGHT", 2, 2)
   badge:SetFrameLevel(btn:GetFrameLevel() + 2)
-  badge:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
-  badge:SetBackdropColor(0.75, 0.15, 0.15, 0.95)
-  badge:SetBackdropBorderColor(0, 0, 0, 0.8)
+  local bbg = badge:CreateTexture(nil, "BACKGROUND")
+  bbg:SetAllPoints(); bbg:SetColorTexture(0.75, 0.15, 0.15, 0.95)
   local badgeText = badge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   badgeText:SetPoint("CENTER")
   badgeText:SetTextColor(1, 1, 1)
@@ -130,55 +103,12 @@ local function BuildStandaloneMinimapButton()
 end
 
 -- ============================================================================
--- OUVERTURE AUTOMATIQUE SUR MAIL_SHOW
--- ----------------------------------------------------------------
--- Sur MAIL_SHOW (le joueur interagit avec une boite aux lettres dans le
--- monde), on ouvre PostBox EN PLUS de la fenetre native de Blizzard (qui
--- reste affichee - voir la note "SUSPENDU" ci-dessous sur pourquoi on ne
--- tente plus de la masquer). PostBox lui-meme ne remplace donc, pour
--- l'instant, que l'usage quotidien (tri/traitement du courrier) ; l'envoi
--- passe encore par les widgets natifs de SendMailFrame (voir
--- PostBox_BlackBook.lua) car il n'existe aucune API publique pour joindre
--- or/objets autrement.
--- Fermeture : MAIL_CLOSED existe encore sur certains clients mais a ete
--- remplace en pratique par PLAYER_INTERACTION_MANAGER_FRAME_HIDE (patch
--- 10.0.0) ; on ecoute les deux par securite/compatibilite.
+-- MASQUAGE DE L'INBOX NATIF (option experimentale)
+-- SetAlpha(0) + EnableMouse(false) sur InboxFrame UNIQUEMENT : aucun
+-- Show()/Hide()/SetScript ni hook (deux tentatives precedentes avaient casse
+-- Echap et le clic sur la boite, via le PlayerInteractionManager securise).
+-- Confirme en jeu le 22/08/2026, onglet Envoyer intact.
 -- ============================================================================
-local function ClosePostBoxWindow()
-  if _G.PostBoxMainFrame and _G.PostBoxMainFrame:IsShown() then PostBox_Toggle() end
-end
-
--- HISTORIQUE (2 tentatives echouees avant celle-ci) :
---  1) Hide() conditionne a IsShown() : IsShown() peut valoir false au moment
---     precis de MAIL_SHOW (rien ne garantit l'ordre Blizzard/nous), donc le
---     Hide() ne partait jamais et la fenetre native restait affichee.
---  2) Hide() inconditionnel + hooksecurefunc sur Show() : a casse Echap ET
---     le clic sur la boite aux lettres dans le monde ENTIEREMENT, confirme
---     en jeu. Les boites aux lettres passent par le systeme securise
---     PlayerInteractionManager de Blizzard ; hooksecurefunc(mf, "Show", ...)
---     qui appelle self:Hide() depuis ce contexte a contamine ce chemin
---     securise (meme categorie de bug que la collision Echap/Ellesmere plus
---     haut dans ce fichier). Corrige par un simple /reload cote joueur.
--- TENTATIVE ACTUELLE : SetAlpha(0) + EnableMouse(false) uniquement - AUCUN
--- appel a Show()/Hide()/SetScript ni hook sur ce frame. C'est le meme
--- pattern deja valide sans taint pour la barre XP native (voir
--- XPBar.lua/EnforceNativeBar). Desactive par defaut (PostBoxDB.
--- replaceNativeMailbox = false) : l'utilisateur l'active volontairement
--- depuis les options, en connaissance du caractere experimental (voir
--- OPT_REPLACE_MAILBOX_NOTE dans PostBox_Locale.lua).
---
--- CORRECTIF CONFIRME EN JEU (22/08/2026) : cible P.GetInboxContentFrame()
--- (InboxFrame) au lieu du conteneur entier, pour laisser l'onglet "Envoyer
--- un message" utilisable - le conteneur porte les deux onglets, le masquer
--- en entier bloquait completement l'envoi. Premier essai avait semble
--- infructueux (InboxFrame masque ne masquait visiblement rien), mais
--- diagnostic /run a confirme que MailItem1:GetParent() vaut bien
--- "InboxFrame" (ciblage correct) et que l'echec initial etait un probleme de
--- timing (InboxFrame pas encore cree au tout premier MAIL_SHOW), resolu en
--- retentant P.SetNativeMailVisible(false) a chaque P.RefreshCache() (pas
--- seulement au MAIL_SHOW initial), exactement comme P.TryHookSendMail.
--- Confirme par capture d'ecran : inbox masquee (SetAlpha 0), onglet "Envoyer
--- un message" pleinement fonctionnel (formulaire natif complet).
 function P.SetNativeMailVisible(shown)
   local inbox = P.GetInboxContentFrame and P.GetInboxContentFrame()
   if not inbox then return end
@@ -186,39 +116,118 @@ function P.SetNativeMailVisible(shown)
   if inbox.EnableMouse then inbox:EnableMouse(shown) end
 end
 
+-- ============================================================================
+-- TRADEBLOCK : bloque les demandes d'echange tant que la boite est ouverte
+-- (comme Postal). On ne touche au CVar que s'il etait a 0, et on note qu'il
+-- faut le remettre : meme une deconnexion brutale est rattrapee au login.
+-- ============================================================================
+local function TradeBlockOn()
+  if not PostBoxDB.tradeBlock or not (GetCVar and SetCVar) then return end
+  local ok, cur = pcall(GetCVar, "blockTrades")
+  if ok and cur == "0" then
+    if pcall(SetCVar, "blockTrades", "1") then PostBoxDB.tradeBlockRestore = true end
+  end
+end
+
+local function TradeBlockOff()
+  if PostBoxDB and PostBoxDB.tradeBlockRestore and SetCVar then
+    pcall(SetCVar, "blockTrades", "0")
+    PostBoxDB.tradeBlockRestore = nil
+  end
+end
+
+-- ============================================================================
+-- OUVERTURE / FERMETURE DE LA BOITE AUX LETTRES
+-- MAIL_CLOSED existe encore mais PLAYER_INTERACTION_MANAGER_FRAME_HIDE l'a
+-- remplace en pratique (10.0.0) : on ecoute les deux.
+-- ============================================================================
+local function ClosePostBoxWindow()
+  if _G.PostBoxMainFrame and _G.PostBoxMainFrame:IsShown() then PostBox_Toggle() end
+end
+
+local function OnMailboxClosed()
+  if not P.mailboxOpen then return end
+  P.SetNativeMailVisible(true)
+  P.SetMailboxOpen(false)
+  TradeBlockOff()
+  ClosePostBoxWindow()
+  if P.BlackBook and P.BlackBook.OnMailClosed then P.BlackBook.OnMailClosed() end
+  if P.Mule and P.Mule.OnMailClosed then P.Mule.OnMailClosed() end
+end
+
+local function OnMailboxShown()
+  if PostBoxDB.replaceNativeMailbox then P.SetNativeMailVisible(false) end
+  P.SetMailboxOpen(true)
+  TradeBlockOn()
+  P.OpenWindow()
+  P.RefreshCache(true)
+  if P.BlackBook and P.BlackBook.OnMailShow then P.BlackBook.OnMailShow() end
+  -- Ramassage auto : on laisse le temps au serveur de remplir la boite.
+  C_Timer.After(1.2, function()
+    if P.mailboxOpen then
+      P.RefreshCache(false)
+      P.AutoCollectSold()
+    end
+  end)
+end
+
 local mailEvtFrame = CreateFrame("Frame")
 mailEvtFrame:RegisterEvent("MAIL_SHOW")
 mailEvtFrame:RegisterEvent("MAIL_CLOSED")
+mailEvtFrame:RegisterEvent("MAIL_INBOX_UPDATE")
 mailEvtFrame:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_HIDE")
+mailEvtFrame:RegisterEvent("PLAYER_LOGOUT")
 mailEvtFrame:SetScript("OnEvent", function(_, event, arg1)
-  if not IsEnabledByCore() then return end  -- module desactive via le core : reste silencieux
+  if event == "PLAYER_LOGOUT" then TradeBlockOff() return end
+  if not P.enabled then return end
   if event == "MAIL_SHOW" then
-    if PostBoxDB and PostBoxDB.replaceNativeMailbox then P.SetNativeMailVisible(false) end
-    if P.SetMailboxOpen then P.SetMailboxOpen(true) end
-    if P.OpenWindow then P.OpenWindow() end
-    if P.RefreshCache then P.RefreshCache() end
+    OnMailboxShown()
+  elseif event == "MAIL_INBOX_UPDATE" then
+    P.RequestRefresh()
   elseif event == "MAIL_CLOSED" then
-    P.SetNativeMailVisible(true)
-    if P.SetMailboxOpen then P.SetMailboxOpen(false) end
-    ClosePostBoxWindow()
+    OnMailboxClosed()
   elseif event == "PLAYER_INTERACTION_MANAGER_FRAME_HIDE" then
     if Enum.PlayerInteractionType and arg1 == Enum.PlayerInteractionType.MailInfo then
-      P.SetNativeMailVisible(true)
-      if P.SetMailboxOpen then P.SetMailboxOpen(false) end
-      ClosePostBoxWindow()
+      OnMailboxClosed()
     end
   end
 end)
 
 -- ============================================================================
+-- COMMANDE SLASH (les deux modes)
+-- ============================================================================
+local function Slash(msg)
+  msg = strtrim((msg or ""):lower())
+  if msg == "options" then PostBox_OpenOptions()
+  elseif msg == "mule" then if P.Mule then P.Mule.Toggle() end
+  elseif msg == "persos" or msg == "alts" then if P.Alts then P.Alts.Toggle() end
+  elseif msg == "journal" or msg == "ledger" then if P.Ledger then P.Ledger.Toggle() end
+  elseif msg == "carnet" or msg == "book" then if P.BlackBook then P.BlackBook.Toggle() end
+  elseif msg == "dnw" then P.ToggleDNWWindow()
+  elseif msg == "badge" then
+    local unread = 0
+    for _, e in ipairs(P.cache) do if not e.wasRead then unread = unread + 1 end end
+    local num, total = GetInboxNumItems()
+    print(string.format("|cFFB87838PostBox|r badge : boite ouverte=%s, HasNewMail=%s, GetInboxNumItems=%s/%s, cache=%d, non lus=%d",
+      tostring(P.mailboxOpen), tostring(HasNewMail and HasNewMail()), tostring(num), tostring(total), #P.cache, unread))
+  elseif msg == "debug" then
+    P.debugOpenAll = not P.debugOpenAll
+    print("|cFFB87838PostBox|r trace : " .. (P.debugOpenAll and "activee" or "desactivee"))
+  elseif msg == "help" or msg == "?" then
+    print(L.SLASH_HELP)
+  else
+    PostBox_Toggle()
+  end
+end
+
+-- ============================================================================
 -- INITIALISATION
 -- ============================================================================
 local function Init()
-  if not IsEnabledByCore() then
-    -- Desactive via le panneau Modules du core : reste silencieux (voir note
-    -- en tete de fichier sur l'absence de LoadOnDemand pour ce module).
-    return
-  end
+  -- Restaure le CVar d'echange si la session precedente s'est mal terminee.
+  TradeBlockOff()
+  if not IsEnabledByCore() then return end
+  P.enabled = true
 
   if HasCore() then
     TibiSuite.RegisterModule({
@@ -233,56 +242,50 @@ local function Init()
     BuildStandaloneMinimapButton()
   end
 
-  -- Commande slash disponible dans les DEUX modes (comme le reste de la
-  -- suite - /dt, /lt, /rt, etc. fonctionnent aussi bien integres que
-  -- standalone) : avant ce correctif, /postbox n'existait qu'en standalone.
   SLASH_POSTBOX1 = "/postbox"
   SLASH_POSTBOX2 = "/pb"
-  SlashCmdList["POSTBOX"] = function(msg)
-    msg = strtrim((msg or ""):lower())
-    if msg == "options" then PostBox_OpenOptions()
-    elseif msg == "badge" then
-      -- Diagnostic : compare ce que voit PostBox avec l'API Blizzard.
-      local unread = 0
-      for _, e in ipairs(P.cache) do if not e.wasRead then unread = unread + 1 end end
-      local num, total = GetInboxNumItems()
-      print(string.format("|cFFB87838PostBox|r badge : boite ouverte=%s, HasNewMail=%s, GetInboxNumItems=%s/%s, cache=%d, non lus=%d",
-        tostring(P.mailboxOpen), tostring(HasNewMail and HasNewMail()), tostring(num), tostring(total), #P.cache, unread))
-    elseif msg == "debug" then
-      -- Trace de "Tout ouvrir" : une ligne par courrier traite, relance ou abandon.
-      P.debugOpenAll = not P.debugOpenAll
-      print("|cFFB87838PostBox|r trace Tout ouvrir : " .. (P.debugOpenAll and "activee" or "desactivee"))
-    else PostBox_Toggle() end
+  SlashCmdList["POSTBOX"] = Slash
+
+  -- /reload devant la boite deja ouverte : MAIL_SHOW ne revient pas.
+  local mf = P.GetMailFrame and P.GetMailFrame()
+  if mf and mf:IsShown() then OnMailboxShown() end
+
+  -- Message de connexion : en suite, on suit TibiSuiteDB.loginMsg (seul
+  -- "full" fait parler les modules) ; en autonome, message complet.
+  local mode = "full"
+  if HasCore() then mode = (TibiSuiteDB and TibiSuiteDB.loginMsg) or "one" end
+  if mode == "full" then
+    print(string.format(L.LOGIN_MSG, P.VERSION))
+  end
+  if not HasCore() then
+    C_Timer.After(45, function()
+      print("|cFFC41F3BTibiSuite|r : plus d'infos sur |cFFFFD700https://www.tibiscui.fr|r")
+      print("|cFFC41F3BTibiSuite|r : télécharge Tibi-Companion sur |cFFFFD700https://tibiscui.fr/tibi-companion.html|r")
+    end)
   end
 
-  -- Rechargement (/reload) pendant que la boite est deja ouverte : MAIL_SHOW
-  -- ne se redeclenche pas, sans ceci le compteur resterait a 0 jusqu'a la
-  -- prochaine ouverture.
-  if P.SetMailboxOpen and _G.MailFrame and _G.MailFrame:IsShown() then
-    P.SetMailboxOpen(true)
-  end
+  -- Alerte : courriers d'alts (ou de ce perso) qui vont bientot expirer.
+  C_Timer.After(6, function()
+    if P.Alts and P.Alts.LoginAlert then pcall(P.Alts.LoginAlert) end
+  end)
 
-  print("|cFFB87838PostBox|r v7.1.5.36 chargé -- tapez |cFFFFD700/pb|r pour ouvrir.")
-
-  -- Le courrier ouvert par le systeme au login (frere du perso) reste geree
-  -- par Blizzard ; on rafraichit juste notre cache si la fenetre est deja
-  -- ouverte (utile apres un /reload avec la fenetre repositionnee visible).
-  if PostBoxDB.open and P.BuildUI then
+  -- Fenetre laissee ouverte avant le /reload : on la rouvre (comportement
+  -- historique conserve).
+  if PostBoxDB.open and not P.mailboxOpen then
     P.BuildUI()
-    PostBox_Toggle()
+    if not _G.PostBoxMainFrame:IsShown() then PostBox_Toggle() end
   end
 end
 
 local evtFrame = CreateFrame("Frame")
 evtFrame:RegisterEvent("ADDON_LOADED")
 evtFrame:RegisterEvent("PLAYER_LOGIN")
-evtFrame:SetScript("OnEvent", function(self, event, arg1)
+evtFrame:SetScript("OnEvent", function(_, event, arg1)
   if event == "ADDON_LOADED" and arg1 == "PostBox" then
     P.InitDB()
   elseif event == "PLAYER_LOGIN" then
-    -- Petit delai : si TibiSuite est present, on le laisse d'abord terminer
-    -- son propre PLAYER_LOGIN (assistant premier lancement / activation des
-    -- modules) avant de lire TibiSuiteDB.enabledModules.
+    -- On laisse le core terminer son propre PLAYER_LOGIN avant de lire
+    -- TibiSuiteDB.enabledModules.
     C_Timer.After(0.5, Init)
   end
 end)

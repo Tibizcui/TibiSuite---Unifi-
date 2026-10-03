@@ -192,17 +192,22 @@ eux-mêmes (Minimap, EditBox, modèles...). Un seul moteur d'animation
 (`Hover.lua`) qui s'endort quand rien ne bouge. Codes de profil `OPA1:` (LZW de
 Stats copié dans `Opacity/Libs`, non lu par le site).
 
-## Module PostBox (rétro-ingénierie de Postal, en chantier)
+## Module PostBox (courrier, inspiré du cahier des charges de Postal)
 
-Réécriture de zéro en Lua natif style TibiSuite de l'addon Postal, compatible WoW
-12.1 via API natives (`C_Mail`). On part des fonctions de Postal comme cahier des
-charges, pas de son code. Défauts : dossier/addon PostBox, `PostBoxDB`, accent vert
-émeraude `{0.20, 0.72, 0.55}`, onglet "PostBox". Fonctions à recréer : OpenAll
-(ramassage masse, slots libres configurables, filtres AH), Express (Maj/Ctrl/Alt),
-Select (cases/plages/par expéditeur), BlackBook (contacts/alts/autocomplétion),
-Rake, Forward, CarbonCopy, TradeBlock, DoNotWant, QuickAttach. Tibiscui veut des
-options "waouh" génératrices de téléchargements, à proposer AVANT d'intégrer.
-Workflow validé : **présenter le PLAN avant d'écrire le code**.
+Lua natif, pas de code de Postal. `PostBoxDB`, clé de module `Post`, accent
+**laiton** `{0.72, 0.47, 0.22}` (catalogue du core identique), slash `/pb`.
+Fichiers : `PostBox.lua` (cache, moteur, fenêtre, options), `PostBox_BlackBook.lua`
+(carnet, autocomplétion, Alt+clic, transfert, envoi multiple, modèles),
+`PostBox_Ledger.lua` (journal HV), `PostBox_Alts.lua` (boîte de tous les persos),
+`PostBox_Mule.lua` (mule automatique), `PostBox_Stats.lua`, `Locales/` (10 langues,
+chargées AVANT `PostBox_Locale.lua` qui porte la base anglaise).
+Règles confirmées en jeu : une seule prise serveur à la fois, en-têtes figés tant
+que la boîte reste ouverte (lire `GetInboxItemLink` en direct), parcours du dernier
+au premier index. **Toute prise passe par `P.OpenAll(opts)`** (keys / categories /
+moneyOnly / allowCOD / silent / onDone) ; jamais de boucle synchrone de `Take*`.
+L'or ne compte qu'à `PLAYER_MONEY`. Les envois se suivent via `P.OnSendResult`
+(MAIL_SEND_SUCCESS / MAIL_FAILED). Workflow validé : **présenter le PLAN avant
+d'écrire le code**.
 
 ## Vérification
 

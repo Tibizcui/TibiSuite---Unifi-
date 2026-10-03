@@ -1,40 +1,47 @@
 --[[============================================================================
-  PostBox_Locale - Chaines localisees + mots-cles de classification du
-  courrier de l'Hotel des ventes, selon la langue du CLIENT DE JEU
-  (GetLocale()), pas un choix manuel : la suite s'adapte automatiquement a la
-  region du joueur.
+  PostBox_Locale - Base anglaise (complete) + selection de la langue.
 
-  Convention reprise de SkillTracker/DailyTracker (deja utilisee ailleurs dans
-  la suite) : une table de base COMPLETE (anglais, enUS) sert de filet de
-  secours ; chaque langue supplementaire ne fournit que ses propres valeurs,
-  et toute cle manquante retombe silencieusement sur l'anglais (jamais de nil
-  affiche a l'ecran). PostBox.L est la table finale a utiliser partout.
+  Langue = celle du CLIENT DE JEU (GetLocale()), jamais un reglage manuel.
+  Chaque fichier de Locales/ (charge AVANT celui-ci, voir PostBox.toc) ne
+  s'active que pour sa langue et depose sa table dans PostBox._LOC. Toute cle
+  absente retombe sur l'anglais ci-dessous (jamais de nil a l'ecran).
 
-  IMPORTANT (a verifier en jeu, non teste) : les mots-cles AH_KEYWORDS servent
-  a deviner la categorie d'un courrier de l'Hotel des ventes (annule / expire
-  / surenchere / vendu / gagne) a partir de l'expediteur et du sujet renvoyes
-  par le SERVEUR dans la langue du client - ces libelles exacts n'ont pas pu
-  etre verifies en jeu pour l'allemand et l'espagnol (ni meme parfaitement
-  pour le francais/anglais) : ce sont des mots-cles plausibles, a ajuster une
-  fois testes avec du vrai courrier d'Hotel des ventes dans chaque langue.
+  AH_KEYWORDS : mots-cles de repli pour classer le courrier de l'Hotel des
+  ventes quand la facture (GetInboxInvoiceInfo) ne repond pas. Compares apres
+  UI.Normalize (minuscules, accents retires). Non verifies en jeu pour toutes
+  les langues : la facture est la voie principale depuis la 7.1.5.37.
 ============================================================================]]
 
 PostBox = PostBox or {}
 
--- ============================================================================
--- BASE ANGLAISE (complete - sert de filet de secours pour toute langue non
--- traduite integralement, y compris les regions non listees ci-dessous)
--- ============================================================================
+local P_INFO = "|cffFFD700[PostBox]|r "
+local P_WARN = "|cffFF8040[PostBox]|r "
+local P_ERR  = "|cffFF5555[PostBox]|r "
+
 local BASE = {
   -- Fenetre principale
-  WINDOW_COUNT_FMT        = "%d mails - %s collected this session",
+  WINDOW_COUNT_FMT        = "%d mails · %s collected this session",
+  WINDOW_MORE_FMT         = "  (+%d more waiting on the server)",
   BTN_OPENALL             = "Open All",
-  BTN_PROCESS_SELECTION   = "Process Selection",
-  BTN_BLACKBOOK           = "BlackBook",
-  BTN_STATS               = "Stats",
-  BTN_COLLECT_UNSOLD      = "Collect Unsold",
+  BTN_PROCESS_SELECTION   = "Take Selected",
   BTN_DELETE_SELECTION    = "Delete",
+  BTN_COLLECT_UNSOLD      = "Collect Unsold",
   BTN_REFRESH             = "Refresh",
+  BTN_STATS               = "Stats",
+  BTN_LEDGER              = "AH Ledger",
+  BTN_ALTS                = "My Alts",
+  BTN_MULE                = "Mule",
+  BTN_BLACKBOOK           = "BlackBook",
+  BTN_FORWARD             = "Forward",
+  TIP_OPENALL             = "Takes gold and items from every mail matching the filters, one at a time. Cash-on-delivery mails are always skipped.",
+  TIP_PROCESS             = "Takes the gold and items of the ticked mails (cash-on-delivery mails are skipped).",
+  TIP_DELETE              = "Deletes the ticked mails that are already empty. A mail that still holds gold or items is never deleted.",
+  TIP_UNSOLD              = "Collects expired and cancelled auctions in one click.",
+  TIP_LEDGER              = "Every Auction House sale and purchase, read from the invoices.",
+  TIP_ALTS                = "The mailbox of all your characters: pending gold, items, expiries.",
+  TIP_MULE                = "Sends whole categories of materials to your alts in one click.",
+  TIP_BLACKBOOK           = "Contacts, alts, recent recipients, templates and multi-send.",
+  TIP_FORWARD             = "Takes this mail's content and prepares the same mail for another recipient.",
   COL_SENDER              = "Sender",
   COL_ITEM                = "Item",
   FILTER_CANCELLED        = "Cancelled",
@@ -43,54 +50,100 @@ local BASE = {
   FILTER_SOLD             = "Sold",
   FILTER_WON              = "Won",
   FILTER_OTHER            = "Other",
-  MSG_OPENALL_START       = "|cffFFB347[PostBox]|r Opening all mail...",
-  MSG_OPENALL_BAGSFULL_FMT= "|cffFF8040[PostBox]|r Stopped: bag reserve reached (%d free slots requested).",
-  POPUP_COD_RETURN_TEXT   = "This mail has a cash-on-delivery charge of %s. Return it anyway?",
+  LIST_HINT               = "Shift-click: take · Ctrl-click: return · Right-click: accept COD",
+  LIST_EMPTY              = "No mail.",
+  ROW_COD_FMT             = "Cash on delivery: %s",
+  ROW_HINT                = "Click: read · Shift-click: take · Ctrl-click: return · Right-click: take and accept the cash on delivery",
+  DNW_TOOLTIP             = "Do Not Want: Open All returns this item to its sender instead of taking it. Click to toggle.",
+
+  MSG_OPENALL_START       = P_INFO .. "Opening all mail...",
+  MSG_OPENALL_BAGSFULL_FMT= P_WARN .. "Stopped: bag reserve reached (%d free slots kept).",
+  MSG_COD_SKIPPED_FMT     = P_WARN .. "%d cash-on-delivery mail(s) skipped (right-click one to accept the charge).",
+  MSG_TAKE_FAILED_FMT     = P_ERR .. "%d take(s) not confirmed by the server: run Open All again.",
+  MSG_AUTOCOLLECT_FMT     = P_INFO .. "Auction sales collected automatically: %s.",
+  MSG_BUSY                = P_WARN .. "An operation is already running, please wait.",
+  MSG_CANT_RETURN         = P_WARN .. "This mail cannot be returned (system mail or already returned).",
   POPUP_COD_OPEN_TEXT     = "Accept this cash-on-delivery charge of %s?",
   RECAP_TITLE             = "Loot Recovered",
   RECAP_GOLD_FMT          = "Gold: %s",
   RECAP_NO_GOLD           = "No gold collected.",
-  MSG_DNW_RETURNED_FMT    = "|cffFF8040[PostBox]|r %d unwanted item(s) automatically returned.",
-  MSG_DELETE_RESULT_FMT   = "|cffFFD700[PostBox]|r %d mail(s) deleted.",
-  MSG_DELETE_RESULT_SKIPPED_FMT = "|cffFFD700[PostBox]|r %d mail(s) deleted, %d skipped (unclaimed gold/items).",
-  MSG_DELETE_RESULT_FAILED_FMT = "|cffFF5555[PostBox]|r %d mail(s) deleted, %d FAILED (server refused or unsupported).",
-  MSG_DELETE_FAIL_DETAIL_FMT = "|cffFF5555[PostBox]|r   refused: %s",
-  PREVIEW_TOOLTIP         = "Click to read the letter",
+  MSG_DNW_RETURNED_FMT    = P_WARN .. "%d unwanted item(s) automatically returned.",
+  MSG_DELETE_RESULT_FMT   = P_INFO .. "%d mail(s) deleted.",
+  MSG_DELETE_RESULT_SKIPPED_FMT = P_INFO .. "%d mail(s) deleted, %d skipped (unclaimed gold/items).",
+  MSG_DELETE_RESULT_FAILED_FMT = P_ERR .. "%d mail(s) deleted, %d FAILED (refused by the server).",
+  MSG_DELETE_FAIL_DETAIL_FMT = P_ERR .. "  refused: %s",
   PREVIEW_LOADING         = "Loading...",
   PREVIEW_UNAVAILABLE     = "Content unavailable (not yet loaded by the server).",
-  PREVIEW_PLACEHOLDER     = "Click a subject to read its content.",
-  PREVIEW_NAV_HINT        = "Up / Down arrows: previous / next mail",
+  PREVIEW_PLACEHOLDER     = "Click a mail to read it.",
   PREVIEW_PREV            = "< Previous",
   PREVIEW_NEXT            = "Next >",
+  INVOICE_SOLD_FMT        = "Auction sold: %s x%d to %s\nPrice: %s · AH cut: %s · Deposit back: %s\nNet received: %s",
+  INVOICE_BOUGHT_FMT      = "Auction won: %s x%d from %s for %s",
+  INVOICE_PENDING_FMT     = "Sale pending: %s for %s (the gold arrives within the hour)",
+  DNW_TITLE               = "Unwanted items",
+  DNW_NOTE                = "Open All returns these items to their sender. Mark them with the icon at the end of a mail row.",
+  DNW_EMPTY               = "No item marked.",
+  DNW_REMOVE              = "Remove",
 
-  -- Panneau d'options
+  -- Options
   OPT_TITLE               = "PostBox - Options",
   OPT_SEC_OPENALL         = "Mass Opening",
-  OPT_RESERVE_SLOTS       = "Bag slots to reserve",
-  OPT_AUTORETURN_DNW      = "Automatically return unwanted items (DoNotWant)",
+  OPT_RESERVE_SLOTS       = "Bag slots to keep free",
+  OPT_AUTORETURN_DNW      = "Return unwanted items automatically",
+  OPT_MANAGE_DNW          = "Manage unwanted items...",
+  OPT_AUTOCOLLECT         = "Collect auction sales when the mailbox opens",
+  OPT_AUTOCOLLECT_TIP     = "Takes only the gold of sold auctions: never items, never cash on delivery.",
   OPT_SEC_SECURITY        = "Safety",
-  OPT_COD_THRESHOLD       = "COD confirmation threshold (in gold)",
+  OPT_COD_THRESHOLD       = "Confirm cash on delivery from (gold)",
+  OPT_COD_NOTE            = "0 = always confirm. Open All and selections never pay a cash on delivery, only a right-click does.",
   OPT_EXPIRY_DAYS         = "Expiry warning (days left)",
+  OPT_TRADEBLOCK          = "Block trade requests at the mailbox",
+  OPT_TRADEBLOCK_TIP      = "Turns on the game's Block Trades setting while the mailbox is open, then restores it.",
+  OPT_SEC_ALTS            = "My Alts",
+  OPT_ALT_ALERT           = "Login alert: alt mail about to expire",
+  OPT_ALT_ALERT_DAYS      = "Alert window (days)",
+  OPT_SEC_MULE            = "Mule",
+  OPT_MULE_AUTOSEND       = "Send automatically (otherwise you click Send)",
+  OPT_MULE_AUTOSEND_TIP   = "If the game refuses a send made by an addon, the mule switches to manual mode by itself.",
   OPT_SEC_DISPLAY         = "Display",
   OPT_SMART_SORT          = "Smart sort (urgency, type, sender)",
-  OPT_SEC_SESSION         = "Session",
-  OPT_SESSION_NOTE        = "Gold collected this session: updated live in the main window.",
-  OPT_RESET_RAKE          = "Reset counter (Rake)",
   OPT_SEC_MAILBOX         = "Mailbox",
   OPT_REPLACE_MAILBOX     = "Replace the native mailbox with PostBox",
-  OPT_REPLACE_MAILBOX_NOTE= "Experimental: visually hides the native window (without touching it technically) while PostBox is open. Sending mail still uses the native Send Mail tab (no public API lets an addon attach gold/items otherwise). If Escape or clicks ever stop responding, /reload immediately.",
+  OPT_REPLACE_MAILBOX_NOTE= "Experimental: visually hides the native inbox while PostBox is open. Sending still uses the native Send tab. If Escape or clicks stop responding, /reload.",
+  OPT_SEC_SESSION         = "Session",
+  OPT_SESSION_NOTE        = "Gold collected this session is shown live in the main window.",
+  OPT_RESET_RAKE          = "Reset the session counter",
+  OPT_SEC_SUITE           = "TibiSuite",
+  OPT_HIDE_OPTS           = "Hide the floating Options button",
+  OPT_HIDE_SEARCH         = "Hide the floating search field",
+  OPT_FLOAT_NOTE          = "Shift + right-click on the window always opens the options.",
 
-  -- BlackBook
+  -- Carnet
   BB_TITLE                = "BlackBook",
-  BB_ADD                  = "Add",
+  BB_ADD                  = "Add contact",
+  BB_HINT                 = "Click a name: fills the Send tab. Tick several names for a multi-send. Names autocomplete in the native recipient field.",
+  BB_SEC_PRESETS          = "Templates",
   BB_SEC_CONTACTS         = "Contacts",
-  BB_SEC_ALTS             = "Alts (same realm/faction)",
-  BB_SEC_RECENT           = "Recent Recipients",
-  MSG_OPEN_MAILBOX_FIRST  = "|cffFF8040[PostBox]|r Open the mailbox first to use quick send.",
-  MSG_OPEN_SEND_TAB_FIRST = "|cffFF8040[PostBox]|r Open the Send Mail tab to attach an item.",
-  MSG_FORWARD_ITEMS_TAKEN = "|cffFFD700[PostBox]|r Items collected into your bags: attach them manually (Alt-click) then click Send.",
+  BB_SEC_ALTS             = "Alts (connected realms, same faction)",
+  BB_SEC_RECENT           = "Recent recipients",
+  BB_ALT_TAG              = "alt",
+  BB_CC                   = "Multi-send to ticked",
+  BB_CC_TIP               = "Write the subject, text and gold in the Send tab, tick the recipients, then click: each successful send prepares the next one.",
+  BB_SAVE_PRESET          = "Save as template",
+  BB_SAVE_PRESET_TIP      = "Saves the recipient, subject, text and gold of the Send tab.",
+  PRESET_PROMPT           = "Template name:",
+  MSG_PRESET_SAVED_FMT    = P_INFO .. "Template \"%s\" saved.",
+  MSG_PRESET_EMPTY        = P_WARN .. "The Send tab is empty: nothing to save.",
+  MSG_OPEN_MAILBOX_FIRST  = P_WARN .. "Open a mailbox first.",
+  MSG_ATTACH_FULL         = P_WARN .. "All attachment slots are used.",
+  FWD_PROMPT              = "Forward to:",
+  MSG_FWD_COD             = P_WARN .. "A cash-on-delivery mail cannot be forwarded.",
+  MSG_FWD_READY_FMT       = P_INFO .. "Forward ready: %d item(s) attached for %s. Check, then click Send.",
   FORWARD_SUBJECT_PREFIX  = "Fwd: ",
-  MSG_CARBONCOPY_FMT      = "|cffFFD700[PostBox]|r CarbonCopy %d/%d -> %s. Click Send, then run the next one.",
+  MSG_CARBONCOPY_FMT      = P_INFO .. "Multi-send %d/%d: %s. Click Send, the next one follows.",
+  MSG_CC_DONE_FMT         = P_INFO .. "Multi-send finished (%d recipients).",
+  MSG_CC_NONE             = P_WARN .. "Tick at least one recipient in the BlackBook.",
+  MSG_CC_NEED_SUBJECT     = P_WARN .. "Write a subject in the Send tab first.",
 
   -- Stats
   STATS_TITLE             = "Mail Statistics",
@@ -98,284 +151,90 @@ local BASE = {
   STATS_GOLD_SENT_FMT     = "Total gold sent: %s",
   STATS_AH_SOLD_FMT       = "Auction House sales: %s",
   STATS_AH_BOUGHT_FMT     = "Auction House purchases: %s",
-  STATS_SESSION_RAKE_FMT  = "Current session (Rake): %s",
+  STATS_AH_CUT_FMT        = "Auction House cut paid: %s",
+  STATS_SESSION_RAKE_FMT  = "Current session: %s",
   STATS_NET_FMT           = "Net revenue (account): %s",
   STATS_TOP_SENDERS       = "Top senders:",
-  STATS_HISTORY_TITLE     = "History (last 7 days, AH sales)",
+  STATS_HISTORY_TITLE     = "Last 7 days (AH sales)",
   STATS_NET_7D_FMT        = "Net (7d): %s",
   STATS_CHARS_TITLE       = "By character",
-  STATS_CHARS_EMPTY       = "  No data yet - open PostBox at least once on each character.",
+  STATS_CHARS_EMPTY       = "  No data yet: open PostBox at least once on each character.",
 
-  -- Bouton minimap / AddonCompartment / tooltips
+  -- Journal HV
+  LEDGER_TITLE            = "Auction House Ledger",
+  LEDGER_SUMMARY_FMT      = "Sales 7d: %s (%d) · 30d: %s (%d)\nPurchases 7d: %s · 30d: %s · AH cut 30d: %s",
+  LEDGER_TAB_SOLD         = "Sales",
+  LEDGER_TAB_BOUGHT       = "Purchases",
+  LEDGER_TAB_TOP          = "Top items (30d)",
+  LEDGER_HDR_SOLD         = "Date · Item · Net received · Buyer",
+  LEDGER_HDR_BOUGHT       = "Date · Item · Price · Seller",
+  LEDGER_HDR_TOP          = "Quantity · Item · Net revenue · Average price",
+  LEDGER_EMPTY            = "Nothing yet: every Auction House invoice seen in a mailbox is recorded here.",
+  LEDGER_NOTE             = "Read from the invoices of Auction House mail, on all your characters. Kept 120 days.",
+
+  -- Tous mes persos
+  ALTS_TITLE              = "My Alts' Mailboxes",
+  ALTS_TOTAL_FMT          = "%d mails · %s waiting · %d item(s), sends to collect included",
+  ALTS_COL_CHAR           = "Character",
+  ALTS_COL_MAILS          = "Mails",
+  ALTS_COL_GOLD           = "Gold",
+  ALTS_COL_ITEMS          = "Items",
+  ALTS_COL_COD            = "COD",
+  ALTS_COL_EXPIRY         = "Expires in",
+  ALTS_COL_SEEN           = "Seen",
+  ALTS_EMPTY              = "Visit a mailbox once on each character to fill this list.",
+  ALTS_NOTE               = "Snapshot of each character's last mailbox visit. +N = mails you sent them since.",
+  ALTS_TIP_SEEN_FMT       = "Last visit: %s ago",
+  ALTS_ITEMS_FMT          = "%d item(s)",
+  ALTS_INCOMING_FMT       = "To collect: %d mail(s), %s, %d item(s)",
+  ALERT_EXPIRE_FMT        = P_WARN .. "%s: %d mail(s) with gold or items expire soon (first in %s).",
+  ALERT_MORE_FMT          = P_WARN .. "...and %d more character(s): /pb alts",
+  TIME_EXPIRED            = "expired",
+  TIME_MIN_FMT            = "%d min",
+  TIME_H_FMT              = "%d h",
+  TIME_D_FMT              = "%.1f d",
+
+  -- Mule
+  MULE_TITLE              = "Automatic Mule",
+  MULE_INTRO              = "Rules: a category or an item goes to a character. One click sends everything, 12 attachments per mail. Bound items are never sent.",
+  MULE_TO                 = "Recipient",
+  MULE_ADD                = "Add rule",
+  MULE_SUGGEST            = "Alts with the matching profession (click to pick):",
+  MULE_SUGGEST_NONE       = "No alt with the matching profession found by SkillTracker.",
+  MULE_SUGGEST_NOST       = "Install SkillTracker to get recipient suggestions by profession.",
+  MULE_DROP               = "Drop an item here: rule for this exact item",
+  MULE_RULES              = "Rules",
+  MULE_RULE_FMT           = "%s  >  %s  |cFF888888(%d in bags)|r",
+  MULE_SELF               = "(this character, skipped)",
+  MULE_EMPTY              = "No rule yet.",
+  MULE_SUMMARY_FMT        = "Ready: %d stack(s), %d mail(s), %d recipient(s).",
+  MULE_STOP               = "Stop",
+  MULE_SEND_ALL           = "Send everything",
+  MULE_SEND_ALL_TIP       = "Needs an open mailbox and an empty Send tab.",
+  MULE_CONFIRM            = "Send these items now?",
+  MULE_PLAN_LINE_FMT      = "%s: %d stack(s), %d mail(s)",
+  MULE_POSTAGE_FMT        = "Estimated postage: %s",
+  MULE_SUBJECT_FMT        = "PostBox Mule (%d)",
+  MULE_STATUS_FMT         = "Sending to %s, mail %d...",
+  MULE_CLICK_SEND_FMT     = P_INFO .. "Mail to %s ready: click Send.",
+  MULE_DONE_FMT           = P_INFO .. "Mule finished: %d stack(s) sent in %d mail(s).",
+  MULE_STOPPED            = P_WARN .. "Mule stopped.",
+  MULE_STOPPED_CLOSED     = P_WARN .. "Mule stopped: mailbox closed.",
+  MULE_CLEAR_FIRST        = P_WARN .. "Remove the attachments from the Send tab first.",
+  MULE_NOTHING            = P_INFO .. "Nothing to send: no item in your bags matches an active rule.",
+  MULE_NO_GOLD            = P_ERR .. "Not enough gold for the postage.",
+  MULE_SEND_FAILED        = P_ERR .. "Send refused by the server (unknown recipient, full mailbox, faction?). Mule stopped.",
+  MULE_TIMEOUT            = P_ERR .. "No answer from the server: mule stopped.",
+  MULE_MANUAL_SWITCH      = P_WARN .. "The game requires a click to send: manual mode, click Send for each mail.",
+  MULE_NEED_RECIPIENT     = P_WARN .. "Enter a recipient first.",
+
+  -- Divers
+  LOGIN_MSG               = "|cFFB87838PostBox|r v%s loaded. Type |cFFFFD700/pb|r to open.",
+  SLASH_HELP              = "|cFFB87838PostBox|r : /pb, /pb options, /pb mule, /pb alts, /pb ledger, /pb book, /pb dnw, /pb debug",
   MM_TOOLTIP_LEFT         = "Left-click: open/close",
   MM_TOOLTIP_RIGHT        = "Right-click: options",
-  AC_TOOLTIP              = "Click to open/close the mailbox.",
 }
 
--- ============================================================================
--- SURCHARGES PAR LANGUE (uniquement les valeurs qui different de l'anglais ;
--- toute cle absente ici retombe automatiquement sur BASE)
--- ============================================================================
-local OVERRIDES = {}
-
-OVERRIDES.frFR = {
-  WINDOW_COUNT_FMT        = "%d courriers - %s ramasse cette session",
-  BTN_OPENALL             = "Tout ouvrir",
-  BTN_PROCESS_SELECTION   = "Traiter selection",
-  BTN_BLACKBOOK           = "Carnet",
-  BTN_STATS               = "Stats",
-  BTN_COLLECT_UNSOLD      = "Recuperer invendus",
-  BTN_DELETE_SELECTION    = "Supprimer",
-  BTN_REFRESH             = "Actualiser",
-  COL_SENDER              = "Expediteur",
-  COL_ITEM                = "Objets",
-  FILTER_CANCELLED        = "Annulees",
-  FILTER_EXPIRED          = "Expirees",
-  FILTER_OUTBID           = "Surencheries",
-  FILTER_SOLD             = "Vendues",
-  FILTER_WON              = "Gagnees",
-  FILTER_OTHER            = "Autres",
-  MSG_OPENALL_START       = "|cffFFB347[PostBox]|r Ouverture en masse en cours...",
-  MSG_OPENALL_BAGSFULL_FMT= "|cffFF8040[PostBox]|r Arret : reserve de sacs atteinte (%d slots libres demandes).",
-  POPUP_COD_RETURN_TEXT   = "Ce courrier porte un contre-remboursement de %s. Le retourner quand meme ?",
-  POPUP_COD_OPEN_TEXT     = "Accepter ce contre-remboursement de %s ?",
-  RECAP_TITLE             = "Butin recupere",
-  RECAP_GOLD_FMT          = "Or : %s",
-  RECAP_NO_GOLD           = "Aucun or ramasse.",
-  MSG_DNW_RETURNED_FMT    = "|cffFF8040[PostBox]|r %d objet(s) indesirable(s) retourne(s) automatiquement.",
-  MSG_DELETE_RESULT_FMT   = "|cffFFD700[PostBox]|r %d courrier(s) supprime(s).",
-  MSG_DELETE_RESULT_SKIPPED_FMT = "|cffFFD700[PostBox]|r %d courrier(s) supprime(s), %d ignore(s) (or/objet non recupere).",
-  MSG_DELETE_RESULT_FAILED_FMT = "|cffFF5555[PostBox]|r %d courrier(s) supprime(s), %d ECHEC(S) (refuse par le serveur ou non supporte).",
-  MSG_DELETE_FAIL_DETAIL_FMT = "|cffFF5555[PostBox]|r   refuse : %s",
-  PREVIEW_TOOLTIP         = "Clique pour lire la lettre",
-  PREVIEW_LOADING         = "Chargement...",
-  PREVIEW_UNAVAILABLE     = "Contenu indisponible (pas encore recu du serveur).",
-  PREVIEW_PLACEHOLDER     = "Clique sur un sujet pour lire son contenu.",
-  PREVIEW_NAV_HINT        = "Fleches Haut / Bas : courrier precedent / suivant",
-  PREVIEW_PREV            = "< Precedent",
-  PREVIEW_NEXT            = "Suivant >",
-
-  OPT_TITLE               = "PostBox - Options",
-  OPT_SEC_OPENALL         = "Ouverture en masse",
-  OPT_RESERVE_SLOTS       = "Slots de sac a reserver",
-  OPT_AUTORETURN_DNW      = "Retourner automatiquement les objets indesirables (DoNotWant)",
-  OPT_SEC_SECURITY        = "Securite",
-  OPT_COD_THRESHOLD       = "Seuil de confirmation COD (en or)",
-  OPT_EXPIRY_DAYS         = "Alerte d'expiration (jours restants)",
-  OPT_SEC_DISPLAY         = "Affichage",
-  OPT_SMART_SORT          = "Tri intelligent (urgence, type, expediteur)",
-  OPT_SEC_SESSION         = "Session",
-  OPT_SESSION_NOTE        = "Or ramasse cette session : mis a jour en direct dans la fenetre principale.",
-  OPT_RESET_RAKE          = "Remettre a zero le compteur (Rake)",
-  OPT_SEC_MAILBOX         = "Boite aux lettres",
-  OPT_REPLACE_MAILBOX     = "Remplacer la boite aux lettres native par PostBox",
-  OPT_REPLACE_MAILBOX_NOTE= "Experimental : masque visuellement la fenetre native (sans y toucher techniquement) pendant que PostBox est ouvert. L'envoi de courrier reste sur l'onglet natif Envoyer (aucune API publique ne permet a un addon de joindre or/objets autrement). En cas de blocage (Echap ou clic qui ne repond plus), fais /reload immediatement.",
-
-  BB_TITLE                = "Carnet (BlackBook)",
-  BB_ADD                  = "Ajouter",
-  BB_SEC_CONTACTS         = "Contacts",
-  BB_SEC_ALTS             = "Alts (meme royaume/faction)",
-  BB_SEC_RECENT           = "Destinataires recents",
-  MSG_OPEN_MAILBOX_FIRST  = "|cffFF8040[PostBox]|r Ouvre d'abord la boite aux lettres pour utiliser l'envoi rapide.",
-  MSG_OPEN_SEND_TAB_FIRST = "|cffFF8040[PostBox]|r Ouvre l'onglet Envoyer de la boite aux lettres pour joindre un objet.",
-  MSG_FORWARD_ITEMS_TAKEN = "|cffFFD700[PostBox]|r Objets recuperes dans les sacs : joins-les manuellement (Alt-clic) puis clique Envoyer.",
-  FORWARD_SUBJECT_PREFIX  = "Tr: ",
-  MSG_CARBONCOPY_FMT      = "|cffFFD700[PostBox]|r CarbonCopy %d/%d -> %s. Clique Envoyer, puis relance pour le suivant.",
-
-  STATS_TITLE             = "Statistiques de courrier",
-  STATS_GOLD_RECEIVED_FMT = "Or recu au total : %s",
-  STATS_GOLD_SENT_FMT     = "Or envoye au total : %s",
-  STATS_AH_SOLD_FMT       = "Ventes Hotel des ventes : %s",
-  STATS_AH_BOUGHT_FMT     = "Achats Hotel des ventes : %s",
-  STATS_SESSION_RAKE_FMT  = "Session en cours (Rake) : %s",
-  STATS_NET_FMT           = "Revenu net (compte) : %s",
-  STATS_TOP_SENDERS       = "Top expediteurs :",
-  STATS_HISTORY_TITLE     = "Historique (7 derniers jours, ventes HV)",
-  STATS_NET_7D_FMT        = "Net (7j) : %s",
-  STATS_CHARS_TITLE       = "Par personnage",
-  STATS_CHARS_EMPTY       = "  Aucune donnee pour l'instant - ouvre PostBox au moins une fois sur chaque personnage.",
-
-  MM_TOOLTIP_LEFT         = "Clic gauche : ouvrir/fermer",
-  MM_TOOLTIP_RIGHT        = "Clic droit : options",
-  AC_TOOLTIP              = "Clic pour ouvrir/fermer la boite aux lettres.",
-}
-
-OVERRIDES.deDE = {
-  WINDOW_COUNT_FMT        = "%d Briefe - %s in dieser Sitzung eingenommen",
-  BTN_OPENALL             = "Alles offnen",
-  BTN_PROCESS_SELECTION   = "Auswahl bearbeiten",
-  BTN_BLACKBOOK           = "Adressbuch",
-  BTN_STATS               = "Statistik",
-  BTN_COLLECT_UNSOLD      = "Unverkaufte einsammeln",
-  BTN_DELETE_SELECTION    = "Loschen",
-  BTN_REFRESH             = "Aktualisieren",
-  COL_SENDER              = "Absender",
-  COL_ITEM                = "Objekt",
-  FILTER_CANCELLED        = "Storniert",
-  FILTER_EXPIRED          = "Abgelaufen",
-  FILTER_OUTBID           = "Uberboten",
-  FILTER_SOLD             = "Verkauft",
-  FILTER_WON              = "Ersteigert",
-  FILTER_OTHER            = "Sonstige",
-  MSG_OPENALL_START       = "|cffFFB347[PostBox]|r Post wird geoffnet...",
-  MSG_OPENALL_BAGSFULL_FMT= "|cffFF8040[PostBox]|r Gestoppt: Taschenreserve erreicht (%d freie Platze gefordert).",
-  POPUP_COD_RETURN_TEXT   = "Dieser Brief hat eine Nachnahmegebuhr von %s. Trotzdem zuruckschicken?",
-  POPUP_COD_OPEN_TEXT     = "Diese Nachnahmegebuhr von %s akzeptieren?",
-  RECAP_TITLE             = "Erhaltene Beute",
-  RECAP_GOLD_FMT          = "Gold: %s",
-  RECAP_NO_GOLD           = "Kein Gold eingenommen.",
-  MSG_DNW_RETURNED_FMT    = "|cffFF8040[PostBox]|r %d unerwunschte(s) Objekt(e) automatisch zuruckgeschickt.",
-  MSG_DELETE_RESULT_FMT   = "|cffFFD700[PostBox]|r %d Brief(e) geloscht.",
-  MSG_DELETE_RESULT_SKIPPED_FMT = "|cffFFD700[PostBox]|r %d Brief(e) geloscht, %d ubersprungen (Gold/Objekt noch nicht abgeholt).",
-  MSG_DELETE_RESULT_FAILED_FMT = "|cffFF5555[PostBox]|r %d Brief(e) geloscht, %d FEHLGESCHLAGEN (vom Server abgelehnt oder nicht unterstutzt).",
-  PREVIEW_TOOLTIP         = "Klicken, um den Brief zu lesen",
-  PREVIEW_LOADING         = "Wird geladen...",
-  PREVIEW_UNAVAILABLE     = "Inhalt nicht verfugbar (noch nicht vom Server erhalten).",
-  PREVIEW_PLACEHOLDER     = "Klicke auf einen Betreff, um den Inhalt zu lesen.",
-  PREVIEW_NAV_HINT        = "Pfeiltasten Hoch/Runter: vorherige/nachste Post",
-  PREVIEW_PREV            = "< Vorherige",
-  PREVIEW_NEXT            = "Nachste >",
-
-  OPT_TITLE               = "PostBox - Optionen",
-  OPT_SEC_OPENALL         = "Massenoffnung",
-  OPT_RESERVE_SLOTS       = "Reservierte Taschenplatze",
-  OPT_AUTORETURN_DNW      = "Unerwunschte Objekte automatisch zuruckschicken (DoNotWant)",
-  OPT_SEC_SECURITY        = "Sicherheit",
-  OPT_COD_THRESHOLD       = "Bestatigungsschwelle fur Nachnahme (in Gold)",
-  OPT_EXPIRY_DAYS         = "Ablaufwarnung (verbleibende Tage)",
-  OPT_SEC_DISPLAY         = "Anzeige",
-  OPT_SMART_SORT          = "Intelligente Sortierung (Dringlichkeit, Typ, Absender)",
-  OPT_SEC_SESSION         = "Sitzung",
-  OPT_SESSION_NOTE        = "In dieser Sitzung eingenommenes Gold: live im Hauptfenster aktualisiert.",
-  OPT_RESET_RAKE          = "Zahler zurucksetzen (Rake)",
-  OPT_SEC_MAILBOX         = "Briefkasten",
-  OPT_REPLACE_MAILBOX     = "Nativen Briefkasten durch PostBox ersetzen",
-  OPT_REPLACE_MAILBOX_NOTE= "Experimentell: blendet das native Fenster nur optisch aus (ohne es technisch zu beruhren), solange PostBox geoffnet ist. Der Versand nutzt weiterhin den nativen Reiter 'Senden' (keine offentliche API erlaubt Addons, Gold/Objekte anders anzuhangen). Falls Escape oder Klicks nicht mehr reagieren, sofort /reload ausfuhren.",
-
-  BB_TITLE                = "Adressbuch (BlackBook)",
-  BB_ADD                  = "Hinzufugen",
-  BB_SEC_CONTACTS         = "Kontakte",
-  BB_SEC_ALTS             = "Zweitcharaktere (gleicher Realm/Fraktion)",
-  BB_SEC_RECENT           = "Letzte Empfanger",
-  MSG_OPEN_MAILBOX_FIRST  = "|cffFF8040[PostBox]|r Offne zuerst den Briefkasten, um den Schnellversand zu nutzen.",
-  MSG_OPEN_SEND_TAB_FIRST = "|cffFF8040[PostBox]|r Offne den Reiter 'Senden' des Briefkastens, um ein Objekt anzuhangen.",
-  MSG_FORWARD_ITEMS_TAKEN = "|cffFFD700[PostBox]|r Objekte in die Taschen ubernommen: hange sie manuell an (Alt-Klick), dann klicke Senden.",
-  FORWARD_SUBJECT_PREFIX  = "Wg: ",
-  MSG_CARBONCOPY_FMT      = "|cffFFD700[PostBox]|r CarbonCopy %d/%d -> %s. Klicke Senden, dann starte den nachsten.",
-
-  STATS_TITLE             = "Poststatistik",
-  STATS_GOLD_RECEIVED_FMT = "Gesamt erhaltenes Gold: %s",
-  STATS_GOLD_SENT_FMT     = "Gesamt gesendetes Gold: %s",
-  STATS_AH_SOLD_FMT       = "Auktionshaus-Verkaufe: %s",
-  STATS_AH_BOUGHT_FMT     = "Auktionshaus-Kaufe: %s",
-  STATS_SESSION_RAKE_FMT  = "Aktuelle Sitzung (Rake): %s",
-  STATS_NET_FMT           = "Nettoertrag (Konto): %s",
-  STATS_TOP_SENDERS       = "Top-Absender:",
-  STATS_HISTORY_TITLE     = "Verlauf (letzte 7 Tage, AH-Verkaufe)",
-  STATS_NET_7D_FMT        = "Netto (7T): %s",
-  STATS_CHARS_TITLE       = "Nach Charakter",
-  STATS_CHARS_EMPTY       = "  Noch keine Daten - offne PostBox mindestens einmal auf jedem Charakter.",
-
-  MM_TOOLTIP_LEFT         = "Linksklick: offnen/schliessen",
-  MM_TOOLTIP_RIGHT        = "Rechtsklick: Optionen",
-  AC_TOOLTIP              = "Klicken, um den Briefkasten zu offnen/schliessen.",
-}
-
-OVERRIDES.esES = {
-  WINDOW_COUNT_FMT        = "%d cartas - %s recolectado en esta sesion",
-  BTN_OPENALL             = "Abrir todo",
-  BTN_PROCESS_SELECTION   = "Procesar seleccion",
-  BTN_BLACKBOOK           = "Agenda",
-  BTN_STATS               = "Estadisticas",
-  BTN_COLLECT_UNSOLD      = "Recoger no vendidos",
-  BTN_DELETE_SELECTION    = "Eliminar",
-  BTN_REFRESH             = "Actualizar",
-  COL_SENDER              = "Remitente",
-  COL_ITEM                = "Objeto",
-  FILTER_CANCELLED        = "Canceladas",
-  FILTER_EXPIRED          = "Caducadas",
-  FILTER_OUTBID           = "Superadas",
-  FILTER_SOLD             = "Vendidas",
-  FILTER_WON              = "Ganadas",
-  FILTER_OTHER            = "Otras",
-  MSG_OPENALL_START       = "|cffFFB347[PostBox]|r Abriendo todo el correo...",
-  MSG_OPENALL_BAGSFULL_FMT= "|cffFF8040[PostBox]|r Detenido: reserva de bolsas alcanzada (%d espacios libres solicitados).",
-  POPUP_COD_RETURN_TEXT   = "Esta carta tiene un reembolso contra entrega de %s. Devolverla de todos modos?",
-  POPUP_COD_OPEN_TEXT     = "Aceptar este reembolso contra entrega de %s?",
-  RECAP_TITLE             = "Botin recuperado",
-  RECAP_GOLD_FMT          = "Oro: %s",
-  RECAP_NO_GOLD           = "No se recolecto oro.",
-  MSG_DNW_RETURNED_FMT    = "|cffFF8040[PostBox]|r %d objeto(s) no deseado(s) devuelto(s) automaticamente.",
-  MSG_DELETE_RESULT_FMT   = "|cffFFD700[PostBox]|r %d correo(s) eliminado(s).",
-  MSG_DELETE_RESULT_SKIPPED_FMT = "|cffFFD700[PostBox]|r %d correo(s) eliminado(s), %d omitido(s) (oro/objeto sin recoger).",
-  PREVIEW_TOOLTIP         = "Clic para leer la carta",
-  PREVIEW_LOADING         = "Cargando...",
-  PREVIEW_UNAVAILABLE     = "Contenido no disponible (aun no recibido del servidor).",
-  PREVIEW_PLACEHOLDER     = "Haz clic en un asunto para leer su contenido.",
-  PREVIEW_NAV_HINT        = "Flechas Arriba / Abajo: correo anterior / siguiente",
-  PREVIEW_PREV            = "< Anterior",
-  PREVIEW_NEXT            = "Siguiente >",
-
-  OPT_TITLE               = "PostBox - Opciones",
-  OPT_SEC_OPENALL         = "Apertura masiva",
-  OPT_RESERVE_SLOTS       = "Espacios de bolsa a reservar",
-  OPT_AUTORETURN_DNW      = "Devolver automaticamente los objetos no deseados (DoNotWant)",
-  OPT_SEC_SECURITY        = "Seguridad",
-  OPT_COD_THRESHOLD       = "Umbral de confirmacion de reembolso contra entrega (en oro)",
-  OPT_EXPIRY_DAYS         = "Aviso de caducidad (dias restantes)",
-  OPT_SEC_DISPLAY         = "Visualizacion",
-  OPT_SMART_SORT          = "Orden inteligente (urgencia, tipo, remitente)",
-  OPT_SEC_SESSION         = "Sesion",
-  OPT_SESSION_NOTE        = "Oro recolectado en esta sesion: actualizado en vivo en la ventana principal.",
-  OPT_RESET_RAKE          = "Reiniciar el contador (Rake)",
-  OPT_SEC_MAILBOX         = "Buzon",
-  OPT_REPLACE_MAILBOX     = "Reemplazar el buzon nativo por PostBox",
-  OPT_REPLACE_MAILBOX_NOTE= "Experimental: oculta visualmente la ventana nativa (sin tocarla tecnicamente) mientras PostBox esta abierto. El envio sigue usando la pestana nativa Enviar (ninguna API publica permite a un addon adjuntar oro/objetos de otra forma). Si Escape o los clics dejan de responder, haz /reload de inmediato.",
-
-  BB_TITLE                = "Agenda (BlackBook)",
-  BB_ADD                  = "Anadir",
-  BB_SEC_CONTACTS         = "Contactos",
-  BB_SEC_ALTS             = "Personajes secundarios (mismo reino/faccion)",
-  BB_SEC_RECENT           = "Destinatarios recientes",
-  MSG_OPEN_MAILBOX_FIRST  = "|cffFF8040[PostBox]|r Abre primero el buzon para usar el envio rapido.",
-  MSG_OPEN_SEND_TAB_FIRST = "|cffFF8040[PostBox]|r Abre la pestana Enviar del buzon para adjuntar un objeto.",
-  MSG_FORWARD_ITEMS_TAKEN = "|cffFFD700[PostBox]|r Objetos recogidos en las bolsas: adjuntalos manualmente (Alt-clic) y luego pulsa Enviar.",
-  FORWARD_SUBJECT_PREFIX  = "Reenv: ",
-  MSG_CARBONCOPY_FMT      = "|cffFFD700[PostBox]|r CarbonCopy %d/%d -> %s. Pulsa Enviar y luego continua con el siguiente.",
-
-  STATS_TITLE             = "Estadisticas de correo",
-  STATS_GOLD_RECEIVED_FMT = "Oro total recibido: %s",
-  STATS_GOLD_SENT_FMT     = "Oro total enviado: %s",
-  STATS_AH_SOLD_FMT       = "Ventas en la casa de subastas: %s",
-  STATS_AH_BOUGHT_FMT     = "Compras en la casa de subastas: %s",
-  STATS_SESSION_RAKE_FMT  = "Sesion actual (Rake): %s",
-  STATS_NET_FMT           = "Ingreso neto (cuenta): %s",
-  STATS_TOP_SENDERS       = "Principales remitentes:",
-  STATS_HISTORY_TITLE     = "Historial (ultimos 7 dias, ventas HV)",
-  STATS_NET_7D_FMT        = "Neto (7d): %s",
-  STATS_CHARS_TITLE       = "Por personaje",
-  STATS_CHARS_EMPTY       = "  Sin datos todavia - abre PostBox al menos una vez en cada personaje.",
-
-  MM_TOOLTIP_LEFT         = "Clic izquierdo: abrir/cerrar",
-  MM_TOOLTIP_RIGHT        = "Clic derecho: opciones",
-  AC_TOOLTIP              = "Clic para abrir/cerrar el buzon.",
-}
-OVERRIDES.esMX = OVERRIDES.esES
-
--- ============================================================================
--- SELECTION DE LA LANGUE ACTIVE : GetLocale() = langue du CLIENT DE JEU,
--- jamais un reglage manuel. Toute cle absente de la surcharge retombe sur
--- BASE (anglais) via la metatable __index - jamais de nil affiche.
--- ============================================================================
-local activeLocale = (GetLocale and GetLocale()) or "enUS"
-PostBox.L = setmetatable(OVERRIDES[activeLocale] or {}, { __index = BASE })
-
--- ============================================================================
--- MOTS-CLES DE CLASSIFICATION DU COURRIER DE L'HOTEL DES VENTES (expediteur +
--- sujet), selon la meme langue de client. Utilises par PostBox.ClassifyMail
--- via UI.Normalize (minuscules, accents retires) - d'ou des mots-cles ici
--- deja sans accents. A VERIFIER EN JEU (voir avertissement en tete de fichier).
--- ============================================================================
 local AH_BASE = {
   sender    = { "auction house" },
   cancelled = { "auction cancelled", "auction canceled" },
@@ -385,32 +244,7 @@ local AH_BASE = {
   won       = { "auction won" },
 }
 
-local AH_OVERRIDES = {
-  frFR = {
-    sender    = { "hotel des ventes" },
-    cancelled = { "vente annulee", "enchere annulee" },
-    expired   = { "vente expiree", "enchere expiree" },
-    outbid    = { "surenchere" },
-    sold      = { "vente reussie", "objet vendu" },
-    won       = { "enchere remportee", "vente remportee" },
-  },
-  deDE = {
-    sender    = { "auktionshaus" },
-    cancelled = { "auktion storniert" },
-    expired   = { "auktion abgelaufen" },
-    outbid    = { "uberboten" },
-    sold      = { "auktion erfolgreich" },
-    won       = { "auktion ersteigert" },
-  },
-  esES = {
-    sender    = { "casa de subastas" },
-    cancelled = { "subasta cancelada" },
-    expired   = { "subasta caducada" },
-    outbid    = { "puja superada", "oferta superada" },
-    sold      = { "subasta exitosa", "venta exitosa" },
-    won       = { "subasta ganada" },
-  },
-}
-AH_OVERRIDES.esMX = AH_OVERRIDES.esES
-
-PostBox.AH_KEYWORDS = setmetatable(AH_OVERRIDES[activeLocale] or {}, { __index = AH_BASE })
+local over = PostBox._LOC or {}
+PostBox.L = setmetatable(over.L or {}, { __index = BASE })
+PostBox.AH_KEYWORDS = setmetatable(over.AH or {}, { __index = AH_BASE })
+PostBox._LOC = nil

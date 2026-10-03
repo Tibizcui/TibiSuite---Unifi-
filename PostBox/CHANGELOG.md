@@ -1,5 +1,30 @@
 # Changelog
 
+## 7.1.5.37
+Mise à jour 12.1 complète de PostBox, avec trois nouveautés majeures.
+
+**Fiabilité**
+- Toutes les prises passent par un seul moteur, une à la fois (Tout ouvrir, sélection, Maj+clic, clic droit, transfert). Avant, la sélection et le Maj+clic ne prenaient que la première pièce jointe d'un courrier qui en avait plusieurs.
+- « Tout ouvrir » et la sélection ne paient plus jamais un contre-remboursement : ces courriers sont ignorés et signalés, seul le clic droit (avec confirmation) les accepte.
+- L'or reçu n'est compté qu'une fois réellement versé par le serveur (plus de compteur gonflé quand une prise échoue).
+- Les achats à l'Hôtel des ventes sont enfin comptés (ils restaient à zéro), ainsi que la taxe HV payée. Le classement des courriers HV lit les factures du jeu, quelle que soit la langue.
+- La suppression vérifie le contenu réel des courriers : un courrier vidé pendant la visite peut être supprimé tout de suite.
+- Fin de la requête serveur relancée toutes les 2 secondes tant que la boîte restait ouverte.
+- Plus de fenêtre Blizzard modifiée pour les confirmations (risque de taint) : fenêtres maison ou confirmation de TibiSuite.
+- Noms accentués affichés correctement dans la liste, recherche insensible aux accents.
+- Carnet : seuls les alts de royaumes connectés (donc joignables par courrier) sont proposés.
+- Message de connexion qui suit le réglage de TibiSuite, numéro de version lu dans le .toc.
+
+**Nouveautés**
+- **Mule automatique** : des règles « telle catégorie ou tel objet va à tel personnage », puis un clic envoie tout, 12 pièces jointes par courrier. Suggestions de destinataire selon les métiers connus de SkillTracker.
+- **Mes persos** : la boîte aux lettres de tous tes personnages vue depuis n'importe lequel (or et objets en attente, contre-remboursements, prochaine expiration, envois à relever), avec une alerte au login quand un courrier va expirer.
+- **Journal HV** : toutes les ventes et tous les achats lus dans les factures, totaux 7 et 30 jours, meilleurs objets vendus.
+- Ramassage automatique de l'or des ventes HV à l'ouverture de la boîte (option).
+- Transfert d'un courrier en un clic, envoi multiple, modèles d'envoi, autocomplétion des noms dans le champ destinataire natif, Alt+clic sur un objet du sac pour le joindre.
+- Blocage des demandes d'échange tant que la boîte est ouverte (option).
+- Gestion de la liste des objets indésirables.
+- 10 langues.
+
 ## 7.1.5.36
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir DgnTracker 7.1.5.36 pour le detail : emplacements verifies en jeu, donnees lues dans le jeu, vues Saison / Pres de moi / Favoris, 10 langues).
 

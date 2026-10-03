@@ -4,39 +4,59 @@
   Auteur : Tibiscui - Kirin Tor
   SavedVariables : PostBoxDB (identique en mode module et en mode standalone).
 
-  API de courrier utilisees (toutes des fonctions globales confirmees a jour,
-  AUCUNE n'a ete deplacee dans le namespace C_Mail a ce jour) :
-    CheckInbox(), GetInboxNumItems(), GetInboxHeaderInfo(index),
-    GetInboxItemLink(index, attachIndex), TakeInboxItem(index, attachIndex),
-    TakeInboxMoney(index), ReturnInboxItem(index), SendMail(recipient, subject, body),
-    ClickSendMailItemButton(itemIndex, clearItem), DeleteInboxItem(index).
-  Le namespace C_Mail ne contient que des fonctions de capacite recentes
-  (CanCheckInbox, CanSendMail...), pas les fonctions de lecture/prise citees
-  ci-dessus : elles restent globales.
+  API de courrier utilisees (fonctions globales, aucune n'a ete deplacee dans
+  C_Mail a ce jour) : CheckInbox, GetInboxNumItems, GetInboxHeaderInfo,
+  GetInboxItem, GetInboxItemLink, GetInboxInvoiceInfo, GetInboxText,
+  CheckInboxItem, TakeInboxItem, TakeInboxMoney, ReturnInboxItem,
+  DeleteInboxItem, SendMail, HasSendMailItem, ClickSendMailItemButton.
+
+  REGLES CONFIRMEES EN JEU (2026-09-21) qui structurent tout ce fichier :
+    - le serveur n'accepte qu'UNE prise (objet ou or) a la fois ; les prises
+      envoyees dans la meme image sont ignorees silencieusement ;
+    - les en-tetes (hasItem, money) ne sont pas rafraichis tant que la boite
+      reste ouverte : on lit les emplacements en direct (GetInboxItemLink) ;
+    - on parcourt la boite du dernier au premier index.
+  Depuis la 7.1.5.37, TOUTES les prises passent par un seul moteur (P.OpenAll
+  et ses options) : Tout ouvrir, la selection, Maj+clic, clic droit, le
+  transfert et le ramassage automatique. Plus aucune boucle synchrone.
 ============================================================================]]
 
 PostBox = PostBox or {}
 local P = PostBox
-local ADDON_NAME = "PostBox"
 P.ACCENT = { 0.72, 0.47, 0.22 }  -- laiton / cachet de cire
 
 local ACCENT = P.ACCENT
-local L = P.L  -- table de localisation (PostBox_Locale.lua, charge avant ce fichier)
+local L = P.L
+
+local function Meta(field)
+  local fn = (C_AddOns and C_AddOns.GetAddOnMetadata) or _G.GetAddOnMetadata
+  if not fn then return nil end
+  local ok, v = pcall(fn, "PostBox", field)
+  return ok and v or nil
+end
+P.VERSION = Meta("Version") or "?"
+
+local function GetUI() return _G.TibiMidnight end
+local function AccentText(txt)
+  local UI = GetUI()
+  if not UI then return txt end
+  return UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. txt .. "|r"
+end
+P.AccentText = AccentText
+
+local function Coin(c) return GetCoinTextureString(math.max(0, math.floor(c or 0))) end
+P.Coin = Coin
+
+local function Debug(fmt, ...)
+  if P.debugOpenAll then print("|cFF9DA5FFPostBox|r " .. string.format(fmt, ...)) end
+end
+P.Debug = Debug
 
 -- ============================================================================
 -- FRAME RACINE DE LA BOITE AUX LETTRES BLIZZARD
--- ----------------------------------------------------------------
--- Confirme en jeu (21/08/2026) : le conteneur principal ne s'appelle PLUS
--- "MailFrame" mais "ConsortiumMailFrame" (renomme par Blizzard, probablement
--- pour le contenu du patch en cours - "MailFrame" existe toujours en global
--- mais reste cache/inutilise). Tous les widgets internes (SendMailNameEditBox,
--- SendMailAttachment*, MailItem1-7, MailFrameTab1/2, etc.) gardent en
--- revanche leurs noms historiques inchanges.
--- METHODE ROBUSTE : plutot que de deviner/lister les noms possibles du
--- conteneur (qui peut etre renomme a nouveau), on le deduit du parent de
--- "MailFrameTab1" (confirme stable) - correct quel que soit le nom du
--- conteneur, aujourd'hui ou dans un futur patch. Repli sur les noms connus
--- si ce widget venait lui aussi a disparaitre.
+-- Confirme en jeu (21/08/2026) : le conteneur s'appelle "ConsortiumMailFrame"
+-- ("MailFrame" existe encore mais reste cache). On le deduit du parent de
+-- MailFrameTab1 (stable), avec repli sur les noms connus.
 -- ============================================================================
 function P.GetMailFrame()
   if _G.MailFrameTab1 and _G.MailFrameTab1.GetParent then
@@ -46,19 +66,8 @@ function P.GetMailFrame()
   return _G.ConsortiumMailFrame or _G.MailFrame
 end
 
--- ============================================================================
--- CORRECTIF : ne PAS masquer P.GetMailFrame() en entier pour le remplacement
--- de boite aux lettres - ce conteneur porte AUSSI l'onglet "Envoyer un
--- message" (SendMailFrame), que PostBox ne remplace pas et dont l'utilisateur
--- a toujours besoin (aucune API publique ne permet de joindre or/objets
--- autrement, voir PostBox_BlackBook.lua). Masquer tout le conteneur bloquait
--- donc completement l'envoi de courrier des que le remplacement etait actif.
--- On cible desormais uniquement InboxFrame, le sous-cadre specifique a
--- l'onglet Reception (fond, liste MailItem1-7, bouton "Tout ouvrir",
--- pagination) - confirme present et distinct de SendMailFrame via le scan
--- de _G effectue precedemment en jeu. Les onglets, le titre et le bouton
--- fermer du conteneur restent inchanges et fonctionnels.
--- ============================================================================
+-- Sous-cadre de l'onglet Reception seul (le conteneur porte aussi l'onglet
+-- Envoyer, qu'il ne faut jamais masquer). Confirme en jeu le 22/08/2026.
 function P.GetInboxContentFrame()
   return _G.InboxFrame
 end
@@ -75,9 +84,13 @@ end
 
 local DEFAULTS = {
   reserveSlots   = 4,      -- slots de sac a garder libres pendant OpenAll
-  codThreshold   = 0,      -- 0 = jamais de confirmation ; sinon confirme au-dela de ce montant (cuivre)
-  autoReturnDNW  = true,   -- DoNotWant : retourner automatiquement au lieu de ramasser
+  codThreshold   = 0,      -- confirmation du contre-remboursement a partir de ce montant (cuivre), 0 = toujours
+  autoReturnDNW  = true,   -- DoNotWant : retourner au lieu de ramasser
   expiryWarnDays = 1,      -- indicateur d'expiration en-deca de N jours
+  autoCollectSold = false, -- ramasse l'or des ventes HV des l'ouverture de la boite
+  tradeBlock     = false,  -- bloque les demandes d'echange tant que la boite est ouverte
+  altAlert       = true,   -- alerte au login : courriers d'alts qui vont expirer
+  altAlertDays   = 3,
   filters = {
     cancelled = true, expired = true, outbid = true, sold = true, won = true, other = true,
   },
@@ -85,8 +98,11 @@ local DEFAULTS = {
   recentRecipients = {},  -- { "Nom-Royaume", ... } (20 max, plus recent en tete)
   blackBook  = { contacts = {}, presets = {} },
   knownChars = {},   -- ["Nom-Royaume"] = { faction=, class=, lastSeen= }
+  inboxes    = {},   -- ["Nom-Royaume"] = instantane de la boite (PostBox_Alts.lua)
+  ledger     = { entries = {}, seen = {} },  -- journal HV (PostBox_Ledger.lua)
+  mule       = { rules = {}, autoSend = true },  -- PostBox_Mule.lua
   stats = {
-    goldReceived = 0, goldSent = 0, auctionSold = 0, auctionBought = 0,
+    goldReceived = 0, goldSent = 0, auctionSold = 0, auctionBought = 0, auctionCut = 0,
     senders = {}, rakeSession = 0, history = {},
   },
   floatHidden = {},
@@ -94,28 +110,36 @@ local DEFAULTS = {
   minimapHide  = false,
   open = false,
   smartSort = true,
-  replaceNativeMailbox = false,  -- masque (SetAlpha, jamais Show/Hide) l'inventaire natif sur MAIL_SHOW
+  replaceNativeMailbox = false,  -- masque (SetAlpha, jamais Show/Hide) l'inbox natif sur MAIL_SHOW
 }
+
+-- Comble recursivement les champs manquants d'une table existante (une
+-- SavedVariables d'une version anterieure : "stats={}" ou "mule={}" ne doit
+-- jamais bloquer l'ajout d'un nouveau sous-champ).
+local function FillDefaults(dst, src)
+  for k, v in pairs(src) do
+    if dst[k] == nil then
+      dst[k] = DeepCopy(v)
+    elseif type(v) == "table" and type(dst[k]) == "table" and next(v) ~= nil
+      and k ~= "filters" then
+      FillDefaults(dst[k], v)
+    end
+  end
+end
+
+local function CharKey()
+  local name, realm = UnitName("player"), GetRealmName()
+  if not (name and realm) then return nil end
+  return name .. "-" .. realm
+end
+P.CharKey = CharKey
 
 function P.InitDB()
   PostBoxDB = PostBoxDB or {}
-  for k, v in pairs(DEFAULTS) do
-    if PostBoxDB[k] == nil then PostBoxDB[k] = DeepCopy(v) end
-  end
-  -- Comble les sous-champs manquants de "stats" meme si la table existe deja
-  -- (sauvegarde d'une version anterieure a l'ajout d'un champ) : la fusion
-  -- ci-dessus est superficielle (une SavedVariables existante avec juste
-  -- "stats={}" bloque tout, PostBoxDB.stats n'etant plus nil). Confirme en
-  -- jeu : PostBoxDB.stats.senders manquant faisait planter TopSenders()
-  -- (pairs sur nil), empechant le tableau de bord Stats de s'ouvrir.
-  for k, v in pairs(DEFAULTS.stats) do
-    if PostBoxDB.stats[k] == nil then PostBoxDB.stats[k] = DeepCopy(v) end
-  end
-  -- Enregistre le personnage courant (pour les alts du BlackBook).
-  local name = UnitName("player")
-  local realm = GetRealmName()
-  if name and realm then
-    local key = name .. "-" .. realm
+  FillDefaults(PostBoxDB, DEFAULTS)
+  if type(PostBoxDB.filters) ~= "table" then PostBoxDB.filters = DeepCopy(DEFAULTS.filters) end
+  local key = CharKey()
+  if key then
     PostBoxDB.knownChars[key] = {
       faction = UnitFactionGroup("player"),
       class   = select(2, UnitClass("player")),
@@ -125,27 +149,222 @@ function P.InitDB()
 end
 
 -- ============================================================================
--- CLASSIFICATION D'UN COURRIER (pour filtres + tri intelligent)
+-- NOMS ET ROYAUMES
+-- Les cles internes sont "Nom-Royaume" avec le nom de royaume tel que renvoye
+-- par GetRealmName() (espaces compris). Un destinataire de courrier, lui,
+-- s'ecrit "Nom" (meme royaume) ou "Nom-RoyaumeNormalise" (sans espaces ni
+-- tirets). On ne peut envoyer du courrier qu'aux royaumes CONNECTES.
 -- ============================================================================
--- Retourne une categorie parmi : cancelled, expired, outbid, sold, won, other
--- Mots-cles fournis par PostBox_Locale.lua selon la langue du CLIENT DE JEU
--- (GetLocale()), puisque les libelles expediteur/sujet sont envoyes par le
--- serveur dans cette langue-la (independamment de la langue choisie pour
--- l'interface de PostBox elle-meme).
+local function NormRealm(r) return (tostring(r or ""):gsub("[%s%-]", "")) end
+P.NormRealm = NormRealm
+
+function P.SplitKey(key)
+  local name, realm = tostring(key or ""):match("^([^%-]+)%-(.+)$")
+  return name or key, realm
+end
+
+-- Destinataire a taper dans le champ de la boite pour une cle "Nom-Royaume".
+function P.MailName(key)
+  local name, realm = P.SplitKey(key)
+  if not realm or NormRealm(realm) == NormRealm(GetRealmName()) then return name end
+  return name .. "-" .. NormRealm(realm)
+end
+
+local connectedCache
+function P.IsConnectedRealm(realm)
+  if not realm then return true end
+  local n = NormRealm(realm)
+  if n == NormRealm(GetRealmName()) then return true end
+  if not connectedCache then
+    connectedCache = {}
+    if GetAutoCompleteRealms then
+      local ok, list = pcall(GetAutoCompleteRealms)
+      if ok and type(list) == "table" then
+        for _, r in ipairs(list) do connectedCache[NormRealm(r)] = true end
+      end
+    end
+  end
+  return connectedCache[n] == true
+end
+
+-- Retrouve la cle "Nom-Royaume" d'un de nos personnages a partir d'un
+-- destinataire tape ("Nom" ou "Nom-Royaume"), ou nil si ce n'est pas un alt.
+function P.ResolveOwnChar(recipient)
+  if not recipient or recipient == "" then return nil end
+  local name, realm = tostring(recipient):match("^([^%-]+)%-(.+)$")
+  name = name or recipient
+  local wantRealm = realm and NormRealm(realm) or NormRealm(GetRealmName())
+  local lname = name:lower()
+  for key in pairs(PostBoxDB.knownChars or {}) do
+    local n, r = P.SplitKey(key)
+    if n and n:lower() == lname and NormRealm(r) == wantRealm then return key end
+  end
+  return nil
+end
+
+-- ============================================================================
+-- FENETRES MAISON : confirmation, saisie, autocompletion
+-- Regle de la suite : on n'ecrit JAMAIS dans StaticPopupDialogs (taint). En
+-- suite, on emprunte la confirmation du core ; en autonome, une mini fenetre.
+-- ============================================================================
+local function MakeDialog(name, h)
+  local UI = GetUI()
+  local f = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
+  f:SetSize(380, h)
+  f:SetPoint("CENTER", 0, 120)
+  f:SetFrameStrata("FULLSCREEN_DIALOG")
+  f:EnableMouse(true); f:SetMovable(true)
+  f:RegisterForDrag("LeftButton")
+  f:SetScript("OnDragStart", f.StartMoving)
+  f:SetScript("OnDragStop", f.StopMovingOrSizing)
+  if UI then UI.SkinFrame(f, ACCENT, UI.C.PANEL) end
+  tinsert(UISpecialFrames, name)
+  local msg = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  msg:SetPoint("TOP", 0, -20); msg:SetWidth(340); msg:SetJustifyH("CENTER")
+  f.msg = msg
+  local function btn(label, x)
+    local b = UI and UI.MakeButton(f, 100, 24, label) or CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    if not UI then b:SetSize(100, 24); b:SetText(label) end
+    b:SetPoint("BOTTOM", x, 14)
+    return b
+  end
+  f.yes = btn(OKAY or "OK", -56)
+  f.no = btn(CANCEL or "Annuler", 56)
+  f.no:SetScript("OnClick", function() f:Hide() end)
+  f:Hide()
+  return f
+end
+
+function P.Confirm(text, onAccept)
+  if _G.TibiSuite and _G.TibiSuite.ShowConfirm then
+    _G.TibiSuite.ShowConfirm(text, onAccept)
+    return
+  end
+  local f = _G.PostBoxConfirmFrame or MakeDialog("PostBoxConfirmFrame", 130)
+  f.msg:SetText(text)
+  f.yes:SetScript("OnClick", function() f:Hide(); if onAccept then onAccept() end end)
+  f:Show()
+end
+
+-- Saisie d'un texte (destinataire, nom de modele...). L'autocompletion des
+-- noms se branche si opts.names.
+function P.Prompt(text, default, onAccept, opts)
+  opts = opts or {}
+  local f = _G.PostBoxPromptFrame
+  if not f then
+    f = MakeDialog("PostBoxPromptFrame", 150)
+    local UI = GetUI()
+    local box = CreateFrame("EditBox", nil, f, "BackdropTemplate")
+    box:SetSize(300, 22)
+    box:SetPoint("TOP", f.msg, "BOTTOM", 0, -12)
+    if UI then box:SetBackdrop(UI.FlatBackdrop()); box:SetBackdropColor(0.02, 0.02, 0.03, 0.95); box:SetBackdropBorderColor(ACCENT[1], ACCENT[2], ACCENT[3], 0.8) end
+    box:SetAutoFocus(false)
+    box:SetFontObject("GameFontHighlight")
+    box:SetTextInsets(6, 6, 0, 0)
+    box:SetScript("OnEscapePressed", function() f:Hide() end)
+    f.box = box
+  end
+  f.msg:SetText(text)
+  f.box:SetText(default or "")
+  if opts.names then P.AttachAutocomplete(f.box) end
+  f.box._acOff = not opts.names
+  local function accept()
+    local v = strtrim(f.box:GetText() or "")
+    f:Hide()
+    if v ~= "" and onAccept then onAccept(v) end
+  end
+  f.yes:SetScript("OnClick", accept)
+  f.box:SetScript("OnEnterPressed", accept)
+  f:Show()
+  f.box:SetFocus()
+end
+
+-- Popup d'autocompletion des noms (contacts + alts + recents), accroche a
+-- n'importe quelle EditBox par HookScript (jamais SetScript : la boite de
+-- saisie native du destinataire garde ses propres gestionnaires intacts).
+local acPopup
+local function GetACPopup()
+  if acPopup then return acPopup end
+  local UI = GetUI()
+  local f = CreateFrame("Frame", "PostBoxAutocomplete", UIParent, "BackdropTemplate")
+  f:SetFrameStrata("TOOLTIP")
+  f:SetSize(190, 20)
+  if UI then UI.SkinFrame(f, ACCENT, UI.C.PANEL) end
+  f.rows = {}
+  f:Hide()
+  acPopup = f
+  return f
+end
+
+local function ShowSuggestions(box)
+  if box._acOff then return end
+  local f = GetACPopup()
+  local B = P.BlackBook
+  local list = (B and B.Autocomplete) and B.Autocomplete(box:GetText() or "") or {}
+  if #list == 0 or not box:HasFocus() then f:Hide(); return end
+  local UI = GetUI()
+  local n = math.min(#list, 8)
+  for i = 1, n do
+    local r = f.rows[i]
+    if not r then
+      r = UI and UI.MakeButton(f, 182, 18, "") or CreateFrame("Button", nil, f)
+      r._label:ClearAllPoints(); r._label:SetPoint("LEFT", 6, 0); r._label:SetJustifyH("LEFT")
+      f.rows[i] = r
+    end
+    r:ClearAllPoints(); r:SetPoint("TOPLEFT", 4, -4 - (i - 1) * 19)
+    local entry = list[i]
+    r._label:SetText(entry.label or entry.name)
+    r:SetScript("OnClick", function()
+      box:SetText(entry.name)
+      box:SetCursorPosition(#entry.name)
+      f:Hide()
+    end)
+    r:Show()
+  end
+  for i = n + 1, #f.rows do f.rows[i]:Hide() end
+  f:SetHeight(n * 19 + 8)
+  f:ClearAllPoints()
+  f:SetPoint("TOPLEFT", box, "TOPRIGHT", 6, 2)
+  f:Show()
+end
+
+function P.AttachAutocomplete(box)
+  if not box or box._pbAC then return end
+  box._pbAC = true
+  box:HookScript("OnTextChanged", function(self, userInput)
+    if userInput then ShowSuggestions(self) end
+  end)
+  box:HookScript("OnEditFocusLost", function()
+    C_Timer.After(0.25, function() if acPopup and not box:HasFocus() then acPopup:Hide() end end)
+  end)
+  box:HookScript("OnHide", function() if acPopup then acPopup:Hide() end end)
+end
+
+-- ============================================================================
+-- CLASSIFICATION D'UN COURRIER
+-- 1) facture de l'Hotel des ventes (GetInboxInvoiceInfo) : independante de la
+--    langue, fiable ; 2) a defaut, mots-cles de PostBox_Locale.lua.
+-- ============================================================================
 local function MatchesAny(haystack, keywords)
-  for _, kw in ipairs(keywords) do
+  for _, kw in ipairs(keywords or {}) do
     if haystack:find(kw, 1, true) then return true end
   end
   return false
 end
 
-function P.ClassifyMail(sender, subject)
-  local kw = P.AH_KEYWORDS
-  local s = _G.TibiMidnight and _G.TibiMidnight.Normalize(sender or "") or tostring(sender or ""):lower()
-  if not MatchesAny(s, kw.sender) then
-    return "other"
+local function Norm(s)
+  local UI = GetUI()
+  return UI and UI.Normalize(s or "") or tostring(s or ""):lower()
+end
+
+function P.ClassifyMail(sender, subject, invoice)
+  if invoice then
+    if invoice.type == "seller" or invoice.type == "seller_temp_invoice" then return "sold" end
+    if invoice.type == "buyer" then return "won" end
   end
-  local subj = _G.TibiMidnight and _G.TibiMidnight.Normalize(subject or "") or tostring(subject or ""):lower()
+  local kw = P.AH_KEYWORDS
+  if not MatchesAny(Norm(sender), kw.sender) then return "other" end
+  local subj = Norm(subject)
   if MatchesAny(subj, kw.cancelled) then return "cancelled" end
   if MatchesAny(subj, kw.expired) then return "expired" end
   if MatchesAny(subj, kw.outbid) then return "outbid" end
@@ -154,119 +373,146 @@ function P.ClassifyMail(sender, subject)
   return "other"
 end
 
+local function ReadInvoice(i)
+  if not GetInboxInvoiceInfo then return nil end
+  local ok, invType, itemName, playerName, bid, buyout, deposit, consignment, _, _, _, count =
+    pcall(GetInboxInvoiceInfo, i)
+  if not ok or not invType then return nil end
+  return {
+    type = invType, item = itemName, player = playerName, bid = bid or 0, buyout = buyout or 0,
+    deposit = deposit or 0, cut = consignment or 0, count = count or 1,
+  }
+end
+
 -- ============================================================================
--- CACHE DE LA BOITE DE RECEPTION (rafraichi a chaque CheckInbox / MAIL_INBOX_UPDATE)
+-- CACHE DE LA BOITE DE RECEPTION
+-- RefreshCache(poll) : poll=true relance aussi CheckInbox (au plus toutes les
+-- 2 s). L'evenement MAIL_INBOX_UPDATE ne le fait JAMAIS : avant la 7.1.5.37,
+-- chaque evenement relancait CheckInbox, qui relancait l'evenement, soit une
+-- requete serveur et une reconstruction complete toutes les 2 s tant que la
+-- boite restait ouverte.
 -- ============================================================================
-P.cache = {}  -- tableau ordonne d'entrees { index, sender, subject, money, cod, daysLeft, hasItem, itemLink, category }
+P.cache = {}
 
 local function SafeGetItemLink(index, attachIndex)
-  -- GetInboxItemLink existe de longue date pour recuperer le lien exact de l'objet joint.
   local ok, link = pcall(GetInboxItemLink, index, attachIndex or 1)
   if ok then return link end
   return nil
 end
+P.SafeGetItemLink = SafeGetItemLink
+
+local function SafeGetItemCount(index, attachIndex)
+  if not GetInboxItem then return 1 end
+  local ok, _, _, _, count = pcall(GetInboxItem, index, attachIndex)
+  if ok and count and count > 0 then return count end
+  return 1
+end
+
+-- Cle "raisonnablement stable" d'un courrier : PAS l'index (il se decale des
+-- qu'un courrier disparait). Contient le nombre de pieces jointes et l'objet
+-- pour distinguer les courriers identiques du Maitre de poste.
+local function EntryKey(entry)
+  return (entry.sender or "") .. "\30" .. (entry.subject or "") .. "\30"
+    .. tostring(entry.money or 0) .. "\30" .. tostring(entry.daysLeft or 0)
+    .. "\30" .. tostring(entry.hasItem or 0) .. "\30" .. (entry.itemLink or "")
+end
 
 local lastCheckInbox = 0
-function P.RefreshCache()
-  -- CORRECTIF : confirme en jeu que supprimer un courrier via l'interface
-  -- native Blizzard met a jour l'affichage NATIF instantanement, mais pas la
-  -- valeur que renvoie GetInboxNumItems() pour les autres addons - meme
-  -- apres un MAIL_SHOW tout frais (sortie de portee + retour). CheckInbox()
-  -- force explicitement cette resynchronisation. Reste asynchrone (voir la
-  -- note sur le bouton Actualiser) : cet appel "reveille" le processus, la
-  -- vraie mise a jour arrive via MAIL_INBOX_UPDATE (deja ecoute plus bas dans
-  -- ce fichier, qui rappelle cette meme fonction) - ce qui rappellerait donc
-  -- CheckInbox() en boucle sans la limite ci-dessous (au mieux du gaspillage
-  -- de requetes, au pire une boucle si CheckInbox() redeclenche toujours
-  -- MAIL_INBOX_UPDATE meme sans changement reel).
-  if CheckInbox and (GetTime() - lastCheckInbox) > 2 then
+function P.RefreshCache(poll)
+  if poll and CheckInbox and (GetTime() - lastCheckInbox) > 2 then
     lastCheckInbox = GetTime()
     pcall(CheckInbox)
   end
   wipe(P.cache)
   local numItems = GetInboxNumItems() or 0
   for i = 1, numItems do
-    local packageIcon, stationeryIcon, sender, subject, money, CODAmount, daysLeft,
-      hasItem, wasRead, wasReturned, textCreated, canReply, isGM = GetInboxHeaderInfo(i)
+    local _, _, sender, subject, money, CODAmount, daysLeft, hasItem, wasRead, wasReturned,
+      _, canReply = GetInboxHeaderInfo(i)
     if sender then
-      local cat = P.ClassifyMail(sender, subject)
-      P.cache[#P.cache + 1] = {
+      local invoice = ReadInvoice(i)
+      local e = {
         index = i, sender = sender, subject = subject or "",
         money = money or 0, cod = CODAmount or 0, daysLeft = daysLeft or 0,
-        hasItem = hasItem or 0, wasRead = wasRead, category = cat,
+        hasItem = hasItem or 0, wasRead = wasRead, wasReturned = wasReturned, canReply = canReply,
+        invoice = invoice,
         itemLink = (hasItem and hasItem > 0) and SafeGetItemLink(i, 1) or nil,
       }
+      e.category = P.ClassifyMail(sender, subject, invoice)
+      e.key = EntryKey(e)
+      P.cache[#P.cache + 1] = e
     end
   end
+  if P.mailboxOpen then
+    if P.Ledger and P.Ledger.Scan then pcall(P.Ledger.Scan, P.cache) end
+    if P.Alts and P.Alts.Snapshot then pcall(P.Alts.Snapshot, P.cache) end
+  end
   if P.RefreshWindow then P.RefreshWindow() end
-  if P.TryHookSendMail then P.TryHookSendMail() end
   if P.UpdateBadges then P.UpdateBadges() end
-  -- Retente le masquage de l'inbox natif a chaque rafraichissement (pas
-  -- seulement au MAIL_SHOW initial) : meme piege de timing que TryHookSendMail
-  -- ci-dessus, InboxFrame peut ne pas encore exister au tout premier appel.
-  if PostBoxDB and PostBoxDB.replaceNativeMailbox and P.SetNativeMailVisible then
+  -- InboxFrame peut ne pas exister au tout premier MAIL_SHOW : on retente ici.
+  if PostBoxDB and PostBoxDB.replaceNativeMailbox and P.mailboxOpen and P.SetNativeMailVisible then
     P.SetNativeMailVisible(false)
   end
   return P.cache
 end
 
+-- Rafraichissement differe : regroupe les rafales de MAIL_INBOX_UPDATE (le
+-- client en envoie plusieurs par prise) en une seule reconstruction.
+local refreshPending = false
+function P.RequestRefresh()
+  if refreshPending then return end
+  refreshPending = true
+  C_Timer.After(0.1, function()
+    refreshPending = false
+    P.RefreshCache(false)
+  end)
+end
+
 -- ============================================================================
--- SACS : slots libres (pour la reserve configurable pendant OpenAll)
+-- SACS : slots libres des sacs generalistes (les sacs de metier ne comptent
+-- pas : un objet quelconque ne peut pas y aller)
 -- ============================================================================
 function P.GetFreeBagSlots()
   local free = 0
-  local numBags = (NUM_BAG_SLOTS or 4)
+  local numBags = NUM_BAG_SLOTS or 4
   for bag = 0, numBags do
-    local slots = C_Container and C_Container.GetContainerNumSlots(bag) or GetContainerNumSlots(bag)
-    local used = C_Container and C_Container.GetContainerNumFreeSlots and select(1, C_Container.GetContainerNumFreeSlots(bag))
-    if used then
-      free = free + used
-    elseif slots and slots > 0 then
-      for slot = 1, slots do
-        local info = C_Container and C_Container.GetContainerItemInfo(bag, slot)
-        if not info then free = free + 1 end
-      end
+    if C_Container and C_Container.GetContainerNumFreeSlots then
+      local n, family = C_Container.GetContainerNumFreeSlots(bag)
+      if n and (family == nil or family == 0) then free = free + n end
     end
   end
   return free
 end
 
 -- ============================================================================
--- DoNotWant : marquer un objet pour retour automatique au lieu de ramassage
+-- DoNotWant : objets a retourner automatiquement au lieu de les ramasser
 -- ============================================================================
+local function ItemIDOf(link)
+  if not link then return nil end
+  local fn = (C_Item and C_Item.GetItemInfoInstant) or _G.GetItemInfoInstant
+  if not fn then return nil end
+  local ok, id = pcall(fn, link)
+  return ok and id or nil
+end
+P.ItemIDOf = ItemIDOf
+
 function P.IsDoNotWant(itemLink)
-  if not itemLink then return false end
-  local id = GetItemInfoInstant and select(1, GetItemInfoInstant(itemLink))
+  local id = ItemIDOf(itemLink)
   return id and PostBoxDB.doNotWant[id] or false
 end
 
 function P.SetDoNotWant(itemLink, on)
-  if not itemLink then return end
-  local id = GetItemInfoInstant and select(1, GetItemInfoInstant(itemLink))
+  local id = ItemIDOf(itemLink)
   if not id then return end
-  if on then PostBoxDB.doNotWant[id] = true else PostBoxDB.doNotWant[id] = nil end
+  PostBoxDB.doNotWant[id] = on and true or nil
+  if P.RefreshDNWWindow then P.RefreshDNWWindow() end
 end
 
 -- ============================================================================
--- STATS : mise a jour (delegue le stockage a PostBoxDB.stats, expose par
--- PostBox_Stats.lua pour l'affichage du tableau de bord)
+-- STATS : historique par jour (AAAA-MM-JJ, purge a 60 jours) et par perso.
+-- Stats/Core.lua lit history[jour].auctionSold (SX.ReadPostBoxAHDeltaToday).
 -- ============================================================================
--- Cle du personnage courant, pour la vue multi-personnages (PostBoxDB est un
--- SavedVariables COMPTE, deja partage entre tous les personnages - voir
--- PostBox.toc : "## SavedVariables: PostBoxDB", pas PerCharacter).
-local function CharKey()
-  local name, realm = UnitName("player"), GetRealmName()
-  if not (name and realm) then return nil end
-  return name .. "-" .. realm
-end
-
--- Cle du jour courant (heure serveur), pour l'historique temporel. Format
--- trie alphabetiquement = trie chronologiquement (AAAA-MM-JJ).
-local function TodayKey()
-  return date("%Y-%m-%d")
-end
-
-local HISTORY_MAX_DAYS = 60  -- purge au-dela, pour ne pas alourdir indefiniment PostBoxDB
+local function TodayKey() return date("%Y-%m-%d") end
+local HISTORY_MAX_DAYS = 60
 
 local function GetHistoryDay(dayKey)
   local st = PostBoxDB.stats
@@ -275,8 +521,6 @@ local function GetHistoryDay(dayKey)
   if not d then
     d = { goldReceived = 0, goldSent = 0, auctionSold = 0, auctionBought = 0 }
     st.history[dayKey] = d
-    -- Purge des jours les plus anciens au-dela de HISTORY_MAX_DAYS (le tri
-    -- alphabetique des cles AAAA-MM-JJ correspond au tri chronologique).
     local keys = {}
     for k in pairs(st.history) do keys[#keys + 1] = k end
     if #keys > HISTORY_MAX_DAYS then
@@ -300,367 +544,374 @@ local function GetCharBucket()
   return c
 end
 
-local function TrackReceivedGold(amount, sender)
-  if not amount or amount == 0 then return end
-  PostBoxDB.stats.goldReceived = PostBoxDB.stats.goldReceived + amount
-  PostBoxDB.stats.rakeSession = PostBoxDB.stats.rakeSession + amount
-  if sender then
-    PostBoxDB.stats.senders[sender] = (PostBoxDB.stats.senders[sender] or 0) + amount
-  end
-  local day = GetHistoryDay(TodayKey())
-  day.goldReceived = day.goldReceived + amount
-  local c = GetCharBucket()
-  if c then c.goldReceived = c.goldReceived + amount end
-end
-
-local function TrackAuction(category, amount)
-  amount = amount or 0
-  local day, c = GetHistoryDay(TodayKey()), GetCharBucket()
-  if category == "sold" then
-    PostBoxDB.stats.auctionSold = PostBoxDB.stats.auctionSold + amount
-    day.auctionSold = day.auctionSold + amount
-    if c then c.auctionSold = c.auctionSold + amount end
-  elseif category == "won" then
-    PostBoxDB.stats.auctionBought = PostBoxDB.stats.auctionBought + amount
-    day.auctionBought = day.auctionBought + amount
-    if c then c.auctionBought = c.auctionBought + amount end
-  end
-end
-
--- Envoi de courrier : SendMail() ne recoit que destinataire/sujet/corps, pas
--- le montant joint (attache separement via les widgets natifs de
--- SendMailFrame, voir PostBox_BlackBook.lua). hooksecurefunc sur SendMail
--- (une fonction API normale, PAS une methode de frame protegee - aucun
--- rapport avec le taint du frame de boite aux lettres, voir la note plus bas
--- dans ce fichier) permet de lire le montant au moment de l'envoi, avant que
--- Blizzard ne reinitialise le formulaire. NON VERIFIE EN JEU : si le montant
--- lu est incoherent (0 alors qu'un montant etait visiblement joint), le
--- timing de la lecture par rapport a la remise a zero du formulaire natif
--- devra etre revu avec un /run de diagnostic.
-local function TrackSentGold(amount)
+local function AddStat(field, amount)
   if not amount or amount <= 0 then return end
-  PostBoxDB.stats.goldSent = PostBoxDB.stats.goldSent + amount
-  GetHistoryDay(TodayKey()).goldSent = GetHistoryDay(TodayKey()).goldSent + amount
+  local st = PostBoxDB.stats
+  st[field] = (st[field] or 0) + amount
+  local d = GetHistoryDay(TodayKey())
+  d[field] = (d[field] or 0) + amount
   local c = GetCharBucket()
-  if c then c.goldSent = c.goldSent + amount end
+  if c then c[field] = (c[field] or 0) + amount end
 end
 
--- SendMailMoney fait partie du panneau de courrier charge a la demande : il
--- n'existe pas forcement au chargement de l'addon (meme piege que MailFrame,
--- voir la note en tete de fichier). On retente l'installation du hook a
--- chaque rafraichissement de cache (donc a chaque ouverture de boite aux
--- lettres) jusqu'a ce qu'il reussisse une fois ; idempotent (drapeau).
-local sendMailHooked = false
-function P.TryHookSendMail()
-  if sendMailHooked or not (_G.SendMailMoney and MoneyInputFrame_GetCopper) then return end
-  sendMailHooked = true
-  hooksecurefunc("SendMail", function()
-    local ok, copper = pcall(MoneyInputFrame_GetCopper, _G.SendMailMoney)
-    if ok then TrackSentGold(copper) end
+local function TrackReceivedGold(amount, sender)
+  if not amount or amount <= 0 then return end
+  AddStat("goldReceived", amount)
+  local st = PostBoxDB.stats
+  st.rakeSession = (st.rakeSession or 0) + amount
+  if sender then st.senders[sender] = (st.senders[sender] or 0) + amount end
+end
+
+-- Achat HV : compte UNE fois par facture "buyer" (appele par le journal HV).
+-- Avant la 7.1.5.37 on lisait l'or du courrier "gagne", toujours a 0 (ce
+-- courrier contient l'objet, pas d'or) : les achats restaient a zero.
+function P.TrackAuctionBought(amount)
+  AddStat("auctionBought", amount)
+end
+function P.TrackAuctionCut(amount)
+  if amount and amount > 0 then
+    PostBoxDB.stats.auctionCut = (PostBoxDB.stats.auctionCut or 0) + amount
+  end
+end
+
+-- ============================================================================
+-- OR RECU : compte seulement quand le serveur l'a vraiment verse
+-- TakeInboxMoney est asynchrone et peut etre refuse sans erreur Lua. On
+-- memorise GetMoney() avant la prise, et c'est PLAYER_MONEY (hausse reelle
+-- de l'or) qui valide le montant. Sans confirmation en 2,5 s, rien n'est
+-- compte et la prise est signalee en echec.
+-- ============================================================================
+P.pendingMoney = nil
+P.sessionMoneyTaken = {}  -- courriers dont l'or a ete pris cette visite (en-tetes figes)
+
+-- Identifiant d'un courrier pour la visite en cours, independant des pieces
+-- jointes (qui changent au fil des prises).
+function P.MailIdKey(e)
+  return (e.sender or "") .. "\30" .. (e.subject or "") .. "\30" .. math.floor((e.daysLeft or 0) * 1440)
+end
+
+function P.TakeMoneyTracked(entry, res)
+  P.pendingMoney = {
+    before = GetMoney(), amount = entry.money or 0, sender = entry.sender,
+    category = entry.category, t = GetTime(), res = res, idk = P.MailIdKey(entry),
+  }
+  TakeInboxMoney(entry.index)
+end
+
+local moneyWatcher = CreateFrame("Frame")
+moneyWatcher:RegisterEvent("PLAYER_MONEY")
+moneyWatcher:SetScript("OnEvent", function()
+  local pm = P.pendingMoney
+  if not pm or GetMoney() <= pm.before then return end
+  P.pendingMoney = nil
+  P.sessionMoneyTaken[pm.idk] = true
+  TrackReceivedGold(pm.amount, pm.sender)
+  if pm.category == "sold" then AddStat("auctionSold", pm.amount) end
+  if pm.res then pm.res.gold = pm.res.gold + pm.amount end
+  Debug("or confirme : %s", Coin(pm.amount))
+end)
+
+-- ============================================================================
+-- ENVOI : suivi des courriers envoyes
+-- hooksecurefunc sur SendMail (fonction API, pas une methode de frame
+-- protegee) lit le formulaire au moment de l'envoi ; on ne valide qu'a
+-- MAIL_SEND_SUCCESS (or envoye, destinataire recent, courrier "en route" vers
+-- un alt). P.OnSendResult(fn) inscrit un ecouteur (carnet, mule, copie).
+-- ============================================================================
+local pendingSend
+local sendListeners = {}
+function P.OnSendResult(fn) sendListeners[#sendListeners + 1] = fn end
+
+local function CountSendAttachments()
+  local n = 0
+  if HasSendMailItem then
+    for i = 1, (ATTACHMENTS_MAX_SEND or 12) do
+      local ok, has = pcall(HasSendMailItem, i)
+      if ok and has then n = n + 1 end
+    end
+  end
+  return n
+end
+P.CountSendAttachments = CountSendAttachments
+
+if SendMail then
+  hooksecurefunc("SendMail", function(recipient)
+    local copper = 0
+    if _G.SendMailMoney and MoneyInputFrame_GetCopper then
+      local ok, c = pcall(MoneyInputFrame_GetCopper, _G.SendMailMoney)
+      if ok and c then copper = c end
+    end
+    local isCOD = _G.SendMailCODButton and _G.SendMailCODButton.GetChecked and _G.SendMailCODButton:GetChecked()
+    pendingSend = {
+      to = recipient, gold = isCOD and 0 or copper, items = CountSendAttachments(), t = GetTime(),
+    }
   end)
 end
 
--- ============================================================================
--- OPENALL : ouverture/ramassage en masse (objets + or), gestion >50 courriers,
--- reserve de slots de sac, filtres AH, retour auto DoNotWant, recap anime.
--- ============================================================================
-P.openAll = { active = false, loot = {}, gold = 0, itemsTaken = 0, returned = 0, seen = {} }
+local sendWatcher = CreateFrame("Frame")
+sendWatcher:RegisterEvent("MAIL_SEND_SUCCESS")
+sendWatcher:RegisterEvent("MAIL_FAILED")
+sendWatcher:SetScript("OnEvent", function(_, event)
+  local s = pendingSend
+  pendingSend = nil
+  local ok = (event == "MAIL_SEND_SUCCESS")
+  if ok and s then
+    AddStat("goldSent", s.gold)
+    if P.BlackBook and P.BlackBook.RecordRecipient then P.BlackBook.RecordRecipient(s.to) end
+    if P.Alts and P.Alts.RecordIncoming then pcall(P.Alts.RecordIncoming, s.to, s.gold, s.items) end
+  end
+  for _, fn in ipairs(sendListeners) do pcall(fn, ok, s and s.to) end
+end)
 
-local function ResetRecap()
-  P.openAll.loot = {}
-  P.openAll.gold = 0
-  P.openAll.itemsTaken = 0
-  P.openAll.returned = 0
-  -- Cles des courriers deja traites CETTE session "Tout ouvrir" (voir
-  -- EntryKey plus bas) - empeche le double comptage.
-  P.openAll.seen = {}
-  P.openAll.failed = {}
-  P.openAll.pending = nil
-  P.openAll.cursor = nil
-  P.openAll.passes = 1
+-- ============================================================================
+-- MOTEUR UNIQUE DE PRISE : P.OpenAll(opts)
+-- Une seule action serveur par tick (0,6 s), courrier par courrier du dernier
+-- au premier index, emplacements lus en direct. Options :
+--   keys       = { [cle]=true }  courriers precis (selection, Maj+clic...)
+--   categories = { sold=true }   categories precises (invendus, ramassage auto)
+--   moneyOnly  = true            ne prend que l'or
+--   allowCOD   = true            accepte le contre-remboursement (apres confirmation)
+--   silent     = true            ni message de depart ni recapitulatif
+--   onDone     = fn(result)
+-- Les courriers en contre-remboursement sont TOUJOURS ignores sans allowCOD :
+-- avant la 7.1.5.37, "Tout ouvrir" les payait sans rien demander.
+-- ============================================================================
+P.openAll = { active = false }
+local queueTimer
+local deleteQueue  -- declare ici : le moteur refuse de demarrer pendant une suppression
+
+local function NewResult()
+  return { loot = {}, slots = {}, gold = 0, itemsTaken = 0, returned = 0, codSkipped = 0, failed = 0 }
 end
 
--- Cle "raisonnablement stable" d'un courrier a travers plusieurs scans de la
--- boite : PAS l'index (TakeInboxMoney est asynchrone - si le serveur n'a pas
--- confirme avant le prochain passage de step(), le meme courrier peut encore
--- apparaitre dans P.cache et se faire retraiter, l'or comptabilise plusieurs
--- fois pour une seule prise reelle - confirme en jeu). L'index, lui, se
--- decale des qu'un courrier disparait de la boite : pas fiable ici.
--- CORRECTIF (constat utilisateur, 2026-09-21 : "Tout ouvrir n'ouvre que le
--- premier message") : la cle ne contenait ni le nombre de pieces jointes ni
--- l'objet. Tous les courriers "Objet trouve" du Maitre de poste (meme
--- expediteur, meme sujet, 0 or, meme duree restante) partageaient donc UNE
--- seule cle : le premier traite marquait tous les autres comme deja faits.
-local function EntryKey(entry)
-  return (entry.sender or "") .. "\30" .. (entry.subject or "") .. "\30"
-    .. tostring(entry.money or 0) .. "\30" .. tostring(entry.daysLeft or 0)
-    .. "\30" .. tostring(entry.hasItem or 0) .. "\30" .. (entry.itemLink or "")
-end
-
-local function AddLoot(itemLink, count)
+local function AddLoot(res, itemLink, count)
   if not itemLink then return end
-  local entry = P.openAll.loot[itemLink]
-  if not entry then entry = { link = itemLink, count = 0 }; P.openAll.loot[itemLink] = entry end
-  entry.count = entry.count + (count or 1)
+  local e = res.loot[itemLink]
+  if not e then e = { link = itemLink, count = 0 }; res.loot[itemLink] = e end
+  e.count = e.count + (count or 1)
+  res.itemsTaken = res.itemsTaken + 1
+  res.slots[#res.slots + 1] = itemLink  -- une entree par piece jointe reellement prise
 end
 
--- Un courrier passe-t-il les filtres actifs ? (les filtres ne s'appliquent
--- qu'aux courriers de l'Hotel des ventes ; les autres sont toujours traites)
 local function PassesFilters(entry)
   if entry.category == "other" then return true end
   return PostBoxDB.filters[entry.category] ~= false
 end
 
--- opts.categories, si fourni, remplace entierement PassesFilters (utilise
--- par la recuperation groupee des invendus, qui cible delibrement une
--- categorie precise independamment des cases a cocher de filtrage general).
-local function IsEligible(entry, opts)
-  if opts and opts.categories then
-    return opts.categories[entry.category] == true
-  end
+local function QueueEligible(entry, opts)
+  local hasMoney = (entry.money or 0) > 0
+  if not (hasMoney or (entry.hasItem or 0) > 0) then return false end
+  if opts.moneyOnly and not hasMoney then return false end
+  if opts.keys then return opts.keys[entry.key] == true end
+  if opts.categories then return opts.categories[entry.category] == true end
   return PassesFilters(entry)
 end
 
--- Traite un seul courrier (argent + objets), en respectant DoNotWant et la
--- reserve de slots. Retourne true si quelque chose a ete pris/retourne.
-local function ProcessOne(entry)
-  local did = false
-  if entry.money and entry.money > 0 then
-    TakeInboxMoney(entry.index)
-    TrackReceivedGold(entry.money, entry.sender)
-    if entry.category == "sold" or entry.category == "won" then TrackAuction(entry.category, entry.money) end
-    P.openAll.gold = P.openAll.gold + entry.money
-    did = true
-  end
-  if entry.hasItem and entry.hasItem > 0 then
-    if PostBoxDB.autoReturnDNW and P.IsDoNotWant(entry.itemLink) then
-      ReturnInboxItem(entry.index)
-      P.openAll.returned = P.openAll.returned + 1
-      did = true
-    else
-      if P.GetFreeBagSlots() <= (PostBoxDB.reserveSlots or 0) then
-        return did, "bagsfull"
-      end
-      for attach = 1, entry.hasItem do
-        local link = SafeGetItemLink(entry.index, attach)
-        TakeInboxItem(entry.index, attach)
-        AddLoot(link, 1)
-        P.openAll.itemsTaken = P.openAll.itemsTaken + 1
-      end
-      did = true
-    end
-  end
-  return did
+function P.IsBusy()
+  return P.openAll.active or deleteQueue ~= nil
 end
-
-local function ShowRecap()
-  if P.ShowRecapPopup then P.ShowRecapPopup(P.openAll) end
-end
-
--- Boucle asynchrone : traite le cache courant, attend le rafraichissement
--- serveur (MAIL_INBOX_UPDATE) si plus de courriers restent (>50 caches par le
--- client), et continue jusqu'a inbox vide ou reserve de sac atteinte.
-local openAllWatcher = CreateFrame("Frame")
-local openAllTimeout
 
 function P.OpenAll(opts)
-  if P.openAll.active then return end
+  opts = opts or {}
+  if P.IsBusy() then return false end
+  local res = NewResult()
+  local st = { cursor = math.huge, passes = 1, cur = nil, codSeen = {} }
   P.openAll.active = true
-  ResetRecap()
-  print(L.MSG_OPENALL_START)
+  if not opts.silent then print(L.MSG_OPENALL_START) end
 
-  local function step()
-    -- CORRECTIF : le corps de step() n'etait protege par aucun pcall - une
-    -- erreur Lua (API bizarre sur un courrier particulier, objet sans lien
-    -- valide, etc.) au milieu du traitement interrompait la fonction AVANT
-    -- la ligne qui remet P.openAll.active a false. Le bouton "Tout ouvrir"
-    -- restait alors bloque en "actif" pour le reste de la session (chaque
-    -- clic ressortait aussitot via le garde tout en haut de P.OpenAll), sans
-    -- aucun message d'erreur visible - confirme en jeu (l'utilisateur devait
-    -- tout cocher et passer par "Traiter la selection" a la place). On isole
-    -- desormais le traitement dans un pcall et on garantit la remise a false
-    -- de P.openAll.active dans TOUS les cas, erreur comprise.
+  local step
+  local function schedule(delay)
+    if queueTimer then queueTimer:Cancel() end
+    queueTimer = C_Timer.NewTimer(delay, step)
+  end
+
+  local function finish(reason)
+    P.openAll.active = false
+    if queueTimer then queueTimer:Cancel(); queueTimer = nil end
+    if reason == "bagsfull" then print(string.format(L.MSG_OPENALL_BAGSFULL_FMT, PostBoxDB.reserveSlots or 0)) end
+    if res.codSkipped > 0 then print(string.format(L.MSG_COD_SKIPPED_FMT, res.codSkipped)) end
+    if res.failed > 0 then print(string.format(L.MSG_TAKE_FAILED_FMT, res.failed)) end
+    if res.returned > 0 then print(string.format(L.MSG_DNW_RETURNED_FMT, res.returned)) end
+    if not opts.silent and P.ShowRecapPopup then P.ShowRecapPopup(res) end
+    if opts.onDone then pcall(opts.onDone, res) end
+    P.RefreshCache(true)
+  end
+
+  -- Pieces jointes dont la prise a ete demandee : on les credite au butin
+  -- seulement quand l'emplacement est vide en lecture directe.
+  local function reconcile(cur, vanished)
+    for a, info in pairs(cur.pending) do
+      if vanished or not SafeGetItemLink(cur.index, a) then
+        AddLoot(res, info.link, info.count)
+        cur.pending[a] = nil
+      end
+    end
+  end
+
+  step = function()
     local ok, err = pcall(function()
-      P.RefreshCache()
-      -- REFONTE 2 (trace utilisateur : la ligne garde hasItem=2 apres la prise,
-      -- l'en-tete de la boite n'est PAS rafraichi tant qu'elle reste ouverte, donc
-      -- aucune "progression" n'est observable). On parcourt donc les courriers du
-      -- DERNIER au PREMIER (les suppressions cote serveur ne decalent alors pas
-      -- les index restants), un seul passage par courrier, un courrier par tick.
-      local function log(fmt, ...)
-        if P.debugOpenAll then print("|cFF9DA5FFPostBox openall|r " .. string.format(fmt, ...)) end
+      -- On attend la confirmation de l'or precedent avant toute autre prise.
+      if P.pendingMoney then
+        if GetTime() - P.pendingMoney.t < 2.5 then return schedule(0.2) end
+        P.pendingMoney = nil
+        res.failed = res.failed + 1
+        Debug("or non confirme par le serveur")
       end
-      local cursor = P.openAll.cursor or math.huge
-      local target
-      for _, entry in ipairs(P.cache) do
-        if entry.index < cursor and ((entry.money and entry.money > 0) or (entry.hasItem and entry.hasItem > 0))
-          and IsEligible(entry, opts) and (not target or entry.index > target.index) then
-          target = entry
+      P.RefreshCache(false)
+
+      local cur, target = st.cur, nil
+      if cur then
+        for _, e in ipairs(P.cache) do
+          if e.index == cur.index then target = e; break end
+        end
+        -- Le courrier a disparu (vide puis supprime par le serveur), ou un
+        -- autre courrier a glisse a sa place : ses prises sont faites.
+        if not target or target.sender ~= cur.sender or target.subject ~= cur.subject then
+          reconcile(cur, true)
+          st.cursor, st.cur, cur, target = cur.index, nil, nil, nil
+        else
+          reconcile(cur, false)
         end
       end
+
       if not target then
-        -- Plus de 50 courriers : le client n'en montre que 50 a la fois, on
-        -- refait un tour une fois la boite rafraichie (5 tours au plus).
-        local num, total = GetInboxNumItems()
-        if (total or 0) > (num or 0) and (P.openAll.passes or 1) < 5 then
-          P.openAll.passes = (P.openAll.passes or 1) + 1
-          P.openAll.cursor = nil
-          log("nouveau tour (%s/%s)", tostring(num), tostring(total))
-          if openAllTimeout then openAllTimeout:Cancel() end
-          openAllTimeout = C_Timer.NewTimer(1.5, step)
-          return
+        for _, e in ipairs(P.cache) do
+          if e.index < st.cursor and QueueEligible(e, opts) then
+            if (e.cod or 0) > 0 and not opts.allowCOD then
+              if not st.codSeen[e.key] then st.codSeen[e.key] = true; res.codSkipped = res.codSkipped + 1 end
+            elseif not target or e.index > target.index then
+              target = e
+            end
+          end
         end
-        P.openAll.active = false
-        ShowRecap()
-        return
+        if target then
+          cur = { index = target.index, sender = target.sender, subject = target.subject, pending = {}, tries = {} }
+          st.cur = cur
+        end
       end
-      -- REFONTE 3 (trace utilisateur : un courrier a 2 pieces jointes garde
-      -- objets=2 mais son emplacement 1 est vide, donc une piece n'a jamais ete
-      -- prise) : le serveur n'accepte qu'UNE prise a la fois, les suivantes,
-      -- envoyees dans la meme frame, sont ignorees. On prend donc UNE piece
-      -- jointe (ou l'or) par tick, en restant sur le meme courrier tant qu'un
-      -- emplacement contient encore un objet. Les emplacements sont lus en
-      -- direct (GetInboxItemLink), pas via l'en-tete qui n'est pas rafraichi.
-      local cur = P.openAll.cur
-      if not cur or cur.index ~= target.index then
-        cur = { index = target.index, tries = {} }
-        P.openAll.cur = cur
+
+      if not target then
+        -- Plus de 50 courriers : le client n'en montre que 50 a la fois.
+        local num, total = GetInboxNumItems()
+        if not opts.keys and (total or 0) > (num or 0) and st.passes < 5 then
+          st.passes, st.cursor, st.cur = st.passes + 1, math.huge, nil
+          Debug("nouveau tour (%s/%s)", tostring(num), tostring(total))
+          if CheckInbox then lastCheckInbox = GetTime(); pcall(CheckInbox) end
+          return schedule(2.0)
+        end
+        return finish()
       end
+
       local action
       if (target.money or 0) > 0 and not cur.moneyDone then
         cur.moneyDone = true
-        TakeInboxMoney(target.index)
-        TrackReceivedGold(target.money, target.sender)
-        if target.category == "sold" or target.category == "won" then TrackAuction(target.category, target.money) end
-        P.openAll.gold = P.openAll.gold + target.money
+        P.TakeMoneyTracked(target, res)
         action = "or"
-      elseif not cur.returned then
+      elseif not opts.moneyOnly and not cur.returned then
         for a = 1, (ATTACHMENTS_MAX_RECEIVE or 16) do
           local link = SafeGetItemLink(target.index, a)
           if link and (cur.tries[a] or 0) < 3 then
-            if PostBoxDB.autoReturnDNW and P.IsDoNotWant(link) then
+            if PostBoxDB.autoReturnDNW and not opts.keys and P.IsDoNotWant(link) then
               cur.returned = true
               ReturnInboxItem(target.index)
-              P.openAll.returned = P.openAll.returned + 1
+              res.returned = res.returned + 1
               action = "retour"
             elseif P.GetFreeBagSlots() <= (PostBoxDB.reserveSlots or 0) then
-              P.openAll.active = false
-              print(string.format(L.MSG_OPENALL_BAGSFULL_FMT, PostBoxDB.reserveSlots or 0))
-              ShowRecap()
-              return
+              return finish("bagsfull")
             else
               cur.tries[a] = (cur.tries[a] or 0) + 1
+              cur.pending[a] = { link = link, count = SafeGetItemCount(target.index, a) }
               TakeInboxItem(target.index, a)
-              if cur.tries[a] == 1 then
-                AddLoot(link, 1)
-                P.openAll.itemsTaken = P.openAll.itemsTaken + 1
-              end
               action = "emplacement " .. a
             end
             break
           end
         end
       end
-      log("[%d] %s | en-tete pieces=%s or=%s | action=%s", target.index,
-        tostring(target.subject), tostring(target.hasItem), tostring(target.money), tostring(action))
+      Debug("[%d] %s | action=%s", target.index, tostring(target.subject), tostring(action))
       if action then
-        P.openAll.cursor = target.index + 1   -- reste sur ce courrier
+        schedule(0.6)
       else
-        P.openAll.cursor = target.index       -- termine : passe au precedent
-        P.openAll.cur = nil
+        for _ in pairs(cur.pending) do res.failed = res.failed + 1 end
+        st.cursor, st.cur = cur.index, nil
+        schedule(0.05)
       end
-      if openAllTimeout then openAllTimeout:Cancel() end
-      openAllTimeout = C_Timer.NewTimer(action and 0.6 or 0.05, step)
     end)
     if not ok then
       P.openAll.active = false
+      if queueTimer then queueTimer:Cancel(); queueTimer = nil end
       print("|cFFFF5555PostBox|r : " .. tostring(err))
     end
   end
   step()
+  return true
 end
 
--- Recuperation groupee des invendus (auctions expirees ou annulees, l'objet
--- revient par courrier sans avoir ete vendu). Il n'existe aucune API pour
--- reposter directement un objet sur l'Hotel des ventes depuis la boite aux
--- lettres (il faut repasser par l'interface HV elle-meme, generalement sur
--- place) : ce bouton se limite donc a recuperer ces objets en un clic,
--- independamment des cases de filtrage general, pour les reposter ensuite
--- manuellement.
+-- Objets revenus sans avoir ete vendus (expires ou annules). Aucune API ne
+-- permet de les reposter depuis la boite : on les recupere en un clic.
 function P.CollectUnsold()
   P.OpenAll({ categories = { expired = true, cancelled = true } })
 end
 
-openAllWatcher:RegisterEvent("MAIL_INBOX_UPDATE")
-openAllWatcher:SetScript("OnEvent", function()
-  P.RefreshCache()
-end)
-
--- ============================================================================
--- EXPRESS : Maj-clic = recuperer, Ctrl-clic = renvoyer, Alt-clic = joindre
--- depuis le sac (attache le dernier objet clique du sac au prochain courrier
--- de l'onglet Envoyer). Appele depuis les gestionnaires OnClick des lignes.
--- ============================================================================
-function P.ExpressClick(entry, button)
-  if IsShiftKeyDown() then
-    ProcessOne(entry)
-    P.RefreshCache()
-  elseif IsControlKeyDown() then
-    if PostBoxDB.codThreshold > 0 and entry.cod and entry.cod >= PostBoxDB.codThreshold then
-      StaticPopup_Show("POSTBOX_COD_RETURN_CONFIRM", GetCoinTextureString(entry.cod), nil, entry)
-    else
-      ReturnInboxItem(entry.index)
-      P.openAll.returned = P.openAll.returned + 1
-      P.RefreshCache()
-    end
+-- Ramassage automatique de l'or des ventes HV a l'ouverture de la boite.
+function P.AutoCollectSold()
+  if not PostBoxDB.autoCollectSold or P.IsBusy() then return end
+  local any = false
+  for _, e in ipairs(P.cache) do
+    if e.category == "sold" and (e.money or 0) > 0 and (e.cod or 0) == 0 then any = true; break end
   end
+  if not any then return end
+  P.OpenAll({
+    categories = { sold = true }, moneyOnly = true, silent = true,
+    onDone = function(res)
+      if res.gold > 0 then print(string.format(L.MSG_AUTOCOLLECT_FMT, Coin(res.gold))) end
+    end,
+  })
 end
 
-StaticPopupDialogs["POSTBOX_COD_RETURN_CONFIRM"] = {
-  text = L.POPUP_COD_RETURN_TEXT,
-  button1 = OKAY,
-  button2 = CANCEL,
-  OnAccept = function(self, data) ReturnInboxItem(data.index); P.RefreshCache() end,
-  timeout = 0, whileDead = true, hideOnEscape = true,
-}
-
 -- ============================================================================
--- GARDE-FOU COD (a l'ouverture manuelle d'un courrier avec COD)
+-- EXPRESS (sur une ligne) : Maj+clic = recuperer, Ctrl+clic = renvoyer,
+-- clic droit = recuperer en acceptant le contre-remboursement (confirme).
 -- ============================================================================
-local function TakeAllAttachments(entry)
-  for attach = 1, math.max(entry.hasItem or 1, 1) do
-    TakeInboxItem(entry.index, attach)
-  end
+local function TakeOne(entry, allowCOD)
+  if P.IsBusy() then print(L.MSG_BUSY) return end
+  P.OpenAll({ keys = { [entry.key] = true }, silent = true, allowCOD = allowCOD })
 end
 
-StaticPopupDialogs["POSTBOX_COD_OPEN_CONFIRM"] = {
-  text = L.POPUP_COD_OPEN_TEXT,
-  button1 = OKAY,
-  button2 = CANCEL,
-  OnAccept = function(self, data) TakeAllAttachments(data); P.RefreshCache() end,
-  timeout = 0, whileDead = true, hideOnEscape = true,
-}
-
-function P.ConfirmOpenCOD(entry)
-  if PostBoxDB.codThreshold > 0 and entry.cod and entry.cod >= PostBoxDB.codThreshold then
-    StaticPopup_Show("POSTBOX_COD_OPEN_CONFIRM", GetCoinTextureString(entry.cod), nil, entry)
+function P.TakeWithCOD(entry)
+  if (entry.cod or 0) <= 0 then return TakeOne(entry, false) end
+  local threshold = PostBoxDB.codThreshold or 0
+  if entry.cod >= threshold then
+    P.Confirm(string.format(L.POPUP_COD_OPEN_TEXT, Coin(entry.cod)), function() TakeOne(entry, true) end)
   else
-    TakeAllAttachments(entry)
-    P.RefreshCache()
+    TakeOne(entry, true)
+  end
+end
+
+function P.ReturnMail(entry)
+  if entry.wasReturned or entry.canReply == false then
+    print(L.MSG_CANT_RETURN)
+    return
+  end
+  ReturnInboxItem(entry.index)
+  C_Timer.After(0.4, function() P.RefreshCache(true) end)
+end
+
+function P.ExpressClick(entry)
+  if IsShiftKeyDown() then
+    TakeOne(entry, false)
+  elseif IsControlKeyDown() then
+    P.ReturnMail(entry)
   end
 end
 
 -- ============================================================================
--- INDICATEUR D'EXPIRATION
+-- EXPIRATION ET TRI INTELLIGENT
 -- ============================================================================
 function P.IsExpiringSoon(entry)
   return entry.daysLeft and entry.daysLeft <= (PostBoxDB.expiryWarnDays or 1)
 end
 
--- ============================================================================
--- TRI INTELLIGENT : regroupe par urgence d'expiration, puis par type AH, puis
--- par expediteur (ordre stable, pas de dependance a un tri natif instable).
--- ============================================================================
 local CATEGORY_ORDER = { cancelled = 1, expired = 2, outbid = 3, sold = 4, won = 5, other = 6 }
 function P.SmartSort(list)
   local out = {}
@@ -677,137 +928,70 @@ function P.SmartSort(list)
 end
 
 -- ============================================================================
--- SELECTION : cases a cocher, plage (Maj), meme expediteur (Ctrl)
+-- SELECTION
 -- ============================================================================
 P.selection = {}  -- [index] = true
-P.lastClickedIndex = nil
-
-function P.ToggleSelect(entry, extendKey)
-  if extendKey == "shift" and P.lastClickedIndex then
-    local lo, hi = P.lastClickedIndex, entry.index
-    if lo > hi then lo, hi = hi, lo end
-    for _, e in ipairs(P.cache) do
-      if e.index >= lo and e.index <= hi then P.selection[e.index] = true end
-    end
-  elseif extendKey == "ctrl" then
-    for _, e in ipairs(P.cache) do
-      if e.sender == entry.sender then P.selection[e.index] = true end
-    end
-  else
-    P.selection[entry.index] = not P.selection[entry.index] or nil
-  end
-  P.lastClickedIndex = entry.index
-  if P.RefreshWindow then P.RefreshWindow() end
-end
-
--- CORRECTIF : meme bug que "Tout ouvrir" et la suppression en masse (voir
--- leurs commentaires plus bas) - TakeInboxMoney/TakeInboxItem tires en
--- boucle synchrone pour toute la selection ne prenaient reellement que le
--- premier courrier cote serveur, mais TrackReceivedGold (le compteur "or
--- recu" de la session, PostBoxDB.stats.rakeSession) etait quand meme
--- incremente pour CHAQUE courrier selectionne de facon optimiste - gonflant
--- le cumul d'or de la session bien au-dela de ce qui a reellement ete pris.
--- Confirme en jeu ("le cumul d'or n'est toujours pas bon pour la session").
--- Meme remede : file d'attente, un courrier a la fois, cle stable (EntryKey).
-local processQueue = nil
-local processTimeout
 
 function P.ProcessSelection()
-  if processQueue or P.openAll.active then return end
-  local keys = {}
+  if P.IsBusy() then print(L.MSG_BUSY) return end
+  local keys, n = {}, 0
   for _, entry in ipairs(P.cache) do
-    if P.selection[entry.index] then keys[#keys + 1] = EntryKey(entry) end
+    if P.selection[entry.index] then keys[entry.key] = true; n = n + 1 end
   end
   wipe(P.selection)
-  if #keys == 0 then return end
-  processQueue = { keys = keys, i = 0 }
-
-  local function step()
-    local q = processQueue
-    q.i = q.i + 1
-    if q.i > #q.keys then
-      processQueue = nil
-      P.RefreshCache()
-      return
-    end
-    local ok, err = pcall(function()
-      P.RefreshCache()
-      local target
-      for _, entry in ipairs(P.cache) do
-        if EntryKey(entry) == q.keys[q.i] then target = entry; break end
-      end
-      if target then ProcessOne(target) end
-    end)
-    if not ok then
-      print("|cFFFF5555PostBox|r : " .. tostring(err))
-    end
-    if processTimeout then processTimeout:Cancel() end
-    processTimeout = C_Timer.NewTimer(0.6, step)
-  end
-  step()
+  if n == 0 then return end
+  P.OpenAll({ keys = keys })
 end
 
 -- ============================================================================
--- SUPPRESSION (multi-selection) : DeleteInboxItem(index) - CORRECTIF confirme
--- en jeu : le code appelait "DeleteInboxMail", qui n'a jamais existe dans
--- l'API WoW (100% d'echec, "attempt to call a nil value") - le vrai nom est
--- DeleteInboxItem.
--- SECURITE : ne supprime JAMAIS un courrier qui a encore de l'or ou un objet
--- en attente. Ce n'est PAS le serveur qui l'empecherait : DeleteInboxItem()
--- est une requete inconditionnelle, Blizzard ne verifie pas cote serveur si
--- le courrier a encore une piece jointe - c'est nous qui devons le garantir.
--- ASYNCHRONE : DeleteInboxItem() "peut echouer... quand une autre demande de
--- suppression est deja en cours" (Warcraft Wiki) - tirer tous les
--- DeleteInboxItem d'une selection dans la meme boucle synchrone (comme
--- avant) les faisait donc echouer en cascade des le 2e, sans erreur Lua
--- (refus cote serveur, pas d'exception) : confirme en jeu ("je dois encore
--- les supprimer 1 par 1"). Meme remede que "Tout ouvrir" plus haut : une
--- file d'attente qui traite UN courrier a la fois et attend avant le
--- suivant, en reperant chaque courrier par une cle stable (EntryKey) plutot
--- que par son index, qui se decale a chaque suppression confirmee.
+-- SUPPRESSION (multi-selection) : DeleteInboxItem, une a la fois, verifiee par
+-- la baisse de GetInboxNumItems() (un refus serveur ne leve aucune erreur).
+-- Ne supprime JAMAIS un courrier qui a encore de l'or ou un objet.
 -- ============================================================================
-local deleteQueue = nil
 local deleteTimeout
 
--- Nombre de courriers selon le CLIENT (pas P.cache) : sert a verifier qu'une
--- suppression a reellement ete confirmee par le serveur.
 local function InboxCount()
   return (GetInboxNumItems and (GetInboxNumItems())) or 0
 end
 
--- CORRECTIF (constat utilisateur, 2026-09-21 : "impossible de supprimer de
--- vieux courriers deja ouverts") : la file comptait un courrier comme
--- "supprime" des que l'appel DeleteInboxItem ne levait pas d'erreur Lua, or un
--- refus du serveur ne leve AUCUNE erreur - le message annoncait donc des
--- suppressions qui n'avaient pas eu lieu, et un refus reel restait invisible.
--- On verifie maintenant que le nombre de courriers du client diminue
--- (jusqu'a ~2,4 s), on retente une fois, puis on signale l'echec avec la
--- raison connue (InboxItemCanDelete, or/objet restant).
+-- Pieces jointes reellement presentes (lecture directe, pas l'en-tete fige).
+function P.LiveItemCount(e)
+  if (e.hasItem or 0) <= 0 then return 0 end
+  local n = 0
+  for a = 1, (ATTACHMENTS_MAX_RECEIVE or 16) do
+    if SafeGetItemLink(e.index, a) then n = n + 1 end
+    if n >= e.hasItem then break end
+  end
+  return n
+end
+
+-- Un courrier est vide si plus aucune piece jointe n'est lisible et si son or
+-- a ete pris pendant cette visite (l'en-tete, lui, garde l'ancien montant).
+function P.IsMailEmpty(e)
+  local goldLeft = (e.money or 0) > 0 and not P.sessionMoneyTaken[P.MailIdKey(e)]
+  return not goldLeft and P.LiveItemCount(e) == 0
+end
+
 function P.DeleteSelected()
-  if deleteQueue then return end -- suppression deja en cours
+  if P.IsBusy() then print(L.MSG_BUSY) return end
   local keys, skipped = {}, 0
   for _, entry in ipairs(P.cache) do
     if P.selection[entry.index] then
-      if (entry.money or 0) == 0 and (entry.hasItem or 0) == 0 then
-        keys[#keys + 1] = EntryKey(entry)
+      if P.IsMailEmpty(entry) then
+        keys[#keys + 1] = entry.key
       else
         skipped = skipped + 1
-        if P.debugOpenAll then
-          print(string.format("|cFF9DA5FFPostBox suppr|r ignore [%d] %s - %s | or=%s objets=%s lien=%s",
-            entry.index, tostring(entry.sender), tostring(entry.subject),
-            tostring(entry.money), tostring(entry.hasItem), tostring(entry.itemLink)))
-        end
       end
     end
   end
   wipe(P.selection)
   if #keys == 0 then
     if skipped > 0 then print(string.format(L.MSG_DELETE_RESULT_SKIPPED_FMT, 0, skipped)) end
+    P.RefreshWindow()
     return
   end
 
   deleteQueue = { keys = keys, i = 0, deleted = 0, failed = 0, skipped = skipped, failures = {} }
-
   local step
 
   local function finish()
@@ -824,7 +1008,7 @@ function P.DeleteSelected()
     else
       print(string.format(L.MSG_DELETE_RESULT_FMT, q.deleted))
     end
-    P.RefreshCache()
+    P.RefreshCache(true)
   end
 
   local function nextStep()
@@ -832,32 +1016,24 @@ function P.DeleteSelected()
     deleteTimeout = C_Timer.NewTimer(0.3, step)
   end
 
-  -- Retrouve le courrier visee dans le cache frais (cle stable, pas l'index).
   local function findTarget(key)
     for _, entry in ipairs(P.cache) do
-      if EntryKey(entry) == key then return entry end
+      if entry.key == key then return entry end
     end
   end
 
   local function attempt(key, retried)
-    P.RefreshCache()
+    P.RefreshCache(true)
     local target = findTarget(key)
     if not target then
-      -- Deja absent (supprime entre-temps par un autre moyen) : c'est fait.
       deleteQueue.deleted = deleteQueue.deleted + 1
       return nextStep()
     end
     local before = InboxCount()
-    -- Le serveur refuse de supprimer un courrier a texte tant qu'il n'a pas ete
-    -- "ouvert" (lu) : l'interface Blizzard appelle GetInboxText avant
-    -- DeleteInboxItem. On fait de meme (non verifie en jeu).
+    -- Le serveur refuse de supprimer un courrier a texte non "ouvert" :
+    -- l'interface Blizzard appelle GetInboxText avant DeleteInboxItem.
     pcall(GetInboxText, target.index)
     local delFn = (C_Mail and C_Mail.DeleteInboxItem) or DeleteInboxItem
-    if P.debugOpenAll then
-      print(string.format("|cFF9DA5FFPostBox suppr|r [%d] %s | lu=%s or=%s objets=%s | count=%s",
-        target.index, tostring(target.subject), tostring(target.wasRead),
-        tostring(target.money), tostring(target.hasItem), tostring(before)))
-    end
     local delOk, delErr = pcall(delFn, target.index)
     if not delOk then
       deleteQueue.failed = deleteQueue.failed + 1
@@ -867,6 +1043,7 @@ function P.DeleteSelected()
     end
     local tries = 0
     local function confirm()
+      if not deleteQueue then return end
       if InboxCount() < before then
         deleteQueue.deleted = deleteQueue.deleted + 1
         return nextStep()
@@ -884,9 +1061,7 @@ function P.DeleteSelected()
         end
         deleteQueue.failed = deleteQueue.failed + 1
         deleteQueue.failures[#deleteQueue.failures + 1] = string.format(
-          "%s - %s (InboxItemCanDelete=%s, or=%s, objets=%s, lu=%s)",
-          target.sender or "?", target.subject or "", canDelete,
-          tostring(target.money or 0), tostring(target.hasItem or 0), tostring(target.wasRead))
+          "%s - %s (InboxItemCanDelete=%s)", target.sender or "?", target.subject or "", canDelete)
         nextStep()
       end
     end
@@ -908,23 +1083,23 @@ function P.DeleteSelected()
 end
 
 -- ============================================================================
--- RAKE : total d'or ramasse (compteur de session, remis a zero manuellement)
+-- RAKE : or ramasse sur la session (remis a zero a la main)
 -- ============================================================================
 function P.ResetRake() PostBoxDB.stats.rakeSession = 0 end
 function P.GetRake() return PostBoxDB.stats.rakeSession or 0 end
 
 -- ============================================================================
--- RECHERCHE GLOBALE (expediteur / objet / sujet)
+-- RECHERCHE GLOBALE (expediteur / sujet / objet) - requete deja normalisee
 -- ============================================================================
 function P.SearchProvider(query)
   local out = {}
-  local UI = _G.TibiMidnight
+  local UI = GetUI()
   for _, e in ipairs(P.cache) do
     local hay = (e.sender or "") .. " " .. (e.subject or "") .. " " .. (e.itemLink or "")
     if UI and UI.Match(hay, query) then
       out[#out + 1] = {
         text = string.format("%s - %s", e.sender or "?", e.subject or ""),
-        onClick = function() if P.OpenWindow then P.OpenWindow() end end,
+        onClick = function() if P.OpenWindow then P.OpenWindow() end; P.ShowMailPreview(e) end,
       }
     end
   end
@@ -932,8 +1107,7 @@ function P.SearchProvider(query)
 end
 
 -- ============================================================================
--- OUVERTURE / FERMETURE PUBLIQUE (utilise par le core en mode module, et par
--- le bouton minimap / slash en mode standalone)
+-- OUVERTURE / FERMETURE PUBLIQUE
 -- ============================================================================
 function PostBox_Toggle()
   if P.BuildUI then P.BuildUI() end
@@ -943,7 +1117,7 @@ function PostBox_Toggle()
     f:Hide(); PostBoxDB.open = false
   else
     f:Show(); PostBoxDB.open = true
-    P.RefreshCache()
+    P.RefreshCache(false)
   end
 end
 
@@ -954,34 +1128,40 @@ end
 
 -- ============================================================================
 -- FENETRE PRINCIPALE
+-- Lignes habillees par textures (SetColorTexture) et non par backdrop : un
+-- SetBackdropColor pose juste apres le premier Show perdait son alpha en jeu.
+-- Les textes sont a largeur fixe sans retour a la ligne : WoW les termine
+-- lui-meme par "...". L'ancienne troncature octet par octet coupait les
+-- lettres accentuees en deux.
 -- ============================================================================
 local ROW_H = 30
--- La zone de contenu fait LIST_W-40 = 660px (LIST_W defini dans BuildMainFrame,
--- plus bas). 560 laissait 100px inutilises a droite - la colonne "money"
--- (jusqu'a environ x=578) et le bouton "ne veut pas" (colle au bord droit de
--- la ligne) debordaient donc hors du fond sombre de la ligne. 656 (avec une
--- petite marge) fait rentrer tout le monde dans le fond visible.
 local ROW_W = 656
 local rows = {}
 
-local function GetUI() return _G.TibiMidnight end
-
 local function BuildRow(parent)
-  local r = CreateFrame("Button", nil, parent, "BackdropTemplate")
-  r:SetSize(ROW_W, ROW_H)
   local UI = GetUI()
-  if UI then
-    -- UI.FlatBackdrop() pose une texture blanche brute (WHITE8X8) sans
-    -- teinte : sans SetBackdropColor explicite, la ligne reste blanche et le
-    -- texte clair du theme devient illisible dessus. On applique le fond
-    -- sombre du socle ici.
-    r:SetBackdrop(UI.FlatBackdrop())
-    r:SetBackdropColor(UI.C.PANEL[1], UI.C.PANEL[2], UI.C.PANEL[3], 0.92)
-    r:SetBackdropBorderColor(0, 0, 0, 0.35)
-  end
+  local r = CreateFrame("Button", nil, parent)
+  r:SetSize(ROW_W, ROW_H)
+
+  local bg = r:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints()
+  local panel = UI and UI.C.PANEL or { 0.055, 0.063, 0.082 }
+  bg:SetColorTexture(panel[1] + 0.02, panel[2] + 0.02, panel[3] + 0.02, 0.92)
+  r.bg = bg
+
+  local hl = r:CreateTexture(nil, "HIGHLIGHT")
+  hl:SetAllPoints()
+  hl:SetColorTexture(1, 1, 1, 0.05)
+
+  local sel = r:CreateTexture(nil, "ARTWORK")
+  sel:SetPoint("TOPLEFT"); sel:SetPoint("BOTTOMLEFT")
+  sel:SetWidth(3)
+  sel:SetColorTexture(ACCENT[1], ACCENT[2], ACCENT[3], 1)
+  sel:Hide()
+  r.sel = sel
 
   local cb = CreateFrame("CheckButton", nil, r, "UICheckButtonTemplate")
-  cb:SetSize(20, 20); cb:SetPoint("LEFT", 4, 0)
+  cb:SetSize(20, 20); cb:SetPoint("LEFT", 6, 0)
   r.cb = cb
 
   local expiry = r:CreateTexture(nil, "OVERLAY")
@@ -989,27 +1169,20 @@ local function BuildRow(parent)
   expiry:SetColorTexture(0.90, 0.30, 0.20, 1)
   r.expiry = expiry
 
-  -- SetWordWrap(false) sur sender/subject/item : un texte long qui passe sur
-  -- 2 lignes debordait de la hauteur fixe de la ligne et chevauchait la ligne
-  -- suivante (confirme en jeu). Une seule ligne + troncature (TruncateToWidth,
-  -- plus bas) est plus robuste qu'une hauteur de ligne variable.
   local sender = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  sender:SetPoint("LEFT", expiry, "RIGHT", 6, 0); sender:SetWidth(130); sender:SetJustifyH("LEFT")
+  sender:SetPoint("LEFT", expiry, "RIGHT", 6, 0); sender:SetWidth(128); sender:SetJustifyH("LEFT")
   sender:SetWordWrap(false)
   r.sender = sender
 
   local subject = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  subject:SetPoint("LEFT", sender, "RIGHT", 6, 0); subject:SetWidth(190); subject:SetJustifyH("LEFT")
+  subject:SetPoint("LEFT", sender, "RIGHT", 6, 0); subject:SetWidth(188); subject:SetJustifyH("LEFT")
   subject:SetWordWrap(false)
   r.subject = subject
 
-  -- Icone de l'objet joint (visuel, en plus du texte) : reduit la colonne
-  -- texte de 120 a 96px pour lui faire de la place sans deplacer les
-  -- colonnes suivantes (money/dnw gardent leurs ancrages inchanges).
   local itemIcon = r:CreateTexture(nil, "OVERLAY")
   itemIcon:SetSize(20, 20)
   itemIcon:SetPoint("LEFT", subject, "RIGHT", 4, 0)
-  itemIcon:SetTexture(134400)  -- INV_Misc_QuestionMark : repli tant qu'aucun objet n'est affecte
+  itemIcon:SetTexture(134400)
   itemIcon:Hide()
   r.itemIcon = itemIcon
 
@@ -1019,32 +1192,44 @@ local function BuildRow(parent)
   r.item = item
 
   local money = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  money:SetPoint("LEFT", item, "RIGHT", 4, 0); money:SetWidth(80); money:SetJustifyH("LEFT")
+  money:SetPoint("LEFT", item, "RIGHT", 4, 0); money:SetWidth(84); money:SetJustifyH("LEFT")
+  money:SetWordWrap(false)
   r.money = money
 
   local dnw = CreateFrame("Button", nil, r)
   dnw:SetSize(18, 18); dnw:SetPoint("RIGHT", -6, 0)
   local dnwTex = dnw:CreateTexture(nil, "OVERLAY"); dnwTex:SetAllPoints()
   dnwTex:SetTexture("Interface\\Buttons\\UI-GroupLoot-DE-Up")
+  dnw:SetScript("OnEnter", function(s)
+    GameTooltip:SetOwner(s, "ANCHOR_LEFT"); GameTooltip:SetText(L.DNW_TOOLTIP, nil, nil, nil, nil, true); GameTooltip:Show()
+  end)
+  dnw:SetScript("OnLeave", function() GameTooltip:Hide() end)
   r.dnw = dnw
 
+  r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
   r:SetScript("OnClick", function(self, button)
     local e = self._entry
     if not e then return end
     if button == "RightButton" then
-      if e.hasItem and e.hasItem > 0 then P.ConfirmOpenCOD(e) end
+      if (e.money or 0) > 0 or (e.hasItem or 0) > 0 then P.TakeWithCOD(e) end
       return
     end
     if IsShiftKeyDown() or IsControlKeyDown() then
-      P.ExpressClick(e, button)
+      P.ExpressClick(e)
     else
-      -- Clic simple sur la ligne (expediteur, sujet ou objet) = lire le
-      -- contenu. La case a cocher (widget separe, cf. cb ci-dessous) reste
-      -- l'unique moyen de selectionner un courrier.
       P.ShowMailPreview(e)
     end
   end)
-  r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  r:SetScript("OnEnter", function(self)
+    local e = self._entry
+    if not e then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    if e.itemLink then GameTooltip:SetHyperlink(e.itemLink) else GameTooltip:SetText(e.subject or "") end
+    if (e.cod or 0) > 0 then GameTooltip:AddLine(string.format(L.ROW_COD_FMT, Coin(e.cod)), 1, 0.4, 0.3) end
+    GameTooltip:AddLine(L.ROW_HINT, 0.7, 0.7, 0.75, true)
+    GameTooltip:Show()
+  end)
+  r:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
   cb:SetScript("OnClick", function(self)
     local e = r._entry
@@ -1063,39 +1248,20 @@ local function BuildRow(parent)
   return r
 end
 
--- Tronque un texte SIMPLE (jamais un lien d'objet - couper un |H...|h en plein
--- milieu casserait le lien) a la largeur d'affichage donnee, "..." en bout.
--- Empeche tout debordement horizontal vers la colonne suivante.
-local function TruncateToWidth(fs, text, maxWidth)
-  text = text or ""
-  fs:SetText(text)
-  if text == "" or (fs:GetStringWidth() or 0) <= maxWidth then return end
-  local s = text
-  while #s > 1 and (fs:GetStringWidth() or 0) > maxWidth do
-    s = s:sub(1, #s - 1)
-    fs:SetText(s .. "...")
-  end
-end
-
 local function FormatRow(r, e)
   r._entry = e
-  TruncateToWidth(r.sender, e.sender, 128)
-  TruncateToWidth(r.subject, e.subject, 188)
-  -- hasItem = nombre d'emplacements de piece jointe utilises (pas forcement
-  -- le meme objet repete) : on affiche le premier objet + un compteur si
-  -- d'autres emplacements sont joints, sans laisser croire a une quantite.
-  -- (Pas de troncature ici : e.itemLink est un vrai lien |H...|h, le couper
-  -- en plein milieu casserait sa syntaxe - SetWordWrap(false) suffit a
-  -- empecher le retour a la ligne qui causait le chevauchement vertical.)
+  r.sender:SetText(e.sender or "")
+  r.subject:SetText(e.subject or "")
   r.item:SetText(e.itemLink and (e.hasItem > 1 and (e.itemLink .. " (+" .. (e.hasItem - 1) .. ")") or e.itemLink) or "")
-  r.money:SetText(e.money > 0 and GetCoinTextureString(e.money) or "")
+  if (e.cod or 0) > 0 then
+    r.money:SetText("|cFFFF6650COD|r " .. Coin(e.cod))
+  else
+    r.money:SetText(e.money > 0 and Coin(e.money) or "")
+  end
   if e.itemLink then
-    -- GetItemIcon peut renvoyer nil un court instant si les infos de l'objet
-    -- ne sont pas encore mises en cache cote client (objet jamais vu) - on
-    -- garde alors le repli INV_Misc_QuestionMark pose a la creation de la
-    -- ligne plutot que d'afficher une texture vide.
-    local icon = GetItemIcon and GetItemIcon(e.itemLink)
-    if icon then r.itemIcon:SetTexture(icon) end
+    local icon = (C_Item and C_Item.GetItemIconByID and ItemIDOf(e.itemLink) and C_Item.GetItemIconByID(ItemIDOf(e.itemLink)))
+      or (GetItemIcon and GetItemIcon(e.itemLink))
+    r.itemIcon:SetTexture(icon or 134400)
     r.itemIcon:Show()
   else
     r.itemIcon:Hide()
@@ -1104,11 +1270,8 @@ local function FormatRow(r, e)
   r.expiry:SetShown(P.IsExpiringSoon(e))
   r.dnw:SetShown(e.itemLink ~= nil)
   r.dnw:SetAlpha((e.itemLink and P.IsDoNotWant(e.itemLink)) and 1 or 0.35)
-  if P.previewEntryKey and e.index == P.previewEntryKey then
-    r:SetBackdropBorderColor(ACCENT[1], ACCENT[2], ACCENT[3], 1)
-  else
-    r:SetBackdropBorderColor(0, 0, 0, 0.35)
-  end
+  r.sel:SetShown(P.previewIndex ~= nil and e.index == P.previewIndex)
+  r.sender:SetAlpha(e.wasRead and 0.75 or 1)
 end
 
 P.searchQuery = ""
@@ -1118,10 +1281,13 @@ function P.RefreshWindow()
   if not f or not f:IsShown() then return end
   local list = PostBoxDB.smartSort and P.SmartSort(P.cache) or P.cache
   if P.searchQuery ~= "" then
+    local UI = GetUI()
     local filtered = {}
     for _, e in ipairs(list) do
-      local hay = ((e.sender or "") .. " " .. (e.subject or "")):lower()
-      if hay:find(P.searchQuery, 1, true) then filtered[#filtered + 1] = e end
+      local hay = (e.sender or "") .. " " .. (e.subject or "") .. " " .. ((e.invoice and e.invoice.item) or "")
+      if (UI and UI.Match(hay, P.searchQuery)) or (not UI and hay:lower():find(P.searchQuery, 1, true)) then
+        filtered[#filtered + 1] = e
+      end
     end
     list = filtered
   end
@@ -1133,48 +1299,27 @@ function P.RefreshWindow()
     r:ClearAllPoints(); r:SetPoint("TOPLEFT", content, "TOPLEFT", 2, y)
     FormatRow(r, e)
     r:Show()
-    -- Hauteur de ligne FIXE : sender/subject sont maintenant tronques a une
-    -- seule ligne (FormatRow/TruncateToWidth) plutot que d'autoriser un
-    -- retour a la ligne qui debordait de la hauteur de ligne (chevauchement
-    -- vertical confirme en jeu). Plus simple et plus fiable qu'une hauteur
-    -- variable, et evite aussi tout debordement horizontal vers la colonne
-    -- suivante.
-    r:SetHeight(ROW_H)
-    y = y - ROW_H
+    y = y - ROW_H - 1
   end
   for i = #list + 1, #rows do rows[i]:Hide() end
   content:SetHeight(math.max(-y + 4, 10))
+  f.empty:SetShown(#list == 0)
 
   if f.countText then
-    f.countText:SetText(string.format(L.WINDOW_COUNT_FMT, #P.cache, GetCoinTextureString(P.GetRake())))
+    local _, total = GetInboxNumItems()
+    local extra = ((total or 0) > #P.cache) and string.format(L.WINDOW_MORE_FMT, total - #P.cache) or ""
+    f.countText:SetText(string.format(L.WINDOW_COUNT_FMT, #P.cache, Coin(P.GetRake())) .. extra)
   end
-
-  -- Conserve l'ordre affiche courant pour la navigation clavier (Haut/Bas)
-  -- du volet d'apercu : les fleches doivent parcourir EXACTEMENT ce que
-  -- l'utilisateur voit a l'ecran (tri + recherche appliques), pas P.cache brut.
   P.currentList = list
 end
 
 -- ============================================================================
--- BADGE (nombre de courriers NON LUS) : sur l'onglet du core (mode integre),
--- sur l'icone minicarte PRINCIPALE de TibiSuite (mode integre, visible meme
--- barre repliee) et sur le bouton minimap propre de PostBox (mode
--- standalone). Tous no-op silencieux si l'element vise n'existe pas encore.
--- Compte volontairement e.wasRead == false uniquement : un courrier deja lu
--- mais pas encore ramasse (or/objet toujours en attente) ne re-notifie pas
--- indefiniment - seul un VRAI nouveau courrier fait remonter le compteur.
+-- BADGE (courriers NON LUS, boite ouverte seulement ; boite fermee, c'est la
+-- pastille "!" du core, basee sur HasNewMail(), qui prend le relais)
 -- ============================================================================
--- CORRECTIF (constat utilisateur, 2026-09-19) : pastille "1" affichee alors que
--- la boite aux lettres etait vide. P.cache n'est qu'un INSTANTANE pris quand
--- le joueur est a la boite : hors de la boite, GetInboxNumItems() ne bouge
--- plus et rien ne rafraichit le cache, donc un courrier lu/vide/expire depuis
--- (ou dont la mise a jour serveur finale n'est jamais arrivee, joueur parti
--- trop tot apres "Tout ouvrir") restait compte a vie. Le compte exact n'a de
--- sens que boite ouverte ; boite fermee on le vide et on laisse la pastille
--- "!" du core (HasNewMail(), l'API de l'icone minicarte Blizzard) signaler un
--- nouveau courrier, seule source fiable hors de la boite.
 P.mailboxOpen = false
 function P.SetMailboxOpen(open)
+  if open and not P.mailboxOpen then wipe(P.sessionMoneyTaken) end
   P.mailboxOpen = open and true or false
   if P.UpdateBadges then P.UpdateBadges() end
 end
@@ -1202,39 +1347,30 @@ function P.UpdateBadges()
 end
 
 -- ============================================================================
--- APERCU DU CONTENU D'UN COURRIER (texte de la lettre)
--- ----------------------------------------------------------------
--- Integre a la fenetre principale (volet de droite, cree dans P.BuildUI) -
--- ce n'est plus une fenetre a part. P.previewEntryKey retient l'entry.index
--- du courrier actuellement affiche (pour surligner sa ligne - voir
--- FormatRow) ; P.currentList (mis a jour par RefreshWindow) est l'ordre
--- affiche courant, utilise par P.PreviewStep pour Haut/Bas.
---
--- NON VERIFIE EN JEU : sequence supposee CheckInboxItem(index) pour demander
--- le texte au serveur, puis GetInboxText(index) pour le lire une fois pret.
--- Si le texte n'est pas encore arrive, on reessaie sur l'evenement
--- MAIL_INBOX_UPDATE (deja utilise ailleurs dans ce fichier pour l'ouverture
--- en masse) avec un nombre de tentatives limite, pour ne jamais rester
--- bloque indefiniment sur "Chargement...". Si l'API reelle differe de ce qui
--- est suppose ici, le message d'indisponibilite s'affiche proprement au lieu
--- d'une erreur Lua (tous les appels sont proteges par pcall).
+-- APERCU DU CONTENU D'UN COURRIER (volet de droite)
+-- CheckInboxItem(index) demande le texte, GetInboxText(index) le lit ; on
+-- reessaie quelques fois (8 x 0,25 s) avant d'afficher "indisponible".
 -- ============================================================================
 local previewRetryTimer
-P.previewEntryKey = nil
+P.previewIndex = nil
 
--- Reapplique juste la couleur de bordure des lignes deja construites, sans
--- reconstruire toute la liste (RefreshWindow complet serait plus lourd et
--- rappellerait P.RefreshCache indirectement a chaque changement de courrier
--- previsualise).
 local function HighlightPreviewRow()
   for _, r in ipairs(rows) do
     if r:IsShown() and r._entry then
-      if P.previewEntryKey and r._entry.index == P.previewEntryKey then
-        r:SetBackdropBorderColor(ACCENT[1], ACCENT[2], ACCENT[3], 1)
-      else
-        r:SetBackdropBorderColor(0, 0, 0, 0.35)
-      end
+      r.sel:SetShown(P.previewIndex ~= nil and r._entry.index == P.previewIndex)
     end
+  end
+end
+
+local function InvoiceText(inv)
+  if not inv then return nil end
+  if inv.type == "seller" then
+    return string.format(L.INVOICE_SOLD_FMT, inv.item or "?", inv.count or 1, inv.player or "?",
+      Coin(inv.bid), Coin(inv.cut), Coin(inv.deposit), Coin((inv.bid or 0) + (inv.deposit or 0) - (inv.cut or 0)))
+  elseif inv.type == "buyer" then
+    return string.format(L.INVOICE_BOUGHT_FMT, inv.item or "?", inv.count or 1, inv.player or "?", Coin(inv.bid))
+  elseif inv.type == "seller_temp_invoice" then
+    return string.format(L.INVOICE_PENDING_FMT, inv.item or "?", Coin(inv.bid))
   end
 end
 
@@ -1244,48 +1380,50 @@ function P.ShowMailPreview(entry)
   if not f or not f.preview then return end
   local pv = f.preview
 
-  P.previewEntryKey = entry.index
+  P.previewIndex = entry.index
+  P.previewEntry = entry
   HighlightPreviewRow()
 
-  pv.senderText:SetText((GetUI() and GetUI().Hex(ACCENT[1], ACCENT[2], ACCENT[3]) or "") .. (entry.sender or "?") .. (GetUI() and "|r" or ""))
+  pv.senderText:SetText(AccentText(entry.sender or "?"))
   pv.subjectText:SetText(entry.subject or "")
   pv.bodyText:SetText(L.PREVIEW_LOADING)
   pv.bodyContent:SetHeight(10)
   pv.placeholder:Hide()
   pv.readingPane:Show()
+  pv.fwdBtn:SetShown((entry.money or 0) > 0 or (entry.hasItem or 0) > 0)
 
   if previewRetryTimer then previewRetryTimer:Cancel(); previewRetryTimer = nil end
   pcall(CheckInboxItem, entry.index)
 
+  local inv = InvoiceText(entry.invoice)
   local attempts = 0
   local function tryFetch()
     attempts = attempts + 1
     local ok, text = pcall(GetInboxText, entry.index)
-    if ok and text and text ~= "" then
-      pv.bodyText:SetText(text)
+    local body
+    if ok and text and text ~= "" then body = text end
+    if body or inv or attempts >= 8 then
+      local parts = {}
+      if inv then parts[#parts + 1] = inv end
+      parts[#parts + 1] = body or (inv and "" or L.PREVIEW_UNAVAILABLE)
+      pv.bodyText:SetText(table.concat(parts, "\n\n"))
       pv.bodyContent:SetHeight(math.max(pv.bodyText:GetStringHeight() or 10, 10))
-    elseif attempts < 8 then
-      previewRetryTimer = C_Timer.NewTimer(0.25, tryFetch)
-    else
-      pv.bodyText:SetText(L.PREVIEW_UNAVAILABLE)
+      if body or attempts >= 8 then return end
     end
+    previewRetryTimer = C_Timer.NewTimer(0.25, tryFetch)
   end
   tryFetch()
 end
 
--- Navigation clavier (Haut/Bas) : deplace l'apercu au courrier precedent ou
--- suivant dans P.currentList (l'ordre EXACT affiche a l'ecran, tri/recherche
--- deja appliques). Sans courrier previsualise, une pression demarre sur le
--- premier de la liste plutot que de ne rien faire.
 function P.PreviewStep(delta)
   local list = P.currentList
   if not list or #list == 0 then return end
   local idx
-  if not P.previewEntryKey then
+  if not P.previewIndex then
     idx = (delta > 0) and 1 or #list
   else
     for i, e in ipairs(list) do
-      if e.index == P.previewEntryKey then idx = i; break end
+      if e.index == P.previewIndex then idx = i; break end
     end
     idx = (idx or 1) + delta
   end
@@ -1293,17 +1431,25 @@ function P.PreviewStep(delta)
   P.ShowMailPreview(list[idx])
 end
 
+local function Btn(parent, w, label, onClick, tip)
+  local UI = GetUI()
+  local b = UI and UI.MakeButton(parent, w, 24, label) or CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+  if not UI then b:SetSize(w, 24); b:SetText(label) end
+  b:SetScript("OnClick", onClick)
+  if tip then
+    b:HookScript("OnEnter", function(s)
+      GameTooltip:SetOwner(s, "ANCHOR_BOTTOM"); GameTooltip:SetText(tip, nil, nil, nil, nil, true); GameTooltip:Show()
+    end)
+    b:HookScript("OnLeave", function() GameTooltip:Hide() end)
+  end
+  return b
+end
+P.Btn = Btn
+
 function P.BuildUI()
   if _G.PostBoxMainFrame then return end
   local UI = GetUI()
-  -- Elargi pour loger le volet d'apercu integre a droite (LIST_W = zone
-  -- liste inchangee dans ses proportions internes, PREVIEW_W = volet de
-  -- lecture). Hauteur augmentee de 460 a 500 pour compenser la deuxieme
-  -- rangee de boutons (32px de plus en haut) sans reduire la hauteur
-  -- visible de la liste.
-  -- PREVIEW_W etait a 300 (confirme en jeu : texte du courrier illisible,
-  -- ~250px de large reel une fois les marges retirees) - porte a 420.
-  local LIST_W, PREVIEW_W, FRAME_H = 700, 420, 500
+  local LIST_W, PREVIEW_W, FRAME_H = 700, 420, 520
   local FRAME_W = LIST_W + PREVIEW_W
 
   local f = CreateFrame("Frame", "PostBoxMainFrame", UIParent, "BackdropTemplate")
@@ -1317,94 +1463,55 @@ function P.BuildUI()
   f:SetClampedToScreen(true)
   if UI then UI.SkinFrame(f, ACCENT, UI.C.BG) end
 
-  -- Fermeture par Echap via UISpecialFrames (mecanisme natif Blizzard) : voir
-  -- note detaillee dans TibiSuiteCore.lua (WireEscapeFor) - piege reel
-  -- confirme en jeu quand un autre addon intercepte lui aussi Echap.
+  -- Echap via UISpecialFrames seulement. AUCUN EnableKeyboard/OnKeyDown sur
+  -- cette fenetre : confirme en jeu, un simple OnKeyDown actif contaminait
+  -- l'appel protege de Blizzard declenche par Echap (ADDON_ACTION_FORBIDDEN).
   tinsert(UISpecialFrames, "PostBoxMainFrame")
 
-  -- REGRESSION CONFIRMEE EN JEU (retiree) : EnableKeyboard(true) +
-  -- OnKeyDown pour la navigation Haut/Bas de l'apercu a cause une erreur
-  -- ADDON_ACTION_FORBIDDEN sur SpellStopCasting() au moment d'appuyer sur
-  -- Echap (ToggleGameMenu), MEME AVEC SetPropagateKeyboardInput(true) sur
-  -- toutes les touches non gerees. Lecon plus generale que prevu : avoir NE
-  -- SERAIT-CE QU'UN gestionnaire OnKeyDown actif sur une fenetre affichee
-  -- semble suffire a contaminer le meme tick d'evenement que l'appel protege
-  -- de Blizzard declenche par Echap, meme si ce gestionnaire ne fait rien
-  -- pour la touche Echap elle-meme et la repropage explicitement. AUCUN
-  -- EnableKeyboard/OnKeyDown ne doit donc etre pose sur PostBoxMainFrame -
-  -- regle etendue au-dela du seul cas Echap. La navigation clavier Haut/Bas
-  -- de P.PreviewStep reste disponible mais n'a plus de raccourci clavier ;
-  -- utiliser les boutons/clics dans la liste pour changer d'apercu.
-
   local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  title:SetPoint("TOPLEFT", 16, -10)
-  title:SetText((UI and UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) or "") .. "PostBox" .. (UI and "|r" or ""))
+  title:SetPoint("TOPLEFT", 16, -12)
+  title:SetText(AccentText("PostBox"))
 
-  -- ── Volet liste (gauche) ─────────────────────────────────────
   local listPane = CreateFrame("Frame", nil, f)
   listPane:SetPoint("TOPLEFT", f, "TOPLEFT", 0, 0)
   listPane:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 0, 0)
   listPane:SetWidth(LIST_W)
   f.listPane = listPane
 
-  -- Boutons d'action sur DEUX rangees (six boutons ne tiennent plus sur une
-  -- seule ligne sans chevaucher le titre - deja rencontre avec cinq boutons,
-  -- corrige alors en elargissant la fenetre ; cette fois on repartit plutot
-  -- sur deux rangees pour ne plus avoir a re-elargir a chaque bouton ajoute).
-  -- Rangee 1 (actions principales) :
-  local openAllBtn = UI and UI.MakeButton(listPane, 110, 24, L.BTN_OPENALL) or CreateFrame("Button", nil, listPane)
+  -- Rangee 1 : actions sur le courrier
+  local openAllBtn = Btn(listPane, 104, L.BTN_OPENALL, function() P.OpenAll() end, L.TIP_OPENALL)
   openAllBtn:SetPoint("TOPRIGHT", -12, -10)
-  openAllBtn:SetScript("OnClick", function() P.OpenAll() end)
-
-  local selBtn = UI and UI.MakeButton(listPane, 110, 24, L.BTN_PROCESS_SELECTION) or CreateFrame("Button", nil, listPane)
+  local selBtn = Btn(listPane, 112, L.BTN_PROCESS_SELECTION, function() P.ProcessSelection() end, L.TIP_PROCESS)
   selBtn:SetPoint("RIGHT", openAllBtn, "LEFT", -6, 0)
-  selBtn:SetScript("OnClick", function() P.ProcessSelection() end)
-
-  local delBtn = UI and UI.MakeButton(listPane, 100, 24, L.BTN_DELETE_SELECTION) or CreateFrame("Button", nil, listPane)
+  local delBtn = Btn(listPane, 90, L.BTN_DELETE_SELECTION, function() P.DeleteSelected() end, L.TIP_DELETE)
   delBtn:SetPoint("RIGHT", selBtn, "LEFT", -6, 0)
-  delBtn:SetScript("OnClick", function() P.DeleteSelected() end)
-
-  -- Rangee 2 (secondaire) :
-  local statsBtn = UI and UI.MakeButton(listPane, 80, 24, L.BTN_STATS) or CreateFrame("Button", nil, listPane)
-  statsBtn:SetPoint("TOPRIGHT", openAllBtn, "BOTTOMRIGHT", 0, -6)
-  statsBtn:SetScript("OnClick", function() if P.Stats and P.Stats.Toggle then P.Stats.Toggle() end end)
-
-  local blackBookBtn = UI and UI.MakeButton(listPane, 90, 24, L.BTN_BLACKBOOK) or CreateFrame("Button", nil, listPane)
-  blackBookBtn:SetPoint("RIGHT", statsBtn, "LEFT", -6, 0)
-  blackBookBtn:SetScript("OnClick", function() if P.BlackBook and P.BlackBook.Toggle then P.BlackBook.Toggle() end end)
-
-  local unsoldBtn = UI and UI.MakeButton(listPane, 130, 24, L.BTN_COLLECT_UNSOLD) or CreateFrame("Button", nil, listPane)
-  unsoldBtn:SetPoint("RIGHT", blackBookBtn, "LEFT", -6, 0)
-  unsoldBtn:SetScript("OnClick", function() P.CollectUnsold() end)
-
-  -- Rafraichissement manuel : filet de securite si la liste ne se resynchronise
-  -- pas toute seule (ex : courrier supprime via l'interface WoW native pendant
-  -- que PostBox etait deja ouvert - MAIL_INBOX_UPDATE ne semble alors pas
-  -- toujours parvenir jusqu'a nous). CheckInbox() force une requete serveur
-  -- avant de relire le cache, au cas ou le client lui-meme n'etait pas a jour.
-  local refreshBtn = UI and UI.MakeButton(listPane, 90, 24, L.BTN_REFRESH) or CreateFrame("Button", nil, listPane)
-  refreshBtn:SetPoint("RIGHT", unsoldBtn, "LEFT", -6, 0)
-  refreshBtn:SetScript("OnClick", function()
-    -- CheckInbox() est asynchrone (aller-retour serveur) : une relecture
-    -- immediate du cache tombe donc souvent avant la reponse. On relit
-    -- quand meme tout de suite (sans effet nefaste si rien n'a change), puis
-    -- on retente a quelques reprises pendant la seconde qui suit pour
-    -- rattraper la reponse serveur meme si MAIL_INBOX_UPDATE ne nous
-    -- parvient pas pour une raison quelconque (fenetre fermee entretemps,
-    -- interaction mailbox deja terminee, etc.).
-    if CheckInbox then pcall(CheckInbox) end
-    P.RefreshCache()
-    C_Timer.After(0.3, function() P.RefreshCache() end)
-    C_Timer.After(0.8, function() P.RefreshCache() end)
+  local unsoldBtn = Btn(listPane, 124, L.BTN_COLLECT_UNSOLD, function() P.CollectUnsold() end, L.TIP_UNSOLD)
+  unsoldBtn:SetPoint("RIGHT", delBtn, "LEFT", -6, 0)
+  local refreshBtn = Btn(listPane, 86, L.BTN_REFRESH, function()
+    P.RefreshCache(true)
+    C_Timer.After(0.4, function() P.RefreshCache(false) end)
+    C_Timer.After(1.0, function() P.RefreshCache(false) end)
   end)
+  refreshBtn:SetPoint("RIGHT", unsoldBtn, "LEFT", -6, 0)
 
-  -- Sous les deux rangees de boutons (rangee 2 se termine a y=-10-24-6-24=-64).
+  -- Rangee 2 : outils (carnet, mule, persos, journal, stats)
+  local statsBtn = Btn(listPane, 70, L.BTN_STATS, function() if P.Stats and P.Stats.Toggle then P.Stats.Toggle() end end)
+  statsBtn:SetPoint("TOPRIGHT", openAllBtn, "BOTTOMRIGHT", 0, -6)
+  local ledgerBtn = Btn(listPane, 96, L.BTN_LEDGER, function() if P.Ledger and P.Ledger.Toggle then P.Ledger.Toggle() end end, L.TIP_LEDGER)
+  ledgerBtn:SetPoint("RIGHT", statsBtn, "LEFT", -6, 0)
+  local altsBtn = Btn(listPane, 96, L.BTN_ALTS, function() if P.Alts and P.Alts.Toggle then P.Alts.Toggle() end end, L.TIP_ALTS)
+  altsBtn:SetPoint("RIGHT", ledgerBtn, "LEFT", -6, 0)
+  local muleBtn = Btn(listPane, 70, L.BTN_MULE, function() if P.Mule and P.Mule.Toggle then P.Mule.Toggle() end end, L.TIP_MULE)
+  muleBtn:SetPoint("RIGHT", altsBtn, "LEFT", -6, 0)
+  local bbBtn = Btn(listPane, 80, L.BTN_BLACKBOOK, function() if P.BlackBook and P.BlackBook.Toggle then P.BlackBook.Toggle() end end, L.TIP_BLACKBOOK)
+  bbBtn:SetPoint("RIGHT", muleBtn, "LEFT", -6, 0)
+
   local countText = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  countText:SetPoint("TOPLEFT", f, "TOPLEFT", 34, -70)
+  countText:SetPoint("TOPLEFT", f, "TOPLEFT", 16, -72)
   f.countText = countText
 
-  -- Filtres AH (cases a cocher compactes)
-  local filterY = -92
+  -- Filtres HV
+  local filterY = -94
   local filterLabels = {
     { key = "cancelled", label = L.FILTER_CANCELLED }, { key = "expired", label = L.FILTER_EXPIRED },
     { key = "outbid", label = L.FILTER_OUTBID }, { key = "sold", label = L.FILTER_SOLD },
@@ -1422,44 +1529,45 @@ function P.BuildUI()
     fx = fx + 18 + t:GetStringWidth() + 12
   end
 
-  -- Recherche texte (expediteur/sujet), filtre la liste affichee en direct.
-  -- Sur sa propre ligne (pas cote a cote des filtres) : les libelles francais
-  -- des 6 filtres peuvent etre longs, pas de largeur garantie a partager sur
-  -- la meme ligne sans verification visuelle en jeu.
   local searchBox = CreateFrame("EditBox", nil, listPane, "SearchBoxTemplate")
   searchBox:SetSize(180, 20)
   searchBox:SetPoint("TOPRIGHT", listPane, "TOPRIGHT", -14, filterY - 26)
   searchBox:SetScript("OnTextChanged", function(self)
     SearchBoxTemplate_OnTextChanged(self)
-    P.searchQuery = self:GetText():lower()
+    P.searchQuery = Norm(self:GetText() or "")
     P.RefreshWindow()
   end)
   f.searchBox = searchBox
 
-  -- En-tetes de colonnes (statiques, ne defilent pas avec la liste - les
-  -- positions x reprennent exactement les ancrages de BuildRow : sender part
-  -- a x=44, itemIcon/item a x=374). Positions Y relatives a filterY (pas de
-  -- constantes absolues) pour ne plus se desynchroniser si la hauteur de
-  -- l'en-tete change encore (deja arrive deux fois avec l'ajout de boutons).
-  local hdrSender = listPane:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  hdrSender:SetPoint("TOPLEFT", listPane, "TOPLEFT", 44, filterY - 50)
-  hdrSender:SetText(L.COL_SENDER)
+  local hint = listPane:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  hint:SetPoint("TOPLEFT", listPane, "TOPLEFT", 14, filterY - 30)
+  hint:SetText(L.LIST_HINT)
 
+  local hdrSender = listPane:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  hdrSender:SetPoint("TOPLEFT", listPane, "TOPLEFT", 56, filterY - 52)
+  hdrSender:SetText(L.COL_SENDER)
   local hdrItem = listPane:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  hdrItem:SetPoint("TOPLEFT", listPane, "TOPLEFT", 374, filterY - 50)
+  hdrItem:SetPoint("TOPLEFT", listPane, "TOPLEFT", 382, filterY - 52)
   hdrItem:SetText(L.COL_ITEM)
 
   local scroll = CreateFrame("ScrollFrame", nil, listPane, "UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT", 8, filterY - 66)
+  scroll:SetPoint("TOPLEFT", 8, filterY - 68)
   scroll:SetPoint("BOTTOMRIGHT", -28, 12)
+  if UI and UI.SkinScrollBar then UI.SkinScrollBar(scroll, ACCENT) end
   local content = CreateFrame("Frame", nil, scroll)
   content:SetSize(LIST_W - 40, 10)
   scroll:SetScrollChild(content)
   f.content = content
 
-  -- ── Volet apercu (droite) ────────────────────────────────────
+  local empty = listPane:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+  empty:SetPoint("CENTER", scroll, "CENTER", 0, 0)
+  empty:SetText(L.LIST_EMPTY)
+  empty:Hide()
+  f.empty = empty
+
+  -- Volet apercu (droite)
   local pv = CreateFrame("Frame", nil, f, "BackdropTemplate")
-  pv:SetPoint("TOPLEFT", listPane, "TOPRIGHT", 6, 0)
+  pv:SetPoint("TOPLEFT", listPane, "TOPRIGHT", 6, -6)
   pv:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -6, 6)
   if UI then UI.SkinFrame(pv, ACCENT, UI.C.PANEL) end
   f.preview = pv
@@ -1494,33 +1602,28 @@ function P.BuildUI()
   sep:SetPoint("TOPLEFT", subjectText, "BOTTOMLEFT", -4, -10)
   sep:SetPoint("TOPRIGHT", subjectText, "BOTTOMRIGHT", 4, -10)
 
-  -- Boutons Precedent/Suivant (souris) : remplacent les fleches clavier
-  -- Haut/Bas retirees (EnableKeyboard/OnKeyDown sur cette fenetre causait un
-  -- ADDON_ACTION_FORBIDDEN sur Echap - voir la note dans P.BuildUI). Un clic
-  -- souris ne presente pas ce risque.
-  local prevBtn = UI and UI.MakeButton(readingPane, 100, 22, L.PREVIEW_PREV) or CreateFrame("Button", nil, readingPane)
+  local prevBtn = Btn(readingPane, 96, L.PREVIEW_PREV, function() P.PreviewStep(-1) end)
   prevBtn:SetPoint("BOTTOMLEFT", readingPane, "BOTTOMLEFT", 14, 8)
-  prevBtn:SetScript("OnClick", function() P.PreviewStep(-1) end)
-
-  local nextBtn = UI and UI.MakeButton(readingPane, 100, 22, L.PREVIEW_NEXT) or CreateFrame("Button", nil, readingPane)
+  local nextBtn = Btn(readingPane, 96, L.PREVIEW_NEXT, function() P.PreviewStep(1) end)
   nextBtn:SetPoint("BOTTOMRIGHT", readingPane, "BOTTOMRIGHT", -14, 8)
-  nextBtn:SetScript("OnClick", function() P.PreviewStep(1) end)
+  local fwdBtn = Btn(readingPane, 110, L.BTN_FORWARD, function()
+    local e = P.previewEntry
+    if e and P.BlackBook and P.BlackBook.ForwardPrompt then P.BlackBook.ForwardPrompt(e) end
+  end, L.TIP_FORWARD)
+  fwdBtn:SetPoint("BOTTOM", readingPane, "BOTTOM", 0, 8)
+  pv.fwdBtn = fwdBtn
 
   local pvScroll = CreateFrame("ScrollFrame", nil, readingPane, "UIPanelScrollFrameTemplate")
   pvScroll:SetPoint("TOPLEFT", sep, "BOTTOMLEFT", 4, -10)
-  -- BUG CONFIRME EN JEU : ancre precedemment sur prevBtn (bouton "Precedent",
-  -- cote GAUCHE du volet, ~100px de large) au lieu du coin bas-droit du volet
-  -- lui-meme - ca limitait la zone visible/defilante a ~94px quel que soit
-  -- PREVIEW_W, d'ou le texte illisible qui ne s'est pas ameliore en elargissant
-  -- le volet. +40 en Y pour degager la rangee Precedent/Suivant en bas.
-  pvScroll:SetPoint("BOTTOMRIGHT", readingPane, "BOTTOMRIGHT", -20, 40)
+  pvScroll:SetPoint("BOTTOMRIGHT", readingPane, "BOTTOMRIGHT", -26, 40)
+  if UI and UI.SkinScrollBar then UI.SkinScrollBar(pvScroll, ACCENT) end
   local pvContent = CreateFrame("Frame", nil, pvScroll)
-  pvContent:SetSize(PREVIEW_W - 50, 10)
+  pvContent:SetSize(PREVIEW_W - 56, 10)
   pvScroll:SetScrollChild(pvContent)
 
   local bodyText = pvContent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   bodyText:SetPoint("TOPLEFT", 0, 0)
-  bodyText:SetWidth(PREVIEW_W - 50)
+  bodyText:SetWidth(PREVIEW_W - 56)
   bodyText:SetJustifyH("LEFT"); bodyText:SetJustifyV("TOP")
   bodyText:SetSpacing(3)
   pv.bodyText = bodyText
@@ -1534,8 +1637,8 @@ function P.BuildUI()
     })
   end
 
-  f:SetScript("OnShow", function() P.RefreshCache() end)
-  f:Hide()  -- CreateFrame() est visible par defaut : on masque avant le premier Toggle
+  f:SetScript("OnShow", function() P.RefreshCache(false) end)
+  f:Hide()
 end
 
 function P.OpenWindow()
@@ -1544,7 +1647,7 @@ function P.OpenWindow()
 end
 
 -- ============================================================================
--- RECAP ANIME (fin d'OpenAll) : liste du butin + or, revele ligne par ligne.
+-- RECAP ANIME (fin d'un "Tout ouvrir") : butin + or, revele ligne par ligne.
 -- ============================================================================
 function P.ShowRecapPopup(result)
   local UI = GetUI()
@@ -1559,6 +1662,7 @@ function P.ShowRecapPopup(result)
     f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving)
     f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    tinsert(UISpecialFrames, "PostBoxRecapFrame")
 
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", 2, 2)
@@ -1566,8 +1670,7 @@ function P.ShowRecapPopup(result)
 
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -10)
-    title:SetText((UI and UI.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) or "") .. L.RECAP_TITLE .. (UI and "|r" or ""))
-    f.title = title
+    title:SetText(AccentText(L.RECAP_TITLE))
 
     local goldText = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     goldText:SetPoint("TOP", title, "BOTTOM", 0, -8)
@@ -1576,6 +1679,7 @@ function P.ShowRecapPopup(result)
     local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 12, -60)
     scroll:SetPoint("BOTTOMRIGHT", -30, 12)
+    if UI and UI.SkinScrollBar then UI.SkinScrollBar(scroll, ACCENT) end
     local content = CreateFrame("Frame", nil, scroll)
     content:SetSize(260, 10)
     scroll:SetScrollChild(content)
@@ -1584,7 +1688,7 @@ function P.ShowRecapPopup(result)
   end
 
   for _, l in ipairs(f.lines) do l:Hide() end
-  f.goldText:SetText(result.gold > 0 and string.format(L.RECAP_GOLD_FMT, GetCoinTextureString(result.gold)) or L.RECAP_NO_GOLD)
+  f.goldText:SetText(result.gold > 0 and string.format(L.RECAP_GOLD_FMT, Coin(result.gold)) or L.RECAP_NO_GOLD)
 
   local items = {}
   for _, entry in pairs(result.loot) do items[#items + 1] = entry end
@@ -1597,10 +1701,10 @@ function P.ShowRecapPopup(result)
     local l = f.lines[i]
     if not l then
       l = f.content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-      l:SetPoint("TOPLEFT", f.content, "TOPLEFT", 4, y)
       l:SetWidth(250); l:SetJustifyH("LEFT")
       f.lines[i] = l
     end
+    l:ClearAllPoints(); l:SetPoint("TOPLEFT", f.content, "TOPLEFT", 4, y)
     l:SetText(string.format("%s x%d", entry.link, entry.count))
     l:SetAlpha(0); l:Show()
     UIFrameFadeIn(l, 0.25, 0, 1)
@@ -1609,12 +1713,77 @@ function P.ShowRecapPopup(result)
     C_Timer.After(0.08, function() revealLine(i + 1) end)
   end
   revealLine(1)
-
-  if result.returned and result.returned > 0 then
-    print(string.format(L.MSG_DNW_RETURNED_FMT, result.returned))
-  end
-
   f:Show()
+end
+
+-- ============================================================================
+-- GESTION DE LA LISTE "NE VEUT PAS" (objets retournes automatiquement)
+-- ============================================================================
+function P.RefreshDNWWindow()
+  local f = _G.PostBoxDNWFrame
+  if not f or not f:IsShown() then return end
+  local UI = GetUI()
+  local ids = {}
+  for id in pairs(PostBoxDB.doNotWant) do ids[#ids + 1] = id end
+  table.sort(ids)
+  local y = -4
+  for i, id in ipairs(ids) do
+    local r = f.rows[i]
+    if not r then
+      r = CreateFrame("Frame", nil, f.content)
+      r:SetSize(300, 22)
+      r.icon = r:CreateTexture(nil, "ARTWORK"); r.icon:SetSize(18, 18); r.icon:SetPoint("LEFT", 2, 0)
+      r.text = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      r.text:SetPoint("LEFT", r.icon, "RIGHT", 6, 0); r.text:SetWidth(200); r.text:SetJustifyH("LEFT"); r.text:SetWordWrap(false)
+      r.del = UI and UI.MakeButton(r, 70, 18, L.DNW_REMOVE) or CreateFrame("Button", nil, r)
+      r.del:SetPoint("RIGHT", -2, 0)
+      f.rows[i] = r
+    end
+    r:ClearAllPoints(); r:SetPoint("TOPLEFT", f.content, "TOPLEFT", 0, y)
+    local name, link, _, _, _, _, _, _, _, icon = (C_Item and C_Item.GetItemInfo or GetItemInfo)(id)
+    r.icon:SetTexture(icon or (C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(id)) or 134400)
+    r.text:SetText(link or name or ("item:" .. id))
+    r.del:SetScript("OnClick", function() PostBoxDB.doNotWant[id] = nil; P.RefreshDNWWindow(); P.RefreshWindow() end)
+    r:Show()
+    y = y - 24
+  end
+  for i = #ids + 1, #f.rows do f.rows[i]:Hide() end
+  f.content:SetHeight(math.max(-y + 4, 10))
+  f.empty:SetShown(#ids == 0)
+end
+
+function P.ToggleDNWWindow()
+  local f = _G.PostBoxDNWFrame
+  if not f then
+    local UI = GetUI()
+    f = CreateFrame("Frame", "PostBoxDNWFrame", UIParent, "BackdropTemplate")
+    f:SetSize(340, 360)
+    f:SetPoint("CENTER", 60, 0)
+    f:SetFrameStrata("DIALOG")
+    f:EnableMouse(true); f:SetMovable(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    if UI then UI.SkinFrame(f, ACCENT, UI.C.PANEL) end
+    tinsert(UISpecialFrames, "PostBoxDNWFrame")
+    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", 2, 2)
+    local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    title:SetPoint("TOP", 0, -10); title:SetText(AccentText(L.DNW_TITLE))
+    local note = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    note:SetPoint("TOP", title, "BOTTOM", 0, -6); note:SetWidth(300); note:SetText(L.DNW_NOTE)
+    local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 12, -70); scroll:SetPoint("BOTTOMRIGHT", -30, 12)
+    if UI and UI.SkinScrollBar then UI.SkinScrollBar(scroll, ACCENT) end
+    local content = CreateFrame("Frame", nil, scroll)
+    content:SetSize(300, 10); scroll:SetScrollChild(content)
+    f.content, f.rows = content, {}
+    local empty = f:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+    empty:SetPoint("CENTER"); empty:SetText(L.DNW_EMPTY)
+    f.empty = empty
+    f:Hide()
+  end
+  if f:IsShown() then f:Hide() else f:Show(); P.RefreshDNWWindow() end
 end
 
 -- ============================================================================
@@ -1626,7 +1795,7 @@ function P.BuildOptionsPanel()
   if not UI then return end
 
   local panel = UI.CreateOptionsPanel({
-    name = "PostBoxOptions", title = L.OPT_TITLE, accent = ACCENT,
+    name = "PostBoxOptionsFrame", title = L.OPT_TITLE, accent = ACCENT,
   })
 
   panel:Section(L.OPT_SEC_OPENALL)
@@ -1636,14 +1805,35 @@ function P.BuildOptionsPanel()
   panel:Check(L.OPT_AUTORETURN_DNW,
     function() return PostBoxDB.autoReturnDNW end,
     function(v) PostBoxDB.autoReturnDNW = v end)
+  panel:Button(L.OPT_MANAGE_DNW, function() P.ToggleDNWWindow() end)
+  panel:Check(L.OPT_AUTOCOLLECT,
+    function() return PostBoxDB.autoCollectSold end,
+    function(v) PostBoxDB.autoCollectSold = v end, L.OPT_AUTOCOLLECT_TIP)
 
   panel:Section(L.OPT_SEC_SECURITY)
   panel:Slider(L.OPT_COD_THRESHOLD, 0, 5000, 50,
     function() return math.floor((PostBoxDB.codThreshold or 0) / 10000) end,
     function(v) PostBoxDB.codThreshold = v * 10000 end)
+  panel:Note(L.OPT_COD_NOTE)
   panel:Slider(L.OPT_EXPIRY_DAYS, 1, 5, 1,
     function() return PostBoxDB.expiryWarnDays end,
-    function(v) PostBoxDB.expiryWarnDays = v end)
+    function(v) PostBoxDB.expiryWarnDays = v; P.RefreshWindow() end)
+  panel:Check(L.OPT_TRADEBLOCK,
+    function() return PostBoxDB.tradeBlock end,
+    function(v) PostBoxDB.tradeBlock = v end, L.OPT_TRADEBLOCK_TIP)
+
+  panel:Section(L.OPT_SEC_ALTS)
+  panel:Check(L.OPT_ALT_ALERT,
+    function() return PostBoxDB.altAlert end,
+    function(v) PostBoxDB.altAlert = v end)
+  panel:Slider(L.OPT_ALT_ALERT_DAYS, 1, 7, 1,
+    function() return PostBoxDB.altAlertDays or 3 end,
+    function(v) PostBoxDB.altAlertDays = v end)
+
+  panel:Section(L.OPT_SEC_MULE)
+  panel:Check(L.OPT_MULE_AUTOSEND,
+    function() return PostBoxDB.mule.autoSend ~= false end,
+    function(v) PostBoxDB.mule.autoSend = v end, L.OPT_MULE_AUTOSEND_TIP)
 
   panel:Section(L.OPT_SEC_DISPLAY)
   panel:Check(L.OPT_SMART_SORT,
@@ -1653,12 +1843,23 @@ function P.BuildOptionsPanel()
   panel:Section(L.OPT_SEC_MAILBOX)
   panel:Check(L.OPT_REPLACE_MAILBOX,
     function() return PostBoxDB.replaceNativeMailbox end,
-    function(v) PostBoxDB.replaceNativeMailbox = v end)
+    function(v) PostBoxDB.replaceNativeMailbox = v; if not v and P.SetNativeMailVisible then P.SetNativeMailVisible(true) end end)
   panel:Note(L.OPT_REPLACE_MAILBOX_NOTE)
 
   panel:Section(L.OPT_SEC_SESSION)
   panel:Note(L.OPT_SESSION_NOTE)
   panel:Button(L.OPT_RESET_RAKE, function() P.ResetRake(); P.RefreshWindow() end)
+
+  if _G.TibiSuite and _G.TibiSuite.SetCtrlHidden then
+    panel:Section(L.OPT_SEC_SUITE)
+    panel:Check(L.OPT_HIDE_OPTS,
+      function() return TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("PostBoxMainFrame", "options") end,
+      function(v) TibiSuite.SetCtrlHidden("PostBoxMainFrame", "options", v) end)
+    panel:Check(L.OPT_HIDE_SEARCH,
+      function() return TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("PostBoxMainFrame", "search") end,
+      function(v) TibiSuite.SetCtrlHidden("PostBoxMainFrame", "search", v) end)
+    panel:Note(L.OPT_FLOAT_NOTE)
+  end
 
   _G.PostBoxOptions = panel
 end

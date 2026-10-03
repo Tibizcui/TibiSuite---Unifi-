@@ -1,14 +1,14 @@
 ## Interface: 120100, 120007, 120005
 ## Title: PostBox
 ## Title-frFR: PostBox
-## Notes: Gestion avancee de la boite aux lettres : ouverture en masse, carnet de contacts, statistiques de courrier. Fonctionne seul (bouton minimap propre) ou integre a TibiSuite (onglet de la barre unifiee).
+## Notes: Gestion avancee de la boite aux lettres : ouverture en masse sure, journal de l'Hotel des ventes, boite de tous vos persos, mule automatique, carnet, transfert et envoi multiple. Fonctionne seul ou integre a TibiSuite.
 ## Title-enUS: PostBox
-## Notes-enUS: Advanced mailbox management: mass opening, contact book, mail statistics. Works standalone (own minimap button) or integrated into TibiSuite (tab in the unified bar).
+## Notes-enUS: Advanced mailbox management: safe mass opening, Auction House ledger, all your alts' mailboxes, automatic mule, contact book, forward and multi-send. Works standalone or integrated into TibiSuite.
 ## Title-deDE: PostBox
-## Notes-deDE: Erweiterte Briefkastenverwaltung: Massenoffnung, Adressbuch, Poststatistik. Funktioniert eigenstandig (eigener Minimap-Button) oder in TibiSuite integriert (Reiter in der vereinten Leiste).
+## Notes-deDE: Erweiterte Briefkastenverwaltung: sichere Massenoffnung, Auktionshaus-Journal, Briefkasten aller Twinks, automatische Mule, Adressbuch, Weiterleiten und Mehrfachversand. Eigenstandig oder in TibiSuite integriert.
 ## X-Curse-Project-ID: 1680332
 ## Title-esES: PostBox
-## Notes-esES: Gestion avanzada del buzon: apertura masiva, agenda de contactos, estadisticas de correo. Funciona solo (boton de minimapa propio) o integrado en TibiSuite (pestana en la barra unificada).
+## Notes-esES: Gestion avanzada del buzon: apertura masiva segura, diario de subastas, buzon de todos tus alters, mula automatica, agenda, reenvio y envio multiple. Funciona solo o integrado en TibiSuite.
 ## Author: Tibizcui - Kirin Tor
 ## Version: 7.1.5.36
 ## IconTexture: Interface\AddOns\PostBox\medias\TibiSuiteIcon
@@ -21,8 +21,20 @@
 ## X-Website: https://www.tibiscui.fr
 
 Core\TibiSuiteUI.lua
+Locales\frFR.lua
+Locales\deDE.lua
+Locales\esES.lua
+Locales\itIT.lua
+Locales\ptBR.lua
+Locales\ruRU.lua
+Locales\koKR.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
 PostBox_Locale.lua
 PostBox.lua
 PostBox_BlackBook.lua
+PostBox_Ledger.lua
+PostBox_Alts.lua
+PostBox_Mule.lua
 PostBox_Stats.lua
 PostBox_Module.lua

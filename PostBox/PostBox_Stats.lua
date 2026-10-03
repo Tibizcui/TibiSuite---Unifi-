@@ -163,6 +163,7 @@ function S.Refresh()
     string.format(L.STATS_GOLD_SENT_FMT, GetCoinTextureString(st.goldSent or 0)),
     string.format(L.STATS_AH_SOLD_FMT, GetCoinTextureString(st.auctionSold or 0)),
     string.format(L.STATS_AH_BOUGHT_FMT, GetCoinTextureString(st.auctionBought or 0)),
+    string.format(L.STATS_AH_CUT_FMT, GetCoinTextureString(st.auctionCut or 0)),
     string.format(L.STATS_NET_FMT, FmtSignedCoin(netTotal)),
     string.format(L.STATS_SESSION_RAKE_FMT, GetCoinTextureString(st.rakeSession or 0)),
     " ",
