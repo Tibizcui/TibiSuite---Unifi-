@@ -36,6 +36,11 @@ local function BuildOptions()
       local s = Settings(); if s then s.alpha = v / 100 end
       local f = _G[FRAME]; if f then f:SetAlpha(v / 100) end
     end)
+  -- Cohabitation avec le module Opacity : il lit cette valeur comme opacite
+  -- "de base" et la multiplie par la sienne (regle "lire et multiplier").
+  if _G.OpacityAPI then
+    panel:Note(T("OPT_OPACITY_STACK", "Si le module Opacity règle aussi cette fenêtre, les deux opacités se multiplient (70 % × 70 % = 49 %)."))
+  end
 
   panel:Section(T("OPT_SEC_TRACKING", "Suivi"))
   panel:Check(T("OPT_LEVEL_ALERT", "Message a chaque niveau (temps passe au niveau)"),

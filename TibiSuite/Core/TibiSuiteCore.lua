@@ -239,6 +239,8 @@ end
 --   toggleFn    : nom de la fonction publique Toggle de l'addon
 --   col         : couleur identitaire r/g/b [0-1]
 --   curseUrl    : URL CurseForge à afficher si l'addon est absent
+--   doctorFn    : (facultatif) nom d'une fonction globale du module qui
+--                 renvoie texte, probleme : une ligne d'etat pour /ts doctor
 -- ================================================================
 local MODULES = {
   {
@@ -425,6 +427,7 @@ local MODULES = {
     mmBtnGlobal = "OpacityMinimapBtn",  -- propre bouton minimap seulement en mode standalone (masque si TibiSuite present)
     toggleFn    = "Opacity_Toggle",
     optionsFn   = "Opacity_OpenOptions",
+    doctorFn    = "Opacity_DoctorNote",
     slashList   = "TIBIOPACITY",  -- secours : /opacity si la fonction Toggle est absente
     col         = { r=0.498, g=0.831, b=0.910 },  -- bleu glacier #7FD4E8 (identite Opacity)
     curseUrl    = "https://www.curseforge.com/wow/addons/tibisuite",  -- pas encore de projet CurseForge dedie
@@ -2787,9 +2790,25 @@ function TibiSuite.RunDoctor()
       end
       if checked and not loaded then notes[#notes + 1] = "|cFFFFD700" .. L.DOC_TOLOAD .. "|r" end
       if (not checked) and loaded then notes[#notes + 1] = "|cFFFFD700" .. L.DOC_INMEM .. "|r" end
+      -- Ligne d'etat propre au module (doctorFn), sous pcall : un module
+      -- defaillant ne doit jamais casser le diagnostic.
+      local info
+      local docFn = loaded and mod.doctorFn and _G[mod.doctorFn]
+      if type(docFn) == "function" then
+        local okD, txt, bad = pcall(docFn)
+        if okD and type(txt) == "string" and txt ~= "" then
+          if bad then
+            notes[#notes + 1] = "|cFFFF9A3C" .. txt .. "|r"
+            issues = issues + 1
+          else
+            info = "|cFF9AA0A6" .. txt .. "|r"
+          end
+        end
+      end
       print("  " .. ((#notes == 0) and ICON_OK or ICON_MISS) .. " " .. colored .. " |cFF808080v" .. tostring(v) .. "|r : "
         .. (checked and L.DOC_ON or ("|cFF808080" .. L.DOC_OFF .. "|r"))
-        .. ((#notes > 0) and ("   " .. table.concat(notes, ", ")) or ""))
+        .. ((#notes > 0) and ("   " .. table.concat(notes, ", ")) or "")
+        .. (info and ("   " .. info) or ""))
     end
   end
   if issues == 0 then

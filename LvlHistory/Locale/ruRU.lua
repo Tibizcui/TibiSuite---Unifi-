@@ -64,7 +64,7 @@ for k, v in pairs({
   LBL_TOP_CHAR = "Лучший персонаж", LBL_TOTAL_SHORT = "Всего", LBL_FAVORITE_SHORT = "Любимое",
   LBL_TIMES_PLAYED = "Раз сыграно", LBL_SESSIONS_SHORT = "Сессии",
   OPT_SEC_WINDOW = "Окно", OPT_TOGGLE = "Открыть / закрыть", OPT_RECENTER = "Отцентрировать окно",
-  OPT_OPACITY = "Прозрачность (%)", OPT_SEC_TRACKING = "Учёт",
+  OPT_OPACITY = "Прозрачность (%)", OPT_OPACITY_STACK = "Если модуль Opacity тоже управляет этим окном, значения перемножаются (70% × 70% = 49%).", OPT_SEC_TRACKING = "Учёт",
   OPT_LEVEL_ALERT = "Сообщение на каждом уровне (время на уровне)",
   OPT_RESUME = "/reload не прерывает сессию (продолжение в течение 10 мин)",
   OPT_SESSION_ALERT = "Сообщение при переходе в режим фарма",

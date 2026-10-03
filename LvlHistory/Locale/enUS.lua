@@ -112,7 +112,7 @@ for k, v in pairs({
   LBL_TIMES_PLAYED = "Times played", LBL_SESSIONS_SHORT = "Sessions",
   -- LvlHistory_Suite.lua (options + recherche)
   OPT_SEC_WINDOW = "Window", OPT_TOGGLE = "Open / close", OPT_RECENTER = "Recenter the window",
-  OPT_OPACITY = "Opacity (%)", OPT_SEC_TRACKING = "Tracking",
+  OPT_OPACITY = "Opacity (%)", OPT_OPACITY_STACK = "If the Opacity module also controls this window, both opacities multiply (70% × 70% = 49%).", OPT_SEC_TRACKING = "Tracking",
   OPT_LEVEL_ALERT = "Message at each level (time spent on the level)",
   OPT_RESUME = "A /reload does not end the session (resumed within 10 min)",
   OPT_SESSION_ALERT = "Message when switching to Farming mode",

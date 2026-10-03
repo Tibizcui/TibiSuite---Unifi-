@@ -18,6 +18,9 @@
 	<Binding name="OPACITY_PICKER" category="ADDONS">
 		Opacity_StartPicker()
 	</Binding>
+	<Binding name="OPACITY_TUNE" category="ADDONS">
+		Opacity_StartTuner()
+	</Binding>
 	<Binding name="OPACITY_WINDOW" category="ADDONS">
 		Opacity_Toggle()
 	</Binding>

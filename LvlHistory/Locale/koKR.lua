@@ -64,7 +64,7 @@ for k, v in pairs({
   LBL_TOP_CHAR = "최고 캐릭터", LBL_TOTAL_SHORT = "총계", LBL_FAVORITE_SHORT = "선호",
   LBL_TIMES_PLAYED = "플레이 횟수", LBL_SESSIONS_SHORT = "세션",
   OPT_SEC_WINDOW = "창", OPT_TOGGLE = "열기 / 닫기", OPT_RECENTER = "창 가운데로",
-  OPT_OPACITY = "투명도 (%)", OPT_SEC_TRACKING = "기록",
+  OPT_OPACITY = "투명도 (%)", OPT_OPACITY_STACK = "Opacity 모듈도 이 창을 조절하면 두 투명도가 곱해집니다 (70% × 70% = 49%).", OPT_SEC_TRACKING = "기록",
   OPT_LEVEL_ALERT = "레벨마다 메시지 (해당 레벨에서 보낸 시간)",
   OPT_RESUME = "/reload 해도 세션 유지 (10분 이내 재개)",
   OPT_SESSION_ALERT = "파밍 모드 전환 시 메시지",

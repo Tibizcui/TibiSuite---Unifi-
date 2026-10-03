@@ -65,23 +65,37 @@ BINDING_NAME_OPACITY_SCREENSHOT      = T("BIND_SCREENSHOT",  "Mode capture d'éc
 BINDING_NAME_OPACITY_TOGGLE_ENABLED  = T("BIND_ENABLED",     "Activer / suspendre Opacity")
 BINDING_NAME_OPACITY_PICKER          = T("BIND_PICKER",      "Pipette : ajouter une fenêtre")
 BINDING_NAME_OPACITY_WINDOW          = T("BIND_WINDOW",      "Ouvrir / fermer la fenêtre Opacity")
+BINDING_NAME_OPACITY_TUNE            = T("BIND_TUNE",        "Réglage direct à la molette")
 
 -- ============================================================================
 -- PROFIL : valeurs par defaut + assainissement (partage avec Profiles.lua)
 -- ============================================================================
--- Ordre de priorite des contextes : le premier actif l'emporte.
-OP.CONTEXT_ORDER = { "afk", "combat", "raid", "instance", "mount" }
+-- Ordre de priorite des contextes : le premier actif l'emporte. Les plus
+-- "forts" (ABS, combat, vehicule, combat de mascottes) passent devant les
+-- contextes de lieu (raid, instance), puis la cible, le vol, la monture, le
+-- groupe et enfin le repos (ville, auberge).
+OP.CONTEXT_ORDER = { "afk", "combat", "vehicle", "petbattle", "raid", "instance",
+                     "target", "flying", "mount", "group", "rest" }
 
 local CONTEXT_DEFAULTS = {
-  afk      = { on = false, value = 0.20 },
-  combat   = { on = false, value = 1.00 },
-  raid     = { on = false, value = 1.00 },
-  instance = { on = false, value = 1.00 },
-  mount    = { on = false, value = 0.40 },
+  afk       = { on = false, value = 0.20 },
+  combat    = { on = false, value = 1.00 },
+  vehicle   = { on = false, value = 0.30 },
+  petbattle = { on = false, value = 0.20 },
+  raid      = { on = false, value = 1.00 },
+  instance  = { on = false, value = 1.00 },
+  target    = { on = false, value = 1.00 },
+  flying    = { on = false, value = 0.25 },
+  mount     = { on = false, value = 0.40 },
+  group     = { on = false, value = 0.80 },
+  rest      = { on = false, value = 0.60 },
 }
 
+OP.MAX_GROUP = 6   -- groupes de survol lies (1..6)
+
 function OP.DefaultProfile()
-  local p = { master = 1.0, frames = {}, contexts = {}, fade = { fadeIn = 0.15, fadeOut = 0.40, delay = 0.50 } }
+  local p = { master = 1.0, frames = {}, contexts = {},
+              fade = { fadeIn = 0.15, fadeOut = 0.40, delay = 0.50, radius = 0 } }
   for k, d in pairs(CONTEXT_DEFAULTS) do p.contexts[k] = { on = d.on, value = d.value } end
   return p
 end
@@ -109,6 +123,7 @@ function OP.SanitizeProfile(p)
     out.fade.fadeIn  = Num(p.fade.fadeIn,  out.fade.fadeIn,  0, 3)
     out.fade.fadeOut = Num(p.fade.fadeOut, out.fade.fadeOut, 0, 3)
     out.fade.delay   = Num(p.fade.delay,   out.fade.delay,   0, 5)
+    out.fade.radius  = Num(p.fade.radius,  0, 0, 150)
   end
   if type(p.contexts) == "table" then
     for k, d in pairs(CONTEXT_DEFAULTS) do
@@ -129,6 +144,8 @@ function OP.SanitizeProfile(p)
           ctx   = e.ctx ~= false,        -- par defaut, la frame suit les contextes
           force = e.force == true,       -- frame geree par ElvUI / EllesmereUI : forcee ?
         }
+        local g = tonumber(e.group)
+        if g and g >= 1 and g <= OP.MAX_GROUP and g == math.floor(g) then out.frames[name].group = g end
         n = n + 1
       end
     end
@@ -153,11 +170,20 @@ OP.state, OP.byName = state, byName
 
 OP.activeContext   = nil     -- cle de contexte actif (Context.lua) ou nil
 OP.screenshot      = false   -- mode capture d'ecran
+OP.tuning          = false   -- reglage direct a la molette (Picker.lua) : survol en pause
 OP.blockedInCombat = false   -- le client a refuse un SetAlpha protege en combat
 local pendingCombat = {}     -- [frame] = true : a pousser a la sortie de combat
 
 function OP.DB() return OpacityDB end
-function OP.Profile() return OpacityDB and OpacityDB.profile end
+-- Profils multiples (schema 2) : OpacityDB.profiles[nom] = profil,
+-- OpacityDB.current = nom du profil actif. Gestion (creer, renommer, lier a
+-- un personnage ou a une specialisation) dans Profiles.lua.
+function OP.Profile()
+  local db = OpacityDB
+  return db and db.profiles and db.profiles[db.current]
+end
+local function SetActiveProfile(p) OpacityDB.profiles[OpacityDB.current] = p end
+OP.SetActiveProfile = SetActiveProfile
 
 -- La suite a-t-elle desactive Opacity ? (case decochee dans /ts modules)
 function OP.SuiteDisabled()
@@ -376,12 +402,14 @@ function OP.Resolve()
       else
         st.active = true
         st.hover  = entry.hover
+        st.group  = entry.hover and entry.group or nil
         st.target = OP.RestFactor(entry)
       end
     else
       OP.pending[name] = true
     end
   end
+  if next(OP.pending) and OP.SchedulePending then OP.SchedulePending() end
   if OP.WakeDriver then OP.WakeDriver(true) end
 end
 
@@ -393,6 +421,7 @@ function OP.Refresh()
     local st, entry = state[frame], p.frames[name]
     if st and st.active and entry then
       st.hover  = entry.hover
+      st.group  = entry.hover and entry.group or nil
       st.target = OP.RestFactor(entry)
     end
   end
@@ -403,8 +432,8 @@ end
 -- Remplace tout le profil (import, prereglage) en gardant une copie pour Annuler.
 function OP.ReplaceProfile(newProfile, keepUndo)
   local db = OpacityDB
-  if keepUndo ~= false then db.undo = OP.CopyTable(db.profile) end
-  db.profile = OP.SanitizeProfile(newProfile)
+  if keepUndo ~= false then db.undo = OP.CopyTable(OP.Profile()) end
+  SetActiveProfile(OP.SanitizeProfile(newProfile))
   OP.Resolve()
   if OP.OnRefresh then OP.OnRefresh() end
 end
@@ -412,8 +441,8 @@ end
 function OP.Undo()
   local db = OpacityDB
   if type(db.undo) ~= "table" then return false end
-  local cur = db.profile
-  db.profile = OP.SanitizeProfile(db.undo)
+  local cur = OP.Profile()
+  SetActiveProfile(OP.SanitizeProfile(db.undo))
   db.undo = cur
   OP.Resolve()
   if OP.OnRefresh then OP.OnRefresh() end
@@ -445,7 +474,11 @@ end
 function OP.SetFrameField(name, field, value)
   local e = OP.Profile().frames[name]
   if not e then return end
-  if field == "alpha" then e.alpha = Clamp01(value) else e[field] = value and true or false end
+  if field == "alpha" then e.alpha = Clamp01(value)
+  elseif field == "group" then
+    local g = tonumber(value)
+    e.group = (g and g >= 1 and g <= OP.MAX_GROUP) and math.floor(g) or nil
+  else e[field] = value and true or false end
   if field == "force" then OP.Resolve() else OP.Refresh() end
 end
 
@@ -548,15 +581,28 @@ ev:RegisterEvent("ADDON_ACTION_BLOCKED")
 ev:RegisterEvent("SCREENSHOT_SUCCEEDED")
 ev:RegisterEvent("SCREENSHOT_FAILED")
 
-local pendingTicker
-local function EnsurePendingTicker()
-  if pendingTicker then return end
-  -- Certaines frames (fenetres Blizzard a la demande, addons qui construisent
-  -- leur interface tard) n'existent pas encore : on repasse toutes les 5 s
-  -- tant qu'il en reste. Cout : quelques lectures de _G, negligeable.
-  pendingTicker = C_Timer.NewTicker(5, function()
+-- Frames pas encore creees (fenetres Blizzard a la demande, addons qui
+-- construisent leur interface tard) : on repasse toutes les 5 s pendant la
+-- premiere minute apres la connexion, puis toutes les 30 s seulement (avant :
+-- toutes les 5 s pour toute la session, alors que le Sac 5 ou l'Hotel des
+-- ventes restent "en attente" tant qu'on ne les ouvre pas). ADDON_LOADED
+-- declenche de toute facon une passe des qu'un addon arrive.
+local pendingTimer, loginTime
+function OP.SchedulePending()
+  if pendingTimer or not loginTime then return end
+  local delay = (GetTime() - loginTime < 60) and 5 or 30
+  pendingTimer = C_Timer.NewTimer(delay, function()
+    pendingTimer = nil
     if next(OP.pending) and OP.IsRunning() then OP.Resolve() end
   end)
+end
+
+-- Plusieurs ADDON_LOADED dans la meme image : une seule resolution.
+local resolveQueued = false
+local function QueueResolve()
+  if resolveQueued then return end
+  resolveQueued = true
+  C_Timer.After(0, function() resolveQueued = false; OP.Resolve() end)
 end
 
 local started = false
@@ -565,14 +611,32 @@ ev:SetScript("OnEvent", function(_, event, arg1, arg2)
     if arg1 == ADDON then
       OpacityDB = type(OpacityDB) == "table" and OpacityDB or {}
       local db = OpacityDB
-      db.schema = 1
       if db.enabled  == nil then db.enabled  = true end
       if db.shotAuto == nil then db.shotAuto = true end
-      db.profile = OP.SanitizeProfile(db.profile)
+      -- Migration schema 1 -> 2 (profils multiples) : l'ancien profil unique
+      -- devient le profil "Principal". Rien n'est perdu.
+      if type(db.profiles) ~= "table" then
+        db.profiles = {}
+        local main = T("PROF_MAIN", "Principal")
+        db.profiles[main] = db.profile
+        db.current = main
+      end
+      db.profile = nil
+      db.schema = 2
+      local n = 0
+      for name, prof in pairs(db.profiles) do
+        if type(name) ~= "string" or name == "" then db.profiles[name] = nil
+        else db.profiles[name] = OP.SanitizeProfile(prof); n = n + 1 end
+      end
+      if n == 0 then db.profiles[T("PROF_MAIN", "Principal")] = OP.DefaultProfile() end
+      if type(db.current) ~= "string" or not db.profiles[db.current] then db.current = next(db.profiles) end
+      if type(db.assign) ~= "table" then db.assign = {} end
+      if type(db.assign.char) ~= "table" then db.assign.char = {} end
+      if type(db.assign.spec) ~= "table" then db.assign.spec = {} end
     elseif started and next(OP.pending) then
       -- Un addon (ou une fenetre Blizzard a la demande) vient d'arriver :
       -- ses frames existent peut-etre maintenant. Differe d'un tick.
-      C_Timer.After(0, OP.Resolve)
+      QueueResolve()
     end
 
   elseif event == "PLAYER_LOGIN" then
@@ -580,10 +644,12 @@ ev:SetScript("OnEvent", function(_, event, arg1, arg2)
     -- d'activation avant qu'on lise son etat (OP.SuiteDisabled).
     C_Timer.After(0, function()
       started = true
+      loginTime = GetTime()
       if OP.DetectSuites then OP.DetectSuites() end
+      -- Profil lie a ce personnage / cette specialisation (Profiles.lua)
+      if OP.AutoSelectProfile then OP.AutoSelectProfile(true) end
       if OP.UpdateContext then OP.UpdateContext() end
       OP.Resolve()
-      EnsurePendingTicker()
       -- Deuxieme passe : beaucoup d'addons construisent leur UI sur PLAYER_LOGIN
       -- ou PLAYER_ENTERING_WORLD, apres nous.
       C_Timer.After(3, OP.Resolve)

@@ -1,5 +1,29 @@
 # Changelog
 
+## 7.1.5.37
+Mise à jour 12.1 d'Opacity, avec des profils multiples et un réglage à la molette directement sur l'écran.
+
+**Nouveautés**
+- Réglage direct : survolez n'importe quelle fenêtre et tournez la molette, son opacité change en direct (Maj+molette pour un autre cadre). Bouton dans la fenêtre, raccourci clavier et /opa tune.
+- Profils multiples : créez, copiez, renommez et supprimez des profils, liez-les à un personnage ou à une spécialisation, ils s'activent tout seuls. /opa profile <nom>.
+- Groupes liés : les fenêtres d'un même groupe réapparaissent ensemble au survol (toutes les barres d'action d'un coup). Nouvelle colonne Lien.
+- Zone de survol élargie : la fenêtre réapparaît avant même que la souris la touche (réglage en pixels).
+- Six nouveaux contextes : véhicule, combat de mascottes, cible sélectionnée, vol, groupe, repos (ville, auberge).
+- Cinq nouveaux préréglages : Minimaliste, Mythique+, Leveling / quêtes, Streamer, JcJ. Immersion utilise maintenant les groupes liés.
+- Colonne Résultat : l'opacité réellement affichée, et l'opacité d'origine quand un autre addon en pose déjà une (elles se multiplient).
+- Disponible en 10 langues (français, anglais, allemand, espagnol, italien, portugais, russe, coréen, chinois simplifié et traditionnel).
+
+**Mise à jour 12.1**
+- Catalogue complété : compagnon des gouffres, clé mythique, page de l'extension, commandes d'artisanat, amélioration d'objets, catalyseur, choix du joueur, journal de combat, cadres d'arène, ressources personnelles, compteur de dégâts de Blizzard...
+- Nouvelle commande /opa probe : vérifie en jeu les fenêtres du catalogue et la détection des addons, résultat gardé dans la sauvegarde.
+
+**Suite et performances**
+- Opacity apparaît dans la recherche globale de TibiSuite (fenêtres, ajout d'un clic, préréglages, profils).
+- Une ligne d'état d'Opacity dans /ts doctor.
+- OpacityAPI : les autres addons peuvent déclarer leurs fenêtres et savoir si Opacity les contrôle.
+- Moteur d'animation au repos à 20 Hz au lieu de chaque image, relance des fenêtres en attente espacée après la première minute, bouton minimap (mode autonome) qui ne tourne plus en permanence.
+- Vos réglages sont conservés : l'ancien profil devient automatiquement le profil « Principal ».
+
 ## 7.1.5.36
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir DgnTracker 7.1.5.36 pour le detail : emplacements verifies en jeu, donnees lues dans le jeu, vues Saison / Pres de moi / Favoris, 10 langues).
 

@@ -56,6 +56,18 @@ local BLIZZARD = {
   { names = { "LootFrame" },                  cat = "win", label = T("F_LOOT",        "Butin") },
   { names = { "WeeklyRewardsFrame" },         cat = "win", label = T("F_VAULT",       "Grande chambre forte") },
   { names = { "MacroFrame" },                 cat = "win", label = T("F_MACRO",       "Macros") },
+  -- Ajouts 12.1 : noms releves dans les versions precedentes du client, PAS
+  -- VERIFIES EN JEU sous 12.1. Une entree introuvable reste "en attente"
+  -- sans erreur ; /opa probe liste celles qui n'existent pas.
+  { names = { "DelvesCompanionConfigurationFrame" }, cat = "win", label = T("F_DELVES_COMP", "Compagnon des gouffres") },
+  { names = { "ChallengesKeystoneFrame" },    cat = "win", label = T("F_KEYSTONE",    "Clé mythique (insertion)") },
+  { names = { "ExpansionLandingPage" },       cat = "win", label = T("F_LANDING",     "Page de l'extension") },
+  { names = { "ProfessionsCustomerOrdersFrame" }, cat = "win", label = T("F_ORDERS",  "Commandes d'artisanat") },
+  { names = { "ItemUpgradeFrame" },           cat = "win", label = T("F_UPGRADE",     "Amélioration d'objets") },
+  { names = { "ItemInteractionFrame" },       cat = "win", label = T("F_CATALYST",    "Catalyseur / interactions d'objets") },
+  { names = { "PlayerChoiceFrame" },          cat = "win", label = T("F_CHOICE",      "Choix du joueur") },
+  { names = { "GenericTraitFrame" },          cat = "win", label = T("F_TRAITS",      "Arbres de talents annexes") },
+  { names = { "SettingsPanel" },              cat = "win", label = T("F_SETTINGS",    "Options du jeu") },
 
   -- Interface permanente
   { names = { "PlayerFrame" },                cat = "hud", label = T("F_PLAYER",      "Cadre du joueur") },
@@ -95,6 +107,12 @@ local BLIZZARD = {
   { names = { "UIWidgetTopCenterContainerFrame" }, cat = "hud", label = T("F_WIDGETS", "Objectifs de zone (haut centre)") },
   { names = { "TalkingHeadFrame" },           cat = "hud", label = T("F_TALKING",     "Tête parlante") },
   { names = { "DurabilityFrame" },            cat = "hud", label = T("F_DURABILITY",  "Durabilité") },
+  { names = { "ChatFrame2" },                 cat = "hud", label = T("F_COMBATLOG",   "Journal de combat") },
+  { names = { "VehicleSeatIndicator" },       cat = "hud", label = T("F_VEHICLESEAT", "Sièges du véhicule") },
+  { names = { "CompactArenaFrame" },          cat = "hud", label = T("F_ARENA",       "Cadres d'arène") },
+  { names = { "PersonalResourceDisplayFrame" }, cat = "hud", label = T("F_PRD",       "Affichage des ressources personnelles") },
+  -- Compteur de degats integre (12.0) : nom de frame NON VERIFIE, deux variantes.
+  { names = { "DamageMeter", "DamageMeterFrame" }, cat = "hud", label = T("F_DMGMETER", "Compteur de dégâts (Blizzard)") },
 }
 
 -- Repli si le core TibiSuite est absent (mode standalone) : les frames
@@ -112,7 +130,9 @@ local SUITE_FALLBACK = {
   { name = "SkillTrackerMainFrame",  label = "SkillTracker" },
   { name = "PostBoxMainFrame",       label = "PostBox" },
   { name = "StatsMainFrame",         label = "Stats" },
+  { name = "MiniHubContainer",       label = "MiniHub" },
 }
+OP.BLIZZARD = BLIZZARD   -- lu par /opa probe (Bridge.lua)
 
 -- Nom effectif d'une entree du catalogue Blizzard.
 local function EntryName(e)
@@ -205,6 +225,10 @@ end
 -- ============================================================================
 local suiteNames   -- [frameName] = libelle de module TibiSuite
 
+-- Frames declarees par les addons eux-memes (OpacityAPI.RegisterFrame, voir
+-- Bridge.lua) : [nom] = { label =, owner = }.
+OP.declared = OP.declared or {}
+
 local function BuildSuiteNames()
   suiteNames = {}
   local TS = _G.TibiSuite
@@ -225,6 +249,7 @@ function OP.OwnerOf(name)
   if known[name] then return "Blizzard" end
   if not suiteNames then BuildSuiteNames() end
   if suiteNames[name] then return "TibiSuite" end
+  if OP.declared[name] then return OP.declared[name].owner end
   if ownerCache[name] ~= nil then return ownerCache[name] or nil end
   local owner = false
   if _G[name] ~= nil and issecurevariable then
@@ -243,6 +268,7 @@ function OP.LabelOf(name)
   if known[name] then return known[name].label end
   if not suiteNames then BuildSuiteNames() end
   if suiteNames[name] then return suiteNames[name] end
+  if OP.declared[name] then return OP.declared[name].label end
   return name
 end
 
@@ -288,14 +314,22 @@ function OP.BuildCatalogGroups()
   table.sort(suite, function(a, b) return a.label < b.label end)
   groups[#groups + 1] = { title = "TibiSuite", items = suite }
 
+  -- Frames declarees par leur addon (OpacityAPI) : regroupees par addon.
+  local byOwner = {}
+  for name, d in pairs(OP.declared) do
+    if not suiteNames[name] and not known[name] then
+      byOwner[d.owner] = byOwner[d.owner] or {}
+      table.insert(byOwner[d.owner], Item(name, d.label))
+    end
+  end
+
   -- Autres addons : enfants directs et nommes de UIParent, ecrits par un addon.
   -- Chaque enfant est lu sous pcall : une frame interdite (12.x) ou bizarre
   -- ne doit jamais faire tomber la liste entiere.
-  local byOwner = {}
   local function ScanChild(f)
     if not OP.IsUsableFrame(f) then return end   -- IsForbidden teste en premier
     local name = f:GetName()
-    if name and OP.ValidName(name) and not known[name] and not suiteNames[name]
+    if name and OP.ValidName(name) and not known[name] and not suiteNames[name] and not OP.declared[name]
        and _G[name] == f and not SmallOrHuge(f) then
       local owner = OP.OwnerOf(name)
       if owner ~= "Blizzard" and owner ~= ADDON then

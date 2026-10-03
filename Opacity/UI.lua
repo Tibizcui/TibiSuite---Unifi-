@@ -2,13 +2,17 @@
   Opacity - UI.lua
   ---------------------------------------------------------------------------
   Fenetre principale (OpacityMainFrame) :
-    - en-tete : case Actif, curseur maitre, contexte actif ;
-    - barre d'actions : Pipette, Reinitialiser, Ajouter, Prereglages, Capture, Exporter,
-      Importer, Annuler ;
-    - liste des fenetres controlees : opacite, fondu au survol, suit les
-      contextes, Forcer (frames d'ElvUI / EllesmereUI), retirer.
+    - en-tete : case Actif, curseur maitre, menu des profils ;
+    - barre d'actions : Pipette, Reglage direct, Reinitialiser, Ajouter,
+      Prereglages, Capture, Exporter, Importer, Annuler ;
+    - ligne d'etat : contexte actif, liens du profil ;
+    - liste des fenetres controlees : opacite, fondu au survol, groupe lie,
+      suit les contextes, Forcer (frames d'ElvUI / EllesmereUI), resultat
+      affiche (opacite d'origine x Opacity), retirer.
   Fenetres annexes : "Ajouter" (catalogue groupe + filtre), code
-  d'export / import, menu des prereglages, et le panneau d'options du socle.
+  d'export / import, menu des prereglages, menu des profils, saisie d'un
+  nom / confirmation (fenetre maison, jamais StaticPopupDialogs), et le
+  panneau d'options du socle.
 
   Echap : UISpecialFrames uniquement (mecanisme natif, cf. TibiSuiteCore.lua),
   jamais de OnKeyDown ni de OnHide sur ces fenetres.
@@ -21,7 +25,18 @@ local ACCENT = OP.ACCENT
 local function GetUI() return _G.TibiMidnight end
 
 local main, list, rows = nil, nil, {}
-local ROW_H, LIST_W = 28, 678
+local ROW_H, LIST_W = 28, 818
+
+-- Couleurs des groupes lies (1..6)
+local GROUP_COL = {
+  { 1.00, 0.82, 0.30 }, { 0.45, 0.85, 1.00 }, { 0.55, 0.95, 0.55 },
+  { 1.00, 0.55, 0.75 }, { 0.75, 0.60, 1.00 }, { 1.00, 0.62, 0.35 },
+}
+local function GroupText(g)
+  if not g then return "|cFF666666-|r" end
+  local c = GROUP_COL[g] or GROUP_COL[1]
+  return string.format("|cFF%02X%02X%02X%d|r", math.floor(c[1]*255), math.floor(c[2]*255), math.floor(c[3]*255), g)
+end
 local refreshing = false
 
 local function AccentText(s)
@@ -119,6 +134,13 @@ local function StatusTag(name, entry)
   end
   local owner = OP.OwnerOf(name)
   if owner and owner ~= "Blizzard" then tags[#tags + 1] = "|cFFAAAAAA" .. owner .. "|r" end
+  -- Opacite posee par le proprietaire (ex. curseur d'opacite de LvlHistory) :
+  -- elle se multiplie avec celle d'Opacity, on l'affiche pour que ce soit clair.
+  local fr = OP.byName[name]
+  local st = fr and OP.state[fr]
+  if st and st.base and st.base < 0.995 then
+    tags[#tags + 1] = "|cFFC9B37E" .. T("TAG_BASE", "opacité d'origine ") .. Pct(st.base) .. "|r"
+  end
   return table.concat(tags, "  ")
 end
 
@@ -133,14 +155,14 @@ local function MakeRow(i)
 
   r.label = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   r.label:SetPoint("TOPLEFT", 6, -3)
-  r.label:SetWidth(328); r.label:SetJustifyH("LEFT"); r.label:SetWordWrap(false)
+  r.label:SetWidth(300); r.label:SetJustifyH("LEFT"); r.label:SetWordWrap(false)
   r.tag = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   r.tag:SetPoint("TOPLEFT", r.label, "BOTTOMLEFT", 0, -1)
-  r.tag:SetWidth(328); r.tag:SetJustifyH("LEFT"); r.tag:SetWordWrap(false)
+  r.tag:SetWidth(300); r.tag:SetJustifyH("LEFT"); r.tag:SetWordWrap(false)
   r.tag:SetFontObject("GameFontDisableSmall")
 
   r.slider = Slider(r, 150)
-  r.slider:SetPoint("LEFT", r, "LEFT", 344, 0)
+  r.slider:SetPoint("LEFT", r, "LEFT", 316, 0)
   r.value = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   r.value:SetPoint("LEFT", r.slider, "RIGHT", 6, 0)
   r.value:SetWidth(40); r.value:SetJustifyH("LEFT")
@@ -151,21 +173,53 @@ local function MakeRow(i)
   end)
 
   r.hover = Check(r, nil, T("TT_HOVER", "Fondu au survol : la fenêtre repasse à 100 % sous la souris."))
-  r.hover:SetPoint("LEFT", r, "LEFT", 548, 0)
+  r.hover:SetPoint("LEFT", r, "LEFT", 522, 0)
   r.hover:SetScript("OnClick", function(s) if r.name then OP.SetFrameField(r.name, "hover", s:GetChecked()) end end)
 
+  -- Groupe lie : clic gauche = groupe suivant, clic droit = precedent.
+  r.link = CreateFrame("Button", nil, r, "BackdropTemplate")
+  r.link:SetSize(30, 18)
+  r.link:SetPoint("LEFT", r, "LEFT", 558, 0)
+  r.link:SetBackdrop(GetUI().FlatBackdrop())
+  r.link:SetBackdropColor(0.02, 0.02, 0.03, 0.9)
+  r.link:SetBackdropBorderColor(1, 1, 1, 0.15)
+  r.link:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  r.link.text = r.link:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  r.link.text:SetPoint("CENTER")
+  r.link:SetScript("OnClick", function(_, button)
+    if not r.name then return end
+    local e = OP.Profile().frames[r.name]
+    if not e then return end
+    local g = e.group or 0
+    g = (button == "RightButton") and (g - 1) or (g + 1)
+    if g > OP.MAX_GROUP then g = 0 elseif g < 0 then g = OP.MAX_GROUP end
+    OP.SetFrameField(r.name, "group", g)
+    if g > 0 and not e.hover then OP.SetFrameField(r.name, "hover", true) end
+  end)
+  r.link:SetScript("OnEnter", function(s)
+    GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+    GameTooltip:SetText(T("TT_LINK", "Groupe lié : les fenêtres d'un même groupe réapparaissent ensemble dès que l'une d'elles est survolée "
+      .. "(par exemple toutes vos barres d'action). Clic gauche : groupe suivant, clic droit : précédent, « - » : aucun."), 1, 1, 1, 1, true)
+    GameTooltip:Show()
+  end)
+  r.link:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
   r.ctx = Check(r, nil, T("TT_CTX", "Suit les contextes (combat, raid, monture...). Décoché : garde toujours son opacité réglée."))
-  r.ctx:SetPoint("LEFT", r, "LEFT", 594, 0)
+  r.ctx:SetPoint("LEFT", r, "LEFT", 606, 0)
   r.ctx:SetScript("OnClick", function(s) if r.name then OP.SetFrameField(r.name, "ctx", s:GetChecked()) end end)
 
   r.force = Check(r, nil, T("TT_FORCE", "Cette fenêtre est pilotée par une suite d'interface. Forcer : Opacity s'applique quand même, "
     .. "en multipliant l'opacité que la suite lui donne (leur fondu continue de fonctionner)."))
-  r.force:SetPoint("LEFT", r, "LEFT", 624, 0)
+  r.force:SetPoint("LEFT", r, "LEFT", 642, 0)
   r.force:SetScript("OnClick", function(s) if r.name then OP.SetFrameField(r.name, "force", s:GetChecked()) end end)
+
+  r.eff = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  r.eff:SetPoint("LEFT", r, "LEFT", 684, 0)
+  r.eff:SetWidth(80); r.eff:SetJustifyH("LEFT")
 
   r.remove = CreateFrame("Button", nil, r, "UIPanelCloseButton")
   r.remove:SetSize(22, 22)
-  r.remove:SetPoint("LEFT", r, "LEFT", 654, 0)
+  r.remove:SetPoint("LEFT", r, "LEFT", 784, 0)
   r.remove:SetScript("OnClick", function() if r.name then OP.RemoveFrame(r.name) end end)
   r.remove:SetScript("OnEnter", function(s)
     GameTooltip:SetOwner(s, "ANCHOR_RIGHT"); GameTooltip:SetText(T("TT_REMOVE", "Retirer (la fenêtre retrouve son opacité d'origine)"), 1, 1, 1, 1, true); GameTooltip:Show()
@@ -197,7 +251,18 @@ local function RefreshList()
     r.slider:SetValue(math.floor(e.alpha * 100 + 0.5))
     r.value:SetText(Pct(e.alpha))
     r.hover:SetChecked(e.hover)
+    r.link.text:SetText(GroupText(e.group))
+    r.link:SetAlpha(e.hover and 1 or 0.45)
     r.ctx:SetChecked(e.ctx)
+    -- Resultat au repos : opacite d'origine x facteur Opacity (contexte et
+    -- curseur maitre compris). "-" si Opacity n'agit pas sur la frame.
+    local fr = OP.byName[name]
+    local st = fr and OP.state[fr]
+    if st and st.active then
+      r.eff:SetText(AccentText(Pct((st.base or 1) * (st.target or 1))))
+    else
+      r.eff:SetText("|cFF666666-|r")
+    end
     local managed = OP.ManagedBy(name) ~= nil
     r.force:SetShown(managed)
     r.force:SetChecked(e.force)
@@ -227,7 +292,12 @@ local function RefreshList()
   else
     ctxText = "|cFF888888" .. T("HDR_NOCTX", "aucun") .. "|r"
   end
-  main.ctxText:SetText(T("HDR_CONTEXT", "Contexte : ") .. ctxText)
+  local links = {}
+  if OP.IsCharLinked() then links[#links + 1] = T("HDR_LINK_CHAR", "lié à ce personnage") end
+  if OP.IsSpecLinked() then links[#links + 1] = T("HDR_LINK_SPEC", "lié à cette spécialisation") end
+  main.ctxText:SetText(T("HDR_CONTEXT", "Contexte : ") .. ctxText
+    .. (#links > 0 and ("     |cFF888888" .. table.concat(links, ", ") .. "|r") or ""))
+  main.prof._label:SetText(T("BTN_PROFILE", "Profil : ") .. AccentText(OpacityDB.current or "?"))
   main.undo:SetAlpha(type(OpacityDB.undo) == "table" and 1 or 0.4)
   main.shot._label:SetText(OP.screenshot and AccentText(T("BTN_SHOT_OFF", "Réafficher")) or T("BTN_SHOT", "Capture"))
   refreshing = false
@@ -448,6 +518,147 @@ local function TogglePresets(anchor)
 end
 
 -- ============================================================================
+-- SAISIE D'UN NOM / CONFIRMATION (fenetre maison : jamais StaticPopupDialogs)
+-- ShowPrompt(texte, valeurParDefaut, surOK) : valeurParDefaut == nil -> simple
+-- confirmation (surOK recoit true), sinon champ texte (surOK recoit le texte).
+-- ============================================================================
+local prompt
+
+local function ShowPrompt(text, default, onOK)
+  if not prompt then
+    prompt = Window("OpacityPromptFrame", 380, 156, "Opacity", "FULLSCREEN_DIALOG")
+    prompt.text = prompt:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    prompt.text:SetPoint("TOPLEFT", 14, -44); prompt.text:SetWidth(352); prompt.text:SetJustifyH("LEFT")
+    local UI = GetUI()
+    local box = CreateFrame("EditBox", nil, prompt, "BackdropTemplate")
+    box:SetSize(352, 22)
+    box:SetPoint("TOPLEFT", 14, -82)
+    box:SetBackdrop(UI.FlatBackdrop())
+    box:SetBackdropColor(0.02, 0.02, 0.03, 0.9)
+    box:SetBackdropBorderColor(1, 1, 1, 0.15)
+    box:SetAutoFocus(false)
+    box:SetMaxLetters(32)
+    box:SetFontObject("GameFontHighlight")
+    box:SetTextInsets(6, 6, 0, 0)
+    prompt.box = box
+    prompt.ok = Button(prompt, 110, T("BTN_OK", "Valider"))
+    prompt.ok:SetPoint("BOTTOMRIGHT", -14, 12)
+    prompt.cancel = Button(prompt, 110, T("BTN_CANCEL", "Annuler"))
+    prompt.cancel:SetPoint("RIGHT", prompt.ok, "LEFT", -6, 0)
+    prompt.cancel:SetScript("OnClick", function() prompt:Hide() end)
+    prompt.ok:SetScript("OnClick", function()
+      local v = prompt.box:IsShown() and prompt.box:GetText() or true
+      local fn = prompt.onOK
+      prompt:Hide()
+      if fn then fn(v) end
+    end)
+    box:SetScript("OnEnterPressed", function() prompt.ok:Click() end)
+    box:SetScript("OnEscapePressed", function() prompt:Hide() end)
+  end
+  prompt.text:SetText(text)
+  prompt.onOK = onOK
+  prompt:Show()
+  if default then
+    prompt.box:Show(); prompt.box:SetText(default); prompt.box:SetFocus(); prompt.box:HighlightText()
+  else
+    prompt.box:Hide()
+  end
+end
+
+-- ============================================================================
+-- MENU DES PROFILS
+-- ============================================================================
+local profMenu
+local profPool, profUsed = {}, 0
+
+local function ProfResult(ok, msg) if msg and msg ~= "" then OP.Print(msg) end end
+
+local function ProfButton(y, text, fn)
+  profUsed = profUsed + 1
+  local b = profPool[profUsed]
+  if not b then
+    b = Button(profMenu, 200, "")
+    profPool[profUsed] = b
+  end
+  b._label:SetText(text)
+  b:ClearAllPoints()
+  b:SetPoint("TOP", 0, y)
+  b:SetScript("OnClick", fn)
+  b:Show()
+end
+
+local function RefreshProfileMenu()
+  profUsed = 0
+  local y = -8
+  local cur = OpacityDB.current
+  for _, name in ipairs(OP.ProfileNames()) do
+    ProfButton(y, name == cur and AccentText("> " .. name) or name, function()
+      profMenu:Hide(); OP.SwitchProfile(name)
+    end)
+    y = y - 26
+  end
+  y = y - 6
+  ProfButton(y, T("PROF_NEW", "Nouveau profil vide..."), function()
+    profMenu:Hide()
+    ShowPrompt(T("PROF_ASK_NEW", "Nom du nouveau profil (vide) :"), "", function(v) ProfResult(OP.CreateProfile(v, false)) end)
+  end)
+  y = y - 26
+  ProfButton(y, T("PROF_COPY", "Copier le profil actif..."), function()
+    profMenu:Hide()
+    ShowPrompt(T("PROF_ASK_COPY", "Nom de la copie :"), cur .. " 2", function(v) ProfResult(OP.CreateProfile(v, true)) end)
+  end)
+  y = y - 26
+  ProfButton(y, T("PROF_RENAME", "Renommer..."), function()
+    profMenu:Hide()
+    ShowPrompt(T("PROF_ASK_RENAME", "Nouveau nom du profil :"), cur, function(v) ProfResult(OP.RenameProfile(cur, v)) end)
+  end)
+  y = y - 26
+  ProfButton(y, T("PROF_DELETE", "Supprimer"), function()
+    profMenu:Hide()
+    ShowPrompt(string.format(T("PROF_ASK_DELETE", "Supprimer définitivement le profil « %s » ?"), cur), nil,
+      function() ProfResult(OP.DeleteProfile(cur)) end)
+  end)
+  y = y - 32
+
+  local spec = OP.SpecName and OP.SpecName()
+  profMenu.charCB:ClearAllPoints(); profMenu.charCB:SetPoint("TOPLEFT", 8, y)
+  profMenu.charCB:SetChecked(OP.IsCharLinked())
+  y = y - 24
+  profMenu.specCB:ClearAllPoints(); profMenu.specCB:SetPoint("TOPLEFT", 8, y)
+  profMenu.specCB._text:SetText(T("PROF_LINK_SPEC", "Lier à cette spécialisation") .. (spec and (" (" .. spec .. ")") or ""))
+  profMenu.specCB:SetChecked(OP.IsSpecLinked())
+  y = y - 26
+
+  for i = profUsed + 1, #profPool do profPool[i]:Hide() end
+  profMenu:SetHeight(-y + 4)
+end
+
+local function ToggleProfiles(anchor)
+  if not profMenu then
+    local UI = GetUI()
+    profMenu = CreateFrame("Frame", nil, main, "BackdropTemplate")
+    profMenu:SetFrameStrata("DIALOG")
+    profMenu:SetWidth(216)
+    UI.SkinFrame(profMenu, ACCENT, UI.C.PANEL)
+    profMenu.charCB = Check(profMenu, T("PROF_LINK_CHAR", "Lier à ce personnage"),
+      T("TT_LINK_CHAR", "À la connexion de ce personnage, ce profil est activé tout seul."))
+    profMenu.charCB:SetScript("OnClick", function(s) OP.SetCharLink(s:GetChecked()); if OP.OnRefresh then OP.OnRefresh() end end)
+    profMenu.specCB = Check(profMenu, T("PROF_LINK_SPEC", "Lier à cette spécialisation"),
+      T("TT_LINK_SPEC", "Quand ce personnage passe dans cette spécialisation, ce profil est activé tout seul (prioritaire sur le lien au personnage)."))
+    profMenu.specCB:SetScript("OnClick", function(s)
+      if not OP.SetSpecLink(s:GetChecked()) then s:SetChecked(false) end
+      if OP.OnRefresh then OP.OnRefresh() end
+    end)
+    profMenu:Hide()
+  end
+  if profMenu:IsShown() then profMenu:Hide(); return end
+  RefreshProfileMenu()
+  profMenu:ClearAllPoints()
+  profMenu:SetPoint("TOPRIGHT", anchor, "BOTTOMRIGHT", 0, -2)
+  profMenu:Show()
+end
+
+-- ============================================================================
 -- FENETRE PRINCIPALE
 -- ============================================================================
 local function SavePosition()
@@ -456,7 +667,7 @@ local function SavePosition()
 end
 
 local function BuildMain()
-  main = Window("OpacityMainFrame", 720, 500, "Opacity")
+  main = Window("OpacityMainFrame", 860, 540, "Opacity")
   main:SetScript("OnDragStop", function(s) s:StopMovingOrSizing(); SavePosition() end)
   local w = OpacityDB.win
   if type(w) == "table" and w.point then
@@ -488,9 +699,16 @@ local function BuildMain()
   end)
   main.master:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
+  main.prof = Button(main, 220, T("BTN_PROFILE", "Profil : "),
+    T("TT_PROFILE", "Changer de profil, en créer un, le renommer, ou le lier à ce personnage / cette spécialisation."))
+  main.prof:SetPoint("TOPRIGHT", -14, -42)
+  main.prof:SetScript("OnClick", function(s) ToggleProfiles(s) end)
+
+  -- Ligne d'etat (sous les actions) : contexte actif et liens du profil
   main.ctxText = main:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  main.ctxText:SetPoint("TOPRIGHT", -14, -48)
-  main.ctxText:SetJustifyH("RIGHT")
+  main.ctxText:SetPoint("TOPLEFT", 14, -106)
+  main.ctxText:SetWidth(820)
+  main.ctxText:SetJustifyH("LEFT")
 
   -- Ligne 2 : actions
   local x = 12
@@ -503,6 +721,10 @@ local function BuildMain()
   end
   Action(76, T("BTN_PICK", "Pipette"), T("TT_PICK", "Survolez n'importe quelle fenêtre du jeu et cliquez pour l'ajouter."), function()
     main:Hide(); OP.StartPicker()
+  end)
+  Action(110, T("BTN_TUNE", "Réglage direct"), T("TT_TUNE", "Survolez une fenêtre du jeu et tournez la molette : son opacité change en direct. "
+    .. "Maj+molette : autre cadre. Aussi disponible en raccourci clavier."), function()
+    main:Hide(); OP.StartTuner()
   end)
   Action(96, T("BTN_RESET", "Réinitialiser"), T("TT_RESET", "Vide la liste : toutes les fenêtres retrouvent leur opacité d'origine, "
     .. "contextes et curseur maître reviennent aux valeurs par défaut. « Annuler » restaure le profil précédent."), function()
@@ -523,20 +745,22 @@ local function BuildMain()
   local UI = GetUI()
   local sep = main:CreateTexture(nil, "ARTWORK")
   sep:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
-  sep:SetPoint("TOPLEFT", 10, -104); sep:SetPoint("TOPRIGHT", -10, -104); sep:SetHeight(1)
+  sep:SetPoint("TOPLEFT", 10, -126); sep:SetPoint("TOPRIGHT", -10, -126); sep:SetHeight(1)
   local function Col(text, cx)
     local fs = main:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    fs:SetPoint("TOPLEFT", 12 + cx, -110)
+    fs:SetPoint("TOPLEFT", 12 + cx, -132)
     fs:SetText(text)
   end
   Col(T("COL_FRAME", "Fenêtre"), 6)
-  Col(T("COL_ALPHA", "Opacité"), 344)
-  Col(T("COL_HOVER", "Survol"), 542)
-  Col(T("COL_CTX", "Ctx"), 594)
-  Col(T("COL_FORCE", "Forcer"), 618)
+  Col(T("COL_ALPHA", "Opacité"), 316)
+  Col(T("COL_HOVER", "Survol"), 516)
+  Col(T("COL_LINK", "Lien"), 560)
+  Col(T("COL_CTX", "Ctx"), 606)
+  Col(T("COL_FORCE", "Forcer"), 634)
+  Col(T("COL_RESULT", "Résultat"), 684)
 
   local scroll = CreateFrame("ScrollFrame", nil, main, "UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT", 10, -126)
+  scroll:SetPoint("TOPLEFT", 10, -148)
   scroll:SetPoint("BOTTOMRIGHT", -30, 12)
   list = CreateFrame("Frame", nil, scroll)
   list:SetSize(LIST_W, 1)
@@ -586,6 +810,10 @@ local function BuildOptions()
     function() return prof().fade.fadeOut end, function(v) prof().fade.fadeOut = v end)
   p:Slider(T("OPT_DELAY", "Délai avant disparition (s)"), 0, 3, 0.1,
     function() return prof().fade.delay end, function(v) prof().fade.delay = v end)
+  p:Slider(T("OPT_RADIUS", "Zone de survol élargie (pixels)"), 0, 100, 5,
+    function() return prof().fade.radius or 0 end, function(v) prof().fade.radius = v; OP.WakeDriver() end)
+  p:Note(T("OPT_RADIUS_NOTE", "La fenêtre réapparaît dès que la souris arrive à cette distance, avant même de la toucher. "
+    .. "Les fenêtres d'un même groupe lié (colonne Lien) réapparaissent ensemble."))
 
   p:Section(T("OPT_SEC_CTX", "Contextes (le premier actif l'emporte)"))
   p:Note(T("OPT_CTX_NOTE", "Un contexte coché remplace l'opacité des fenêtres qui le suivent (case Ctx), puis le curseur maître s'applique."))
@@ -597,6 +825,10 @@ local function BuildOptions()
       function() return math.floor(prof().contexts[key].value * 100 + 0.5) end,
       function(v) prof().contexts[key].value = v / 100; OP.Refresh() end)
   end
+
+  p:Section(T("OPT_SEC_PROFILES", "Profils"))
+  p:Note(T("OPT_PROFILES_NOTE", "Le bouton « Profil » de la fenêtre principale permet de créer plusieurs profils et de les lier "
+    .. "à un personnage ou à une spécialisation : ils s'activent alors tout seuls. Les réglages de cette page appartiennent au profil actif."))
 
   p:Section(T("OPT_SEC_SHOT", "Capture d'écran"))
   p:Check(T("OPT_SHOT_AUTO", "Réafficher automatiquement après la capture"),

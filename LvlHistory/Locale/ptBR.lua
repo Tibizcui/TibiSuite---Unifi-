@@ -64,7 +64,7 @@ for k, v in pairs({
   LBL_TOP_CHAR = "Melhor personagem", LBL_TOTAL_SHORT = "Total", LBL_FAVORITE_SHORT = "Favorita",
   LBL_TIMES_PLAYED = "Vezes jogada", LBL_SESSIONS_SHORT = "Sessões",
   OPT_SEC_WINDOW = "Janela", OPT_TOGGLE = "Abrir / fechar", OPT_RECENTER = "Centralizar a janela",
-  OPT_OPACITY = "Opacidade (%)", OPT_SEC_TRACKING = "Registro",
+  OPT_OPACITY = "Opacidade (%)", OPT_OPACITY_STACK = "Se o módulo Opacity também controlar esta janela, as duas opacidades se multiplicam (70% × 70% = 49%).", OPT_SEC_TRACKING = "Registro",
   OPT_LEVEL_ALERT = "Mensagem a cada nível (tempo passado no nível)",
   OPT_RESUME = "Um /reload não encerra a sessão (retomada em até 10 min)",
   OPT_SESSION_ALERT = "Mensagem ao passar para o modo Farming",

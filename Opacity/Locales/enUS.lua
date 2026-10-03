@@ -1,12 +1,14 @@
 -- =============================================================================
 -- Opacity - Locales/enUS.lua
--- Surcharge EN. Le francais est le texte par defaut embarque directement dans
--- le code (OP.T("CLE", "texte fr")) : ce fichier ne remplit OP.L que sur un
--- client anglais. Charge AVANT Core.lua (voir Opacity.toc).
+-- Base anglaise. Le francais est le texte par defaut embarque directement dans
+-- le code (OP.T("CLE", "texte fr")) : ce fichier remplit OP.L sur TOUT client
+-- non francais, puis deDE, esES, itIT, ptBR, ruRU, koKR, zhCN et zhTW
+-- surchargent ce qu'ils traduisent (une cle oubliee retombe sur l'anglais,
+-- jamais sur le francais). Charge AVANT Core.lua (voir Opacity.toc).
 -- =============================================================================
 
 local ADDON, OP = ...
-if GetLocale() ~= "enUS" and GetLocale() ~= "enGB" then return end
+if GetLocale() == "frFR" then return end
 OP.L = OP.L or {}
 local L = OP.L
 
@@ -32,7 +34,7 @@ L.MSG_PRESET     = "preset \"%s\" applied. \"Undo\" restores the previous profil
 L.MSG_RESET      = "list cleared, every window is back to its original opacity. \"Undo\" restores the previous profile."
 L.MSG_UNDO       = "previous profile restored."
 L.MSG_SHOT_COMBAT = "screenshot mode is not available in combat."
-L.HELP           = "commands: /opacity (window), pick (picker), shot (screenshot mode), on, off, options, reset"
+L.HELP           = "commands: /opacity (window), pick (picker), tune (direct tuning with the mouse wheel), shot (screenshot mode), profile <name>, on, off, options, reset, probe (check)"
 
 -- Contextes
 L.CTX_AFK      = "Away (AFK)"
@@ -212,3 +214,119 @@ L.OPT_RESET            = "Clear the list (everything back to 100%)"
 -- Bouton minimap (mode standalone)
 L.MM_TT_LEFT  = "Left click: open / close"
 L.MM_TT_RIGHT = "Right click: options"
+
+-- =============================================================================
+-- Ajouts 7.1.5.37 (mise a jour 12.1)
+-- =============================================================================
+L.BIND_TUNE = "Direct tuning with the mouse wheel"
+
+-- Contextes
+L.CTX_VEHICLE   = "In a vehicle"
+L.CTX_PETBATTLE = "Pet battle"
+L.CTX_TARGET    = "A target is selected"
+L.CTX_FLYING    = "Flying"
+L.CTX_GROUP     = "In a group"
+L.CTX_REST      = "Resting (city, inn)"
+
+-- Catalogue 12.1
+L.F_DELVES_COMP = "Delve companion"
+L.F_KEYSTONE    = "Mythic keystone (insert)"
+L.F_LANDING     = "Expansion landing page"
+L.F_ORDERS      = "Crafting orders"
+L.F_UPGRADE     = "Item upgrade"
+L.F_CATALYST    = "Catalyst / item interactions"
+L.F_CHOICE      = "Player choice"
+L.F_TRAITS      = "Extra talent trees"
+L.F_SETTINGS    = "Game options"
+L.F_COMBATLOG   = "Combat log"
+L.F_VEHICLESEAT = "Vehicle seats"
+L.F_ARENA       = "Arena frames"
+L.F_PRD         = "Personal resource display"
+L.F_DMGMETER    = "Damage meter (Blizzard)"
+
+-- Fenetre principale
+L.BTN_TUNE      = "Direct tuning"
+L.BTN_PROFILE   = "Profile: "
+L.BTN_OK        = "OK"
+L.BTN_CANCEL    = "Cancel"
+L.COL_LINK      = "Link"
+L.COL_RESULT    = "Result"
+L.HDR_LINK_CHAR = "linked to this character"
+L.HDR_LINK_SPEC = "linked to this specialization"
+L.TAG_BASE      = "original opacity "
+L.TT_TUNE       = "Hover a game window and turn the mouse wheel: its opacity changes live. Shift+wheel: other frame. Also available as a key binding."
+L.TT_LINK       = "Linked group: windows of the same group come back together as soon as one of them is hovered (all your action bars, for instance). Left click: next group, right click: previous, \"-\": none."
+L.TT_PROFILE    = "Switch profile, create one, rename it, or link it to this character / this specialization."
+L.TT_LINK_CHAR  = "When this character logs in, this profile is activated automatically."
+L.TT_LINK_SPEC  = "When this character switches to this specialization, this profile is activated automatically (takes priority over the character link)."
+
+-- Reglage direct
+L.TUNE_BANNER  = "Direct tuning: hover a window and turn the mouse wheel. Shift+wheel = other frame, click or Escape = done."
+L.TUNE_WHEEL   = "Shift+wheel: other frame"
+L.TUNE_VALUE   = "opacity"
+L.TUNE_DONE    = "direct tuning finished."
+L.TUNE_MANAGED = "%s drives this window: check \"Force\" on its row to tune it."
+
+-- Profils
+L.PROF_MAIN        = "Main"
+L.PROF_NEW         = "New empty profile..."
+L.PROF_COPY        = "Copy the active profile..."
+L.PROF_RENAME      = "Rename..."
+L.PROF_DELETE      = "Delete"
+L.PROF_LINK_CHAR   = "Link to this character"
+L.PROF_LINK_SPEC   = "Link to this specialization"
+L.PROF_ASK_NEW     = "Name of the new (empty) profile:"
+L.PROF_ASK_COPY    = "Name of the copy:"
+L.PROF_ASK_RENAME  = "New profile name:"
+L.PROF_ASK_DELETE  = "Permanently delete the profile \"%s\"?"
+L.PROF_ERR_NAME    = "invalid name (1 to 32 characters)."
+L.PROF_ERR_EXISTS  = "a profile already has this name."
+L.PROF_ERR_MAX     = "20 profiles at most."
+L.PROF_ERR_LAST    = "the last profile cannot be deleted."
+L.MSG_PROF_SWITCH  = "profile \"%s\" active."
+L.MSG_PROF_NEW     = "profile \"%s\" created and activated."
+L.MSG_PROF_RENAMED = "profile renamed to \"%s\"."
+L.MSG_PROF_DELETED = "profile \"%s\" deleted."
+L.MSG_PROF_LIST    = "profiles: "
+
+-- Prereglages
+L.PRE_MINIMAL    = "Minimalist"
+L.PRE_MINIMAL_D  = "Almost empty screen: bars, menus and chat invisible. They come back in groups on hover (wider hover zone), and everything returns to 100% in combat or as soon as a target is selected."
+L.PRE_MPLUS      = "Mythic+"
+L.PRE_MPLUS_D    = "Everything at 100% in dungeons and in combat. Chat stays at 50% and the objective tracker (timer) at 85%, menus and experience bar discreet, everything comes back on hover."
+L.PRE_LEVELING   = "Leveling / quests"
+L.PRE_LEVELING_D = "Objective tracker and experience bar clearly visible, action bars at 50% (they come back together on hover). Discreet while mounted, very discreet while flying, 100% in combat."
+L.PRE_STREAMER   = "Streamer"
+L.PRE_STREAMER_D = "Chat invisible (except on hover) so your private messages are not shown on screen, menus and bags hidden. These windows ignore contexts: nothing pops back up in combat."
+L.PRE_PVP        = "PvP"
+L.PRE_PVP_D      = "Battlegrounds and arenas: everything at 100% in instances and in combat, except chat (40%), the objective tracker (30%) and menus (20%), which come back on hover."
+
+-- Options
+L.OPT_RADIUS        = "Wider hover zone (pixels)"
+L.OPT_RADIUS_NOTE   = "The window comes back as soon as the mouse gets this close, before even touching it. Windows of the same linked group (Link column) come back together."
+L.OPT_SEC_PROFILES  = "Profiles"
+L.OPT_PROFILES_NOTE = "The \"Profile\" button in the main window lets you create several profiles and link them to a character or a specialization: they then activate on their own. The settings on this page belong to the active profile."
+
+-- Recherche globale TibiSuite
+L.SEARCH_ADD     = "Add to Opacity: "
+L.SEARCH_PRESET  = "Opacity preset: "
+L.SEARCH_PROFILE = "Opacity profile: "
+
+-- /ts doctor
+L.DOC_NODB     = "saved data not loaded yet"
+L.DOC_PROFILE  = "profile \"%s\""
+L.DOC_FRAMES   = "%d window(s)"
+L.DOC_PENDING  = "%d pending"
+L.DOC_CHILDREN = "%d in children mode"
+L.DOC_BLOCKED  = "protected frames deferred in combat"
+
+-- /opa probe
+L.PROBE_HEAD     = "probe (result also kept in the OpacityDB.probe saved data):"
+L.PROBE_CATALOG  = "Blizzard catalog: %s%d / %d|r windows present."
+L.PROBE_MISSING  = "Missing (normal for a window never opened since login; open it and run again):"
+L.PROBE_OWNER    = "Owner detection: "
+L.PROBE_OWNER_KO = "not working (expect an \"Unknown addon\" group)"
+L.PROBE_SPEC     = "Specialization read: "
+L.PROBE_CHILDREN = "Children mode (external fade detected): "
+L.PROBE_PENDING  = "Pending: "
+L.PROBE_BLOCKED  = "The client refused a protected SetAlpha in combat (queue active)."

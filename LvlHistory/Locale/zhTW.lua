@@ -64,7 +64,7 @@ for k, v in pairs({
   LBL_TOP_CHAR = "最高角色", LBL_TOTAL_SHORT = "總計", LBL_FAVORITE_SHORT = "最愛",
   LBL_TIMES_PLAYED = "遊玩次數", LBL_SESSIONS_SHORT = "次數",
   OPT_SEC_WINDOW = "視窗", OPT_TOGGLE = "開啟 / 關閉", OPT_RECENTER = "視窗置中",
-  OPT_OPACITY = "透明度（%）", OPT_SEC_TRACKING = "紀錄",
+  OPT_OPACITY = "透明度（%）", OPT_OPACITY_STACK = "如果 Opacity 模組也在控制此視窗，兩者的透明度會相乘（70% × 70% = 49%）。", OPT_SEC_TRACKING = "紀錄",
   OPT_LEVEL_ALERT = "每次升級時提示（該等級花費的時間）",
   OPT_RESUME = "/reload 不中斷本次紀錄（10 分鐘內繼續）",
   OPT_SESSION_ALERT = "切換至刷取模式時提示",

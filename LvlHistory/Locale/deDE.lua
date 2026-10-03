@@ -64,7 +64,7 @@ for k, v in pairs({
   LBL_TOP_CHAR = "Top-Charakter", LBL_TOTAL_SHORT = "Gesamt", LBL_FAVORITE_SHORT = "Favorit",
   LBL_TIMES_PLAYED = "Mal gespielt", LBL_SESSIONS_SHORT = "Sitzungen",
   OPT_SEC_WINDOW = "Fenster", OPT_TOGGLE = "Öffnen / schließen", OPT_RECENTER = "Fenster zentrieren",
-  OPT_OPACITY = "Deckkraft (%)", OPT_SEC_TRACKING = "Erfassung",
+  OPT_OPACITY = "Deckkraft (%)", OPT_OPACITY_STACK = "Wenn das Modul Opacity dieses Fenster ebenfalls steuert, multiplizieren sich beide Deckkraftwerte (70 % × 70 % = 49 %).", OPT_SEC_TRACKING = "Erfassung",
   OPT_LEVEL_ALERT = "Meldung bei jeder Stufe (Zeit auf der Stufe)",
   OPT_RESUME = "Ein /reload beendet die Sitzung nicht (Fortsetzung innerhalb 10 Min.)",
   OPT_SESSION_ALERT = "Meldung beim Wechsel in den Farming-Modus",

@@ -15,6 +15,16 @@
 
   Limite honnete : une frame SANS nom global ne peut pas etre memorisee
   (le profil identifie les frames par leur nom). La pipette l'ignore.
+
+  MODE REGLAGE DIRECT (OP.StartTuner, raccourci clavier et /opa tune) : meme
+  calque, mais la molette change l'opacite de la fenetre surlignee, en
+  direct, par pas de 5 % (elle est ajoutee a la liste au premier cran si
+  elle n'y est pas). Maj+molette passe a un autre cadre. Clic gauche ou
+  droit, ou Echap : termine. Pendant le reglage, le fondu au survol est mis
+  en pause (OP.tuning) pour qu'on voie la vraie valeur reglee.
+  WoW ne permet pas a un addon d'intercepter la molette partout sans calque
+  (ce serait du taint) : d'ou ce mode a activer, plutot qu'un Ctrl+molette
+  permanent.
 ============================================================================]]
 
 local ADDON, OP = ...
@@ -23,8 +33,9 @@ local T = OP.T
 local STRATA = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5,
                  FULLSCREEN = 6, FULLSCREEN_DIALOG = 7, TOOLTIP = 8 }
 
-local overlay, hl, hlText, banner
+local overlay, hl, hlText, banner, bannerText
 local candidates, index = {}, 1
+local mode = "add"   -- "add" (pipette) ou "tune" (reglage direct)
 local clock = 0
 
 local function IsOurs(f)
@@ -89,15 +100,24 @@ local function Place()
   if f:IsProtected() then extra = extra .. "  |cFFFFB347" .. T("TAG_PROTECTED", "protégée") .. "|r" end
   local managed = OP.ManagedBy(c.name)
   if managed then extra = extra .. "  |cFFFF7F7F" .. T("TAG_MANAGED", "gérée par ") .. managed .. "|r" end
-  if OP.Profile().frames[c.name] then extra = extra .. "  |cFF66D98A" .. T("TAG_ALREADY", "déjà dans la liste") .. "|r" end
+  local entry = OP.Profile().frames[c.name]
+  if mode == "tune" then
+    local a = OP.ACCENT
+    extra = extra .. string.format("  |cFF%02X%02X%02X%s %d %%|r", math.floor(a[1]*255+0.5), math.floor(a[2]*255+0.5),
+      math.floor(a[3]*255+0.5), T("TUNE_VALUE", "opacité"), math.floor((entry and entry.alpha or 1) * 100 + 0.5))
+  elseif entry then
+    extra = extra .. "  |cFF66D98A" .. T("TAG_ALREADY", "déjà dans la liste") .. "|r"
+  end
   hlText:SetText(string.format("|cFFFFFFFF%s|r  |cFFAAAAAA(%s)|r%s\n|cFF888888%d / %d  -  %s|r",
-    c.name, owner, extra, index, #candidates, T("PICK_WHEEL", "molette : autre cadre")))
+    c.name, owner, extra, index, #candidates,
+    mode == "tune" and T("TUNE_WHEEL", "Maj+molette : autre cadre") or T("PICK_WHEEL", "molette : autre cadre")))
   hl:Show()
 end
 
 local function Stop()
   if overlay then overlay:Hide() end
   if hl then hl:Hide() end
+  if OP.tuning then OP.tuning = false; OP.WakeDriver() end
 end
 OP.StopPicker = Stop
 
@@ -132,9 +152,8 @@ local function Build()
   banner:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
   banner:SetBackdropColor(0.06, 0.07, 0.09, 0.92)
   banner:SetBackdropBorderColor(a[1], a[2], a[3], 0.9)
-  local bt = banner:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  bt:SetPoint("CENTER")
-  bt:SetText(T("PICK_BANNER", "Pipette : survolez une fenêtre. Clic gauche = ajouter, molette = autre cadre, clic droit ou Échap = annuler."))
+  bannerText = banner:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  bannerText:SetPoint("CENTER")
 
   overlay:SetScript("OnUpdate", function(_, dt)
     if InCombatLockdown() then Stop(); return end
@@ -152,6 +171,22 @@ local function Build()
 
   overlay:SetScript("OnMouseWheel", function(_, delta)
     if #candidates == 0 then return end
+    if mode == "tune" and not IsShiftKeyDown() then
+      local c = candidates[index]
+      if not c then return end
+      local p = OP.Profile()
+      if not p.frames[c.name] then
+        local managed = OP.ManagedBy(c.name)
+        if managed then
+          OP.Flash(string.format(T("TUNE_MANAGED", "%s pilote cette fenêtre : cochez « Forcer » sur sa ligne pour la régler."), managed))
+        end
+        OP.AddFrame(c.name, 1)
+      end
+      local e = p.frames[c.name]
+      if e then OP.SetFrameField(c.name, "alpha", math.floor(e.alpha * 20 + 0.5) / 20 + delta * 0.05) end
+      if not pcall(Place) then hl:Hide() end
+      return
+    end
     index = index - delta
     if index < 1 then index = #candidates elseif index > #candidates then index = 1 end
     if not pcall(Place) then hl:Hide() end
@@ -160,6 +195,11 @@ local function Build()
   overlay:SetScript("OnClick", function(_, button)
     local c = candidates[index]
     Stop()
+    if mode == "tune" then
+      OP.Print(T("TUNE_DONE", "réglage direct terminé."))
+      if OP.OnRefresh then OP.OnRefresh() end
+      return
+    end
     if button ~= "LeftButton" or not c then return end
     if OP.AddFrame(c.name) then
       OP.Print(T("MSG_ADDED", "ajoutée : ") .. "|cFFFFD700" .. c.name .. "|r")
@@ -177,19 +217,33 @@ guard:Hide()
 guard:SetScript("OnUpdate", function(self)
   if not (overlay and overlay:IsShown()) then
     if hl then hl:Hide() end
+    if OP.tuning then OP.tuning = false; OP.WakeDriver() end
     self:Hide()
   end
 end)
 
-function OP.StartPicker()
+local function Start(newMode)
   if InCombatLockdown() then
     OP.Print(T("MSG_PICK_COMBAT", "la pipette n'est pas disponible en combat."))
     return
   end
   if not overlay then Build() end
+  mode = newMode
+  if mode == "tune" then
+    bannerText:SetText(T("TUNE_BANNER", "Réglage direct : survolez une fenêtre et tournez la molette. Maj+molette = autre cadre, clic ou Échap = terminer."))
+  else
+    bannerText:SetText(T("PICK_BANNER", "Pipette : survolez une fenêtre. Clic gauche = ajouter, molette = autre cadre, clic droit ou Échap = annuler."))
+  end
+  banner:SetWidth(math.max(620, (bannerText:GetStringWidth() or 600) + 40))
+  OP.tuning = (mode == "tune")
+  if OP.tuning then OP.WakeDriver() end
   candidates, index, clock = {}, 1, 1
   overlay:Show()
   guard:Show()
 end
 
+function OP.StartPicker() Start("add") end
+function OP.StartTuner() Start("tune") end
+
 function Opacity_StartPicker() OP.StartPicker() end
+function Opacity_StartTuner() OP.StartTuner() end

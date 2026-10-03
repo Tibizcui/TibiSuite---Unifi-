@@ -66,17 +66,19 @@ local function BuildStandaloneMinimapButton()
     btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * 105, math.sin(angle) * 105)
   end
 
-  btn:SetScript("OnDragStart", function(self) self.dragging = true end)
-  btn:SetScript("OnDragStop", function(self) self.dragging = false end)
-  btn:SetScript("OnUpdate", function(self)
-    if not self.dragging or not OpacityDB then return end
+  -- OnUpdate branche UNIQUEMENT pendant le glisser (avant : actif a chaque
+  -- image pendant toute la session, pour rien).
+  local function OnDragUpdate()
+    if not OpacityDB then return end
     local mx, my = Minimap:GetCenter()
     local cx, cy = GetCursorPosition()
     local scale = Minimap:GetEffectiveScale()
     cx, cy = cx / scale, cy / scale
     OpacityDB.minimapAngle = math.deg(math.atan2(cy - my, cx - mx))
     UpdatePosition()
-  end)
+  end
+  btn:SetScript("OnDragStart", function(self) self:SetScript("OnUpdate", OnDragUpdate) end)
+  btn:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
   btn:SetScript("OnClick", function(_, button)
     if button == "RightButton" then Opacity_OpenOptions() else Opacity_Toggle() end
   end)
@@ -98,7 +100,7 @@ if HasCore() and IsEnabledByCore() then
     accent         = OP.ACCENT,
     onOpen         = function() Opacity_Toggle() end,
     onOptions      = function() Opacity_OpenOptions() end,
-    searchProvider = nil,
+    searchProvider = OP.SearchProvider,   -- Bridge.lua
   })
 elseif not HasCore() then
   -- Le bouton lit OpacityDB : on attend le login (SavedVariables chargees).
@@ -108,20 +110,27 @@ elseif not HasCore() then
 end
 
 -- ============================================================================
--- SLASH : /opacity [pick | shot | on | off | options | reset | help]
+-- SLASH : /opacity [pick | tune | shot | on | off | options | reset | probe | profile <nom> | help]
 -- ============================================================================
 SLASH_TIBIOPACITY1 = "/opacity"
 SLASH_TIBIOPACITY2 = "/opa"
 SlashCmdList["TIBIOPACITY"] = function(msg)
-  local cmd = (msg or ""):lower():match("^%s*(%S*)")
+  local cmd, rest = (msg or ""):match("^%s*(%S*)%s*(.-)%s*$")
+  cmd = (cmd or ""):lower()
   if cmd == "" then Opacity_Toggle()
   elseif cmd == "pick" or cmd == "pipette" then OP.StartPicker()
+  elseif cmd == "tune" or cmd == "reglage" or cmd == "molette" then OP.StartTuner()
+  elseif cmd == "probe" or cmd == "sonde" then OP.RunProbe()
+  elseif cmd == "profile" or cmd == "profil" then
+    if rest ~= "" and OpacityDB.profiles[rest] then OP.SwitchProfile(rest)
+    else OP.Print(T("MSG_PROF_LIST", "profils : ") .. table.concat(OP.ProfileNames(), ", ")) end
   elseif cmd == "shot" or cmd == "capture" then Opacity_ToggleScreenshot()
   elseif cmd == "on" then OP.SetEnabled(true); OP.Print(T("FLASH_ON", "activé"))
   elseif cmd == "off" then OP.SetEnabled(false); OP.Print(T("FLASH_OFF", "suspendu (fenêtres rendues à leur opacité d'origine)"))
   elseif cmd == "options" or cmd == "config" then Opacity_OpenOptions()
   elseif cmd == "reset" then OP.ResetProfile()
   else
-    OP.Print(T("HELP", "commandes : /opacity (fenêtre), pick (pipette), shot (capture d'écran), on, off, options, reset"))
+    OP.Print(T("HELP", "commandes : /opacity (fenêtre), pick (pipette), tune (réglage direct à la molette), shot (capture d'écran), "
+      .. "profile <nom>, on, off, options, reset, probe (vérification)"))
   end
 end

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.37
+- /ts doctor : chaque module peut maintenant ajouter sa propre ligne d'état (première utilisation : Opacity, avec son profil actif, ses fenêtres et celles en attente).
+
 ## 7.1.5.36
 - Fenetre Quoi de neuf : notes de la version 7.1.5.36 (DgnTracker).
 

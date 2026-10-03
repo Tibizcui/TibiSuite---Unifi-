@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.37
+- Options : une note sous le curseur d'opacité explique que, si le module Opacity règle aussi la fenêtre, les deux opacités se multiplient.
+
 ## 7.1.5.36
 - Cliquer un donjon ou un gouffre dans l'onglet Donjons ouvre directement sa fiche dans DgnTracker (au lieu de la seule fenetre).
 
