@@ -364,6 +364,18 @@ local function rebuild()
     else
         frame:SetHeight(math.min(h + 78, 700))
     end
+    -- Barre de defilement seulement si le contenu depasse (vu en jeu : fleches
+    -- grises affichees alors que tout tenait dans la fenetre).
+    local sc = frame._scroll
+    local bar = sc and (sc.ScrollBar or _G["LairLensInfoScrollScrollBar"])
+    if type(bar) ~= "table" or type(bar.SetShown) ~= "function" then bar = nil end
+    if bar then
+        C_Timer.After(0, function()
+            local fits = h <= (sc:GetHeight() or 0) + 2
+            bar:SetShown(not fits)
+            if fits then sc:SetVerticalScroll(0) end
+        end)
+    end
 end
 
 -- --- Construction ----------------------------------------------------------------
@@ -408,6 +420,8 @@ local function build()
     close:SetScript("OnClick", function() frame:Hide() end)
 
     local scroll = CreateFrame("ScrollFrame", "LairLensInfoScroll", frame, "UIPanelScrollFrameTemplate")
+    scroll.scrollBarHideable = true  -- le modele Blizzard masque la barre sans defilement
+    frame._scroll = scroll
     scroll:SetPoint("TOPLEFT", 14, -52)
     scroll:SetPoint("BOTTOMRIGHT", -30, 14)
     content = CreateFrame("Frame", nil, scroll)

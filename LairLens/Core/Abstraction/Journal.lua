@@ -200,9 +200,20 @@ end
 -- -----------------------------------------------------------------------------
 local scanning = false
 
+-- Version de la recherche : 2 = categories de guilde incluses (VU EN JEU
+-- 2026-10-03 : la v1 ne trouvait que 3 hauts faits sur 5, les deux versions
+-- "groupe de guilde" etant rangees dans la categorie Guilde). Un cache plus
+-- ancien est jete pour relancer la recherche une fois.
+local ACH_SCAN_VERSION = 2
+
 function J:GetAchievements(instanceKey)
     local lrn = LL.db and LL.db.learned
-    return lrn and lrn.achievements and lrn.achievements[instanceKey] or nil
+    if not lrn then return nil end
+    if lrn.achScanVersion ~= ACH_SCAN_VERSION then
+        lrn.achievements = {}
+        lrn.achScanVersion = ACH_SCAN_VERSION
+    end
+    return lrn.achievements and lrn.achievements[instanceKey] or nil
 end
 
 function J:FindAchievements(instanceKey, callback)
@@ -222,6 +233,16 @@ function J:FindAchievements(instanceKey, callback)
 
     local okC, cats = pcall(GetCategoryList)
     if not okC or type(cats) ~= "table" then return end
+    -- Categories de guilde : les hauts faits "groupe de guilde" y sont ranges.
+    if type(GetGuildCategoryList) == "function" then
+        local okG, gcats = pcall(GetGuildCategoryList)
+        if okG and type(gcats) == "table" then
+            local all = {}
+            for _, c in ipairs(cats) do all[#all + 1] = c end
+            for _, c in ipairs(gcats) do all[#all + 1] = c end
+            cats = all
+        end
+    end
 
     scanning = true
     local found, seen = {}, {}
