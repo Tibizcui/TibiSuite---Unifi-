@@ -12,9 +12,10 @@ local addonName, ns = ...
 -- dans le .toc, et l'ajouter ici.
 ns.ActivityManifest = {
     { key = "greatVault", enabled = true },
-    -- Repaires : aucun compteur hebdo cote jeu (sonde 2026-09-25), la colonne
-    -- restait toujours a "?". Retiree du tableau jusqu'a ce qu'une source existe.
-    { key = "lairs",      enabled = false, hidden = true },
+    -- Repaires : le jeu n'expose aucun compteur hebdo (sonde 2026-09-25), mais
+    -- LairLens (7.1.5.37) suit chaque difficulte faite. La colonne n'apparait
+    -- que si LairLens est charge (Lairs.lua, IsAvailable).
+    { key = "lairs",      enabled = true, hidden = function() return _G.LairLensAPI == nil end },
     { key = "delves",     enabled = true, reasonKey = "DETAIL_SOURCES_PENDING" },
     { key = "huntRanks",  enabled = true, reasonKey = "DETAIL_SOURCES_PENDING" },
     -- Onglet Personnages (fiche persistante, magasin "snapshot").
@@ -28,9 +29,10 @@ ns.ActivityManifest = {
 -- Monnaies de la saison affichees dans la fiche detaillee. Identifiants
 -- releves par la sonde ; A REVOIR A CHAQUE SAISON, comme les renoms.
 --   3442 : Ecu de brume d'aventure (saison 2 Midnight, plafond cumule 700).
--- Les autres ecus de la saison 2 (veteran, champion, heroique, mythique) ne
--- sont pas encore reperes : a completer des qu'un perso en aura ramasse.
-ns.SheetCurrencies = { 3442 }
+--   3443 / 3444 / 3445 / 3446 : Ecus de brume de veteran, de champion,
+--   heroique et mythique (releves par la sonde TibiProbe, compte CRJ07 ;
+--   ce sont aussi les monnaies des Repaires Monde / Normal / Heroique / Mythique).
+ns.SheetCurrencies = { 3442, 3443, 3444, 3445, 3446 }
 
 -- Sources des activites pilotees par la donnee (lues par Core/Sources.lua).
 --
@@ -57,7 +59,8 @@ ns.ActivitySources = {
         -- Renom "Traque saison 1" (Midnight) : les rangs de la Traque.
         { type = "renown",   id = 2764, shortKey = "SRC_HUNT_RENOWN_SHORT" },
     },
-    -- Repaires : aucune source hebdo reperee par la sonde. Seuls des etats
-    -- existent (C_DelvesUI.HasActiveLair / IsInLair), pas de compteur.
-    lairs = {},
+    -- Repaires : aucune source hebdo cote jeu ; LairLens fournit la semaine.
+    lairs = {
+        { type = "lairlens", shortKey = "ACTIVITY_LAIRS_SHORT" },
+    },
 }

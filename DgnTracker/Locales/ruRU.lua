@@ -32,7 +32,7 @@ for k, v in pairs({
   MPLUS_SCORE_FMT = "рейтинг %d", MPLUS_NONE = "в этом сезоне ключей нет",
   LOCKED_LABEL = "Сохранено", RESET_IN_FMT = "сброс через %s", DELAY_DH = "%d д %d ч", DELAY_H = "%d ч %02d",
   BOUNTIFUL_LINE = "Сегодня щедрая вылазка: бонусный сундук за ключ от сундука.",
-  BADGE_BOUNTIFUL = "Щедрая", BADGE_DETECTED = "найдено",
+  BADGE_BOUNTIFUL = "Щедрая", BADGE_DETECTED = "найдено", BADGE_LAIR = "Логово",
   BTN_WAYPOINT = "Точка маршрута", BTN_JOURNAL = "Путеводитель", BTN_FAV = "В избранное", BTN_UNFAV = "Убрать",
   DIST_FMT = "%d м", SEASON_SCORE = "рейтинг М+: %d", EXT_CATA = "Cataclysm (4.0)",
   TAB_DUNGEON = "Подземелье", TAB_RAID = "Рейд", TAB_DELVE = "Вылазка", TAB_TORGHAST = "Торгаст", TAB_MPLUS = "Эпох.+",

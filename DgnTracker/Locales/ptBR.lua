@@ -32,7 +32,7 @@ for k, v in pairs({
   MPLUS_SCORE_FMT = "pontuação %d", MPLUS_NONE = "nenhuma chave concluída nesta temporada",
   LOCKED_LABEL = "Vinculado", RESET_IN_FMT = "reinício em %s", DELAY_DH = "%d d %d h", DELAY_H = "%d h %02d",
   BOUNTIFUL_LINE = "Imersão farta hoje: baú bônus com uma chave de cofre.",
-  BADGE_BOUNTIFUL = "Farta", BADGE_DETECTED = "detectada",
+  BADGE_BOUNTIFUL = "Farta", BADGE_DETECTED = "detectada", BADGE_LAIR = "Covil",
   BTN_WAYPOINT = "Ponto de referência", BTN_JOURNAL = "Guia de Aventura", BTN_FAV = "Adicionar favorito", BTN_UNFAV = "Remover favorito",
   DIST_FMT = "%d m", SEASON_SCORE = "pontuação M+: %d", EXT_CATA = "Cataclysm (4.0)",
   TAB_DUNGEON = "Masmorra", TAB_RAID = "Raide", TAB_DELVE = "Imersão", TAB_TORGHAST = "Torghast", TAB_MPLUS = "Mítica+",

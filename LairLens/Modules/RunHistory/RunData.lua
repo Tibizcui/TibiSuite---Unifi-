@@ -93,6 +93,11 @@ local function matchesRun(run, filter)
                 hay = hay .. " " .. (m.name or "")
             end
         end
+        if type(run.loot) == "table" then
+            for _, it in ipairs(run.loot) do
+                hay = hay .. " " .. ((it.link or ""):match("%[(.-)%]") or "")
+            end
+        end
         if not hay:lower():find(q, 1, true) then return false end
     end
     return true
@@ -121,8 +126,41 @@ function RH:Aggregate(list)
         local cleared = 0
         for _, run in ipairs(list or {}) do
             if run.result == C.RUN.KILL then cleared = cleared + 1 end
+            if run.killTime and (not total.bestKill or run.killTime < total.bestKill) then
+                total.bestKill = run.killTime
+            end
         end
         total.killRate = cleared / total.count
     end
     return total
+end
+
+-- Records par difficulte (7.1.5.37), sur une liste de runs (plus recent en tete) :
+--   [diff] = { runs, kills, bestKill (s), firstKillAt (epoch), wipesBeforeFirst,
+--              loot (objets recus) }
+-- wipesBeforeFirst = pulls rates avant le tout premier kill, runs plus anciens
+-- compris ; nil tant qu'aucun kill n'existe.
+function RH:Records(list)
+    local out = {}
+    list = list or self:GetRuns()
+    for i = #list, 1, -1 do  -- du plus ancien au plus recent
+        local run = list[i]
+        local d = run.difficulty or "?"
+        local r = out[d]
+        if not r then r = { runs = 0, kills = 0, loot = 0, pulls = 0 }; out[d] = r end
+        r.runs = r.runs + 1
+        r.kills = r.kills + (tonumber(run.kills) or 0)
+        r.loot = r.loot + (type(run.loot) == "table" and #run.loot or 0)
+        if run.killTime and (not r.bestKill or run.killTime < r.bestKill) then r.bestKill = run.killTime end
+        if not r.firstKillAt then
+            if run.result == C.RUN.KILL then
+                r.firstKillAt = run.endTime or run.startTime
+                r.wipesBeforeFirst = r.pulls + math.max(0, (tonumber(run.killAttempt) or 1) - 1)
+            else
+                r.pulls = r.pulls + (tonumber(run.attempts) or 0)
+            end
+        end
+    end
+    for _, r in pairs(out) do r.pulls = nil end
+    return out
 end

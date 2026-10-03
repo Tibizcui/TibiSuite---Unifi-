@@ -69,6 +69,38 @@ function U.FormatDate(epoch)
     return date("%d/%m %H:%M", epoch)
 end
 
+-- Repliement pour comparer des libelles du jeu dans toutes les langues :
+-- minuscules ASCII, accents latins retires, apostrophes typographiques
+-- ramenees a "'", espaces compactes. "Héroïque" -> "heroique",
+-- "La Grotte des Marées" -> "la grotte des marees". Les alphabets non latins
+-- (cyrillique, coreen, chinois) passent tels quels : la detection ne s'y fie
+-- pas, elle apprend les identifiants numeriques au premier passage.
+local FOLD = {
+    ["à"]="a", ["á"]="a", ["â"]="a", ["ä"]="a", ["ã"]="a", ["å"]="a",
+    ["À"]="a", ["Á"]="a", ["Â"]="a", ["Ä"]="a", ["Ã"]="a", ["Å"]="a",
+    ["ç"]="c", ["Ç"]="c",
+    ["è"]="e", ["é"]="e", ["ê"]="e", ["ë"]="e", ["È"]="e", ["É"]="e", ["Ê"]="e", ["Ë"]="e",
+    ["ì"]="i", ["í"]="i", ["î"]="i", ["ï"]="i", ["Ì"]="i", ["Í"]="i", ["Î"]="i", ["Ï"]="i",
+    ["ñ"]="n", ["Ñ"]="n",
+    ["ò"]="o", ["ó"]="o", ["ô"]="o", ["ö"]="o", ["õ"]="o", ["Ò"]="o", ["Ó"]="o", ["Ô"]="o", ["Ö"]="o", ["Õ"]="o",
+    ["ù"]="u", ["ú"]="u", ["û"]="u", ["ü"]="u", ["Ù"]="u", ["Ú"]="u", ["Û"]="u", ["Ü"]="u",
+    ["ß"]="ss", ["œ"]="oe", ["Œ"]="oe", ["æ"]="ae", ["Æ"]="ae",
+    ["’"]="'", ["‘"]="'", ["\194\160"]=" ", ["\226\128\175"]=" ",
+}
+
+function U.Fold(s)
+    if type(s) ~= "string" then return "" end
+    s = s:gsub("[\192-\244][\128-\191]*", function(c) return FOLD[c] end)
+    s = s:lower():gsub("%s+", " "):gsub("^ ", ""):gsub(" $", "")
+    return s
+end
+
+-- Vrai si la chaine repliee `hay` contient le fragment replie `needle`.
+function U.FoldFind(hay, needle)
+    if not needle or needle == "" then return false end
+    return U.Fold(hay):find(U.Fold(needle), 1, true) ~= nil
+end
+
 -- Couleur de classe {r,g,b} depuis le jeton EN (WARRIOR, PRIEST, ...).
 -- Repli sur la couleur de texte si le jeton est inconnu ou la table absente
 -- (par ex. dans le harnais de test hors-jeu).

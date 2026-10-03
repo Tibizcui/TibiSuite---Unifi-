@@ -1,19 +1,30 @@
 -- =============================================================================
 -- LairLens - Locales/enUS.lua  (base locale)
+-- Base pour toutes les langues : chaque fichier de langue ne surcharge que ce
+-- qu'il traduit, une cle oubliee retombe sur l'anglais.
 -- =============================================================================
 
 local ADDON, LL = ...
 local L = LL.L
 
+L["LOADED_MSG"]         = "loaded. Type |cFFFFD700/ll|r to open."
+L["TAB_LABEL"]          = "Lair"
+
 -- Panneau d'audit
 L["AUDIT_TITLE"]        = "Group audit"
 L["AUDIT_NO_GROUP"]     = "Not in a group"
 L["AUDIT_NO_LAIR"]      = "Not in a Lair"
+L["DEMO_TAG"]           = "(demo)"
 
 L["DIFF_WORLD"]         = "World"
 L["DIFF_NORMAL"]        = "Normal"
 L["DIFF_HEROIC"]        = "Heroic"
 L["DIFF_MYTHIC"]        = "Mythic"
+
+L["TRACK_VETERAN"]      = "Veteran"
+L["TRACK_CHAMPION"]     = "Champion"
+L["TRACK_HERO"]         = "Hero"
+L["TRACK_MYTH"]         = "Myth"
 
 L["ROLES"]              = "Roles"
 L["TANKS"]              = "Tanks"
@@ -22,11 +33,17 @@ L["COMBAT_REZ"]         = "Combat rez"
 L["LUST"]               = "Lust / Hero"
 L["INTERRUPTS"]         = "Interrupts"
 L["DISPELS"]            = "Dispels"
+L["GROUP_ILVL"]         = "Avg ilvl / recommended"
+L["GROUP_SIZE"]         = "Group size"
 
 L["DISPEL_MAGIC"]       = "Magic"
 L["DISPEL_CURSE"]       = "Curse"
 L["DISPEL_POISON"]      = "Poison"
 L["DISPEL_DISEASE"]     = "Disease"
+L["DISPEL_MAGIC_SHORT"]   = "Mag"
+L["DISPEL_CURSE_SHORT"]   = "Cur"
+L["DISPEL_POISON_SHORT"]  = "Poi"
+L["DISPEL_DISEASE_SHORT"] = "Dis"
 
 L["PRESENT"]            = "Present"
 L["ABSENT"]             = "Absent"
@@ -42,13 +59,66 @@ L["MISS_HEALER"]        = "healers (%d/%d)"
 L["MISS_COMBAT_REZ"]    = "combat rez"
 L["MISS_LUST"]          = "Lust"
 L["MISS_INTERRUPT"]     = "interrupts"
+L["MISS_SIZE"]          = "players (%d/%d minimum)"
+L["MISS_SIZE_MAX"]      = "too many players (%d/%d)"
+L["MISS_ILVL"]          = "item level (%d < %d)"
+
+-- Scenario (World difficulty)
+L["SCEN_STAGE"]         = "Stage %d/%d"
+L["SCEN_WORLD"]         = "World difficulty"
+L["SCEN_DONE"]          = "Done"
+L["SCEN_HINT"]          = "Waves of elites, then the boss."
+
+-- Boutons du panneau
+L["BTN_ANNOUNCE"]       = "Announce"
+L["BTN_ANNOUNCE_TT"]    = "Posts the verdict in group chat (instance, raid or party). Never in combat."
+L["ANNOUNCE_MISSING"]   = "missing %s"
+L["ANNOUNCE_COMBAT"]    = "Not in combat: announce again after the fight."
+L["BTN_INFO"]           = "Lair sheet"
+L["BTN_INFO_TT"]        = "Entrance, weekly status, loot for your spec, achievements and records."
 
 -- Recompenses (module 2)
 L["REWARD_TITLE"]       = "Reward relevance"
-L["REWARD_WORTH"]       = "Worth it"
+L["REWARD_WORTH"]       = "Worth it:"
+L["REWARD_VAULT"]       = "Below your ilvl, still counts for the Vault:"
 L["REWARD_SKIP"]        = "You can skip"
 L["REWARD_DONE_WEEK"]   = "Already cleared this week"
-L["REWARD_NO_DATA"]     = "Loot data not available yet"
+L["REWARD_NO_DATA"]     = "Unknown difficulty"
+L["REWARD_OUTSIDE"]     = "Outside a Lair"
+L["REWARD_ILVL"]        = "ilvl %d"
+
+-- Fiche du Repaire
+L["INFO_ENTRANCE"]      = "Entrance: %s %.1f, %.1f"
+L["BTN_WAYPOINT"]       = "Map pin"
+L["BTN_WAYPOINT_TT"]    = "Places a waypoint on the Lair entrance."
+L["BTN_DGN_TT"]         = "Opens this Lair in DgnTracker."
+L["BTN_JOURNAL"]        = "Journal"
+L["BTN_JOURNAL_TT"]     = "Opens the Adventure Guide on this Lair."
+L["WAYPOINT_SET"]       = "Waypoint set on the Lair entrance (%.2f, %.2f)."
+L["JOURNAL_UNKNOWN"]    = "This Lair was not found in the Adventure Guide yet. Try /ll probe inside."
+L["INFO_WEEK"]          = "This week"
+L["INFO_COL_DIFF"]      = "Difficulty"
+L["INFO_COL_REC"]       = "Rec."
+L["INFO_COL_LOOT"]      = "Loot"
+L["INFO_COL_STATUS"]    = "Status"
+L["INFO_DONE"]          = "Done"
+L["INFO_TODO"]          = "To do"
+L["INFO_PICK_DIFF_TT"]  = "Shows the loot of this difficulty."
+L["INFO_VAULT_NOTE"]    = "Each kill counts as a raid activity in the Great Vault. World: automatic loot. Normal and above: loot is rolled."
+L["INFO_LOOT"]          = "Loot (%s)"
+L["INFO_LOOT_MINE"]     = "My spec only"
+L["INFO_LOOT_ALL"]      = "All specs"
+L["INFO_LOOT_LOADING"]  = "Loading loot from the Adventure Guide..."
+L["INFO_LOOT_UNAVAILABLE"] = "Loot unavailable: Lair not found in the Adventure Guide yet (or the Guide is open)."
+L["INFO_ACHIEVEMENTS"]  = "Achievements"
+L["INFO_ACH_SCANNING"]  = "Searching achievements..."
+L["INFO_ACH_NONE"]      = "No achievement found yet."
+L["INFO_RECORDS"]       = "Your records"
+L["INFO_REC_RUNS"]      = "%d runs, %d kills"
+L["INFO_REC_BEST"]      = "best %s"
+L["INFO_REC_FIRST"]     = "%d wipes before the first kill"
+L["INFO_REC_LOOT"]      = "%d items"
+L["INFO_REC_NONE"]      = "No run recorded on this character yet."
 
 -- Dashboard (historique des runs)
 L["DASH_TITLE"]           = "Lair history"
@@ -56,6 +126,8 @@ L["DASH_RUNS"]            = "Runs"
 L["DASH_TIME"]            = "Time"
 L["DASH_ATTEMPTS"]        = "Attempts"
 L["DASH_KILLS"]           = "Kills"
+L["DASH_BEST_KILL"]       = "Best kill"
+L["DASH_LOOT"]            = "Loot"
 L["DASH_FILTER_OWNER"]    = "Char"
 L["DASH_FILTER_DIFF"]     = "Difficulty"
 L["DASH_FILTER_INSTANCE"] = "Lair"
@@ -75,13 +147,26 @@ L["DASH_CLEAR_CONFIRM"]   = "Click again to confirm"
 L["RUN_KILL"]             = "Kill"
 L["RUN_INCOMPLETE"]       = "Incomplete"
 
--- Options / slash
-L["SLASH_HELP"]         = "Commands: /ll config, /ll show, /ll dash, /ll sim, /ll lock, /ll reset, /ll debug"
+-- Slash
+L["SLASH_HELP"]         = "Commands: /ll (panel), /ll info, /ll dash, /ll config, /ll probe, /ll demo, /ll lock, /ll reset"
 L["FRAME_LOCKED"]       = "Panel locked."
 L["FRAME_UNLOCKED"]     = "Panel unlocked (drag to move)."
 
+-- Sonde
+L["PROBE_DONE"]         = "Probe saved. What the game says:"
+L["PROBE_INSTANCE"]     = "Instance"
+L["PROBE_DETECTED"]     = "LairLens detects"
+L["PROBE_JOURNAL"]      = "Journal"
+L["PROBE_SAVED"]        = "Full report in LairLensDB.probe (written on /reload)."
+
 -- Options
-L["OPT_TITLE"]          = "Settings"
+L["OPT_TITLE"]          = "Options"
+L["OPT_SEC_PANEL"]      = "Windows"
+L["OPT_SEC_BEHAVIOR"]   = "Behaviour"
+L["OPT_SEC_FLOAT"]      = "Floating buttons"
+L["OPT_SEC_TOOLS"]      = "Tools"
+L["OPT_TOGGLE"]         = "Show / hide the panel"
+L["OPT_RECENTER"]       = "Recenter the panel"
 L["OPT_ENABLED"]        = "Enable LairLens"
 L["OPT_ENABLED_TT"]     = "Master switch for the addon."
 L["OPT_HIDE_OUT"]       = "Hide outside a Lair"
@@ -90,5 +175,17 @@ L["OPT_FADE_COMBAT"]    = "Fade in combat"
 L["OPT_FADE_COMBAT_TT"] = "Dim the panel during combat to stay discreet."
 L["OPT_LOCK"]           = "Lock position"
 L["OPT_LOCK_TT"]        = "Prevent the panel from being dragged."
+L["OPT_TRACK_RUNS"]     = "Record runs"
+L["OPT_TRACK_RUNS_TT"]  = "Keeps every Lair run (time, attempts, kill, loot, group) in the history."
 L["OPT_SCALE"]          = "Scale"
-L["OPT_UNAVAILABLE"]    = "Settings panel unavailable on this client. Use slash commands."
+L["OPT_HIDE_OPTBTN"]    = "Hide the Options button"
+L["OPT_HIDE_OPTBTN_TT"] = "Shift + right click on the panel still opens these options."
+L["OPT_HIDE_SEARCH"]    = "Hide the Search field"
+L["OPT_DEMO"]           = "Demo mode (fake group)"
+L["OPT_PROBE"]          = "Probe the current Lair"
+L["OPT_PROBE_NOTE"]     = "The probe also runs on its own each time you enter a Lair."
+L["OPT_TIP"]            = "Tip: right click on the Lair tile of the TibiSuite bar also opens these options."
+
+-- Bouton minimap (mode standalone)
+L["MM_LEFT"]            = "Left click: show / hide"
+L["MM_RIGHT"]           = "Right click: options"

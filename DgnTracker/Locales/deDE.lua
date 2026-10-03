@@ -32,7 +32,7 @@ for k, v in pairs({
   MPLUS_SCORE_FMT = "Wertung %d", MPLUS_NONE = "diese Saison noch kein Schlüssel abgeschlossen",
   LOCKED_LABEL = "Gesperrt", RESET_IN_FMT = "Reset in %s", DELAY_DH = "%d T %d Std", DELAY_H = "%d Std %02d",
   BOUNTIFUL_LINE = "Heute ergiebige Tiefe: Bonustruhe mit einem Kastenschlüssel.",
-  BADGE_BOUNTIFUL = "Ergiebig", BADGE_DETECTED = "erkannt",
+  BADGE_BOUNTIFUL = "Ergiebig", BADGE_DETECTED = "erkannt", BADGE_LAIR = "Hort",
   BTN_WAYPOINT = "Wegpunkt", BTN_JOURNAL = "Abenteuerführer", BTN_FAV = "Zu Favoriten", BTN_UNFAV = "Favorit entfernen",
   DIST_FMT = "%d m", SEASON_SCORE = "M+-Wertung: %d", EXT_CATA = "Cataclysm (4.0)",
   TAB_DUNGEON = "Dungeon", TAB_RAID = "Schlachtzug", TAB_DELVE = "Tiefe", TAB_TORGHAST = "Torghast", TAB_MPLUS = "Mythisch+",

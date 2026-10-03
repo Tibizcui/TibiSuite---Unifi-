@@ -98,6 +98,27 @@ function readers.quests(src)
     }
 end
 
+-- { type = "lairlens" } : Repaires (12.1) lus via _G.LairLensAPI (module
+-- LairLens de la suite). Progression = difficultes faites cette semaine sur 4
+-- (Monde, Normal, Heroique, Mythique), detail = plus haute difficulte faite.
+-- LairLens absent ou desactive : source ignoree (aucun compteur invente).
+function readers.lairlens(src)
+    local api = _G.LairLensAPI
+    if not (api and type(api.GetWeek) == "function") then return nil end
+    local w = api.GetWeek()
+    if type(w) ~= "table" then return nil end
+    local done = tonumber(w.count) or 0
+    local label = (type(api.GetLairName) == "function" and api.GetLairName()) or ns.L["ACTIVITY_LAIRS"]
+    local detail
+    if w.best and type(api.GetDifficultyLabel) == "function" then detail = api.GetDifficultyLabel(w.best) end
+    return {
+        label    = label,
+        status   = statusFor(done, 4),
+        progress = { current = done, max = 4 },
+        detail   = detail,
+    }
+end
+
 -- Sources declarees pour une activite (table vide si rien n'est renseigne).
 function Sources:Get(activityKey)
     local all = ns.ActivitySources or {}
@@ -132,4 +153,7 @@ Sources.EVENTS = {
     "QUEST_TURNED_IN",
     "MAJOR_FACTION_RENOWN_LEVEL_CHANGED",
     "UPDATE_FACTION",
+    -- Repaires (source lairlens) : un kill ou la liste des verrouillages bouge.
+    "ENCOUNTER_END",
+    "UPDATE_INSTANCE_INFO",
 }

@@ -32,7 +32,7 @@ for k, v in pairs({
   MPLUS_SCORE_FMT = "punteggio %d", MPLUS_NONE = "nessuna chiave completata in questa stagione",
   LOCKED_LABEL = "Vincolato", RESET_IN_FMT = "reset tra %s", DELAY_DH = "%d g %d h", DELAY_H = "%d h %02d",
   BOUNTIFUL_LINE = "Scavo abbondante oggi: forziere bonus con una chiave dello scrigno.",
-  BADGE_BOUNTIFUL = "Abbondante", BADGE_DETECTED = "rilevata",
+  BADGE_BOUNTIFUL = "Abbondante", BADGE_DETECTED = "rilevata", BADGE_LAIR = "Tana",
   BTN_WAYPOINT = "Punto di via", BTN_JOURNAL = "Guida delle avventure", BTN_FAV = "Aggiungi ai preferiti", BTN_UNFAV = "Rimuovi preferito",
   DIST_FMT = "%d m", SEASON_SCORE = "punteggio M+: %d", EXT_CATA = "Cataclysm (4.0)",
   TAB_DUNGEON = "Spedizione", TAB_RAID = "Incursione", TAB_DELVE = "Scavo", TAB_TORGHAST = "Torghast", TAB_MPLUS = "Mitica+",

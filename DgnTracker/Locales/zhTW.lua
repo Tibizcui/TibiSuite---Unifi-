@@ -32,7 +32,7 @@ for k, v in pairs({
   MPLUS_SCORE_FMT = "評分 %d", MPLUS_NONE = "本賽季尚未完成鑰石",
   LOCKED_LABEL = "已鎖定", RESET_IN_FMT = "%s 後重置", DELAY_DH = "%d天%d小時", DELAY_H = "%d小時%02d分",
   BOUNTIFUL_LINE = "今日豐碩探究：使用寶箱鑰匙可開啟額外寶箱。",
-  BADGE_BOUNTIFUL = "豐碩", BADGE_DETECTED = "已偵測",
+  BADGE_BOUNTIFUL = "豐碩", BADGE_DETECTED = "已偵測", BADGE_LAIR = "巢穴",
   BTN_WAYPOINT = "路徑點", BTN_JOURNAL = "冒險指南", BTN_FAV = "加入最愛", BTN_UNFAV = "移除最愛",
   DIST_FMT = "%d碼", SEASON_SCORE = "傳奇鑰石評分：%d", EXT_CATA = "Cataclysm (4.0)",
   TAB_DUNGEON = "地城", TAB_RAID = "團隊副本", TAB_DELVE = "探究", TAB_TORGHAST = "托伽司", TAB_MPLUS = "傳奇鑰石",

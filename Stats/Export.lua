@@ -362,6 +362,52 @@ local function collectLeveling()
   return ok and res or nil
 end
 
+-- Repaires (LairLens 7.1.5.37) : recopie du resume que LairLens ecrit dans
+-- sa SavedVariable (LairLensDB.summary, mis a jour a PLAYER_LEAVING_WORLD,
+-- donc avant ce PLAYER_LOGOUT). Meme principe que collectLeveling : lecture
+-- seule, copie champ par champ, cle "Nom-Royaume". Ajout additif, schema
+-- inchange : un site pas a jour ignore chars[k].lairs.
+--   lairs = { at, lair, runs, kills, loot, last, resetAt,
+--             week = { w, n, h, m } (1 si fait), best = { w, n, h, m } (s),
+--             diffs = { w|n|h|m = { r, k, f } } }
+local LAIR_DIFF = { world = "w", normal = "n", heroic = "h", mythic = "m" }
+local function collectLairs()
+  local db = _G.LairLensDB
+  local snap = db and db.summary
+  if type(snap) ~= "table" or type(snap.chars) ~= "table" then return nil end
+  local ok, res = pcall(function()
+    local out = {}
+    local function num(v) return tonumber(v) end
+    for key, c in pairs(snap.chars) do
+      if type(key) == "string" and type(c) == "table" then
+        local week, best, diffs
+        if type(c.week) == "table" then
+          week = {}
+          for long, short in pairs(LAIR_DIFF) do week[short] = c.week[long] and 1 or nil end
+        end
+        if type(c.best) == "table" then
+          best = {}
+          for long, short in pairs(LAIR_DIFF) do best[short] = num(c.best[long]) end
+        end
+        if type(c.diffs) == "table" then
+          diffs = {}
+          for long, short in pairs(LAIR_DIFF) do
+            local d = c.diffs[long]
+            if type(d) == "table" then diffs[short] = { r = num(d.runs), k = num(d.kills), f = num(d.first) } end
+          end
+        end
+        out[key] = {
+          at = num(snap.at), lair = type(snap.lair) == "string" and snap.lair or nil,
+          runs = num(c.runs), kills = num(c.kills), loot = num(c.loot), last = num(c.last),
+          resetAt = num(c.resetAt), week = week, best = best, diffs = diffs,
+        }
+      end
+    end
+    return out
+  end)
+  return ok and res or nil
+end
+
 local function currentSpecName()
   local si = GetSpecialization and GetSpecialization()
   if not si then return nil end
@@ -381,6 +427,7 @@ function SX.CollectExportData()
   local allWeekly = collectWeekly()
   local allCompass, warband = collectCompass()
   local allLeveling = collectLeveling()
+  local allLairs = collectLairs()
   local chars = {}
   for _, key in ipairs(SX.GetCharKeys()) do
     local rec = StatsDB[key] or {}
@@ -430,6 +477,7 @@ function SX.CollectExportData()
       weekly = allWeekly and allWeekly[key] or nil,
       compass = allCompass and allCompass[key] or nil,
       leveling = allLeveling and allLeveling[key] or nil,
+      lairs = allLairs and allLairs[key] or nil,
     }
   end
 

@@ -32,7 +32,7 @@ for k, v in pairs({
   MPLUS_SCORE_FMT = "점수 %d", MPLUS_NONE = "이번 시즌 완료한 쐐기돌 없음",
   LOCKED_LABEL = "귀속", RESET_IN_FMT = "초기화까지 %s", DELAY_DH = "%d일 %d시간", DELAY_H = "%d시간 %02d분",
   BOUNTIFUL_LINE = "오늘의 풍요로운 구렁: 금고 열쇠로 보너스 상자를 엽니다.",
-  BADGE_BOUNTIFUL = "풍요", BADGE_DETECTED = "발견됨",
+  BADGE_BOUNTIFUL = "풍요", BADGE_DETECTED = "발견됨", BADGE_LAIR = "둥지",
   BTN_WAYPOINT = "경유지", BTN_JOURNAL = "모험 안내서", BTN_FAV = "즐겨찾기 추가", BTN_UNFAV = "즐겨찾기 제거",
   DIST_FMT = "%d미터", SEASON_SCORE = "쐐기 점수: %d", EXT_CATA = "Cataclysm (4.0)",
   TAB_DUNGEON = "던전", TAB_RAID = "공격대", TAB_DELVE = "구렁", TAB_TORGHAST = "토르가스트", TAB_MPLUS = "쐐기돌",

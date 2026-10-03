@@ -142,6 +142,16 @@ DgnTrackerData["Midnight"] = {
      access={both="Entrez dans les Voûtes d'Atal'Utek par la Porte de l'Œil du Serpent (accès le plus direct au pont du raid), puis dirigez-vous vers le nord."},
      path="Voûtes d'Atal'Utek, nord. L'Abysse Venimeux, boss final Ula'tek. 8 boss. Ouvert le 18/08/2026 (Saison 2 Midnight).",
      tomtom={mapID=2509, x=47.23, y=22.86}},
+    -- REPAIRE 12.1 (raid flex a un boss, 4 difficultes Monde/Normal/Heroique/
+    -- Mythique). Nom francais vu en jeu (LvlHistoryDB). Coordonnees method.gg
+    -- (une seule source : approx=true), jid lu par LairLens dans le journal.
+    -- lair=true : badge "Repaire" + etat de la semaine via LairLensAPI.
+    {name="La grotte des Marées (Repaire - 1 boss)", type="raid", lair=true, current=true, approx=true,
+     zone="L'Île annelée", region="L'Île annelée", sector="Épave de Gral's Belly",
+     mapID=2512, coords={x=59.86,y=66.28},
+     access={both="Depuis Zul'Aman, volez à l'est jusqu'à l'Île annelée, puis au sud de l'île. L'entrée est sous l'eau, dans l'épave de Gral's Belly : prenez une monture aquatique."},
+     path="Île annelée, sud, sous l'eau. Repaire du boss Nymrissa. Monde : file solo (scénario en 2 parties). Normal, Héroïque et Mythique (15-25) : groupe, butin à tirer. Compte pour la Grande Chambre forte.",
+     tomtom={mapID=2512, x=59.86, y=66.28}},
     {name="Arène de la Gloire", type="delve", zone="L'Île annelée", region="L'Île annelée", sector="Île annelée - Est",
      mapID=2512, coords={x=71.35,y=56.54}, poi=8764,
      access={both="L'Île annelée, côté est, au nord de l'Île de Gnarldor."},

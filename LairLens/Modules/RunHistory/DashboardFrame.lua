@@ -138,7 +138,7 @@ local function getMemberRow(i)
     m._role:SetWidth(70); m._role:SetJustifyH("LEFT")
     m._name = m:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     m._name:SetPoint("LEFT", m, "LEFT", 100, 0)
-    m._name:SetWidth(260); m._name:SetJustifyH("LEFT")
+    m._name:SetWidth(260); m._name:SetJustifyH("LEFT"); m._name:SetWordWrap(false)
     m._ilvl = m:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     m._ilvl:SetPoint("LEFT", m, "LEFT", 366, 0)
     m._ilvl:SetWidth(120); m._ilvl:SetJustifyH("LEFT")
@@ -175,7 +175,8 @@ local function rebuild()
         LL.L["DASH_RUNS"], agg.count,
         LL.L["DASH_TIME"], U.FormatDuration(agg.time),
         LL.L["DASH_ATTEMPTS"], agg.attempts,
-        LL.L["DASH_KILLS"], agg.kills, math.floor(agg.killRate * 100 + 0.5)))
+        LL.L["DASH_KILLS"], agg.kills, math.floor(agg.killRate * 100 + 0.5))
+        .. (agg.bestKill and ("   " .. LL.L["DASH_BEST_KILL"] .. ": |cffffffff" .. U.FormatDuration(agg.bestKill) .. "|r") or ""))
 
     refreshFilterLabels()
 
@@ -204,7 +205,7 @@ local function rebuild()
         r._tries:SetText(tostring(run.attempts or 0))
 
         if run.result == C.RUN.KILL then
-            r._result:SetText(LL.L["RUN_KILL"])
+            r._result:SetText(LL.L["RUN_KILL"] .. (run.killTime and (" " .. U.FormatDuration(run.killTime)) or ""))
             U.SetTextColor(r._result, C.COLOR[C.VERDICT.VIABLE])
         else
             r._result:SetText(LL.L["RUN_INCOMPLETE"])
@@ -218,6 +219,22 @@ local function rebuild()
         end)
         r:Show()
         y = y - (ROW_H + GAP)
+
+        -- Butin recu (7.1.5.37) si deplie.
+        if expanded[run] and type(run.loot) == "table" and #run.loot > 0 then
+            mi = mi + 1
+            local m = getMemberRow(mi)
+            m:SetSize(rowW, MEMBER_H)
+            m:ClearAllPoints()
+            m:SetPoint("TOPLEFT", content, "TOPLEFT", 2, y)
+            m._role:SetText(LL.L["DASH_LOOT"])
+            local links = {}
+            for _, it in ipairs(run.loot) do links[#links + 1] = it.link or ("#" .. tostring(it.id)) end
+            m._name:SetText(table.concat(links, " "))
+            m._ilvl:SetText("")
+            m:Show()
+            y = y - (MEMBER_H + 1)
+        end
 
         -- Membres si deplie.
         if expanded[run] and type(run.group) == "table" then

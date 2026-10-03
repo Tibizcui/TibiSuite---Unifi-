@@ -15,6 +15,8 @@ local E = DgnTrackerAccessEN
 E["Midnight"] = {
   ["Chute-des-Spores"] = { b = "Portal to Harandar. Fly to the east of the zone.",
     p = "Harandar, east. Sporefall." },
+  ["La grotte des Marées (Repaire - 1 boss)"] = { b = "From Zul'Aman, fly east to the Coiled Isle, then to the south of the island. The entrance is underwater, in the Wreck of Gral's Belly: bring an aquatic mount.",
+    p = "Coiled Isle, south, underwater. Lair of the boss Nymrissa. World: solo queue (2-part scenario). Normal, Heroic and Mythic (15-25): group, rolled loot. Counts for the Great Vault." },
   ["Flèche de Coursevent"] = { b = "Portal to Silvermoon. Fly to southern Eversong Woods, just above the Ruins of Deatholme.",
     p = "Eversong Woods, south. Ancestral spire of the Windrunner family. Large main gate." },
   ["Terrasse des Magistères"] = { b = "Portal to Silvermoon, then fly to the Isle of Quel'Danas, to the north.",

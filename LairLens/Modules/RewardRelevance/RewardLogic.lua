@@ -2,10 +2,10 @@
 -- LairLens - Modules/RewardRelevance/RewardLogic.lua
 -- Decision "ca vaut le coup" / "tu peux zapper", par Repaire et difficulte.
 --
--- Deux ingredients : (1) deja valide cette semaine ? via LL.Lockouts ;
--- (2) le butin est-il un gain potentiel au regard de l'ilvl equipe ?
--- Tant que RewardData est vide, on repond honnetement "donnees indisponibles"
--- plutot qu'un verdict fabrique.
+-- Ingredients : (1) deja valide cette semaine ? via LL.Lockouts ; (2) l'ilvl
+-- du butin (12.1 live : 279 / 292 / 305 / 318) face a l'ilvl equipe.
+-- Le kill compte toujours comme activite de raid pour la Grande Chambre forte,
+-- ce qui est rappele meme quand le butin est sous l'ilvl equipe.
 -- =============================================================================
 
 local ADDON, LL = ...
@@ -19,52 +19,50 @@ LL:RegisterModule("rewardRelevance", Reward)
 local function equippedItemLevel()
     if not GetAverageItemLevel then return nil end
     local ok, _, equipped = pcall(GetAverageItemLevel)
-    if ok and type(equipped) == "number" then return equipped end
+    if ok and type(equipped) == "number" and equipped > 0 then return equipped end
     return nil
 end
 
 -- Statuts renvoyes, consommes ensuite par l'affichage.
 Reward.STATUS = {
     WORTH    = "worth",     -- gain potentiel, pas encore valide
-    SKIP     = "skip",      -- deja valide, ou butin sous l'ilvl equipe
-    NO_DATA  = "no_data",   -- tables de butin pas encore connues
+    VAULT    = "vault",     -- butin sous l'ilvl equipe, mais compte pour la Chambre forte
+    SKIP     = "skip",      -- deja valide cette semaine
+    NO_DATA  = "no_data",   -- difficulte inconnue
 }
 
 -- Evalue une instance a une difficulte donnee.
 function Reward:Evaluate(instanceKey, difficultyKey)
-    -- 1) Deja valide cette semaine ? Info fiable meme sans tables de butin.
-    if LL.Lockouts:IsCleared(instanceKey, difficultyKey) then
-        return self.STATUS.SKIP, { reason = "done_week" }
-    end
-
-    -- 2) Pertinence de l'ilvl : necessite les tables de butin.
     local entry = RD:Get(instanceKey, difficultyKey)
+    if LL.Lockouts:IsCleared(instanceKey, difficultyKey) then
+        return self.STATUS.SKIP, { reason = "done_week", entry = entry }
+    end
     if not entry or not entry.ilvl then
         return self.STATUS.NO_DATA, {}
     end
-
     local equipped = equippedItemLevel()
-    if not equipped then
-        return self.STATUS.NO_DATA, {}
+    if not equipped or entry.ilvl > equipped then
+        return self.STATUS.WORTH, { entry = entry, equipped = equipped }
     end
-
-    if entry.ilvl > equipped then
-        return self.STATUS.WORTH, { ilvl = entry.ilvl, equipped = equipped }
-    end
-    return self.STATUS.SKIP, { reason = "ilvl", ilvl = entry.ilvl, equipped = equipped }
+    return self.STATUS.VAULT, { entry = entry, equipped = equipped }
 end
 
 -- Libelle pret a afficher pour un statut.
 function Reward:Describe(status, detail)
     local L = LL.L
-    if status == self.STATUS.WORTH then
-        return L["REWARD_WORTH"], C.COLOR[C.VERDICT.VIABLE]
-    elseif status == self.STATUS.SKIP then
-        if detail and detail.reason == "done_week" then
-            return L["REWARD_DONE_WEEK"], C.COLOR.MUTED
-        end
-        return L["REWARD_SKIP"], C.COLOR.MUTED
-    else
-        return L["REWARD_NO_DATA"], C.COLOR.MUTED
+    local e = detail and detail.entry
+    local crest = e and RD:CrestName(e.crest)
+    local tail = ""
+    if e then
+        tail = " " .. string.format(L["REWARD_ILVL"], e.ilvl) ..
+            (crest and (", " .. crest) or (e.track and (", " .. L[e.track]) or ""))
     end
+    if status == self.STATUS.WORTH then
+        return L["REWARD_WORTH"] .. tail, C.COLOR[C.VERDICT.VIABLE]
+    elseif status == self.STATUS.VAULT then
+        return L["REWARD_VAULT"] .. tail, C.COLOR[C.VERDICT.RISKY]
+    elseif status == self.STATUS.SKIP then
+        return L["REWARD_DONE_WEEK"], C.COLOR.MUTED
+    end
+    return L["REWARD_NO_DATA"], C.COLOR.MUTED
 end

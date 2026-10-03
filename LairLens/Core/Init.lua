@@ -9,6 +9,7 @@ local ADDON, LL = ...
 LL.modules = {}       -- modules enregistres (audit, recompenses, ...)
 LL.callbacks = {}     -- abonnes internes par evenement logique
 LL.frame = CreateFrame("Frame", "LairLensEventFrame")
+LL.VERSION = "7.1.5.36"
 
 -- Valeurs par defaut des SavedVariables. On ne touche jamais directement aux
 -- globales avant ADDON_LOADED : elles n'existent pas encore a ce stade.
@@ -36,6 +37,24 @@ local ACCOUNT_DEFAULTS = {
         filterDiff = nil,      -- nil = toutes difficultes
         filterInstance = nil,  -- nil = tous les Repaires
     },
+    -- Fiche du Repaire (7.1.5.37).
+    info = {
+        point = { "CENTER", nil, "CENTER", 260, 0 },
+        lootDiff = nil,        -- difficulte choisie pour le butin (nil = la plus haute utile)
+    },
+    -- Identifiants appris EN JEU (7.1.5.37) : la detection ne depend plus de la
+    -- langue du client une fois qu'un passage a ete reconnu. Rien n'est invente :
+    -- chaque valeur vient d'une lecture de l'API (GetInstanceInfo, journal).
+    learned = {
+        maps = {},             -- [instanceMapID] = instanceKey
+        diffs = {},            -- [difficultyID] = cle de difficulte interne
+        journal = {},          -- [instanceKey] = { jid, encounterID, instanceMapID, name, boss }
+        achievements = {},     -- [instanceKey] = { achievementID, ... }
+    },
+    -- Sonde (/ll probe + capture automatique a chaque entree dans un Repaire).
+    probe = {},
+    -- Resume pour Stats / Dashboard / Companion (ecrit a PLAYER_LEAVING_WORLD).
+    summary = {},
     debug = false,
 }
 
@@ -76,7 +95,7 @@ function LL:Emit(event, ...)
         -- pcall pour qu'un module fautif n'interrompe pas les autres.
         local ok, err = pcall(list[i], ...)
         if not ok and self.db and self.db.debug then
-            print("|cff66bbffLairLens|r erreur sur", event, ":", err)
+            print("|cffffffffLairLens|r erreur sur", event, ":", err)
         end
     end
 end
@@ -84,6 +103,13 @@ end
 function LL:RegisterModule(name, module)
     self.modules[name] = module
     return module
+end
+
+-- Cle personnage, identique a Stats (SX.CurrentCharKey) : "Nom-Royaume".
+function LL:CharKey()
+    local name = (UnitName and UnitName("player")) or "?"
+    local realm = (GetRealmName and GetRealmName()) or ""
+    return name .. (realm ~= "" and ("-" .. realm) or "")
 end
 
 -- -----------------------------------------------------------------------------
@@ -131,10 +157,23 @@ local function onAddonLoaded()
     LL:Emit("DB_READY")
 end
 
+local function hasCore()
+    return _G.TibiSuite and _G.TibiSuite.RegisterModule and true or false
+end
+
+local loginDone = false
 local function onPlayerLogin()
+    if loginDone then return end
+    loginDone = true
     LL:CheckWeeklyReset()
     LL:Emit("READY")
-    print("|cFFFFFFFFLairLens|r v7.1.5.36 chargé -- tapez |cFFFFD700/ll|r pour ouvrir.")
+    -- En suite, seul le reglage "full" du core fait parler les modules
+    -- (meme regle que SkillTracker / LvlHistory).
+    local mode = "full"
+    if hasCore() then mode = (_G.TibiSuiteDB and _G.TibiSuiteDB.loginMsg) or "one" end
+    if mode == "full" then
+        print("|cFFFFFFFFLairLens|r v" .. LL.VERSION .. " " .. LL.L["LOADED_MSG"])
+    end
 end
 
 LL.frame:RegisterEvent("ADDON_LOADED")

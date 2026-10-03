@@ -32,7 +32,7 @@ for k, v in pairs({
   MPLUS_SCORE_FMT = "评分 %d", MPLUS_NONE = "本赛季尚未完成钥石",
   LOCKED_LABEL = "已锁定", RESET_IN_FMT = "%s 后重置", DELAY_DH = "%d天%d小时", DELAY_H = "%d小时%02d分",
   BOUNTIFUL_LINE = "今日丰裕地下堡：使用宝匣钥匙可开启额外宝箱。",
-  BADGE_BOUNTIFUL = "丰裕", BADGE_DETECTED = "已检测",
+  BADGE_BOUNTIFUL = "丰裕", BADGE_DETECTED = "已检测", BADGE_LAIR = "巢穴",
   BTN_WAYPOINT = "路径点", BTN_JOURNAL = "冒险指南", BTN_FAV = "加入收藏", BTN_UNFAV = "取消收藏",
   DIST_FMT = "%d码", SEASON_SCORE = "大秘境评分：%d", EXT_CATA = "Cataclysm (4.0)",
   TAB_DUNGEON = "地下城", TAB_RAID = "团队副本", TAB_DELVE = "地下堡", TAB_TORGHAST = "托加斯特", TAB_MPLUS = "史诗钥石",

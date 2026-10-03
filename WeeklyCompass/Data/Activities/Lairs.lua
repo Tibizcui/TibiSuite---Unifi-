@@ -21,7 +21,8 @@ local module = {
 }
 
 function module.IsAvailable()
-    return ns.Sources:HasAny(module.key)
+    -- Source unique : LairLens. Sans lui, pas de colonne "?" inutile.
+    return ns.Sources:HasAny(module.key) and _G.LairLensAPI ~= nil
 end
 
 function module.Poll(emit)

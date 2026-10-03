@@ -1,8 +1,8 @@
 ## Interface: 120100
 ## Title: LairLens
 ## Title-frFR: LairLens
-## Notes: Audit de groupe et pertinence des recompenses pour les Repaires (12.1).
-## Notes-frFR: Audit de groupe et pertinence des recompenses pour les Repaires (12.1).
+## Notes: Group audit, weekly status, loot and history for Lairs (12.1).
+## Notes-frFR: Audit de groupe, semaine, butin et historique des Repaires (12.1).
 ## Author: Tibizcui - Kirin Tor
 ## Version: 7.1.5.36
 ## X-Curse-Project-ID: 1651462
@@ -32,10 +32,8 @@
 ## IconTexture: Interface\AddOns\LairLens\Media\TibiSuiteIcon
 
 # -----------------------------------------------------------------------------
-# Interface 120100 = patch 12.1.0 (convention derivee de 12.0.1 = 120001).
-# Le patch etant encore en PTR au moment de l'ecriture, cette valeur doit etre
-# confirmee au build de sortie. Le workflow interface-version.yml auto-bumpe la
-# valeur, donc pas de "AddOn out of date" au moindre nouveau build PTR/live.
+# Interface 120100 = patch 12.1.0 live. Le workflow interface-version.yml
+# auto-bumpe la valeur, donc pas de "AddOn out of date" au prochain build.
 # -----------------------------------------------------------------------------
 
 # 0. Copie embarquee du socle (no-op si le core en charge deja une version
@@ -51,24 +49,29 @@ Locales\enUS.lua
 Locales\frFR.lua
 Locales\deDE.lua
 Locales\esES.lua
+Locales\itIT.lua
+Locales\ptBR.lua
+Locales\ruRU.lua
+Locales\koKR.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
 
 # 3. Donnees : taxonomie du contenu et heuristiques de capacites.
 Data\Data.lua
 Data\Capabilities.lua
 
-# 4. Couche d'abstraction : tout ce qui touche l'API instable des Repaires.
+# 4. Couche d'abstraction : tout ce qui touche l'API des Repaires.
 Core\Abstraction\Detection.lua
+Core\Abstraction\Journal.lua
 Core\Abstraction\Roster.lua
 Core\Abstraction\Lockouts.lua
+Core\Probe.lua
 
-# 5. Module 1 : audit de groupe (coeur de valeur de la v1).
+# 5. Module 1 : audit de groupe.
 Modules\GroupAudit\AuditLogic.lua
 Modules\GroupAudit\AuditFrame.lua
 
-# 5b. Panneau de reglages graphique (API Settings moderne).
-Core\Options.lua
-
-# 6. Module 2 : pertinence des recompenses (couche souple, remplie plus tard).
+# 6. Module 2 : pertinence des recompenses (ilvl du butin, Ecus de brume).
 Modules\RewardRelevance\RewardData.lua
 Modules\RewardRelevance\RewardLogic.lua
 
@@ -76,6 +79,12 @@ Modules\RewardRelevance\RewardLogic.lua
 Modules\RunHistory\RunData.lua
 Modules\RunHistory\RunTracker.lua
 Modules\RunHistory\DashboardFrame.lua
+
+# 6c. Fiche du Repaire (semaine, butin de la spe, hauts faits, records).
+Modules\LairInfo\InfoFrame.lua
+
+# 6d. API publique (WeeklyCompass, DgnTracker, Stats) + resume pour l'export.
+API.lua
 
 # 7. Integration TibiSuite : inscription comme onglet + recherche globale.
 #    Ce glue remplace l'ancien Modules\Suite\LairLens_Suite.lua.

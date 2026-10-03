@@ -72,6 +72,18 @@ function A:BuildReport(members, difficultyKey, groupSize)
     report.targets.tanks = expectation.tanks or 1
     report.targets.healers = healerTarget(report.size, expectation)
 
+    -- 7.1.5.37 : ilvl moyen connu du groupe (soi + membres inspectes) face a
+    -- l'ilvl recommande, et taille du groupe face aux bornes de la difficulte.
+    local info = D:GetDifficultyInfo(difficultyKey)
+    report.info = info
+    local gi = LL.RunTracker and LL.RunTracker.GetGroupIlvl and LL.RunTracker:GetGroupIlvl() or nil
+    if gi then
+        report.ilvl, report.ilvlKnown, report.ilvlTotal = gi.avg, gi.known, gi.total
+    end
+    report.recIlvl = info and info.rec or nil
+    report.minSize = info and info.min or nil
+    report.maxSize = info and info.max or nil
+
     return report
 end
 
@@ -114,6 +126,20 @@ function A:Evaluate(report)
     -- Interruptions : absence totale = juste (rarement bloquant a lui seul).
     if exp.needInterrupt and report.interruptCount == 0 then
         table.insert(thin, L["MISS_INTERRUPT"])
+    end
+
+    -- Taille : sous le minimum de la difficulte = bloquant (le Mythique exige 15).
+    if report.minSize and report.size < report.minSize then
+        table.insert(blocking, string.format(L["MISS_SIZE"], report.size, report.minSize))
+    elseif report.maxSize and report.size > report.maxSize then
+        table.insert(thin, string.format(L["MISS_SIZE_MAX"], report.size, report.maxSize))
+    end
+
+    -- ilvl : juge seulement si au moins la moitie du groupe est connue.
+    if report.ilvl and report.recIlvl and report.ilvlKnown
+        and report.ilvlKnown * 2 >= math.max(1, report.ilvlTotal or 1)
+        and report.ilvl < report.recIlvl then
+        table.insert(thin, string.format(L["MISS_ILVL"], math.floor(report.ilvl + 0.5), report.recIlvl))
     end
 
     local verdict, reasons

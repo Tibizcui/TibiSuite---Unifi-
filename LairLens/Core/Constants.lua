@@ -10,10 +10,9 @@ local ADDON, LL = ...
 LL.const = {}
 local C = LL.const
 
--- Difficultes des Repaires (confirmees par les previews 12.1 : Monde, Normal,
--- Heroique, Mythique flex 15-25). Les difficultyID numeriques renvoyes par
--- GetInstanceInfo ne sont PAS encore confirmes publiquement pour les Repaires,
--- ils sont donc mappes dans Detection.lua, pas ici.
+-- Difficultes des Repaires (12.1 live : Monde, Normal, Heroique, Mythique flex
+-- 15-25). Les difficultyID numeriques sont resolus dans Detection.lua (appris
+-- en jeu, puis repli par libelle), jamais ici.
 C.DIFF = {
     WORLD   = "world",
     NORMAL  = "normal",
@@ -64,4 +63,4 @@ C.RUN = {
     INCOMPLETE = "incomplete",  -- run quitte sans kill
 }
 
-C.ADDON_TAG = "|cff66bbffLairLens|r"
+C.ADDON_TAG = "|cffffffffLairLens|r"

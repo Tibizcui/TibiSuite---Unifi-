@@ -52,8 +52,11 @@ local function manifestState(key)
     local manifest = ns.ActivityManifest or {}
     for _, row in ipairs(manifest) do
         if row.key == key then
+            -- hidden peut etre une fonction (ex. Repaires : masques sans LairLens).
+            local hidden = row.hidden == true
+                or (type(row.hidden) == "function" and row.hidden() == true)
             return row.enabled ~= false, row.reason or (row.reasonKey and ns.L[row.reasonKey]),
-                row.hidden == true
+                hidden
         end
     end
     return true, nil, false   -- non liste => actif par defaut

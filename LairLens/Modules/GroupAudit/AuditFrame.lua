@@ -3,6 +3,11 @@
 -- Panneau d'audit : deplacable, sobre, non intrusif, mis a jour en direct.
 -- Consomme uniquement les couches d'abstraction (Detection, Roster) et la
 -- logique (AuditLogic). Aucun appel a l'API d'instance directement.
+--
+-- 7.1.5.37 : lignes ilvl moyen et taille du groupe ; en difficulte Monde (file
+-- solo, scenario en 2 parties) le panneau suit l'etape du scenario au lieu
+-- d'auditer un groupe forme par le jeu ; boutons Annoncer (chat du groupe,
+-- sur clic uniquement, jamais en combat) et Fiche du Repaire.
 -- =============================================================================
 
 local ADDON, LL = ...
@@ -15,12 +20,17 @@ LL:RegisterModule("groupAudit", Audit)
 
 local frame          -- cadre principal
 local rows = {}      -- lignes label/valeur reutilisees
+local rowOrder = {}  -- ordre d'affichage des lignes d'audit
+local scenRows = {}  -- lignes du mode scenario
 local headline       -- FontString du verdict
 local titleFS        -- titre (nom du Repaire ou libelle par defaut)
 local subtitleFS     -- sous-titre (difficulte)
 local separator      -- filet entre audit et recompense
 local rewardLabel    -- libelle "Pertinence des recompenses"
 local rewardValue    -- verdict du module 2
+local announceBtn, infoBtn
+local lastReport     -- dernier rapport rendu (pour Annoncer)
+local lastHeader
 local forcedShow = false
 local simMode = false -- mode demo : affiche un faux groupe pour juger le rendu
 
@@ -49,26 +59,27 @@ local DEMO_MEMBERS = {
 -- Construction du cadre (une seule fois).
 -- -----------------------------------------------------------------------------
 local ROWS_START_Y = -60  -- laisse la place au titre, au sous-titre et au verdict
+local ROW_STEP = 17       -- hauteur d'une ligne (texte + espacement)
 
-local function makeRow(parent, previous)
+local function makeRow(parent)
     local label = parent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     local value = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-
     label:SetJustifyH("LEFT")
     value:SetJustifyH("RIGHT")
-
-    if previous then
-        label:SetPoint("TOPLEFT", previous.label, "BOTTOMLEFT", 0, -6)
-    else
-        label:SetPoint("TOPLEFT", parent, "TOPLEFT", 12, ROWS_START_Y)
-    end
-    label:SetPoint("RIGHT", parent, "RIGHT", -12, 0)
-
-    value:SetPoint("RIGHT", parent, "RIGHT", -12, 0)
-    value:SetPoint("TOP", label, "TOP", 0, 0)
-
+    label:SetWordWrap(false)
     return { label = label, value = value }
 end
+
+local function placeRow(row, y)
+    row.label:ClearAllPoints()
+    row.label:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, y)
+    row.label:SetPoint("RIGHT", row.value, "LEFT", -6, 0)
+    row.value:ClearAllPoints()
+    row.value:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -12, y)
+    row.label:Show(); row.value:Show()
+end
+
+local function hideRow(row) row.label:Hide(); row.value:Hide() end
 
 local function savePoint()
     local point, _, relPoint, x, y = frame:GetPoint()
@@ -82,9 +93,61 @@ local function restorePoint()
     frame:SetScale(LL.db.audit.scale or 1.0)
 end
 
+local function smallButton(parent, text, onClick, tooltip)
+    local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    b:SetHeight(18)
+    b:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8x8", edgeFile = "Interface\\Buttons\\WHITE8x8", edgeSize = 1 })
+    b:SetBackdropColor(0.10, 0.11, 0.14, 0.95)
+    b:SetBackdropBorderColor(0, 0, 0, 1)
+    local fs = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    fs:SetPoint("CENTER")
+    fs:SetText(text)
+    b:SetWidth(math.max(60, fs:GetStringWidth() + 16))
+    b:SetScript("OnClick", onClick)
+    b:SetScript("OnEnter", function(s)
+        s:SetBackdropBorderColor(1, 1, 1, 0.6)
+        if tooltip then
+            GameTooltip:SetOwner(s, "ANCHOR_TOP")
+            GameTooltip:SetText(text, 1, 1, 1)
+            GameTooltip:AddLine(tooltip, 0.8, 0.8, 0.8, true)
+            GameTooltip:Show()
+        end
+    end)
+    b:SetScript("OnLeave", function(s) s:SetBackdropBorderColor(0, 0, 0, 1); GameTooltip:Hide() end)
+    return b
+end
+
+-- Annonce le verdict dans le chat du groupe. Sur clic uniquement, hors combat.
+local function announce()
+    local L = LL.L
+    if not lastReport then return end
+    if InCombatLockdown() then U.Print(L["ANNOUNCE_COMBAT"]) return end
+    local title = (lastHeader and lastHeader.title) or "LairLens"
+    local sub = lastHeader and lastHeader.subtitle or ""
+    local text = "[LairLens] " .. title .. (sub ~= "" and (" (" .. sub .. ")") or "") .. " : "
+    if lastReport.verdict == C.VERDICT.VIABLE then
+        text = text .. L["VERDICT_VIABLE"]
+    else
+        text = text .. string.format(L["ANNOUNCE_MISSING"], table.concat(lastReport.reasons or {}, ", "))
+    end
+    text = text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+    local channel
+    if IsInGroup and LE_PARTY_CATEGORY_INSTANCE and IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+        channel = "INSTANCE_CHAT"
+    elseif IsInRaid and IsInRaid() then
+        channel = "RAID"
+    elseif IsInGroup and IsInGroup() then
+        channel = "PARTY"
+    end
+    if not channel then U.Print(text) return end
+    local sender = (C_ChatInfo and C_ChatInfo.SendChatMessage) or SendChatMessage
+    local ok = sender and pcall(sender, text, channel)
+    if not ok then U.Print(text) end
+end
+
 local function build()
     frame = CreateFrame("Frame", "LairLensAuditFrame", UIParent, "BackdropTemplate")
-    frame:SetSize(236, 214)
+    frame:SetSize(236, 250)
     frame:SetFrameStrata("MEDIUM")
     frame:SetClampedToScreen(true)
 
@@ -98,8 +161,7 @@ local function build()
     frame:SetBackdropBorderColor(0, 0, 0, 1)
 
     -- Fermeture par Echap via UISpecialFrames (mecanisme natif Blizzard) :
-    -- voir note detaillee dans TibiSuiteCore.lua (WireEscapeFor) - piege reel
-    -- confirme en jeu quand un autre addon intercepte lui aussi Echap.
+    -- voir note detaillee dans TibiSuiteCore.lua (WireEscapeFor).
     tinsert(UISpecialFrames, "LairLensAuditFrame")
 
     -- Deplacement.
@@ -114,31 +176,25 @@ local function build()
         savePoint()
     end)
 
-    -- Titre : nom du Repaire quand on y est, sinon libelle par defaut.
-    -- On reserve la place a droite (-34) pour le bouton d'acces au dashboard.
     titleFS = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     titleFS:SetPoint("TOPLEFT", 12, -11)
     titleFS:SetPoint("RIGHT", -58, 0)
     titleFS:SetJustifyH("LEFT")
+    titleFS:SetWordWrap(false)
     U.SetTextColor(titleFS, C.COLOR.ACCENT)
 
-    -- Croix de fermeture : jusqu'ici seul Echap (UISpecialFrames) fermait ce
-    -- panneau - pas de croix visible, contrairement a toutes les autres
-    -- fenetres de la suite. Decalee du coin pour laisser sa place a dashBtn
-    -- (raccourci tableau de bord), juste en dessous/a gauche.
     local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
     closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -6)
-    closeBtn:SetScript("OnClick", function() frame:Hide() end)
+    closeBtn:SetScript("OnClick", function() forcedShow = false; frame:Hide() end)
 
-    -- Bouton d'acces direct au tableau de bord (historique des runs), en haut a
-    -- droite du panneau. Fonctionne meme sans TibiSuite.
+    -- Bouton d'acces direct au tableau de bord (historique des runs).
     local dashBtn = CreateFrame("Button", nil, frame)
     dashBtn:SetSize(18, 18)
     dashBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -34, -9)
     local dashIcon = dashBtn:CreateTexture(nil, "ARTWORK")
     dashIcon:SetAllPoints()
     dashIcon:SetTexture("Interface\\Icons\\INV_Misc_Book_09")
-    dashIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)  -- rogne la bordure de l'icone
+    dashIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
     dashBtn:SetScript("OnEnter", function(self)
         dashIcon:SetVertexColor(1.0, 0.9, 0.6)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -154,47 +210,57 @@ local function build()
         if LL.modules.dashboard then LL.modules.dashboard:Toggle() end
     end)
 
-    -- Sous-titre : difficulte.
     subtitleFS = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     subtitleFS:SetPoint("TOPLEFT", 12, -27)
     subtitleFS:SetJustifyH("LEFT")
 
-    -- Verdict.
     headline = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     headline:SetPoint("TOPLEFT", 12, -41)
     headline:SetPoint("RIGHT", -12, 0)
     headline:SetJustifyH("LEFT")
 
-    -- Lignes fixes de l'audit.
-    local order = { "tanks", "healers", "combatRez", "lust", "interrupts", "dispels" }
-    local prev
-    for _, key in ipairs(order) do
-        local row = makeRow(frame, prev)
-        rows[key] = row
-        prev = row
-    end
+    rowOrder = { "tanks", "healers", "combatRez", "lust", "interrupts", "dispels", "ilvl", "size" }
+    for _, key in ipairs(rowOrder) do rows[key] = makeRow(frame) end
+    for i = 1, 5 do scenRows[i] = makeRow(frame) end
 
-    -- Filet de separation avant la section recompense.
     separator = frame:CreateTexture(nil, "ARTWORK")
     separator:SetColorTexture(1, 1, 1, 0.08)
-    separator:SetPoint("TOPLEFT", rows.dispels.label, "BOTTOMLEFT", 0, -8)
-    separator:SetPoint("RIGHT", frame, "RIGHT", -12, 0)
     separator:SetHeight(1)
 
-    -- Section module 2 : pertinence des recompenses.
     rewardLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    rewardLabel:SetPoint("TOPLEFT", separator, "BOTTOMLEFT", 0, -7)
     rewardLabel:SetJustifyH("LEFT")
     rewardLabel:SetText(LL.L["REWARD_TITLE"])
     U.SetTextColor(rewardLabel, C.COLOR.MUTED)
 
     rewardValue = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    rewardValue:SetPoint("TOPLEFT", rewardLabel, "BOTTOMLEFT", 0, -3)
-    rewardValue:SetPoint("RIGHT", frame, "RIGHT", -12, 0)
     rewardValue:SetJustifyH("LEFT")
+
+    announceBtn = smallButton(frame, LL.L["BTN_ANNOUNCE"], announce, LL.L["BTN_ANNOUNCE_TT"])
+    infoBtn = smallButton(frame, LL.L["BTN_INFO"], function()
+        if LL.modules.lairInfo then LL.modules.lairInfo:Toggle() end
+    end, LL.L["BTN_INFO_TT"])
 
     restorePoint()
     frame:Hide()
+end
+
+-- Pose la section basse (recompense + boutons) sous `y` et ajuste la hauteur.
+local function layoutFooter(y)
+    separator:ClearAllPoints()
+    separator:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, y - 2)
+    separator:SetPoint("RIGHT", frame, "RIGHT", -12, 0)
+    rewardLabel:ClearAllPoints()
+    rewardLabel:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, y - 9)
+    rewardValue:ClearAllPoints()
+    rewardValue:SetPoint("TOPLEFT", rewardLabel, "BOTTOMLEFT", 0, -3)
+    rewardValue:SetPoint("RIGHT", frame, "RIGHT", -12, 0)
+    local rh = math.max(12, rewardValue:GetStringHeight() or 12)
+    local by = y - 9 - 14 - rh - 8
+    announceBtn:ClearAllPoints()
+    announceBtn:SetPoint("TOPLEFT", frame, "TOPLEFT", 12, by)
+    infoBtn:ClearAllPoints()
+    infoBtn:SetPoint("LEFT", announceBtn, "RIGHT", 6, 0)
+    frame:SetHeight(-(by - 18 - 10))
 end
 
 -- -----------------------------------------------------------------------------
@@ -206,35 +272,34 @@ local function colorForCount(current, target, needed)
     return C.COLOR[C.VERDICT.VIABLE]
 end
 
+local function renderHeader(header)
+    titleFS:SetText(header.title or LL.L["AUDIT_TITLE"])
+    subtitleFS:SetText(header.subtitle or "")
+    rewardValue:SetText(header.rewardText or "")
+    U.SetTextColor(rewardValue, header.rewardColor or C.COLOR.MUTED)
+end
+
 local function render(report, header)
     local L = LL.L
+    lastReport, lastHeader = report, header
+    renderHeader(header)
+    for _, r in ipairs(scenRows) do hideRow(r) end
+    announceBtn:Show()
 
-    -- En-tete : nom du Repaire, difficulte, et ligne recompense (module 2).
-    if header then
-        titleFS:SetText(header.title or L["AUDIT_TITLE"])
-        subtitleFS:SetText(header.subtitle or "")
-        rewardValue:SetText(header.rewardText or "")
-        U.SetTextColor(rewardValue, header.rewardColor or C.COLOR.MUTED)
-    end
-
-    -- Verdict.
     headline:SetText(report.headline)
     U.SetTextColor(headline, C.COLOR[report.verdict])
 
-    -- Tanks.
     rows.tanks.label:SetText(L["TANKS"])
     rows.tanks.value:SetText(report.tanks .. " / " .. report.targets.tanks)
     U.SetTextColor(rows.tanks.value,
         colorForCount(report.tanks, report.targets.tanks, report.tanks == 0))
 
-    -- Soigneurs.
     rows.healers.label:SetText(L["HEALERS"])
     rows.healers.value:SetText(report.healers .. " / " .. report.targets.healers)
     U.SetTextColor(rows.healers.value,
         colorForCount(report.healers, report.targets.healers,
             report.targets.healers > 0 and report.healers == 0))
 
-    -- Rez de combat.
     rows.combatRez.label:SetText(L["COMBAT_REZ"])
     rows.combatRez.value:SetText(tostring(report.combatRezCount))
     local rezNeeded = report.expectation.needCombatRez
@@ -242,7 +307,6 @@ local function render(report, header)
         colorForCount(report.combatRezCount, rezNeeded and 1 or nil,
             rezNeeded and report.combatRezCount == 0))
 
-    -- Lust.
     rows.lust.label:SetText(L["LUST"])
     if report.hasLust then
         rows.lust.value:SetText(L["PRESENT"])
@@ -253,32 +317,120 @@ local function render(report, header)
             report.expectation.needLust and C.COLOR[C.VERDICT.RISKY] or C.COLOR.MUTED)
     end
 
-    -- Interruptions.
     rows.interrupts.label:SetText(L["INTERRUPTS"])
     rows.interrupts.value:SetText(tostring(report.interruptCount))
     U.SetTextColor(rows.interrupts.value,
         (report.expectation.needInterrupt and report.interruptCount == 0)
             and C.COLOR[C.VERDICT.RISKY] or C.COLOR[C.VERDICT.VIABLE])
 
-    -- Dissipations : ligne compacte, type manquant en attenue.
     rows.dispels.label:SetText(L["DISPELS"])
     local tags = {}
     local shortLabel = {
-        [C.DISPEL.MAGIC]   = L["DISPEL_MAGIC"],
-        [C.DISPEL.CURSE]   = L["DISPEL_CURSE"],
-        [C.DISPEL.POISON]  = L["DISPEL_POISON"],
-        [C.DISPEL.DISEASE] = L["DISPEL_DISEASE"],
+        [C.DISPEL.MAGIC]   = L["DISPEL_MAGIC_SHORT"],
+        [C.DISPEL.CURSE]   = L["DISPEL_CURSE_SHORT"],
+        [C.DISPEL.POISON]  = L["DISPEL_POISON_SHORT"],
+        [C.DISPEL.DISEASE] = L["DISPEL_DISEASE_SHORT"],
     }
     for _, dtype in ipairs(C.DISPEL_ORDER) do
         local n = report.dispels[dtype]
-        local base = string.sub(shortLabel[dtype], 1, 3)
-        if n > 0 then
-            table.insert(tags, U.Colorize(base, C.COLOR[C.VERDICT.VIABLE]))
-        else
-            table.insert(tags, U.Colorize(base, C.COLOR.MUTED))
-        end
+        tags[#tags + 1] = U.Colorize(shortLabel[dtype], n > 0 and C.COLOR[C.VERDICT.VIABLE] or C.COLOR.MUTED)
     end
     rows.dispels.value:SetText(table.concat(tags, " "))
+
+    -- ilvl moyen connu / recommande.
+    rows.ilvl.label:SetText(L["GROUP_ILVL"])
+    if report.ilvl then
+        local txt = tostring(math.floor(report.ilvl + 0.5))
+        if report.recIlvl then txt = txt .. " / " .. report.recIlvl end
+        if report.ilvlKnown and report.ilvlTotal and report.ilvlKnown < report.ilvlTotal then
+            txt = txt .. U.Colorize(string.format(" (%d/%d)", report.ilvlKnown, report.ilvlTotal), C.COLOR.MUTED)
+        end
+        rows.ilvl.value:SetText(txt)
+        U.SetTextColor(rows.ilvl.value, (report.recIlvl and report.ilvl < report.recIlvl)
+            and C.COLOR[C.VERDICT.RISKY] or C.COLOR[C.VERDICT.VIABLE])
+    else
+        rows.ilvl.value:SetText(report.recIlvl and ("? / " .. report.recIlvl) or "?")
+        U.SetTextColor(rows.ilvl.value, C.COLOR.MUTED)
+    end
+
+    -- Taille du groupe / bornes de la difficulte.
+    rows.size.label:SetText(L["GROUP_SIZE"])
+    local sizeTxt = tostring(report.size)
+    if report.minSize and report.maxSize then
+        sizeTxt = sizeTxt .. U.Colorize(string.format("  (%d-%d)", report.minSize, report.maxSize), C.COLOR.MUTED)
+    end
+    rows.size.value:SetText(sizeTxt)
+    local bad = report.minSize and report.size < report.minSize
+    U.SetTextColor(rows.size.value, bad and C.COLOR[C.VERDICT.MISSING] or C.COLOR.TEXT)
+
+    local y = ROWS_START_Y
+    for _, key in ipairs(rowOrder) do
+        placeRow(rows[key], y)
+        y = y - ROW_STEP
+    end
+    layoutFooter(y)
+end
+
+-- Mode scenario (difficulte Monde) : etape courante + objectifs.
+local function renderScenario(header)
+    local L = LL.L
+    lastReport, lastHeader = nil, header
+    renderHeader(header)
+    for _, key in ipairs(rowOrder) do hideRow(rows[key]) end
+    announceBtn:Hide()
+
+    local info = C_ScenarioInfo and C_ScenarioInfo.GetScenarioInfo and select(2, pcall(C_ScenarioInfo.GetScenarioInfo))
+    local step = C_ScenarioInfo and C_ScenarioInfo.GetScenarioStepInfo and select(2, pcall(C_ScenarioInfo.GetScenarioStepInfo))
+    info = type(info) == "table" and info or {}
+    step = type(step) == "table" and step or {}
+
+    local stage, numStages = tonumber(info.currentStage), tonumber(info.numStages)
+    local title = step.title or info.name or ""
+    if stage and numStages and numStages > 0 then
+        headline:SetText(string.format(L["SCEN_STAGE"], stage, numStages) .. (title ~= "" and (" : " .. title) or ""))
+    else
+        headline:SetText(L["SCEN_WORLD"])
+    end
+    U.SetTextColor(headline, C.COLOR.ACCENT)
+
+    local y = ROWS_START_Y
+    local n = math.min(#scenRows, tonumber(step.numCriteria) or 0)
+    for i = 1, n do
+        local ok, crit = false, nil
+        if C_ScenarioInfo and C_ScenarioInfo.GetCriteriaInfo then
+            ok, crit = pcall(C_ScenarioInfo.GetCriteriaInfo, i)
+        end
+        local r = scenRows[i]
+        if ok and type(crit) == "table" then
+            r.label:SetText(crit.description or "?")
+            local q, tq = tonumber(crit.quantity), tonumber(crit.totalQuantity)
+            if crit.completed then
+                r.value:SetText(L["SCEN_DONE"])
+                U.SetTextColor(r.value, C.COLOR[C.VERDICT.VIABLE])
+            elseif crit.quantityString and crit.quantityString ~= "" then
+                r.value:SetText(crit.quantityString)
+                U.SetTextColor(r.value, C.COLOR.TEXT)
+            elseif q and tq and tq > 0 then
+                r.value:SetText(q .. " / " .. tq)
+                U.SetTextColor(r.value, C.COLOR.TEXT)
+            else
+                r.value:SetText("")
+            end
+            placeRow(r, y)
+            y = y - ROW_STEP
+        end
+    end
+    if n == 0 then
+        local r = scenRows[1]
+        r.label:SetText(L["SCEN_HINT"])
+        r.value:SetText("")
+        U.SetTextColor(r.label, C.COLOR.MUTED)
+        placeRow(r, y)
+        y = y - ROW_STEP
+    else
+        U.SetTextColor(scenRows[1].label, C.COLOR.TEXT)
+    end
+    layoutFooter(y)
 end
 
 -- -----------------------------------------------------------------------------
@@ -294,28 +446,27 @@ local DIFF_LABEL_KEY = {
 local function difficultyName(key)
     return key and LL.L[DIFF_LABEL_KEY[key]] or ""
 end
+Audit.DifficultyName = difficultyName
 
 -- Construit l'en-tete (titre + sous-titre) et la ligne recompense du module 2.
 local function buildHeader(instanceKey, difficultyKey, demo)
     local L = LL.L
 
     local title = L["AUDIT_TITLE"]
-    if instanceKey then
-        local inst = LL.Data:GetInstance("lair", instanceKey)
-        if inst and inst.name then title = inst.name end
-    end
+    if instanceKey then title = LL.Data:GetLairName(instanceKey) end
 
     local subtitle = difficultyName(difficultyKey)
     if demo then
-        subtitle = (subtitle ~= "" and (subtitle .. "  ") or "") .. "(demo)"
+        subtitle = (subtitle ~= "" and (subtitle .. "  ") or "") .. L["DEMO_TAG"]
     end
 
-    -- Module 2 : verdict de pertinence, si le module est present.
     local rewardText, rewardColor = L["REWARD_NO_DATA"], C.COLOR.MUTED
     local mod = LL.modules.rewardRelevance
     if mod and instanceKey and difficultyKey then
         local status, detail = mod:Evaluate(instanceKey, difficultyKey)
         rewardText, rewardColor = mod:Describe(status, detail)
+    elseif not instanceKey then
+        rewardText = L["REWARD_OUTSIDE"]
     end
 
     return {
@@ -338,28 +489,51 @@ function Audit:Update()
         frame:Hide()
         return
     end
-    -- Mode demo : faux groupe + faux contexte de Repaire pour juger le visuel.
     if simMode then
-        local header = buildHeader("tidebound_grotto", LL.const.DIFF.MYTHIC, true)
-        render(A:Run(DEMO_MEMBERS, LL.const.DIFF.MYTHIC, #DEMO_MEMBERS), header)
+        local demoKey = LL.Data:GetSingleLair() or "tidebound_grotto"
+        local header = buildHeader(demoKey, C.DIFF.MYTHIC, true)
+        render(A:Run(DEMO_MEMBERS, C.DIFF.MYTHIC, #DEMO_MEMBERS), header)
         frame:Show()
         return
     end
 
     local ctx = LL.Detection:GetContext()
+    local header = buildHeader(ctx.instanceKey, ctx.difficultyKey, false)
+
+    -- Difficulte Monde : groupe forme par le jeu, on suit le scenario.
+    if ctx.inLair and (ctx.scenario or ctx.difficultyKey == C.DIFF.WORLD) then
+        renderScenario(header)
+        frame:Show()
+        return
+    end
+
     local members = LL.Roster:GetMembers()
     local size = LL.Roster:GetSize()
 
-    if size <= 1 and not forcedShow then
+    if size <= 1 and not forcedShow and not ctx.inLair then
         frame:Hide()
         return
     end
 
-    local report = A:Run(members, ctx.difficultyKey, ctx.inLair and ctx.groupSize or size)
-    local header = buildHeader(ctx.instanceKey, ctx.difficultyKey, false)
+    local report = A:Run(members, ctx.difficultyKey, ctx.inLair and ctx.groupSize > 0 and ctx.groupSize or size)
     render(report, header)
     frame:Show()
 end
+
+function Audit:Toggle()
+    forcedShow = not forcedShow
+    if not forcedShow and frame and frame:IsShown() and not LL.Detection:IsInLair() then
+        frame:Hide()
+        return
+    end
+    self:Update()
+end
+
+function Audit:SetSim(on)
+    simMode = on and true or false
+    self:Update()
+end
+function Audit:IsSim() return simMode end
 
 local function applyCombatFade(inCombat)
     if not frame or not LL.db.audit.fadeInCombat then
@@ -369,9 +543,14 @@ local function applyCombatFade(inCombat)
     frame:SetAlpha(inCombat and 0.35 or 1)
 end
 
--- Applique l'echelle courante au panneau (appele depuis les options).
 function Audit:ApplyScale()
     if frame then frame:SetScale(LL.db.audit.scale or 1.0) end
+end
+
+function Audit:ResetPosition()
+    LL.db.audit.point = { "CENTER", nil, "CENTER", 0, 120 }
+    LL.db.audit.scale = 1.0
+    if frame then restorePoint() end
 end
 
 -- -----------------------------------------------------------------------------
@@ -379,24 +558,24 @@ end
 -- -----------------------------------------------------------------------------
 local function handleSlash(msg)
     local cmd = (msg or ""):lower():gsub("%s+", "")
-    if cmd == "show" then
-        forcedShow = not forcedShow
-        Audit:Update()
+    if cmd == "show" or cmd == "" then
+        Audit:Toggle()
     elseif cmd == "config" or cmd == "options" then
-        if LL.modules.options then LL.modules.options:Open() end
+        if _G.LairLens_OpenOptions then _G.LairLens_OpenOptions() end
     elseif cmd == "dash" or cmd == "history" or cmd == "historique" then
         if LL.modules.dashboard then LL.modules.dashboard:Toggle() end
-    elseif cmd == "sim" then
-        simMode = not simMode
-        U.Print("sim =", tostring(simMode))
-        Audit:Update()
+    elseif cmd == "info" or cmd == "fiche" then
+        if LL.modules.lairInfo then LL.modules.lairInfo:Toggle() end
+    elseif cmd == "probe" or cmd == "sonde" then
+        if LL.Probe then LL.Probe:Run() end
+    elseif cmd == "sim" or cmd == "demo" then
+        Audit:SetSim(not simMode)
+        U.Print("demo =", tostring(simMode))
     elseif cmd == "lock" then
         LL.db.audit.locked = not LL.db.audit.locked
         U.Print(LL.db.audit.locked and LL.L["FRAME_LOCKED"] or LL.L["FRAME_UNLOCKED"])
     elseif cmd == "reset" then
-        LL.db.audit.point = { "CENTER", nil, "CENTER", 0, 120 }
-        LL.db.audit.scale = 1.0
-        restorePoint()
+        Audit:ResetPosition()
     elseif cmd == "debug" then
         LL.db.debug = not LL.db.debug
         U.Print("debug =", tostring(LL.db.debug))
@@ -411,22 +590,27 @@ end
 local function wire()
     build()
 
-    -- Reactions aux couches d'abstraction, avec debounce leger.
     local update = U.Debounce(0.2, function() Audit:Update() end)
     LL:On("ROSTER_CHANGED", update)
     LL:On("LAIR_CONTEXT_CHANGED", update)
-    LL:On("LOCKOUTS_CHANGED", update) -- rafraichit la ligne recompense apres un kill
+    LL:On("LOCKOUTS_CHANGED", update)
     LL:On("WEEKLY_RESET", update)
+    LL:On("JOURNAL_READY", update)
 
-    -- Discretion en combat.
     local cf = CreateFrame("Frame", "LairLensAuditCombatFrame")
     cf:RegisterEvent("PLAYER_REGEN_DISABLED")
     cf:RegisterEvent("PLAYER_REGEN_ENABLED")
+    pcall(cf.RegisterEvent, cf, "SCENARIO_CRITERIA_UPDATE")
+    pcall(cf.RegisterEvent, cf, "SCENARIO_UPDATE")
+    pcall(cf.RegisterEvent, cf, "INSPECT_READY")
     cf:SetScript("OnEvent", function(_, event)
-        applyCombatFade(event == "PLAYER_REGEN_DISABLED")
+        if event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED" then
+            applyCombatFade(event == "PLAYER_REGEN_DISABLED")
+        else
+            update()
+        end
     end)
 
-    -- Slash.
     SLASH_LAIRLENS1 = "/lairlens"
     SLASH_LAIRLENS2 = "/ll"
     SlashCmdList["LAIRLENS"] = handleSlash

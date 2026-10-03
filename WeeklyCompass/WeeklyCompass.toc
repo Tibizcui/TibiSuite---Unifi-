@@ -23,7 +23,7 @@
 # core, pour fonctionner en addon independant. Dependance SOUPLE sur
 # TibiSuite (OptionalDeps) : voir WeeklyCompass_Module.lua pour la detection
 # a l'execution (HasCore()).
-## OptionalDeps: TibiSuite
+## OptionalDeps: TibiSuite, LairLens
 ## Group: TibiSuite
 ## Category: TibiSuite - Tracker
 ## Category-frFR: TibiSuite - Tracker

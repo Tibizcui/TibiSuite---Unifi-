@@ -319,6 +319,16 @@ local function Badges(inst)
   end
   if i.bountiful then b[#b + 1] = "|cFFFFD700" .. T("BADGE_BOUNTIFUL", "Abondant") .. "|r" end
   if inst.detected then b[#b + 1] = "|cFF7FB2B2" .. T("BADGE_DETECTED", "détecté") .. "|r" end
+  -- Repaire (12.1) : badge blanc LairLens + difficultes faites cette semaine
+  -- (lues via LairLensAPI si le module est charge, sinon badge seul).
+  if inst.lair then
+    local txt = T("BADGE_LAIR", "Repaire")
+    local api = _G.LairLensAPI
+    local ok, w = false, nil
+    if api and api.GetWeek then ok, w = pcall(api.GetWeek) end
+    if ok and type(w) == "table" then txt = txt .. " " .. (w.count or 0) .. "/4" end
+    b[#b + 1] = "|cFFFFFFFF" .. txt .. "|r"
+  end
   return table.concat(b, "  ")
 end
 

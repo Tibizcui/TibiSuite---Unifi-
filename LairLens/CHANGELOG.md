@@ -1,5 +1,19 @@
 # Changelog
 
+## 7.1.5.37
+Mise à jour 12.1 complète de LairLens, avec la fiche du Repaire et l'historique enrichi.
+
+- Détection réparée sur tous les clients : la Grotte des Marées n'était reconnue qu'avec son nom anglais, donc jamais sur un client français. LairLens lit maintenant le Journal des aventuriers (nom, boss, identifiants) et retient l'identifiant de l'instance au premier passage, quelle que soit la langue. Difficultés reconnues dans les 10 langues, Héroïque compris.
+- Récompenses renseignées : ilvl du butin (Monde 279, Normal 292, Héroïque 305, Mythique 318), Écu de brume de la difficulté, et rappel que chaque kill compte pour la Grande Chambre forte.
+- Verrouillages du jeu lus par identifiant (plus seulement par nom anglais).
+- Panneau d'audit : ilvl moyen du groupe face à l'ilvl conseillé, taille du groupe (le Mythique exige 15 joueurs), bouton Annoncer (chat du groupe, sur clic, jamais en combat).
+- Difficulté Monde : le panneau suit le scénario (étape et objectifs) au lieu d'auditer un groupe formé par le jeu.
+- Nouvelle fiche du Repaire (/ll fiche) : entrée avec point sur la carte, ouverture dans DgnTracker et dans le Journal, état de la semaine par difficulté, butin filtré pour ta spécialisation, hauts faits, tes records.
+- Historique : temps de kill, meilleur kill, wipes avant le premier kill, objets reçus.
+- Sonde /ll probe (et capture automatique à chaque entrée) pour vérifier ce que dit le jeu.
+- Un seul panneau d'options (l'ancien panneau du menu Interface faisait doublon), message de connexion conforme au réglage de TibiSuite, 10 langues.
+- Liens avec la suite : badge Repaire dans DgnTracker, colonne Repaires dans WeeklyCompass, carte Repaires sur le Dashboard et dans Tibi Companion (via Stats).
+
 ## 7.1.5.36
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir DgnTracker 7.1.5.36 pour le detail : emplacements verifies en jeu, donnees lues dans le jeu, vues Saison / Pres de moi / Favoris, 10 langues).
 

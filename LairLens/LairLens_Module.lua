@@ -18,7 +18,7 @@ local FRAME       = "LairLensAuditFrame"        -- frame principale (AuditFrame.
 local ACCENT      = { 1.000, 1.000, 1.000 }     -- blanc pretre (#FFFFFF), accent LairLens
 local LOGO        = "Interface\\AddOns\\LairLens\\Media\\Logo"
 local KEY         = "Lair"                       -- cle du module cote TibiSuite
-local LABEL       = "Repaire"
+local LABEL       = (LL.L and LL.L["TAB_LABEL"]) or "Repaire"
 local DECOR_WIDTH = 272                          -- largeur du panneau une fois decore
                                                  -- (fait tenir le champ recherche + Options)
 
@@ -66,79 +66,95 @@ function LairLens_Toggle()
 end
 
 -- ---------------------------------------------------------------- Options
+-- 7.1.5.37 : panneau unique (convention de la suite). L'ancien panneau natif
+-- (Core/Options.lua, menu Interface de WoW) faisait doublon : ses reglages
+-- (echelle, boutons flottants) sont repris ici.
 local panel
 local function BuildOptions()
     local ui = GetUI(); if not ui then return nil end
     if panel then return panel end
+    local L = LL.L
     panel = ui.CreateOptionsPanel({
         name = "LairLensOptionsMidnight",
-        title = "LairLens - Options", accent = ACCENT })
+        title = "LairLens - " .. L["OPT_TITLE"], accent = ACCENT })
 
-    panel:Section("Panneau")
-    panel:Button("Ouvrir / fermer", function() LairLens_Toggle() end)
-    panel:Button("Recentrer le panneau", function() Slash("reset") end)
+    panel:Section(L["OPT_SEC_PANEL"])
+    panel:Button(L["OPT_TOGGLE"], function() LairLens_Toggle() end)
+    panel:Button(L["BTN_INFO"], function() if LL.modules.lairInfo then LL.modules.lairInfo:Toggle() end end)
+    panel:Button(L["DASH_TITLE"], function() if LL.modules.dashboard then LL.modules.dashboard:Toggle() end end)
+    panel:Button(L["OPT_RECENTER"], function() if LL.modules.groupAudit then LL.modules.groupAudit:ResetPosition() end end)
 
-    panel:Section("Historique")
-    panel:Button("Tableau de bord des runs", function()
-        local dash = LL.modules and LL.modules.dashboard
-        if dash and dash.Toggle then dash:Toggle() else Slash("dash") end
-    end)
-
-    panel:Section("Comportement")
-    panel:Check("Activer LairLens",
+    panel:Section(L["OPT_SEC_BEHAVIOR"])
+    panel:Check(L["OPT_ENABLED"],
         function() return LL.db and LL.db.enabled end,
-        function(v) if LL.db then LL.db.enabled = v; RefreshAudit() end end)
-    panel:Check("Masquer hors Repaire",
+        function(v) if LL.db then LL.db.enabled = v; RefreshAudit() end end, L["OPT_ENABLED_TT"])
+    panel:Check(L["OPT_HIDE_OUT"],
         function() return LL.db and LL.db.audit and LL.db.audit.hideOutOfLair end,
-        function(v) if LL.db and LL.db.audit then LL.db.audit.hideOutOfLair = v; RefreshAudit() end end)
-    panel:Check("S'effacer en combat",
+        function(v) if LL.db and LL.db.audit then LL.db.audit.hideOutOfLair = v; RefreshAudit() end end, L["OPT_HIDE_OUT_TT"])
+    panel:Check(L["OPT_FADE_COMBAT"],
         function() return LL.db and LL.db.audit and LL.db.audit.fadeInCombat end,
-        function(v) if LL.db and LL.db.audit then LL.db.audit.fadeInCombat = v end end)
-    panel:Check("Panneau verrouille",
+        function(v) if LL.db and LL.db.audit then LL.db.audit.fadeInCombat = v end end, L["OPT_FADE_COMBAT_TT"])
+    panel:Check(L["OPT_LOCK"],
         function() return LL.db and LL.db.audit and LL.db.audit.locked end,
-        function(v) if LL.db and LL.db.audit then LL.db.audit.locked = v end end)
+        function(v) if LL.db and LL.db.audit then LL.db.audit.locked = v end end, L["OPT_LOCK_TT"])
+    panel:Check(L["OPT_TRACK_RUNS"],
+        function() return LL.db and LL.db.runTracking end,
+        function(v) if LL.db then LL.db.runTracking = v end end, L["OPT_TRACK_RUNS_TT"])
+    panel:Slider(L["OPT_SCALE"], 0.6, 1.5, 0.05,
+        function() return LL.db and LL.db.audit and LL.db.audit.scale or 1.0 end,
+        function(v)
+            if not (LL.db and LL.db.audit) then return end
+            LL.db.audit.scale = math.floor(v * 20 + 0.5) / 20
+            if LL.modules.groupAudit then LL.modules.groupAudit:ApplyScale() end
+        end)
 
-    panel:Note("Astuce : clic droit sur la vignette Repaire dans la barre TibiSuite ouvre aussi ces options.")
+    panel:Section(L["OPT_SEC_FLOAT"])
+    panel:Check(L["OPT_HIDE_OPTBTN"],
+        function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "options") end,
+        function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "options", v) end end,
+        L["OPT_HIDE_OPTBTN_TT"])
+    panel:Check(L["OPT_HIDE_SEARCH"],
+        function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "search") end,
+        function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "search", v) end end)
+
+    panel:Section(L["OPT_SEC_TOOLS"])
+    panel:Button(L["OPT_DEMO"], function()
+        local a = LL.modules.groupAudit
+        if a then a:SetSim(not a:IsSim()) end
+    end)
+    panel:Button(L["OPT_PROBE"], function() if LL.Probe then LL.Probe:Run() end end)
+    panel:Note(L["OPT_PROBE_NOTE"])
+    panel:Note(L["OPT_TIP"])
     return panel
 end
 
 -- Fonction publique attendue par TibiSuite (clic droit sur la vignette).
 function LairLens_OpenOptions()
     local p = BuildOptions()
-    if p then
-        p:Toggle()
-    else
-        -- Pas de lib TibiMidnight : on ouvre le panneau d'options natif.
-        Slash("config")
-    end
+    if p then p:Toggle() end
 end
 
 -- ---------------------------------------------------------------- Recherche
--- Provider inchange (porte depuis LairLens_Suite.lua) : lit LL.Data a la volee.
--- Un clic sur un resultat ouvre le tableau de bord, avec repli sur l'audit.
+-- Lit LL.Data a la volee. Un clic sur un resultat ouvre la fiche du Repaire.
 local function provider(q)
     local out, ui = {}, GetUI()
     if not ui then return out end
 
     local function open()
-        local dash = LL.modules and LL.modules.dashboard
-        if dash and dash.Open then dash:Open() else LairLens_Toggle() end
+        local info = LL.modules and LL.modules.lairInfo
+        if info and info.Open then info:Open() else LairLens_Toggle() end
     end
     local function add(text) out[#out + 1] = { text = text, onClick = open } end
 
     local instances = (LL.Data and LL.Data:GetInstances("lair")) or {}
-    for _, inst in pairs(instances) do
+    for key, inst in pairs(instances) do
         if type(inst) == "table" then
-            local iname = inst.name or "?"
-            if ui.Match(iname .. " " .. tostring(inst.key or ""), q) then
-                add(iname)
-            end
-            if type(inst.bosses) == "table" then
-                for _, boss in ipairs(inst.bosses) do
-                    if ui.Match((boss.name or "") .. " " .. iname, q) then
-                        add((boss.name or "boss") .. "  |cff808080" .. iname .. "|r")
-                    end
-                end
+            local iname = LL.Data:GetLairName(key)
+            local hay = iname .. " " .. table.concat(inst.matchNames or {}, " ") .. " " .. tostring(inst.key or "")
+            if ui.Match(hay, q) then add(iname) end
+            local boss = LL.Data:GetBossName(key)
+            if ui.Match(boss .. " " .. (inst.bosses and inst.bosses[1] and inst.bosses[1].name or ""), q) then
+                add(boss .. "  |cff808080" .. iname .. "|r")
             end
             if #out >= 60 then return out end
         end
@@ -220,8 +236,8 @@ local function BuildStandaloneMinimapButton()
     btn:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:AddLine("LairLens")
-        GameTooltip:AddLine("Clic gauche : ouvrir/fermer", 0.9, 0.9, 0.95)
-        GameTooltip:AddLine("Clic droit : options", 0.9, 0.9, 0.95)
+        GameTooltip:AddLine(LL.L["MM_LEFT"], 0.9, 0.9, 0.95)
+        GameTooltip:AddLine(LL.L["MM_RIGHT"], 0.9, 0.9, 0.95)
         GameTooltip:Show()
     end)
     btn:SetScript("OnLeave", function() GameTooltip:Hide() end)

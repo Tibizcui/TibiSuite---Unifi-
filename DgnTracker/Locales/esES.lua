@@ -32,7 +32,7 @@ for k, v in pairs({
   MPLUS_SCORE_FMT = "puntuación %d", MPLUS_NONE = "ninguna piedra completada esta temporada",
   LOCKED_LABEL = "Bloqueado", RESET_IN_FMT = "reinicio en %s", DELAY_DH = "%d d %d h", DELAY_H = "%d h %02d",
   BOUNTIFUL_LINE = "Sima abundante hoy: cofre extra con una llave de arca.",
-  BADGE_BOUNTIFUL = "Abundante", BADGE_DETECTED = "detectada",
+  BADGE_BOUNTIFUL = "Abundante", BADGE_DETECTED = "detectada", BADGE_LAIR = "Guarida",
   BTN_WAYPOINT = "Punto de ruta", BTN_JOURNAL = "Guía de aventura", BTN_FAV = "Añadir a favoritos", BTN_UNFAV = "Quitar favorito",
   DIST_FMT = "%d m", SEASON_SCORE = "puntuación M+: %d", EXT_CATA = "Cataclysm (4.0)",
   TAB_DUNGEON = "Mazmorra", TAB_RAID = "Banda", TAB_DELVE = "Sima", TAB_TORGHAST = "Torghast", TAB_MPLUS = "Mítica+",
