@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.37
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir PostBox, MiniHub, Opacity et LairLens 7.1.5.37 pour le detail : mises a jour 12.1, mule automatique et journal HV, gestionnaire de boutons et barre rapide, profils et reglage a la molette, fiche du Repaire, 10 langues).
+
 ## 7.1.5.36
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir DgnTracker 7.1.5.36 pour le detail : emplacements verifies en jeu, donnees lues dans le jeu, vues Saison / Pres de moi / Favoris, 10 langues).
 

@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.36
+-- TibiSuiteOptions v7.1.5.37
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -243,6 +243,13 @@ L.WN_36_1 = L.WN_36_1 or "DgnTracker mis à jour pour la 12.1 : points de route 
 L.WN_36_2 = L.WN_36_2 or "Nouvelles vues Saison (donjons M+ avec votre meilleure clé, raid en cours, gouffres abondants), Près de moi et Favoris."
 L.WN_36_3 = L.WN_36_3 or "Chaque fiche affiche les boss, vos verrous et le temps avant le reset, avec les boutons Point de route et Journal d'aventure. /dg check contrôle les emplacements."
 L.WN_36_4 = L.WN_36_4 or "Cliquer un donjon dans LvlHistory ou un raid dans la fiche de WeeklyCompass ouvre directement sa fiche dans DgnTracker."
+L.WN_37_1 = L.WN_37_1 or "PostBox mis à jour pour la 12.1 : un seul moteur de prise, plus jamais de contre-remboursement payé par erreur, achats et taxe HV enfin comptés."
+L.WN_37_2 = L.WN_37_2 or "Nouveau dans PostBox : mule automatique, boîte aux lettres de tous tes personnages et journal HV (ventes, achats, totaux sur 7 et 30 jours)."
+L.WN_37_3 = L.WN_37_3 or "MiniHub mis à jour pour la 12.1 : gestionnaire de boutons (favoris, ordre), barre rapide, vue liste, mode tiroir et placement contre la minicarte."
+L.WN_37_4 = L.WN_37_4 or "Avec EllesmereUI, ElvUI ou Tukui, MiniHub se met en pause et leur laisse les boutons de la minicarte (option pour l'utiliser quand même)."
+L.WN_37_5 = L.WN_37_5 or "Opacity : profils par personnage et par spécialisation, réglage à la molette directement sur l'écran, groupes liés et six nouveaux contextes."
+L.WN_37_6 = L.WN_37_6 or "LairLens : détection réparée sur les clients français, fiche du Repaire (/ll fiche) avec le butin de ta spécialisation, badge dans DgnTracker et colonne dans WeeklyCompass."
+L.WN_37_7 = L.WN_37_7 or "PostBox, MiniHub, Opacity et LairLens passent en 10 langues ; /ts doctor affiche maintenant une ligne d'état par module."
 L.WN_35_1 = L.WN_35_1 or "LvlHistory mis à jour pour la 12.1 : clés M+ et records de saison de nouveau enregistrés, XP de session juste, journalières comptées, Gouffres suivis, et un /reload ne coupe plus la session."
 L.WN_35_2 = L.WN_35_2 or "Nouvel onglet Niveaux : temps passé à chaque niveau, record de montée 10 > max, temps restant jusqu'au max et origine de l'XP (quêtes, donjons, gouffres)."
 L.WN_35_3 = L.WN_35_3 or "Onglet Alts : XP reposée de chaque personnage et suggestion « À monter ce soir ». Nouvelle carte Leveling sur le Dashboard."
@@ -296,6 +303,15 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.37"] = {
+    { key = "Post",    title = "PostBox",   text = L.WN_37_1, new = true },
+    { key = "Post",    title = "PostBox",   text = L.WN_37_2, new = true },
+    { key = "MiniHub", title = "MiniHub",   text = L.WN_37_3, new = true },
+    { key = "MiniHub", title = "MiniHub",   text = L.WN_37_4 },
+    { key = "Opacity", title = "Opacity",   text = L.WN_37_5, new = true },
+    { key = "Lair",    title = "LairLens",  text = L.WN_37_6, new = true },
+    { key = "Suite",   title = "TibiSuite", text = L.WN_37_7 },
+  },
   ["7.1.5.36"] = {
     { key = "Dgn",    title = "DgnTracker",    text = L.WN_36_1, new = true },
     { key = "Dgn",    title = "DgnTracker",    text = L.WN_36_2, new = true },

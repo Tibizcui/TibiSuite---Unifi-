@@ -11,7 +11,7 @@ local function Loc(key, default) return L[key] or default end
 -- ─────────────────────────────────────────────
 -- Constantes
 -- ─────────────────────────────────────────────
-local ADDON_VERSION = "7.1.5.36"
+local ADDON_VERSION = "7.1.5.37"
 local SAVE_INTERVAL = 300  -- sauvegarde incrémentale toutes les 5 minutes
 local RESUME_WINDOW = 600  -- /reload ou reconnexion en moins de 10 min : meme session
 T.VERSION = ADDON_VERSION

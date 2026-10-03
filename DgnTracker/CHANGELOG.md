@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.37
+- La grotte des Marées (Repaire, 12.1) apparaît avec un badge Repaire et le nombre de difficultés faites cette semaine, lu dans LairLens.
+
 ## 7.1.5.36
 - Mise a jour 12.1 : Ile annelee (nom aligne sur RenTracker), Midnight affiche par defaut, message de connexion qui suit le reglage de la suite.
 - Donnees lues dans le jeu : noms dans la langue du client, position exacte des entrees, boss du Journal d'aventure, instances manquantes ajoutees automatiquement.

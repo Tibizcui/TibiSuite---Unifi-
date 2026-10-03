@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.37
+- Nouvelle colonne Repaires (lue dans LairLens, masquée sans LairLens) et monnaies Écu de brume dans la fiche personnage.
+
 ## 7.1.5.36
 - Fiche personnage : cliquer une ligne de raid verrouille ouvre sa fiche dans DgnTracker.
 

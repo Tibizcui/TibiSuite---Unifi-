@@ -4,7 +4,7 @@
 ## Notes: Advanced reputation bar: replaces the default bar, follows your zone faction, rep per hour and time left, Paragon chest alerts, pinned factions.
 ## Notes-frFR: Barre de reputation avancee : remplace la barre native, suit la faction de la zone, reputation par heure et temps restant, coffres de Parangon, factions epinglees.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.36
+## Version: 7.1.5.37
 ## X-Curse-Project-ID: 1680338
 
 # ----------------------------------------------------------------

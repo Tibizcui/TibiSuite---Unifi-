@@ -1,5 +1,32 @@
 # Changelog
 
+## 7.1.5.37
+Mise à jour 12.1 complète de MiniHub, avec de vraies nouveautés.
+
+**Fiabilité 12.1**
+- Les frames interdites du client 12.x sont écartées de tous les scans : plus d'erreur au moment de ranger les boutons.
+- Le scan couvre aussi les boutons posés à côté de la minicarte (MinimapBackdrop, MinimapCluster).
+- Laisser un bouton sur la minicarte s'applique tout de suite, sans /reload, et le bouton retrouve son déplacement d'origine.
+- Message de connexion conforme au réglage de TibiSuite, numéro de version lu dans le .toc.
+
+**Performances**
+- La grille n'est recalculée qu'une fois par image au plus, et jamais quand le hub est fermé.
+- Les dizaines de chargements d'addons au login ne déclenchent plus qu'un seul scan.
+
+**Avec EllesmereUI, ElvUI ou Tukui**
+- MiniHub se met vraiment en pause : il ne prend plus aucun bouton et laisse l'autre addon les ranger. Avant, il les bloquait et les deux se les disputaient (hub vide, boutons perdus).
+- Une carte explique la pause, avec un bouton « Utiliser MiniHub quand même ». Prévenu une seule fois dans le chat.
+
+**Nouveautés**
+- Gestionnaire de boutons (/mh manage) : favoris, ordre manuel, boutons à laisser sur la minicarte, boutons non reconnus à ajouter en un clic.
+- Barre rapide : tes favoris restent visibles même hub fermé.
+- Vue liste (icône + nom de l'addon), avec un titre par catégorie si tu tries par catégorie.
+- Mode tiroir : le hub reste collé à la minicarte et sort au survol.
+- Placement sous, à gauche ou à droite de la minicarte, en suivant sa vraie position, puis déplacement libre.
+- Option pour ranger le bouton TibiSuite dans le hub, et pour inclure les addons présents seulement dans le compartiment d'addons.
+- Recherche par nom d'addon : le bouton trouvé clignote dans le hub.
+- Un seul panneau d'options, 10 langues.
+
 ## 7.1.5.36
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir DgnTracker 7.1.5.36 pour le detail : emplacements verifies en jeu, donnees lues dans le jeu, vues Saison / Pres de moi / Favoris, 10 langues).
 

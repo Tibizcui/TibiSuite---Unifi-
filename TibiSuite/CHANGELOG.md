@@ -1,6 +1,7 @@
 # Changelog
 
 ## 7.1.5.37
+- Fenetre Quoi de neuf : notes de la version 7.1.5.37 (PostBox, MiniHub, Opacity, LairLens).
 - /ts doctor : chaque module peut maintenant ajouter sa propre ligne d'état (première utilisation : Opacity, avec son profil actif, ses fenêtres et celles en attente).
 
 ## 7.1.5.36
