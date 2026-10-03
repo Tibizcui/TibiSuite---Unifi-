@@ -1,506 +1,554 @@
 --[[----------------------------------------------------------------------------
-    MiniHub - Panneau d'options (bilingue, defilant)
+    MiniHub - Options (panneau unique du socle) + gestionnaire de boutons
     ------------------------------------------------------------------------
-    Panneau "canvas" enregistre via l'API Settings moderne, place dans un
-    ScrollFrame pour tout afficher sans debordement. Toutes les chaines passent
-    par la table de localisation MiniHub.L (EN par defaut, FR si client frFR).
+    Un seul point d'entree Options, comme toute la suite : le panneau flottant
+    du socle (UI.CreateOptionsPanel). Il remplace l'ancien panneau des
+    Reglages Blizzard ET l'ancien panneau socle partiel de MiniHub_Suite.lua.
+    En autonome seulement, une petite entree dans Reglages > AddOns renvoie
+    vers ce panneau (les joueurs sans TibiSuite y cherchent les options).
+
+    Le gestionnaire (fenetre MiniHubManager) liste tous les boutons : favori
+    (barre rapide), ordre manuel (fleches), laisser sur la minicarte, et les
+    boutons non reconnus a ajouter en un clic.
 ------------------------------------------------------------------------------]]
 
 local MiniHub = MiniHub
 local L = MiniHub.L or setmetatable({}, { __index = function(_, k) return k end })
 
---------------------------------------------------------------------------------
--- Fabriques de controles
---------------------------------------------------------------------------------
+local ACCENT = { 0.988, 0.843, 0.282 }
+local FRAME  = "MiniHubContainer"
 
-local function MakeCheckbox(parent, label, tooltip, getter, setter)
-    local cb = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
-    cb:SetSize(26, 26)
-    cb.text = cb.text or cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    cb.text:SetPoint("LEFT", cb, "RIGHT", 2, 0)
-    cb.text:SetText(label)
-    cb:SetChecked(getter())
-    cb:SetScript("OnClick", function(self) setter(self:GetChecked()) end)
-    if tooltip then
-        cb:SetScript("OnEnter", function(self)
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(tooltip, nil, nil, nil, nil, true)
-            GameTooltip:Show()
-        end)
-        cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    end
-    cb.Refresh = function() cb:SetChecked(getter()) end
-    return cb
+local function GetUI() return _G.TibiMidnight end
+local function DB() return _G.MiniHubDB end
+local function Relayout()
+    if MiniHub.SortCollected then MiniHub.SortCollected() end
+    if MiniHub.RequestLayout then MiniHub.RequestLayout() end
 end
 
-local sliderCount = 0
-local function MakeSlider(parent, label, minV, maxV, step, getter, setter)
-    sliderCount = sliderCount + 1
-    local s = CreateFrame("Slider", "MiniHubSlider" .. sliderCount, parent, "OptionsSliderTemplate")
-    s:SetWidth(240)
-    s:SetMinMaxValues(minV, maxV)
-    s:SetValueStep(step)
-    s:SetObeyStepOnDrag(true)
-    s:SetValue(getter())
+--------------------------------------------------------------------------------
+-- Petits controles en plus de ceux du socle (cycle, saisie)
+--------------------------------------------------------------------------------
 
-    local low  = s.Low  or _G[(s:GetName() or "") .. "Low"]
-    local high = s.High or _G[(s:GetName() or "") .. "High"]
-    local text = s.Text or _G[(s:GetName() or "") .. "Text"]
-    if low  then low:SetText(tostring(minV)) end
-    if high then high:SetText(tostring(maxV)) end
-    if text then text:SetText(label .. " : " .. tostring(getter())) end
-
-    s:SetScript("OnValueChanged", function(_, value)
-        value = math.floor(value + 0.5)
-        if text then text:SetText(label .. " : " .. tostring(value)) end
-        setter(value)
-    end)
-    s.Refresh = function()
-        s:SetValue(getter())
-        if text then text:SetText(label .. " : " .. tostring(getter())) end
-    end
-    s.SetLabelText = function(newLabel)
-        label = newLabel
-        if text then text:SetText(label .. " : " .. tostring(getter())) end
-    end
-    return s
+local function Advance(panel, h)
+    panel._y = panel._y - h
+    panel.content:SetHeight(math.max(-panel._y + 10, 10))
 end
 
-local function MakeButton(parent, label, width, onClick)
-    local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    b:SetSize(width or 140, 22)
-    b:SetText(label)
-    b:SetScript("OnClick", onClick)
+-- Bouton dont le texte reflete une valeur et qui la fait tourner au clic.
+local function AddCycle(panel, textFn, onClick)
+    local ui = GetUI()
+    local b = ui.MakeButton(panel.content, 250, 24, "")
+    b:SetPoint("TOPLEFT", panel.content, "TOPLEFT", 6, panel._y)
+    local function upd() b._label:SetText(textFn()) end
+    b:SetScript("OnClick", function() onClick(); upd() end)
+    upd()
+    panel._refresh[#panel._refresh + 1] = upd
+    Advance(panel, 30)
     return b
 end
 
--- Selecteur de couleur (bouton avec pastille) ouvrant le ColorPicker Blizzard.
-local function ShowColorPicker(color, onChange)
-    local r, g, b, a = color[1], color[2], color[3], color[4] or 1
-    local function apply()
-        local nr, ng, nb = ColorPickerFrame:GetColorRGB()
-        local na = a
-        if ColorPickerFrame.GetColorAlpha then na = ColorPickerFrame:GetColorAlpha()
-        elseif OpacitySliderFrame then na = OpacitySliderFrame:GetValue() end
-        color[1], color[2], color[3], color[4] = nr, ng, nb, na
-        onChange()
-    end
-    local info = {
-        swatchFunc = apply, opacityFunc = apply, hasOpacity = true,
-        r = r, g = g, b = b, opacity = a,
-        cancelFunc = function()
-            color[1], color[2], color[3], color[4] = r, g, b, a
-            onChange()
-        end,
-    }
-    if ColorPickerFrame.SetupColorPickerAndShow then
-        ColorPickerFrame:SetupColorPickerAndShow(info)
-    else
-        ColorPickerFrame.func = info.swatchFunc
-        ColorPickerFrame.opacityFunc = info.opacityFunc
-        ColorPickerFrame.cancelFunc = info.cancelFunc
-        ColorPickerFrame.hasOpacity = true
-        ColorPickerFrame.opacity = a
-        ColorPickerFrame:SetColorRGB(r, g, b)
-        ColorPickerFrame:Show()
-    end
-end
-
-local function MakeColorButton(parent, label, colorGetter, onChange)
-    local b = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    b:SetSize(150, 22)
-    b:SetText(label)
-    local sw = b:CreateTexture(nil, "OVERLAY")
-    sw:SetSize(14, 14)
-    sw:SetPoint("RIGHT", b, "RIGHT", -6, 0)
-    b.swatch = sw
-    b.Refresh = function()
-        local c = colorGetter()
-        sw:SetColorTexture(c[1], c[2], c[3], c[4] or 1)
-    end
-    b:SetScript("OnClick", function()
-        pcall(ShowColorPicker, colorGetter(), function()
-            b.Refresh(); onChange()
-        end)
-    end)
-    b.Refresh()
-    return b
+local function AddEditBox(panel)
+    local box = CreateFrame("EditBox", nil, panel.content, "BackdropTemplate")
+    box:SetSize(250, 22)
+    box:SetPoint("TOPLEFT", panel.content, "TOPLEFT", 6, panel._y)
+    box:SetBackdrop(GetUI().FlatBackdrop())
+    box:SetBackdropColor(0.02, 0.02, 0.03, 0.9)
+    box:SetBackdropBorderColor(1, 1, 1, 0.15)
+    box:SetAutoFocus(false)
+    box:SetFontObject("GameFontHighlightSmall")
+    box:SetTextInsets(6, 6, 0, 0)
+    box:SetScript("OnEscapePressed", function(s) s:ClearFocus() end)
+    box:SetScript("OnEnterPressed", function(s) s:ClearFocus() end)
+    Advance(panel, 30)
+    return box
 end
 
 --------------------------------------------------------------------------------
--- Listes dynamiques (exclusions + non reconnus)
---------------------------------------------------------------------------------
-
-local exclusionRows = {}
-local function RefreshExclusionList(scrollChild)
-    for _, row in ipairs(exclusionRows) do row:Hide() end
-    local names, seen = {}, {}
-    for _, btn in ipairs(MiniHub.order or {}) do
-        local n = btn.GetName and btn:GetName()
-        if n and not seen[n] then seen[n] = true; names[#names + 1] = n end
-    end
-    for n in pairs(MiniHubDB.exclusions) do
-        if not seen[n] then seen[n] = true; names[#names + 1] = n end
-    end
-    table.sort(names)
-
-    local y = -4
-    for i, name in ipairs(names) do
-        local row = exclusionRows[i]
-        if not row then
-            row = CreateFrame("CheckButton", nil, scrollChild, "UICheckButtonTemplate")
-            row:SetSize(24, 24)
-            row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            row.text:SetPoint("LEFT", row, "RIGHT", 2, 0)
-            exclusionRows[i] = row
-        end
-        row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 4, y)
-        row.text:SetText(name)
-        row:SetChecked(MiniHubDB.exclusions[name] and true or false)
-        row:SetScript("OnClick", function(self)
-            if self:GetChecked() then
-                MiniHubDB.exclusions[name] = true
-                for _, btn in ipairs(MiniHub.order) do
-                    if btn.GetName and btn:GetName() == name then MiniHub.Release(btn) break end
-                end
-            else
-                MiniHubDB.exclusions[name] = nil
-            end
-            MiniHub.Scan()
-        end)
-        row:Show()
-        y = y - 26
-    end
-    scrollChild:SetHeight(math.max(-y + 10, 10))
-end
-
-local unknownRows = {}
-local function RefreshUnknownList(scrollChild, emptyFS)
-    for _, row in ipairs(unknownRows) do row:Hide() end
-    local names = MiniHub.GetUnrecognized and MiniHub.GetUnrecognized() or {}
-    emptyFS:SetShown(#names == 0)
-
-    local y = -4
-    for i, name in ipairs(names) do
-        local row = unknownRows[i]
-        if not row then
-            row = CreateFrame("CheckButton", nil, scrollChild, "UICheckButtonTemplate")
-            row:SetSize(24, 24)
-            row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-            row.text:SetPoint("LEFT", row, "RIGHT", 2, 0)
-            unknownRows[i] = row
-        end
-        row:ClearAllPoints()
-        row:SetPoint("TOPLEFT", scrollChild, "TOPLEFT", 4, y)
-        row.text:SetText(name)
-        row:SetChecked(false)
-        row:SetScript("OnClick", function()
-            MiniHubDB.whitelist[name] = true
-            MiniHub.Scan()
-        end)
-        row:Show()
-        y = y - 26
-    end
-    scrollChild:SetHeight(math.max(-y + 10, 10))
-end
-
---------------------------------------------------------------------------------
--- Construction du panneau
+-- Panneau d'options
 --------------------------------------------------------------------------------
 
 local panel
 
-local function BuildPanel()
+local function ThemeName(key)
+    local map = { dark = L["THEME_DARK"], gold = L["THEME_GOLD"], glass = L["THEME_GLASS"], minimal = L["THEME_MINIMAL"] }
+    return map[key] or key
+end
+
+local function NextIn(list, cur)
+    for i, v in ipairs(list) do
+        if v == cur then return list[(i % #list) + 1] end
+    end
+    return list[1]
+end
+
+local SIDE_NAMES = { LEFT = "SIDE_LEFT", BOTTOM = "SIDE_BOTTOM", RIGHT = "SIDE_RIGHT" }
+
+local function BuildOptions()
+    local ui = GetUI(); if not ui then return nil end
     if panel then return panel end
+    panel = ui.CreateOptionsPanel({
+        name = "MiniHubOptionsMidnight",
+        title = "MiniHub - " .. L["OPT_TITLE"], accent = ACCENT })
 
-    panel = CreateFrame("Frame", "MiniHubOptionsPanel", UIParent)
-    panel:Hide()
-
-    -- Zone defilante englobant tout le contenu.
-    local scroll = CreateFrame("ScrollFrame", "MiniHubOptionsScroll", panel, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 8, -8)
-    scroll:SetPoint("BOTTOMRIGHT", -28, 8)
-    local content = CreateFrame("Frame", nil, scroll)
-    content:SetSize(560, 940)
-    scroll:SetScrollChild(content)
-
-    local title = content:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-    title:SetPoint("TOPLEFT", 8, -4)
-    title:SetText("MiniHub")
-
-    local sub = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -4)
-    sub:SetText(L["ADDON_SUBTITLE"])
-    sub:SetTextColor(0.8, 0.8, 0.8)
-
-    ---------------------------------------------------------------- Colonne gauche
-    local function GridLabel()
-        return (MiniHubDB.orientation == "VERTICAL") and L["OPT_COLUMNS"] or L["OPT_ROWS"]
-    end
-    local function OrientLabel()
-        return string.format(L["OPT_ORIENTATION"],
-            (MiniHubDB.orientation == "VERTICAL") and L["OPT_VERTICAL"] or L["OPT_HORIZONTAL"])
-    end
-    local function ThemeName(key)
-        local map = { dark = L["THEME_DARK"], gold = L["THEME_GOLD"], glass = L["THEME_GLASS"], minimal = L["THEME_MINIMAL"] }
-        return map[key] or key
-    end
-
-    local perLine
-
-    local orientBtn = MakeButton(content, "", 240, function(self)
-        MiniHubDB.orientation = (MiniHubDB.orientation == "VERTICAL") and "HORIZONTAL" or "VERTICAL"
-        self:SetText(OrientLabel())
-        if perLine and perLine.SetLabelText then perLine.SetLabelText(GridLabel()) end
-        MiniHub.Layout()
+    -- ------------------------------------------------------------ Boutons
+    panel:Section(L["SEC_BUTTONS"])
+    panel:Button(L["OPT_MANAGE"], function() MiniHub.OpenManager() end)
+    panel:Note(L["OPT_MANAGE_NOTE"])
+    panel:Button(L["OPT_RESCAN"], function()
+        MiniHub.Collect()
+        MiniHub.Print(string.format(L["MSG_RESCAN"], #MiniHub.order))
     end)
-    orientBtn:SetText(OrientLabel())
-    orientBtn:SetPoint("TOPLEFT", sub, "BOTTOMLEFT", 0, -16)
 
-    perLine = MakeSlider(content, GridLabel(), 1, 12, 1,
-        function() return MiniHubDB.perLine end,
-        function(v) MiniHubDB.perLine = v; MiniHub.Layout() end)
-    perLine:SetPoint("TOPLEFT", orientBtn, "BOTTOMLEFT", 4, -24)
+    -- ------------------------------------------------------------ Affichage
+    panel:Section(L["SEC_DISPLAY"])
+    AddCycle(panel,
+        function() return string.format(L["OPT_VIEW"], DB().viewMode == "LIST" and L["VIEW_LIST"] or L["VIEW_GRID"]) end,
+        function() DB().viewMode = (DB().viewMode == "LIST") and "GRID" or "LIST"; Relayout() end)
+    AddCycle(panel,
+        function() return string.format(L["OPT_ORIENTATION"], DB().orientation == "VERTICAL" and L["OPT_VERTICAL"] or L["OPT_HORIZONTAL"]) end,
+        function() DB().orientation = (DB().orientation == "VERTICAL") and "HORIZONTAL" or "VERTICAL"; Relayout() end)
+    panel:Slider(L["OPT_PER_LINE"], 1, 12, 1,
+        function() return DB().perLine or 6 end,
+        function(v) DB().perLine = v; Relayout() end)
+    panel:Slider(L["OPT_LIST_ROWS"], 4, 20, 1,
+        function() return DB().listRows or 10 end,
+        function(v) DB().listRows = v; Relayout() end)
+    panel:Slider(L["OPT_BUTTON_SIZE"], 20, 48, 1,
+        function() return DB().buttonSize or 32 end,
+        function(v) DB().buttonSize = v; Relayout() end)
+    panel:Slider(L["OPT_SPACING"], 0, 12, 1,
+        function() return DB().spacing or 4 end,
+        function(v) DB().spacing = v; Relayout() end)
+    panel:Check(L["OPT_GROUP"],
+        function() return DB().groupByCategory end,
+        function(v) DB().groupByCategory = v; Relayout() end, L["OPT_GROUP_TT"])
+    panel:Check(L["OPT_SHOW_TITLE"],
+        function() return DB().showTitle end,
+        function(v) DB().showTitle = v; Relayout() end)
+    panel:Check(L["OPT_HIDE_ZOOM"],
+        function() return DB().hideZoomButtons end,
+        function(v) DB().hideZoomButtons = v; MiniHub.ApplyBlizzardHiding() end, L["OPT_HIDE_ZOOM_TT"])
 
-    local sizeS = MakeSlider(content, L["OPT_BUTTON_SIZE"], 20, 48, 1,
-        function() return MiniHubDB.buttonSize end,
-        function(v) MiniHubDB.buttonSize = v; MiniHub.Layout() end)
-    sizeS:SetPoint("TOPLEFT", perLine, "BOTTOMLEFT", 0, -34)
-
-    local spaceS = MakeSlider(content, L["OPT_SPACING"], 0, 12, 1,
-        function() return MiniHubDB.spacing end,
-        function(v) MiniHubDB.spacing = v; MiniHub.Layout() end)
-    spaceS:SetPoint("TOPLEFT", sizeS, "BOTTOMLEFT", 0, -34)
-
-    -- Theme (bouton de cycle) + couleurs
-    local themeBtn = MakeButton(content, "", 240, function(self)
-        local order = MiniHub.THEME_ORDER or { "dark" }
-        local cur = MiniHubDB.theme or "dark"
-        local idx = 1
-        for i, k in ipairs(order) do if k == cur then idx = i break end end
-        local nextKey = order[(idx % #order) + 1]
-        if MiniHub.ApplyTheme then MiniHub.ApplyTheme(nextKey) end
-        self:SetText(string.format(L["OPT_THEME"], ThemeName(MiniHubDB.theme)))
-        if self._bgc then self._bgc.Refresh() end
-        if self._bdc then self._bdc.Refresh() end
-    end)
-    themeBtn:SetText(string.format(L["OPT_THEME"], ThemeName(MiniHubDB.theme)))
-    themeBtn:SetPoint("TOPLEFT", spaceS, "BOTTOMLEFT", -4, -30)
-
-    local bgColorBtn = MakeColorButton(content, L["OPT_BG_COLOR"],
-        function() return MiniHubDB.bgColor end,
-        function() MiniHub.ApplySkin() end)
-    bgColorBtn:SetSize(240, 22)
-    bgColorBtn:SetPoint("TOPLEFT", themeBtn, "BOTTOMLEFT", 0, -8)
-
-    local bdColorBtn = MakeColorButton(content, L["OPT_BORDER_COLOR"],
-        function() return MiniHubDB.borderColor end,
-        function() MiniHub.ApplySkin() end)
-    bdColorBtn:SetSize(240, 22)
-    bdColorBtn:SetPoint("TOPLEFT", bgColorBtn, "BOTTOMLEFT", 0, -6)
-    themeBtn._bgc, themeBtn._bdc = bgColorBtn, bdColorBtn
-
-    local alphaS = MakeSlider(content, L["OPT_BG_OPACITY"], 0, 100, 5,
-        function() return math.floor((MiniHubDB.bgColor[4] or 0.92) * 100) end,
-        function(v) MiniHubDB.bgColor[4] = v / 100; MiniHub.ApplySkin(); bgColorBtn.Refresh() end)
-    alphaS:SetPoint("TOPLEFT", bdColorBtn, "BOTTOMLEFT", 4, -30)
-
-    local mainSizeS = MakeSlider(content, L["OPT_MAIN_SIZE"], 28, 64, 2,
-        function() return MiniHubDB.mainButtonSize or 40 end,
-        function(v) MiniHubDB.mainButtonSize = v
-            if MiniHub.ApplyMainButtonStyle then MiniHub.ApplyMainButtonStyle() end end)
-    mainSizeS:SetPoint("TOPLEFT", alphaS, "BOTTOMLEFT", 0, -34)
-
-    local mainAlphaS = MakeSlider(content, L["OPT_MAIN_OPACITY"], 20, 100, 5,
-        function() return math.floor((MiniHubDB.mainButtonAlpha or 1.0) * 100) end,
-        function(v) MiniHubDB.mainButtonAlpha = v / 100
-            if MiniHub.ApplyMainButtonStyle then MiniHub.ApplyMainButtonStyle() end end)
-    mainAlphaS:SetPoint("TOPLEFT", mainSizeS, "BOTTOMLEFT", 0, -34)
-
-    -- Cases a cocher (general)
-    local cbTitle = MakeCheckbox(content, L["OPT_SHOW_TITLE"], nil,
-        function() return MiniHubDB.showTitle end,
-        function(v) MiniHubDB.showTitle = v; MiniHub.Layout() end)
-    cbTitle:SetPoint("TOPLEFT", mainAlphaS, "BOTTOMLEFT", -4, -18)
-
-    local cbLock = MakeCheckbox(content, L["OPT_LOCK"], nil,
-        function() return MiniHubDB.locked end,
-        function(v) MiniHubDB.locked = v end)
-    cbLock:SetPoint("TOPLEFT", cbTitle, "BOTTOMLEFT", 0, -2)
-
-    local cbMinimap = MakeCheckbox(content, L["OPT_SHOW_MINIMAP"], nil,
-        function() return not MiniHubDB.minimap.hide end,
-        function(v) MiniHub.SetMasterShown(v) end)
-    cbMinimap:SetPoint("TOPLEFT", cbLock, "BOTTOMLEFT", 0, -2)
-
-    local cbMain = MakeCheckbox(content, L["OPT_SHOW_MAIN"], L["OPT_SHOW_MAIN_TT"],
-        function() return MiniHubDB.showMainButton end,
-        function(v)
-            MiniHubDB.showMainButton = v
-            if MiniHub.UpdateMainButtonVisibility then MiniHub.UpdateMainButtonVisibility()
-            elseif MiniHub.mainButton then MiniHub.mainButton:SetShown(v) end
+    -- ------------------------------------------------------------ Apparence
+    panel:Section(L["OPT_APPEARANCE"])
+    AddCycle(panel,
+        function() return string.format(L["OPT_THEME"], ThemeName(DB().theme)) end,
+        function()
+            MiniHub.ApplyTheme(NextIn(MiniHub.THEME_ORDER, DB().theme or "dark"))
+            panel:Refresh()
         end)
-    cbMain:SetPoint("TOPLEFT", cbMinimap, "BOTTOMLEFT", 0, -2)
+    panel:Color(L["OPT_BG_COLOR"],
+        function() return DB().bgColor end,
+        function(r, g, b, a) DB().bgColor = { r, g, b, a }; MiniHub.ApplySkin() end)
+    panel:Color(L["OPT_BORDER_COLOR"],
+        function() return DB().borderColor end,
+        function(r, g, b, a) DB().borderColor = { r, g, b, a }; MiniHub.ApplySkin() end)
+    panel:Slider(L["OPT_BG_OPACITY"], 0, 100, 5,
+        function() return math.floor(((DB().bgColor[4]) or 0.94) * 100 + 0.5) end,
+        function(v) DB().bgColor[4] = v / 100; MiniHub.ApplySkin() end)
+    panel:Check(L["OPT_ANIMATE"],
+        function() return DB().animate end,
+        function(v) DB().animate = v end)
 
-    local cbZoom = MakeCheckbox(content, L["OPT_HIDE_ZOOM"], L["OPT_HIDE_ZOOM_TT"],
-        function() return MiniHubDB.hideZoomButtons end,
-        function(v) MiniHubDB.hideZoomButtons = v; MiniHub.ApplyBlizzardHiding() end)
-    cbZoom:SetPoint("TOPLEFT", cbMain, "BOTTOMLEFT", 0, -2)
+    -- ------------------------------------------------------------ Favoris
+    panel:Section(L["SEC_QUICKBAR"])
+    panel:Check(L["OPT_QUICKBAR"],
+        function() return DB().quickBar end,
+        function(v) DB().quickBar = v; Relayout(); MiniHub.UpdateContextVisibility() end, L["OPT_QUICKBAR_TT"])
+    panel:Check(L["OPT_QUICKBAR_VERTICAL"],
+        function() return DB().quickBarVertical end,
+        function(v) DB().quickBarVertical = v; Relayout() end)
+    panel:Note(L["OPT_QUICKBAR_NOTE"])
 
-    -- Cases a cocher (comportement)
-    local cbHover = MakeCheckbox(content, L["OPT_HOVER_OPEN"], L["OPT_HOVER_OPEN_TT"],
-        function() return MiniHubDB.hoverOpen end,
-        function(v) MiniHubDB.hoverOpen = v end)
-    cbHover:SetPoint("TOPLEFT", cbZoom, "BOTTOMLEFT", 0, -2)
+    -- ------------------------------------------------------------ Position
+    panel:Section(L["SEC_POSITION"])
+    panel:Button(L["OPT_SNAP_BOTTOM"], function() MiniHub.SnapToMinimap("BOTTOM"); panel:Refresh() end)
+    panel:Button(L["OPT_SNAP_LEFT"], function() MiniHub.SnapToMinimap("LEFT"); panel:Refresh() end)
+    panel:Button(L["OPT_SNAP_RIGHT"], function() MiniHub.SnapToMinimap("RIGHT"); panel:Refresh() end)
+    panel:Note(L["OPT_POSITION_NOTE"])
 
-    local cbAuto = MakeCheckbox(content, L["OPT_AUTO_CLOSE"], nil,
-        function() return MiniHubDB.autoClose end,
-        function(v) MiniHubDB.autoClose = v end)
-    cbAuto:SetPoint("TOPLEFT", cbHover, "BOTTOMLEFT", 0, -2)
+    -- ------------------------------------------------------------ Tiroir
+    panel:Section(L["SEC_DRAWER"])
+    panel:Check(L["OPT_DRAWER"],
+        function() return DB().drawer end,
+        function(v) DB().drawer = v; MiniHub.ApplyDrawer(); MiniHub.UpdateContextVisibility() end, L["OPT_DRAWER_TT"])
+    AddCycle(panel,
+        function() return string.format(L["OPT_DRAWER_SIDE"], L[SIDE_NAMES[DB().drawerSide] or "SIDE_LEFT"]) end,
+        function()
+            DB().drawerSide = NextIn({ "LEFT", "BOTTOM", "RIGHT" }, DB().drawerSide or "LEFT")
+            MiniHub.RestorePosition()
+        end)
 
-    local cbAnim = MakeCheckbox(content, L["OPT_ANIMATE"], nil,
-        function() return MiniHubDB.animate end,
-        function(v) MiniHubDB.animate = v end)
-    cbAnim:SetPoint("TOPLEFT", cbAuto, "BOTTOMLEFT", 0, -2)
+    -- ------------------------------------------------------------ Comportement
+    panel:Section(L["OPT_BEHAVIOR"])
+    panel:Check(L["OPT_LOCK"],
+        function() return DB().locked end,
+        function(v) DB().locked = v end)
+    panel:Check(L["OPT_AUTO_CLOSE"],
+        function() return DB().autoClose end,
+        function(v) DB().autoClose = v end)
+    panel:Check(L["OPT_HIDE_COMBAT"],
+        function() return DB().hideInCombat end,
+        function(v) DB().hideInCombat = v; MiniHub.UpdateContextVisibility() end)
+    panel:Check(L["OPT_HIDE_INSTANCE"],
+        function() return DB().hideInInstance end,
+        function(v) DB().hideInInstance = v; MiniHub.UpdateContextVisibility() end)
+    panel:Check(L["OPT_HIDE_PETBATTLE"],
+        function() return DB().hideInPetBattle end,
+        function(v) DB().hideInPetBattle = v; MiniHub.UpdateContextVisibility() end)
 
-    local cbCombat = MakeCheckbox(content, L["OPT_HIDE_COMBAT"], nil,
-        function() return MiniHubDB.hideInCombat end,
-        function(v) MiniHubDB.hideInCombat = v; MiniHub.UpdateContextVisibility() end)
-    cbCombat:SetPoint("TOPLEFT", cbAnim, "BOTTOMLEFT", 0, -2)
+    -- ------------------------------------------------------------ Sources
+    panel:Section(L["SEC_SOURCES"])
+    panel:Check(L["OPT_COLLECT_TS"],
+        function() return DB().collectTibiSuite end,
+        function(v) DB().collectTibiSuite = v; MiniHub.Collect() end, L["OPT_COLLECT_TS_TT"])
+    panel:Check(L["OPT_COMPARTMENT"],
+        function() return DB().compartment end,
+        function(v) DB().compartment = v; MiniHub.Collect() end, L["OPT_COMPARTMENT_TT"])
+    panel:Check(L["OPT_IGNORE_CONFLICT"],
+        function() return DB().ignoreConflict end,
+        function(v) MiniHub.SetIgnoreConflict(v) end, L["OPT_IGNORE_CONFLICT_TT"])
 
-    local cbInst = MakeCheckbox(content, L["OPT_HIDE_INSTANCE"], nil,
-        function() return MiniHubDB.hideInInstance end,
-        function(v) MiniHubDB.hideInInstance = v; MiniHub.UpdateContextVisibility() end)
-    cbInst:SetPoint("TOPLEFT", cbCombat, "BOTTOMLEFT", 0, -2)
+    -- ------------------------------------------------------------ Suite / autonome
+    if _G.TibiSuite and _G.TibiSuite.SetCtrlHidden then
+        panel:Section(L["SEC_FLOATING"])
+        panel:Check(L["OPT_HIDE_FLOAT_OPTIONS"],
+            function() return _G.TibiSuite.IsCtrlHidden(FRAME, "options") end,
+            function(v) _G.TibiSuite.SetCtrlHidden(FRAME, "options", v) end)
+        panel:Check(L["OPT_HIDE_FLOAT_SEARCH"],
+            function() return _G.TibiSuite.IsCtrlHidden(FRAME, "search") end,
+            function(v) _G.TibiSuite.SetCtrlHidden(FRAME, "search", v) end)
+    else
+        panel:Section(L["SEC_MAIN_BUTTON"])
+        panel:Check(L["OPT_SHOW_MINIMAP"],
+            function() return not DB().minimap.hide end,
+            function(v) MiniHub.SetMasterShown(v) end)
+        panel:Check(L["OPT_SHOW_MAIN"],
+            function() return DB().showMainButton end,
+            function(v) DB().showMainButton = v; MiniHub.UpdateMainButtonVisibility() end, L["OPT_SHOW_MAIN_TT"])
+        panel:Check(L["OPT_HOVER_OPEN"],
+            function() return DB().hoverOpen end,
+            function(v) DB().hoverOpen = v end, L["OPT_HOVER_OPEN_TT"])
+        panel:Slider(L["OPT_MAIN_SIZE"], 28, 64, 2,
+            function() return DB().mainButtonSize or 40 end,
+            function(v) DB().mainButtonSize = v; MiniHub.ApplyMainButtonStyle() end)
+        panel:Slider(L["OPT_MAIN_OPACITY"], 20, 100, 5,
+            function() return math.floor((DB().mainButtonAlpha or 1) * 100 + 0.5) end,
+            function(v) DB().mainButtonAlpha = v / 100; MiniHub.ApplyMainButtonStyle() end)
+    end
 
-    local cbPet = MakeCheckbox(content, L["OPT_HIDE_PETBATTLE"], nil,
-        function() return MiniHubDB.hideInPetBattle end,
-        function(v) MiniHubDB.hideInPetBattle = v; MiniHub.UpdateContextVisibility() end)
-    cbPet:SetPoint("TOPLEFT", cbInst, "BOTTOMLEFT", 0, -2)
-
-    local rescan = MakeButton(content, L["OPT_RESCAN"], 120, function() MiniHub.Scan() end)
-    rescan:SetPoint("TOPLEFT", cbPet, "BOTTOMLEFT", 4, -12)
-    local resetPos = MakeButton(content, L["OPT_RECENTER"], 120, function()
-        MiniHubDB.point = { "CENTER", "UIParent", "CENTER", 0, 0 }
-        MiniHubDB.mainPoint = { "CENTER", "UIParent", "CENTER", 200, 0 }
-        MiniHub.RestorePosition()
+    -- ------------------------------------------------------------ Profil
+    panel:Section(L["OPT_PROFILE_TITLE"])
+    panel:Note(L["OPT_PROFILE_NOTE"])
+    local box = AddEditBox(panel)
+    panel:Button(L["OPT_EXPORT"], function()
+        box:SetText(MiniHub.ExportProfile())
+        box:HighlightText(); box:SetFocus()
     end)
-    resetPos:SetPoint("LEFT", rescan, "RIGHT", 8, 0)
-
-    ---------------------------------------------------------------- Colonne droite
-    local RX = 300
-    local exTitle = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    exTitle:SetPoint("TOPLEFT", content, "TOPLEFT", RX, -54)
-    exTitle:SetText(L["OPT_EXCL_TITLE"])
-    local exHint = content:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-    exHint:SetPoint("TOPLEFT", exTitle, "BOTTOMLEFT", 0, -2)
-    exHint:SetText(L["OPT_EXCL_HINT"])
-
-    local exScroll = CreateFrame("ScrollFrame", "MiniHubExclusionScroll", content, "UIPanelScrollFrameTemplate")
-    exScroll:SetPoint("TOPLEFT", exHint, "BOTTOMLEFT", 0, -6)
-    exScroll:SetSize(230, 150)
-    local exChild = CreateFrame("Frame", nil, exScroll)
-    exChild:SetSize(230, 150)
-    exScroll:SetScrollChild(exChild)
-
-    local unTitle = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    unTitle:SetPoint("TOPLEFT", exScroll, "BOTTOMLEFT", 0, -18)
-    unTitle:SetText(L["OPT_UNKNOWN_TITLE"])
-    local unHint = content:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-    unHint:SetPoint("TOPLEFT", unTitle, "BOTTOMLEFT", 0, -2)
-    unHint:SetText(L["OPT_UNKNOWN_HINT"])
-    unHint:SetWidth(230); unHint:SetJustifyH("LEFT")
-
-    local unScroll = CreateFrame("ScrollFrame", "MiniHubUnknownScroll", content, "UIPanelScrollFrameTemplate")
-    unScroll:SetPoint("TOPLEFT", unHint, "BOTTOMLEFT", 0, -6)
-    unScroll:SetSize(230, 120)
-    local unChild = CreateFrame("Frame", nil, unScroll)
-    unChild:SetSize(230, 120)
-    unScroll:SetScrollChild(unChild)
-    local unEmpty = unChild:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    unEmpty:SetPoint("TOPLEFT", 4, -4)
-    unEmpty:SetText(L["OPT_NONE_UNKNOWN"])
-
-    -- Partage de profil
-    local pfTitle = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    pfTitle:SetPoint("TOPLEFT", unScroll, "BOTTOMLEFT", 0, -18)
-    pfTitle:SetText(L["OPT_PROFILE_TITLE"])
-
-    local pfBox = CreateFrame("EditBox", nil, content, "InputBoxTemplate")
-    pfBox:SetSize(230, 22)
-    pfBox:SetPoint("TOPLEFT", pfTitle, "BOTTOMLEFT", 6, -6)
-    pfBox:SetAutoFocus(false)
-    pfBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-
-    local exportB = MakeButton(content, L["OPT_EXPORT"], 110, function()
-        pfBox:SetText(MiniHub.ExportProfile and MiniHub.ExportProfile() or "")
-        pfBox:HighlightText()
-        pfBox:SetFocus()
-    end)
-    exportB:SetPoint("TOPLEFT", pfBox, "BOTTOMLEFT", -4, -6)
-    local importB = MakeButton(content, L["OPT_IMPORT"], 110, function()
-        local ok = MiniHub.ImportProfile and MiniHub.ImportProfile(pfBox:GetText())
-        if ok then
-            print("|cffffd200MiniHub|r : " .. L["MSG_IMPORT_OK"])
-            if panel.refreshControls then panel.refreshControls() end
+    panel:Button(L["OPT_IMPORT"], function()
+        if MiniHub.ImportProfile(box:GetText()) then
+            MiniHub.Print(L["MSG_IMPORT_OK"])
+            panel:Refresh()
         else
-            print("|cffffd200MiniHub|r : " .. L["MSG_IMPORT_FAIL"])
+            MiniHub.Print(L["MSG_IMPORT_FAIL"])
         end
     end)
-    importB:SetPoint("LEFT", exportB, "RIGHT", 8, 0)
 
-    ---------------------------------------------------------------- Rafraichissement
-    panel.refreshControls = function()
-        perLine.Refresh(); sizeS.Refresh(); spaceS.Refresh(); alphaS.Refresh()
-        mainSizeS.Refresh(); mainAlphaS.Refresh()
-        cbTitle.Refresh(); cbLock.Refresh(); cbMinimap.Refresh(); cbMain.Refresh(); cbZoom.Refresh()
-        cbHover.Refresh(); cbAuto.Refresh(); cbAnim.Refresh(); cbCombat.Refresh(); cbInst.Refresh(); cbPet.Refresh()
-        orientBtn:SetText(OrientLabel())
-        if perLine.SetLabelText then perLine.SetLabelText(GridLabel()) end
-        themeBtn:SetText(string.format(L["OPT_THEME"], ThemeName(MiniHubDB.theme)))
-        bgColorBtn.Refresh(); bdColorBtn.Refresh()
-        MiniHub.Scan()
-        RefreshExclusionList(exChild)
-        RefreshUnknownList(unChild, unEmpty)
-    end
-    panel:SetScript("OnShow", panel.refreshControls)
+    -- ------------------------------------------------------------ Actions
+    panel:Section(L["SEC_ACTIONS"])
+    panel:Button(L["OPT_RECENTER"], function()
+        MiniHub.ResetPositions()
+        MiniHub.Print(L["MSG_RESET"])
+    end)
+    panel:Button(L["OPT_RESET_ORDER"], function() MiniHub.ResetOrder() end)
 
     return panel
 end
 
+function MiniHub_OpenOptions()
+    local p = BuildOptions(); if p then p:Toggle() end
+end
+
 --------------------------------------------------------------------------------
--- Enregistrement dans l'API Settings (autonome ou sous-categorie TibiSuite)
+-- Gestionnaire de boutons
+--------------------------------------------------------------------------------
+
+local manager
+local rows, unknownRows = {}, {}
+local ROW_H = 26
+
+local function SmallIconButton(parent, tex, size, tooltip)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(size, size)
+    local t = b:CreateTexture(nil, "ARTWORK")
+    t:SetAllPoints()
+    if type(tex) == "string" and tex:find("^atlas:") then
+        if not pcall(t.SetAtlas, t, tex:sub(7)) then t:SetColorTexture(1, 0.82, 0, 1) end
+    else
+        t:SetTexture(tex)
+    end
+    b.tex = t
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.15)
+    if tooltip then
+        b:SetScript("OnEnter", function(s)
+            GameTooltip:SetOwner(s, "ANCHOR_RIGHT"); GameTooltip:SetText(tooltip, nil, nil, nil, nil, true); GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+    return b
+end
+
+local function GetRow(i, parent)
+    local r = rows[i]
+    if r then return r end
+    r = CreateFrame("Frame", nil, parent)
+    r:SetHeight(ROW_H)
+    r.bg = r:CreateTexture(nil, "BACKGROUND")
+    r.bg:SetAllPoints(); r.bg:SetColorTexture(1, 1, 1, (i % 2 == 0) and 0.03 or 0)
+    r.icon = r:CreateTexture(nil, "ARTWORK")
+    r.icon:SetSize(20, 20); r.icon:SetPoint("LEFT", 4, 0)
+    r.label = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    r.label:SetPoint("LEFT", r.icon, "RIGHT", 6, 5)
+    r.label:SetWidth(170); r.label:SetJustifyH("LEFT"); r.label:SetWordWrap(false)
+    r.sub = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    r.sub:SetPoint("TOPLEFT", r.label, "BOTTOMLEFT", 0, -1)
+    r.sub:SetWidth(170); r.sub:SetJustifyH("LEFT"); r.sub:SetWordWrap(false)
+
+    r.keep = CreateFrame("CheckButton", nil, r, "UICheckButtonTemplate")
+    r.keep:SetSize(22, 22); r.keep:SetPoint("RIGHT", -4, 0)
+    r.keep:SetScript("OnEnter", function(s)
+        GameTooltip:SetOwner(s, "ANCHOR_RIGHT"); GameTooltip:SetText(L["MGR_KEEP_TT"], nil, nil, nil, nil, true); GameTooltip:Show()
+    end)
+    r.keep:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    r.down = SmallIconButton(r, "Interface\\Buttons\\Arrow-Down-Up", 18, L["MGR_DOWN"])
+    r.down:SetPoint("RIGHT", r.keep, "LEFT", -10, -3)
+    r.up = SmallIconButton(r, "Interface\\Buttons\\Arrow-Up-Up", 18, L["MGR_UP"])
+    r.up:SetPoint("RIGHT", r.down, "LEFT", -2, 6)
+    r.fav = SmallIconButton(r, "atlas:auctionhouse-icon-favorite", 18, L["MGR_FAV_TT"])
+    r.fav:SetPoint("RIGHT", r.up, "LEFT", -8, -3)
+    rows[i] = r
+    return r
+end
+
+local function GetUnknownRow(i, parent)
+    local r = unknownRows[i]
+    if r then return r end
+    r = CreateFrame("Frame", nil, parent)
+    r:SetHeight(ROW_H)
+    r.label = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    r.label:SetPoint("LEFT", 6, 0)
+    r.label:SetWidth(250); r.label:SetJustifyH("LEFT"); r.label:SetWordWrap(false)
+    r.add = GetUI().MakeButton(r, 80, 20, L["MGR_ADD"])
+    r.add:SetPoint("RIGHT", -4, 0)
+    unknownRows[i] = r
+    return r
+end
+
+local function RefreshManager()
+    if not (manager and manager:IsShown()) then return end
+    local content = manager.content
+    local db = DB()
+    MiniHub.SortCollected()
+
+    -- Boutons collectes, puis boutons laisses sur la minicarte.
+    local entries, seen = {}, {}
+    for _, b in ipairs(MiniHub.order) do
+        local info = MiniHub.GetInfo(b)
+        seen[info.name] = true
+        entries[#entries + 1] = { button = b, info = info }
+    end
+    local excluded = {}
+    for name in pairs(db.exclusions) do
+        if not seen[name] then excluded[#excluded + 1] = name end
+    end
+    table.sort(excluded)
+    for _, name in ipairs(excluded) do entries[#entries + 1] = { name = name } end
+
+    local y = -4
+    local lastCat
+    for _, r in ipairs(rows) do r:Hide() end
+    for i, e in ipairs(entries) do
+        local r = GetRow(i, content)
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
+        r:SetPoint("RIGHT", content, "RIGHT", 0, 0)
+        if e.button then
+            local info, name = e.info, e.info.name
+            r.icon:SetTexture(MiniHub.GetIcon(e.button))
+            r.icon:SetDesaturated(not e.button:IsShown())
+            r.label:SetText(info.label)
+            local sub = info.category and (info.category .. "  -  " .. name) or name
+            if not e.button:IsShown() then sub = L["MGR_HIDDEN_BY_ADDON"] .. "  -  " .. sub end
+            r.sub:SetText(sub)
+            local fav = db.favorites[name] and true or false
+            r.fav.tex:SetDesaturated(not fav)
+            r.fav.tex:SetAlpha(fav and 1 or 0.45)
+            r.fav:SetScript("OnClick", function() MiniHub.SetFavorite(name, not fav); RefreshManager() end)
+            r.up:SetScript("OnClick", function() MiniHub.MoveButton(name, -1); RefreshManager() end)
+            r.down:SetScript("OnClick", function() MiniHub.MoveButton(name, 1); RefreshManager() end)
+            r.fav:Show(); r.up:Show(); r.down:Show()
+            r.keep:SetChecked(false)
+            r.keep:SetScript("OnClick", function() MiniHub.SetExcluded(name, true); RefreshManager() end)
+        else
+            r.icon:SetTexture(134400); r.icon:SetDesaturated(true)
+            r.label:SetText(e.name)
+            r.sub:SetText(L["MGR_ON_MINIMAP"])
+            r.fav:Hide(); r.up:Hide(); r.down:Hide()
+            r.keep:SetChecked(true)
+            r.keep:SetScript("OnClick", function() MiniHub.SetExcluded(e.name, false); RefreshManager() end)
+        end
+        r:Show()
+        y = y - ROW_H
+    end
+    if #entries == 0 then
+        manager.empty:ClearAllPoints()
+        manager.empty:SetPoint("TOPLEFT", content, "TOPLEFT", 6, y - 4)
+        manager.empty:Show()
+        y = y - 22
+    else
+        manager.empty:Hide()
+    end
+
+    -- Non reconnus.
+    y = y - 10
+    manager.unTitle:ClearAllPoints()
+    manager.unTitle:SetPoint("TOPLEFT", content, "TOPLEFT", 4, y)
+    y = y - 16
+    manager.unHint:ClearAllPoints()
+    manager.unHint:SetPoint("TOPLEFT", content, "TOPLEFT", 4, y)
+    y = y - (manager.unHint:GetStringHeight() or 12) - 6
+    for _, r in ipairs(unknownRows) do r:Hide() end
+    local unknown = MiniHub.GetUnrecognized()
+    for i, name in ipairs(unknown) do
+        local r = GetUnknownRow(i, content)
+        r:ClearAllPoints()
+        r:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
+        r:SetPoint("RIGHT", content, "RIGHT", 0, 0)
+        r.label:SetText(name)
+        r.add:SetScript("OnClick", function()
+            DB().whitelist[name] = true
+            MiniHub.Collect()
+            MiniHub.Print(string.format(L["MSG_ADD"], name))
+            RefreshManager()
+        end)
+        r:Show()
+        y = y - ROW_H
+    end
+    if #unknown == 0 then
+        manager.unNone:ClearAllPoints()
+        manager.unNone:SetPoint("TOPLEFT", content, "TOPLEFT", 6, y)
+        manager.unNone:Show()
+        y = y - 18
+    else
+        manager.unNone:Hide()
+    end
+    content:SetHeight(math.max(-y + 10, 10))
+    manager.count:SetText(string.format(L["MGR_COUNT"], #MiniHub.order))
+end
+MiniHub.RefreshManager = RefreshManager
+
+local function BuildManager()
+    if manager then return manager end
+    local ui = GetUI()
+    local f = CreateFrame("Frame", "MiniHubManager", UIParent, "BackdropTemplate")
+    f:SetSize(420, 480)
+    f:SetPoint("CENTER", UIParent, "CENTER", -180, 40)
+    f:SetFrameStrata("DIALOG")
+    f:SetMovable(true); f:EnableMouse(true)
+    f:RegisterForDrag("LeftButton")
+    f:SetScript("OnDragStart", f.StartMoving)
+    f:SetScript("OnDragStop", f.StopMovingOrSizing)
+    f:SetClampedToScreen(true)
+    f:Hide()
+    if ui then ui.SkinFrame(f, ACCENT) end
+
+    local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("TOPLEFT", 12, -12)
+    title:SetText("MiniHub - " .. L["MGR_TITLE"])
+    title:SetTextColor(ACCENT[1], ACCENT[2], ACCENT[3])
+    f.count = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.count:SetPoint("LEFT", title, "RIGHT", 8, 0)
+
+    local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+    close:SetPoint("TOPRIGHT", 2, 2)
+    close:SetScript("OnClick", function() f:Hide() end)
+
+    local legend = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    legend:SetPoint("TOPLEFT", 12, -32); legend:SetPoint("RIGHT", -12, 0)
+    legend:SetJustifyH("LEFT")
+    legend:SetText(L["MGR_LEGEND"])
+
+    local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 10, -58)
+    scroll:SetPoint("BOTTOMRIGHT", -30, 12)
+    if ui and ui.SkinScrollBar then ui.SkinScrollBar(scroll, ACCENT) end
+    local content = CreateFrame("Frame", nil, scroll)
+    content:SetSize(376, 10)
+    scroll:SetScrollChild(content)
+    f.content = content
+
+    f.empty = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.empty:SetText(L["EMPTY"])
+    f.unTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    f.unTitle:SetText(L["OPT_UNKNOWN_TITLE"])
+    f.unTitle:SetTextColor(ACCENT[1], ACCENT[2], ACCENT[3])
+    f.unHint = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.unHint:SetWidth(360); f.unHint:SetJustifyH("LEFT")
+    f.unHint:SetText(L["OPT_UNKNOWN_HINT"])
+    f.unNone = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.unNone:SetText(L["OPT_NONE_UNKNOWN"])
+
+    -- Echap : mecanisme natif de Blizzard UNIQUEMENT (aucun hook OnHide ni
+    -- OnKeyDown, voir les pieges Echap/taint du core).
+    tinsert(UISpecialFrames, "MiniHubManager")
+    f:SetScript("OnShow", function() RefreshManager() end)
+    manager = f
+    return f
+end
+
+function MiniHub.OpenManager()
+    local f = BuildManager()
+    if f:IsShown() then f:Hide() else f:Show() end
+end
+
+-- Le gestionnaire suit les changements faits ailleurs (hub, slash).
+local pendingRefresh = false
+MiniHub.OnLayout = function()
+    if not (manager and manager:IsShown()) or pendingRefresh then return end
+    pendingRefresh = true
+    C_Timer.After(0.1, function() pendingRefresh = false; RefreshManager() end)
+end
+
+--------------------------------------------------------------------------------
+-- Entree dans Reglages > AddOns (mode autonome seulement)
 --------------------------------------------------------------------------------
 
 function MiniHub.SetupOptions()
-    if not Settings or not Settings.RegisterCanvasLayoutCategory then return end
-
-    local frame = BuildPanel()
-
-    local parentCategory
-    local suite = _G.TibiSuite
-    if suite then
-        parentCategory = suite.settingsCategory or (suite.GetSettingsCategory and suite:GetSettingsCategory())
-    end
-
-    local category
-    if parentCategory and Settings.RegisterCanvasLayoutSubcategory then
-        category = Settings.RegisterCanvasLayoutSubcategory(parentCategory, frame, "MiniHub")
-    else
-        category = Settings.RegisterCanvasLayoutCategory(frame, "MiniHub")
-        Settings.RegisterAddOnCategory(category)
-    end
-
-    MiniHub.settingsCategory = category
-
-    MiniHub.OpenSettings = function()
-        if InCombatLockdown and InCombatLockdown() then
-            print("|cffffd200MiniHub|r : " .. L["MSG_COMBAT_OPTIONS"])
-            return
-        end
-        if Settings and Settings.OpenToCategory and MiniHub.settingsCategory then
-            Settings.OpenToCategory(MiniHub.settingsCategory:GetID())
-        end
+    if _G.TibiSuite then return end   -- en suite : la barre TibiSuite suffit
+    if not (Settings and Settings.RegisterCanvasLayoutCategory) then return end
+    local f = CreateFrame("Frame", "MiniHubSettingsStub", UIParent)
+    f:Hide()
+    local t = f:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    t:SetPoint("TOPLEFT", 16, -16); t:SetText("MiniHub")
+    local s = f:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    s:SetPoint("TOPLEFT", t, "BOTTOMLEFT", 0, -6); s:SetText(L["ADDON_SUBTITLE"])
+    local b = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    b:SetSize(220, 24); b:SetPoint("TOPLEFT", s, "BOTTOMLEFT", 0, -14)
+    b:SetText(L["OPT_OPEN_PANEL"])
+    b:SetScript("OnClick", function()
+        MiniHub_OpenOptions()
+    end)
+    local b2 = CreateFrame("Button", nil, f, "UIPanelButtonTemplate")
+    b2:SetSize(220, 24); b2:SetPoint("TOPLEFT", b, "BOTTOMLEFT", 0, -6)
+    b2:SetText(L["OPT_MANAGE"])
+    b2:SetScript("OnClick", function()
+        MiniHub.OpenManager()
+    end)
+    local ok, category = pcall(Settings.RegisterCanvasLayoutCategory, f, "MiniHub")
+    if ok and category then
+        pcall(Settings.RegisterAddOnCategory, category)
+        MiniHub.settingsCategory = category
     end
 end

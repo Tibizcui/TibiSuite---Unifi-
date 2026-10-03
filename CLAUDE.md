@@ -141,8 +141,9 @@ Recherche), persistées dans `TibiSuiteDB.floatHidden[frameName] = {options=,
 search=}`. Frames concernées (Options+Recherche sauf indication) : Daily
 `DTMainFrame`, Dgn `DGNMainFrame`, Lvl `LvlHistoryMainFrame`, Weekly
 `WeeklyCompassFrame`, Rep `RNTMainFrame`, Lair `LairLensAuditFrame`, Leg
-`LegTrackerMainFrame` ; XPBar `XPBarContainer` et RepBar `RepBarContainer`
-(Options seul). SkillTracker et MiniHub n'ont pas de boutons flottants.
+`LegTrackerMainFrame`, MiniHub `MiniHubContainer` (cases visibles en mode
+suite seulement) ; XPBar `XPBarContainer` et RepBar `RepBarContainer`
+(Options seul). SkillTracker n'a pas de boutons flottants.
 Le raccourci Maj+clic droit ouvre les options ; il est câblé UNIQUEMENT par le
 socle (ne pas le re-câbler dans le core, sinon double-toggle).
 

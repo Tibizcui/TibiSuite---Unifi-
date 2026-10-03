@@ -45,6 +45,14 @@ Libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
 
 # --- Code de l'addon ---
 Locale.lua
+Locales\deDE.lua
+Locales\esES.lua
+Locales\itIT.lua
+Locales\ptBR.lua
+Locales\ruRU.lua
+Locales\koKR.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
 MiniHub.lua
 Options.lua
 

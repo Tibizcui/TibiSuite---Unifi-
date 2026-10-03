@@ -1,95 +1,36 @@
 --[[============================================================================
-  MiniHub - Intégration TibiSuite "Midnight"  (ajout non destructif)
-  Migre l'ouverture des options vers un panneau flottant Midnight (au lieu de
-  la fenetre Reglages de Blizzard), tout en conservant le code existant.
+  MiniHub - Integration TibiSuite "Midnight"  (ajout non destructif)
+  Habillage socle du conteneur, controles d'en-tete (Options + Recherche) et
+  fournisseur de recherche globale. Le panneau d'options lui-meme vit dans
+  Options.lua (un seul panneau pour tout MiniHub).
 ============================================================================]]
 
 local FRAME    = "MiniHubContainer"
 local ACCENT   = { 0.988, 0.843, 0.282 }   -- or vif (logo #FCD748)
 local LOGO     = "Interface\\AddOns\\MiniHub\\media\\Logo_MiniHub"
 local KEY      = "MiniHub"
-local FULLSKIN = false
 
 local function GetUI() return _G.TibiMidnight end
 local function MH() return _G.MiniHub end
-local function DB() return _G.MiniHubDB end
-local function Layout() local m = MH(); if m and m.Layout then m.Layout() end end
-local function Ctx() local m = MH(); if m and m.UpdateContextVisibility then m.UpdateContextVisibility() end end
-
--- ---------------------------------------------------------------- Options
-local panel
-local function BuildOptions()
-  local ui = GetUI(); if not ui then return nil end
-  if panel then return panel end
-  panel = ui.CreateOptionsPanel({
-    name = "MiniHubOptionsMidnight",
-    title = "MiniHub - Options", accent = ACCENT })
-
-  panel:Section("Disposition")
-  panel:Check("Orientation verticale",
-    function() return DB() and DB().orientation == "VERTICAL" end,
-    function(v) if DB() then DB().orientation = v and "VERTICAL" or "HORIZONTAL" end; Layout() end)
-  panel:Slider("Boutons par ligne/colonne", 1, 12, 1,
-    function() return (DB() and DB().perLine) or 6 end,
-    function(v) if DB() then DB().perLine = v end; Layout() end)
-  panel:Slider("Taille des boutons", 20, 48, 1,
-    function() return (DB() and DB().buttonSize) or 32 end,
-    function(v) if DB() then DB().buttonSize = v end; Layout() end)
-  panel:Slider("Espacement", 0, 12, 1,
-    function() return (DB() and DB().spacing) or 4 end,
-    function(v) if DB() then DB().spacing = v end; Layout() end)
-
-  panel:Section("Apparence")
-  panel:Check("Afficher le titre",
-    function() return DB() and DB().showTitle end,
-    function(v) if DB() then DB().showTitle = v end; Layout() end)
-  panel:Check("Masquer les boutons de zoom de la minicarte",
-    function() return DB() and DB().hideZoomButtons end,
-    function(v) if DB() then DB().hideZoomButtons = v end
-      local m = MH(); if m and m.ApplyBlizzardHiding then m.ApplyBlizzardHiding() end end)
-
-  panel:Section("Comportement")
-  panel:Check("Verrouiller la position",
-    function() return DB() and DB().locked end,
-    function(v) if DB() then DB().locked = v end end)
-  panel:Check("Ouvrir au survol",
-    function() return DB() and DB().hoverOpen end,
-    function(v) if DB() then DB().hoverOpen = v end end)
-  panel:Check("Fermeture automatique",
-    function() return DB() and DB().autoClose end,
-    function(v) if DB() then DB().autoClose = v end end)
-  panel:Check("Masquer en combat",
-    function() return DB() and DB().hideInCombat end,
-    function(v) if DB() then DB().hideInCombat = v end; Ctx() end)
-
-  panel:Section("Actions")
-  panel:Button("Rescanner les boutons", function()
-    local m = MH(); if m and m.Scan then m.Scan() end
-  end)
-  panel:Button("Recentrer", function()
-    if DB() then
-      DB().point = { "CENTER", "UIParent", "CENTER", 0, 0 }
-      DB().mainPoint = { "CENTER", "UIParent", "CENTER", 200, 0 }
-    end
-    local m = MH(); if m and m.RestorePosition then m.RestorePosition() end
-  end)
-  return panel
-end
-
-function MiniHub_OpenOptions()
-  local p = BuildOptions(); if p then p:Toggle() end
+local function T(k)
+  local m = MH()
+  return (m and m.L and m.L[k]) or k
 end
 
 -- ---------------------------------------------------------------- Recherche
+-- Cherche dans le nom lisible (titre de l'addon) ET le nom technique ; le clic
+-- ouvre le hub et fait clignoter le bouton trouve.
 local function provider(q)
   local out, ui = {}, GetUI()
   local m = MH()
   if not ui or not m or type(m.order) ~= "table" then return out end
   for _, btn in ipairs(m.order) do
-    local name = btn and btn.GetName and btn:GetName()
-    if name and ui.Match(name, q) then
-      out[#out + 1] = { text = name,
-        onClick = function() if m.Open then m.Open() elseif m.Toggle then m.Toggle() end end }
+    local info = m.GetInfo and m.GetInfo(btn)
+    if info and (ui.Match(info.label, q) or ui.Match(info.name, q)) then
+      local text = info.label
+      if info.label ~= info.name then text = text .. "  |cFF888888" .. info.name .. "|r" end
+      out[#out + 1] = { text = text,
+        onClick = function() if m.Highlight then m.Highlight(btn) elseif m.Open then m.Open() end end }
       if #out >= 60 then return out end
     end
   end
@@ -102,21 +43,20 @@ local function OpenSearch()
   if not searchPopup then
     searchPopup = ui.CreateSearchPopup({
       name = "MiniHubSearchPopup",
-      title = "|cFF9480FFMiniHub|r  Recherche", accent = ACCENT, logo = LOGO, provider = provider })
+      title = ui.Hex(ACCENT[1], ACCENT[2], ACCENT[3]) .. "MiniHub|r  " .. T("SEARCH_TITLE"),
+      accent = ACCENT, logo = LOGO, provider = provider })
   end
   searchPopup.Toggle()
 end
+if MH() then MH().OpenSearch = OpenSearch end
 
 -- ---------------------------------------------------------- Attache & skin
 local function Decorate()
   local ui = GetUI(); local f = _G[FRAME]
-  -- Migration : les options passent par le panneau flottant Midnight.
-  local m = MH()
-  if m then m.OpenOptions = function() MiniHub_OpenOptions() end end
   if not (ui and f) then return end
   if not f._tibiSkinned then
     ui.SkinFrame(f, ACCENT)
-    -- En-tête sobre : pas d'icône ajoutée, le titre MiniHub reste à sa place d'origine
+    -- En-tete sobre : le titre MiniHub reste a sa place d'origine.
     if f.header and f.title then
       f.title:ClearAllPoints()
       f.title:SetPoint("LEFT", f.header, "LEFT", 7, 0)
@@ -126,7 +66,7 @@ local function Decorate()
   if f._tibiControls then return end
   ui.AddHeaderControls(f, {
     accent = ACCENT,
-    onOptions = function() MiniHub_OpenOptions() end,
+    onOptions = function() if _G.MiniHub_OpenOptions then _G.MiniHub_OpenOptions() end end,
     provider = provider,
   })
 end
