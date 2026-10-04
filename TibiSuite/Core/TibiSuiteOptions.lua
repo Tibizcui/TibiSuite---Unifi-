@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.38
+-- TibiSuiteOptions v7.1.5.39
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -36,6 +36,24 @@ local MODULE_LOGO = {
   Suite   = LOGO,
 }
 
+-- Pas de captures d'ecran dans l'installateur : le core doit rester leger
+-- (16 TGA = 6 Mo). La vitrine de chaque module est faite de texte (DETAIL_,
+-- FEAT_) et des logos deja presents dans les dossiers des modules.
+
+-- Ligne « nouveau cette semaine » de chaque module dans la vitrine de
+-- l'installateur : reprend la synthese 12.1 du Quoi de neuf (WN_38_*).
+local MODULE_NEWS = {
+  Weekly = 2, Rep = 3, RepBar = 4, XPBar = 5, Leg = 6, Daily = 7, Lvl = 8,
+  Skill = 9, Dgn = 10, Lair = 11, Post = 12, MiniHub = 13, Opacity = 14, Stats = 15,
+}
+
+-- Raccourci de chaque module, affiche dans la vitrine.
+local MODULE_SLASH = {
+  Daily = "/dt", Dgn = "/dg", Leg = "/lt", Rep = "/rt", Lvl = "/lvlh", Weekly = "/wc",
+  MiniHub = "/mh", XPBar = "/xpbar", RepBar = "/repbar", Lair = "/ll", Skill = "/skt",
+  Post = "/pb", Stats = "/stats", Opacity = "/opa",
+}
+
 -- ================================================================
 -- LOCALISATION
 -- Le francais reste le defaut embarque directement ici (via l'operateur
@@ -49,20 +67,51 @@ local L = TibiSuiteL
 L.INTRO = L.INTRO or "Tous tes trackers Tibiscui réunis sous un seul bouton de minicarte et une barre d'onglets. Tu choisis les modules à charger : les autres ne sont plus chargés du tout par WoW."
 
 -- Resume court par module.
-L.DESC_Daily   = L.DESC_Daily   or "Quêtes quotidiennes et hebdomadaires, cochées automatiquement selon ton historique."
-L.DESC_Dgn     = L.DESC_Dgn     or "Entrées d'instances : donjons, raids, gouffres, Torghast, toutes extensions."
-L.DESC_Leg     = L.DESC_Leg     or "Légendaires par extension : statut, quêtes, composants, collection et farm."
-L.DESC_Rep     = L.DESC_Rep     or "Réputations et Renom de Vanilla à Midnight, checklist hebdo et temps restant."
-L.DESC_Lvl     = L.DESC_Lvl     or "Historique de tes sessions de leveling et de farm, avec statistiques."
-L.DESC_Weekly  = L.DESC_Weekly  or "Ce qu'il reste à faire cette semaine pour maximiser tes récompenses."
-L.DESC_MiniHub = L.DESC_MiniHub or "Range les boutons de la minicarte dans un conteneur rétractable."
-L.DESC_XPBar   = L.DESC_XPBar   or "Barre d'XP avancée : XP réelle des quêtes, repos, historique, styles."
-L.DESC_Lair    = L.DESC_Lair    or "Audit de groupe et pertinence des récompenses pour les Repaires."
-L.DESC_Skill   = L.DESC_Skill   or "Progression des métiers par extension, sur tous tes personnages."
-L.DESC_RepBar  = L.DESC_RepBar  or "Barre de réputation qui suit la faction de ta zone et de tes quêtes."
-L.DESC_Post    = L.DESC_Post    or "Boîte aux lettres : ouverture en masse, carnet de contacts, statistiques."
-L.DESC_Stats   = L.DESC_Stats   or "Quêtes, or, donjons et M+, temps de jeu. Alimente le Dashboard et Tibi-Companion."
-L.DESC_Opacity = L.DESC_Opacity or "Transparence des fenêtres, au survol ou en combat, sans toucher au mode Édition."
+L.DESC_Daily   = L.DESC_Daily   or "Quêtes quotidiennes et hebdomadaires de chaque personnage, liste « À faire » à épingler et rappel avant le reset."
+L.DESC_Dgn     = L.DESC_Dgn     or "Toutes les instances, de Vanilla à Midnight : fiches avec boss et verrous, vues Saison et Près de moi, points de route vérifiés."
+L.DESC_Leg     = L.DESC_Leg     or "Légendaires de chaque extension sur tout le compte : statut, quêtes, composants, collection et farm de la semaine."
+L.DESC_Rep     = L.DESC_Rep     or "Réputations et Renom de Vanilla à Midnight : checklist de la semaine, temps restant, coffres de Paragon."
+L.DESC_Lvl     = L.DESC_Lvl     or "Historique de leveling et de farm : sessions, temps par niveau, clés M+, XP reposée de chaque alt."
+L.DESC_Weekly  = L.DESC_Weekly  or "Ta semaine et tous tes personnages d'un coup d'œil : grande chambre forte, gouffres, traque, fiche détaillée."
+L.DESC_MiniHub = L.DESC_MiniHub or "Range les boutons de la minicarte : gestionnaire, barre rapide, vue liste ou tiroir."
+L.DESC_XPBar   = L.DESC_XPBar   or "Barre d'XP avancée : XP réelle des quêtes à rendre, repos, historique par niveau, styles."
+L.DESC_Lair    = L.DESC_Lair    or "Les Repaires de Midnight : audit de groupe, fiche du Repaire, butin de ta spécialisation, hauts faits et records."
+L.DESC_Skill   = L.DESC_Skill   or "Métiers de tous tes personnages : concentration, connaissances de la semaine, recettes, qui sait crafter quoi."
+L.DESC_RepBar  = L.DESC_RepBar  or "Barre de réputation qui suit ta zone et tes quêtes : réputation par heure, prochain palier, factions épinglées."
+L.DESC_Post    = L.DESC_Post    or "Boîte aux lettres complète : prise en masse sûre, mule automatique, courrier de tous tes persos, journal HV."
+L.DESC_Stats   = L.DESC_Stats   or "Quêtes, or, donjons et M+, temps de jeu par jour et par personnage. Alimente le Dashboard et Tibi Companion."
+L.DESC_Opacity = L.DESC_Opacity or "Transparence des fenêtres au survol, en combat ou en monture, profils par spécialisation, réglage à la molette."
+
+-- Vitrine de l'installateur : explication detaillee (DETAIL_) et points forts
+-- (FEAT_, un par ligne, 4 maximum) de chaque module.
+L.DETAIL_Daily   = L.DETAIL_Daily   or "DailyTracker liste les quêtes quotidiennes et hebdomadaires de Midnight et de The War Within, et les coche tout seul quand tu les rends. Le suivi est propre à chaque personnage : tu vois en un instant ce qu'il reste à faire sur ton main comme sur tes alts."
+L.FEAT_Daily     = L.FEAT_Daily     or "Vue Personnages : où en est chaque alt cette semaine\nListe « À faire » à épingler à l'écran\nRenom réel et quêtes du monde comptées en direct\nRappel avant le reset quotidien et hebdomadaire"
+L.DETAIL_Dgn     = L.DETAIL_Dgn     or "DgnTracker recense les instances de toutes les extensions, de Vanilla à Midnight : donjons, raids et gouffres. Chaque fiche donne les boss, tes verrous, le temps avant le reset et l'emplacement exact de l'entrée, vérifié en jeu."
+L.FEAT_Dgn       = L.FEAT_Dgn       or "Vue Saison : donjons M+ avec ta meilleure clé, raid en cours\nVues Près de moi et Favoris\nPoint de route vers l'entrée en un clic\nS'ouvre directement depuis LvlHistory et WeeklyCompass"
+L.DETAIL_Leg     = L.DETAIL_Leg     or "LegTracker suit les objets légendaires de chaque extension sur tout ton compte : déjà obtenu, détenu par un autre personnage, tour de force ou apparence débloquée. Pour chacun, il liste les quêtes et les composants à réunir."
+L.FEAT_Leg       = L.FEAT_Leg       or "Vue Collection de tout le compte\nRaids à farmer cette semaine\nAlerte quand un composant tombe\nCarte Légendaires sur le Dashboard"
+L.DETAIL_Rep     = L.DETAIL_Rep     or "RenTracker réunit tes réputations et ton Renom, de Vanilla à Midnight, rangés par extension. Il suit tout seul la faction de ta zone et liste les quêtes qui la font monter."
+L.FEAT_Rep       = L.FEAT_Rep       or "Checklist de la semaine par faction\nTemps restant estimé avant le prochain palier\nCoffres de Paragon signalés\nItinéraire vers le quartier-maître"
+L.DETAIL_Lvl     = L.DETAIL_Lvl     or "LvlHistory enregistre chaque session de jeu : XP gagnée, quêtes, donjons, or et temps passé. Il garde l'historique de tous tes personnages et calcule tes records."
+L.FEAT_Lvl       = L.FEAT_Lvl       or "Onglet Niveaux : temps par niveau et origine de l'XP\nClés M+ et records de saison\nXP reposée de chaque alt, suggestion « À monter ce soir »\nCarte Leveling sur le Dashboard"
+L.DETAIL_Weekly  = L.DETAIL_Weekly  or "WeeklyCompass te montre ce qu'il reste à faire cette semaine pour remplir la grande chambre forte : raid, donjons M+, gouffres et traque. La vue Personnages compare tous tes alts, une ligne chacun."
+L.FEAT_Weekly    = L.FEAT_Weekly    or "Niveau d'objet, or et verrous de raid de chaque alt\nFiche détaillée : équipement, statistiques, talents\nCopie du build en un clic\nMétiers et Repaires affichés dans la fiche"
+L.DETAIL_MiniHub = L.DETAIL_MiniHub or "MiniHub range les boutons d'addons qui encombrent la minicarte dans un seul conteneur. Tu choisis lesquels restent visibles, dans quel ordre et sous quelle forme."
+L.FEAT_MiniHub   = L.FEAT_MiniHub   or "Gestionnaire de boutons : favoris et ordre\nBarre rapide, vue liste ou mode tiroir\nPlacement collé à la minicarte\nPause automatique avec EllesmereUI, ElvUI ou Tukui"
+L.DETAIL_XPBar   = L.DETAIL_XPBar   or "XPBar remplace la barre d'expérience de Blizzard par une barre plus riche : XP actuelle, repos, quêtes terminées et XP réelle qu'elles rapporteront une fois rendues."
+L.FEAT_XPBar     = L.FEAT_XPBar     or "Projection des quêtes en cours\nHistorique de l'XP par niveau\nStyles prêts à l'emploi\nSuivi de la réputation au niveau maximum"
+L.DETAIL_RepBar  = L.DETAIL_RepBar  or "RepBar affiche une barre de réputation qui suit toute seule la faction de ta zone ou de ta dernière quête, à la place de la barre native de Blizzard."
+L.FEAT_RepBar    = L.FEAT_RepBar    or "Réputation par heure et temps avant le prochain palier\n« +250 » flottant à chaque gain\nCoffres de Parangon et récompense du prochain renom\n3 factions épinglées, historique au clic"
+L.DETAIL_Lair    = L.DETAIL_Lair    or "LairLens accompagne les Repaires de Midnight : il vérifie ton groupe avant d'entrer, enregistre chaque run et te dit quel butin vaut le coup pour ta spécialisation."
+L.FEAT_Lair      = L.FEAT_Lair      or "Fiche du Repaire avec /ll fiche\nHauts faits et records personnels\nBadge dans DgnTracker, colonne dans WeeklyCompass\nCarte Repaires sur le Dashboard"
+L.DETAIL_Skill   = L.DETAIL_Skill   or "SkillTracker suit les métiers de tous tes personnages, extension par extension : niveau, concentration et connaissances à récupérer cette semaine."
+L.FEAT_Skill     = L.FEAT_Skill     or "Concentration de chaque personnage projetée à l'instant\nConnaissances hebdomadaires restantes\nRecettes connues par personnage\n« Qui sait crafter ça ? » dans les infobulles"
+L.DETAIL_Post    = L.DETAIL_Post    or "PostBox gère ta boîte aux lettres : il relève tout le courrier en un clic, sans jamais payer un contre-remboursement par erreur, et garde la trace de tes ventes à l'hôtel des ventes."
+L.FEAT_Post      = L.FEAT_Post      or "Prise en masse sûre, un seul moteur\nMule automatique vers ton personnage banque\nBoîte aux lettres de tous tes personnages\nJournal HV : ventes, achats, totaux sur 7 et 30 jours"
+L.DETAIL_Stats   = L.DETAIL_Stats   or "Stats compte ce que tu fais en jeu, jour par jour et personnage par personnage : quêtes, or, donjons et M+, raids, gouffres, temps de jeu. Il produit le code qui alimente le Dashboard web et Tibi Companion."
+L.FEAT_Stats     = L.FEAT_Stats     or "Courbes par jour, semaine, mois ou année\nComparaison de personnages\nExport automatique à la déconnexion\nLégendaires, leveling et Repaires dans l'export"
+L.DETAIL_Opacity = L.DETAIL_Opacity or "Opacity rend transparentes les fenêtres du jeu et de tes addons quand tu n'en as pas besoin, et les fait réapparaître au survol. Il ne touche jamais au mode Édition."
+L.FEAT_Opacity   = L.FEAT_Opacity   or "Contextes : combat, raid, instance, monture...\nProfils par personnage et par spécialisation\nRéglage à la molette, directement sur l'écran\nGroupes de fenêtres liées"
 
 L.URL_HINT = L.URL_HINT or "Ctrl+C pour copier"
 
@@ -134,6 +183,17 @@ L.WIZ_IMPORT_TITLE  = L.WIZ_IMPORT_TITLE  or "Importer un profil"
 L.WIZ_IMPORT_DESC   = L.WIZ_IMPORT_DESC   or "Colle un code TS1: pour reprendre une configuration existante."
 L.WIZ_IMPORT_LABEL  = L.WIZ_IMPORT_LABEL  or "Code de profil (Ctrl+V dans la case) :"
 L.WIZ_IMPORT_APPLY  = L.WIZ_IMPORT_APPLY  or "Appliquer ce profil"
+L.WIZ_HERO_RIBBON   = L.WIZ_HERO_RIBBON   or "v%s : les 14 modules mis à jour pour la 12.1"
+L.WIZ_NEW_TAG       = L.WIZ_NEW_TAG       or "NOUVEAU"
+-- Etape 2 : vitrine du module selectionne
+L.WIZ_SHOW_NEW      = L.WIZ_SHOW_NEW      or "NOUVEAU CETTE SEMAINE"
+L.WIZ_SHOW_ON       = L.WIZ_SHOW_ON       or "Activé"
+L.WIZ_SHOW_OFF      = L.WIZ_SHOW_OFF      or "Désactivé"
+L.WIZ_SHOW_ENABLE   = L.WIZ_SHOW_ENABLE   or "Activer"
+L.WIZ_SHOW_DISABLE  = L.WIZ_SHOW_DISABLE  or "Désactiver"
+L.WIZ_SHOW_OPEN_FMT = L.WIZ_SHOW_OPEN_FMT or "En jeu : %s"
+L.WIZ_SHOW_WHAT     = L.WIZ_SHOW_WHAT     or "À QUOI ÇA SERT"
+L.WIZ_SHOW_FEATS    = L.WIZ_SHOW_FEATS    or "CE QUE TU Y TROUVES"
 -- Etape 2
 L.WIZ_PRESETS   = L.WIZ_PRESETS   or "PRÉRÉGLAGES"
 L.WIZ_PRESET_ALL     = L.WIZ_PRESET_ALL     or "Tout"
@@ -180,6 +240,9 @@ L.WIZ_FEED_PVP     = L.WIZ_FEED_PVP     or "PvP, gouffres, Torghast"
 L.WIZ_FEED_REP     = L.WIZ_FEED_REP     or "Réputations"
 L.WIZ_FEED_LEG     = L.WIZ_FEED_LEG     or "Légendaires"
 L.WIZ_FEED_WEEK    = L.WIZ_FEED_WEEK    or "Semaine du Warband"
+L.WIZ_FEED_CHARS   = L.WIZ_FEED_CHARS   or "Personnages et fiche"
+L.WIZ_FEED_LEVEL   = L.WIZ_FEED_LEVEL   or "Leveling"
+L.WIZ_FEED_LAIR    = L.WIZ_FEED_LAIR    or "Repaires"
 L.WIZ_FEED_OFF     = L.WIZ_FEED_OFF     or "inactif"
 L.COMPANION_TITLE = L.COMPANION_TITLE or "Tibi-Companion"
 L.COMPANION_BADGE = L.COMPANION_BADGE or "Gratuit"
@@ -256,6 +319,7 @@ L.WN_38_13 = L.WN_38_13 or "Gestionnaire de boutons, barre rapide, vue liste, mo
 L.WN_38_14 = L.WN_38_14 or "Profils par personnage et par spécialisation, réglage à la molette directement sur l'écran, groupes liés et six nouveaux contextes."
 L.WN_38_15 = L.WN_38_15 or "Clés Mythique+ de nouveau enregistrées. Le code d'export porte maintenant tes légendaires, ton leveling et tes Repaires ; un Repaire n'est plus compté comme un Gouffre."
 L.WN_38_16 = L.WN_38_16 or "Nouvelles cartes Légendaires, Leveling et Repaires sur le Dashboard web et dans Tibi Companion, cartes Personnages et Fiche repliables. 10 langues partout."
+L.WN_39_0  = L.WN_39_0  or "Installateur repensé : fenêtre agrandie, bandeau d'accueil avec les logos des 14 modules, étape Modules en liste avec une vitrine par module (à quoi il sert, ses points forts, sa nouveauté de la semaine, son raccourci et un bouton Activer), et les nouvelles cartes du Dashboard. Descriptions des 14 modules réécrites pour la 12.1."
 L.WN_36_1 = L.WN_36_1 or "DgnTracker mis à jour pour la 12.1 : points de route vérifiés en jeu (203 instances au bon endroit), noms et positions lus directement dans le jeu, et une quarantaine d'instances ajoutées."
 L.WN_36_2 = L.WN_36_2 or "Nouvelles vues Saison (donjons M+ avec votre meilleure clé, raid en cours, gouffres abondants), Près de moi et Favoris."
 L.WN_36_3 = L.WN_36_3 or "Chaque fiche affiche les boss, vos verrous et le temps avant le reset, avec les boutons Point de route et Journal d'aventure. /dg check contrôle les emplacements."
@@ -313,13 +377,17 @@ local PRESETS = {
 local FEEDS = {
   { L.WIZ_FEED_PROFILE, "Stats" }, { L.WIZ_FEED_QUESTS, "Stats" }, { L.WIZ_FEED_DUNGEON, "Stats" },
   { L.WIZ_FEED_EXPED, "Stats" },   { L.WIZ_FEED_PVP, "Stats" },    { L.WIZ_FEED_REP, "Rep" },
-  { L.WIZ_FEED_LEG, "Leg" },       { L.WIZ_FEED_WEEK, "Weekly" },
+  { L.WIZ_FEED_LEG, "Leg" },       { L.WIZ_FEED_WEEK, "Weekly" },  { L.WIZ_FEED_CHARS, "Weekly" },
+  { L.WIZ_FEED_LEVEL, "Lvl" },     { L.WIZ_FEED_LAIR, "Lair" },
 }
 
 -- Notes de version affichees par « Quoi de neuf ». A COMPLETER a chaque
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.39"] = {
+    { key = "Suite",   title = "TibiSuite", text = L.WN_39_0, new = true },
+  },
   -- Synthese de la semaine (7.1.5.26 a 7.1.5.38) : une ligne par module.
   ["7.1.5.38"] = {
     { key = "Suite",   title = "TibiSuite",            text = L.WN_38_0 },
@@ -902,7 +970,7 @@ end
 -- ================================================================
 local W     -- etat + widgets de l'installateur (construit une seule fois)
 local STEP_NAMES = { L.WIZ_STEP1, L.WIZ_STEP2, L.WIZ_STEP3, L.WIZ_STEP4, L.WIZ_STEP5, L.WIZ_STEP6 }
-local FW, FH = 780, 600          -- taille de la fenetre
+local FW, FH = 860, 640          -- taille de la fenetre (place pour les captures)
 local BODY_W = FW - 36           -- largeur utile des panneaux
 
 local function BuildWizard()
@@ -992,11 +1060,41 @@ local function BuildWizard()
   -- ===================== 1. BIENVENUE =====================
   do
     local p = NewPane(0)
-    local emb = p:CreateTexture(nil, "ARTWORK")
-    emb:SetSize(96, 96); emb:SetPoint("TOPLEFT", 6, -4); emb:SetTexture(LOGO)
+
+    -- ----- Bandeau d'accueil, entierement dessine (aucune image a charger) :
+    -- degrade du fond vers le rouge de la suite, grand logo en filigrane a
+    -- droite et rangee des logos des modules. -----
+    local HERO_H = 196
+    local hero = CreateFrame("Frame", nil, p)
+    hero:SetPoint("TOPLEFT", 0, 0); hero:SetSize(BODY_W, HERO_H)
+    local PANEL = UI.C.PANEL or { 0.055, 0.063, 0.082 }
+    local heroBG = hero:CreateTexture(nil, "BACKGROUND", nil, 1)
+    heroBG:SetAllPoints(); heroBG:SetColorTexture(1, 1, 1, 1)
+    if heroBG.SetGradient and CreateColor then
+      heroBG:SetGradient("HORIZONTAL", CreateColor(PANEL[1] + 0.02, PANEL[2] + 0.02, PANEL[3] + 0.03, 1),
+        CreateColor(0.20, 0.05, 0.08, 1))
+    else
+      heroBG:SetColorTexture(0.10, 0.06, 0.08, 1)
+    end
+    -- Filigrane : le logo de la suite, grand et presque transparent.
+    local mark = hero:CreateTexture(nil, "BACKGROUND", nil, 2)
+    mark:SetSize(250, 250); mark:SetPoint("RIGHT", 30, -10); mark:SetTexture(LOGO)
+    mark:SetBlendMode("ADD"); mark:SetAlpha(0.10)
+    local heroBottom = hero:CreateTexture(nil, "BORDER")
+    heroBottom:SetPoint("BOTTOMLEFT"); heroBottom:SetPoint("BOTTOMRIGHT"); heroBottom:SetHeight(1)
+    heroBottom:SetColorTexture(1, 1, 1, 0.08)
+    -- Les 14 logos de modules (fichiers deja livres avec chaque module).
+    W.heroLogos = CreateFrame("Frame", nil, hero)
+    W.heroLogos:SetPoint("BOTTOMRIGHT", -18, 18); W.heroLogos:SetSize(10, 26)
+    local heroEdge = hero:CreateTexture(nil, "BORDER")
+    heroEdge:SetPoint("TOPLEFT"); heroEdge:SetPoint("TOPRIGHT"); heroEdge:SetHeight(1)
+    heroEdge:SetColorTexture(COL.ACC[1], COL.ACC[2], COL.ACC[3], 0.6)
+
+    local emb = hero:CreateTexture(nil, "ARTWORK")
+    emb:SetSize(84, 84); emb:SetPoint("TOPLEFT", 22, -26); emb:SetTexture(LOGO)
     -- Halo rouge qui « respire » : le logo lui-meme, en fusion additive.
-    local glow = p:CreateTexture(nil, "BACKGROUND")
-    glow:SetSize(150, 150); glow:SetPoint("CENTER", emb, "CENTER"); glow:SetTexture(LOGO)
+    local glow = hero:CreateTexture(nil, "BORDER")
+    glow:SetSize(140, 140); glow:SetPoint("CENTER", emb, "CENTER"); glow:SetTexture(LOGO)
     glow:SetBlendMode("ADD"); glow:SetVertexColor(COL.ACC[1], COL.ACC[2], COL.ACC[3], 1)
     local ag = glow:CreateAnimationGroup(); ag:SetLooping("BOUNCE")
     local a = ag:CreateAnimation("Alpha"); a:SetFromAlpha(0.15); a:SetToAlpha(0.55); a:SetDuration(1.6)
@@ -1004,20 +1102,30 @@ local function BuildWizard()
     p:HookScript("OnShow", function() ag:Play() end)
     p:HookScript("OnHide", function() ag:Stop() end)
 
-    local h = Text(p, "GameFontNormalHuge", L.WIZ_HERO_TITLE, COL.TXT)
-    h:SetPoint("TOPLEFT", emb, "TOPRIGHT", 22, -18)
-    local intro = Text(p, "GameFontHighlight", L.INTRO, COL.MUT, BODY_W - 140)
+    local h = Text(hero, "GameFontNormalHuge", L.WIZ_HERO_TITLE, COL.TXT)
+    h:SetPoint("TOPLEFT", emb, "TOPRIGHT", 20, -10)
+    local intro = Text(hero, "GameFontHighlight", L.INTRO, COL.MUT, 470)
     intro:SetPoint("TOPLEFT", h, "BOTTOMLEFT", 0, -8)
+    -- Ruban « nouveau » : les mises a jour 12.1 de la semaine.
+    local ribbon = CreateFrame("Frame", nil, hero)
+    ribbon:SetPoint("BOTTOMLEFT", 22, 18); ribbon:SetSize(10, 22)
+    W.heroRibbon = ribbon
 
     local pills = CreateFrame("Frame", nil, p)
-    pills:SetPoint("TOPLEFT", 6, -122); pills:SetSize(BODY_W - 12, 24)
+    pills:SetPoint("TOPLEFT", 2, -(HERO_H + 10)); pills:SetSize(BODY_W - 4, 24)
     W.pillsHost = pills
 
-    local cw = (BODY_W - 12 - 2 * 10) / 3
+    local cw = (BODY_W - 4 - 2 * 10) / 3
+    local CHOICE_Y = -(HERO_H + 44)
     local function Choice(i, tag, tagCol, ttl, desc, onClick)
       local c = CreateFrame("Button", nil, p, "BackdropTemplate")
-      c:SetSize(cw, 118)
-      c:SetPoint("TOPLEFT", 6 + (i - 1) * (cw + 10), -160)
+      c:SetSize(cw, 108)
+      c:SetPoint("TOPLEFT", 2 + (i - 1) * (cw + 10), CHOICE_Y)
+      -- Liseré superieur aux couleurs de la carte (rouge pour la recommandee).
+      local top = c:CreateTexture(nil, "OVERLAY")
+      top:SetPoint("TOPLEFT", 1, -1); top:SetPoint("TOPRIGHT", -1, -1); top:SetHeight(2)
+      local tc = (i == 1) and COL.ACC or COL.DIM
+      top:SetColorTexture(tc[1], tc[2], tc[3], (i == 1) and 1 or 0.6)
       c:SetBackdrop(FLAT)
       c:SetBackdropColor(COL.CARD[1], COL.CARD[2], COL.CARD[3], 0.97)
       c:SetBackdropBorderColor(0, 0, 0, 1)
@@ -1038,7 +1146,7 @@ local function BuildWizard()
     end
 
     local imp = Card(p)
-    imp:SetPoint("TOPLEFT", 6, -290); imp:SetSize(BODY_W - 12, 76)
+    imp:SetPoint("TOPLEFT", 2, CHOICE_Y - 118); imp:SetSize(BODY_W - 4, 76)
     imp:Hide()
     local impL = Text(imp, "GameFontHighlightSmall", L.WIZ_IMPORT_LABEL, COL.MUT); impL:SetPoint("TOPLEFT", 12, -10)
     local eb = CreateFrame("EditBox", nil, imp, "InputBoxTemplate")
@@ -1106,13 +1214,137 @@ local function BuildWizard()
     counter:SetPoint("TOPRIGHT", -4, -6)
     W.counter = counter
 
-    local scroll = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
-    scroll:SetPoint("TOPLEFT", 0, -34); scroll:SetPoint("BOTTOMRIGHT", -24, 0)
+    -- ----- Liste des modules (gauche) -----
+    local LIST_W = 300
+    local list = Card(p)
+    list:SetPoint("TOPLEFT", 0, -34); list:SetPoint("BOTTOMLEFT", 0, 0); list:SetWidth(LIST_W)
+    local scroll = CreateFrame("ScrollFrame", nil, list, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 4, -4); scroll:SetPoint("BOTTOMRIGHT", -24, 4)
     local content = CreateFrame("Frame", nil, scroll)
-    content:SetSize(BODY_W - 26, 10)
+    content:SetSize(LIST_W - 30, 10)
     scroll:SetScrollChild(content)
+    if UI.SkinScrollBar then UI.SkinScrollBar(scroll, ACCENT_SUITE) end
     W.cardsHost = content
     W.cards = {}
+
+    -- ----- Vitrine du module selectionne (droite) -----
+    -- Uniquement du texte et le logo du module (le core reste leger) :
+    -- en-tete, « A quoi ca sert », 4 points forts, nouveautes de la semaine.
+    local SW = BODY_W - LIST_W - 10
+    local sc = Card(p)
+    sc:SetPoint("TOPLEFT", LIST_W + 10, -34); sc:SetPoint("BOTTOMRIGHT", 0, 0)
+    local IN_W = SW - 40        -- largeur utile du texte (marges de 20)
+    -- Liseré superieur aux couleurs du module.
+    local topLine = sc:CreateTexture(nil, "OVERLAY")
+    topLine:SetPoint("TOPLEFT", 1, -1); topLine:SetPoint("TOPRIGHT", -1, -1); topLine:SetHeight(2)
+    -- Halo discret derriere le logo, a la couleur du module.
+    local halo = sc:CreateTexture(nil, "BACKGROUND", nil, 1)
+    halo:SetSize(120, 120); halo:SetBlendMode("ADD"); halo:SetAlpha(0.35)
+
+    local ico = sc:CreateTexture(nil, "ARTWORK")
+    ico:SetSize(60, 60); ico:SetPoint("TOPLEFT", 20, -20)
+    halo:SetPoint("CENTER", ico, "CENTER"); halo:SetTexture(LOGO)
+    local name = Text(sc, "GameFontNormalHuge", "", COL.TXT)
+    name:SetPoint("TOPLEFT", ico, "TOPRIGHT", 14, -6)
+    local slash = Text(sc, "GameFontHighlightSmall", "", COL.DIM)
+    slash:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -6)
+    -- Bouton d'activation : deux boutons (styles differents), un seul affiche.
+    local bOn = Btn(sc, 112, 26, L.WIZ_SHOW_ENABLE, "pri")
+    local bOff = Btn(sc, 112, 26, L.WIZ_SHOW_DISABLE)
+    bOn:SetPoint("TOPRIGHT", -20, -22); bOff:SetPoint("TOPRIGHT", -20, -22)
+    local state = Text(sc, "GameFontHighlightSmall", "", COL.MUT)
+    state:SetPoint("TOP", bOn, "BOTTOM", 0, -6)
+    local warn = Text(sc, "GameFontHighlightSmall", L.WIZ_WOW_DISABLED, COL.WARN)
+    warn:SetPoint("TOPLEFT", ico, "BOTTOMLEFT", 0, -6)
+
+    local sep = sc:CreateTexture(nil, "ARTWORK")
+    sep:SetPoint("TOPLEFT", 20, -104); sep:SetPoint("TOPRIGHT", -20, -104); sep:SetHeight(1)
+    sep:SetColorTexture(1, 1, 1, 0.08)
+
+    local whatL = Label(sc, L.WIZ_SHOW_WHAT); whatL:SetPoint("TOPLEFT", 20, -116)
+    local detail = Text(sc, "GameFontHighlight", "", COL.TXT, IN_W)
+    detail:SetPoint("TOPLEFT", whatL, "BOTTOMLEFT", 0, -6)
+    detail:SetSpacing(3)
+    if detail.SetMaxLines then detail:SetMaxLines(4) end
+
+    local featL = Label(sc, L.WIZ_SHOW_FEATS)
+    local feats = {}
+    for i = 1, 4 do
+      local sq = sc:CreateTexture(nil, "ARTWORK"); sq:SetSize(6, 6)
+      local t = Text(sc, "GameFontHighlight", "", COL.MUT, IN_W - 16)
+      if t.SetMaxLines then t:SetMaxLines(2) end
+      sq:SetPoint("TOPLEFT", t, "TOPLEFT", -14, -4)
+      feats[i] = { sq = sq, t = t }
+    end
+
+    -- Encart « nouveau cette semaine » (synthese 12.1 du Quoi de neuf).
+    local news = CreateFrame("Frame", nil, sc)
+    news:SetPoint("BOTTOMLEFT", sc, "BOTTOMLEFT", 20, 14); news:SetPoint("BOTTOMRIGHT", sc, "BOTTOMRIGHT", -20, 14)
+    news:SetHeight(62)
+    local newsBG = news:CreateTexture(nil, "BACKGROUND"); newsBG:SetAllPoints()
+    newsBG:SetColorTexture(1, 0.82, 0, 0.05)
+    local newsBar = news:CreateTexture(nil, "ARTWORK")
+    newsBar:SetPoint("TOPLEFT"); newsBar:SetPoint("BOTTOMLEFT"); newsBar:SetWidth(2)
+    newsBar:SetColorTexture(COL.GOLD[1], COL.GOLD[2], COL.GOLD[3], 1)
+    local newsL = Text(news, "GameFontNormalSmall", L.WIZ_SHOW_NEW, COL.GOLD)
+    newsL:SetPoint("TOPLEFT", 12, -8)
+    local newsT = Text(news, "GameFontHighlightSmall", "", COL.TXT, IN_W - 24)
+    newsT:SetPoint("TOPLEFT", newsL, "BOTTOMLEFT", 0, -4)
+    if newsT.SetMaxLines then newsT:SetMaxLines(3) end
+
+    -- Fondu du contenu a chaque changement de module.
+    local fadeAG = sc:CreateAnimationGroup()
+    local fa = fadeAG:CreateAnimation("Alpha"); fa:SetFromAlpha(0.35); fa:SetToAlpha(1); fa:SetDuration(0.2)
+
+    function W.ShowModule(m)
+      if not m then return end
+      W.sel = m.key
+      local col = rgb(m)
+      local changed = (W._shownKey ~= m.key)
+      W._shownKey = m.key
+      topLine:SetColorTexture(col[1], col[2], col[3], 1)
+      halo:SetVertexColor(col[1], col[2], col[3], 1)
+      ico:SetTexture(logoOf(m.key))
+      name:SetText(m.addonName); name:SetTextColor(col[1], col[2], col[3])
+      slash:SetText(MODULE_SLASH[m.key] and string.format(L.WIZ_SHOW_OPEN_FMT, HX.GOLD .. MODULE_SLASH[m.key] .. "|r") or "")
+      warn:SetShown(TibiSuite.IsEnabledInWoW and not TibiSuite.IsEnabledInWoW(m.addonName) or false)
+      detail:SetText(L["DETAIL_" .. m.key] or L["DESC_" .. m.key] or "")
+      -- Points forts : une ligne par puce, empilees sous le paragraphe.
+      local lines = {}
+      for line in tostring(L["FEAT_" .. m.key] or ""):gmatch("[^\n]+") do lines[#lines + 1] = line end
+      featL:ClearAllPoints()
+      featL:SetPoint("TOPLEFT", detail, "BOTTOMLEFT", 0, -14)
+      featL:SetShown(#lines > 0)
+      local prev = featL
+      for i, f in ipairs(feats) do
+        local txt = lines[i]
+        f.t:ClearAllPoints()
+        if txt then
+          f.t:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", (prev == featL) and 14 or 0, (prev == featL) and -7 or -5)
+          f.t:SetText(txt)
+          f.sq:SetColorTexture(col[1], col[2], col[3], 1)
+          f.t:Show(); f.sq:Show()
+          prev = f.t
+        else
+          f.t:Hide(); f.sq:Hide()
+        end
+      end
+      local n = MODULE_NEWS[m.key]
+      local nt = n and L["WN_38_" .. n]
+      newsT:SetText(nt or ""); news:SetShown(nt ~= nil)
+      local on = W.choice[m.key] and true or false
+      bOn:SetShown(not on); bOff:SetShown(on)
+      state:SetText(on and (HX.OK .. L.WIZ_SHOW_ON .. "|r") or (HX.DIM .. L.WIZ_SHOW_OFF .. "|r"))
+      if changed then fadeAG:Stop(); fadeAG:Play() end
+    end
+    local function toggleSel()
+      if not W.sel then return end
+      W.choice[W.sel] = (not W.choice[W.sel]) or nil
+      W.preset = nil
+      W.RefreshCards()
+    end
+    bOn:SetScript("OnClick", toggleSel)
+    bOff:SetScript("OnClick", toggleSel)
   end
 
   -- ===================== 3. BARRE ET MINICARTE =====================
@@ -1321,7 +1553,7 @@ local function BuildWizard()
     local p = NewPane(3)
     local LW = 420
     local dash = Card(p)
-    dash:SetPoint("TOPLEFT", 0, 0); dash:SetSize(LW, 410)
+    dash:SetPoint("TOPLEFT", 0, 0); dash:SetSize(LW, 460)
     dash:SetBackdropBorderColor(COL.GOLD[1], COL.GOLD[2], COL.GOLD[3], 0.35)
     local gbar = dash:CreateTexture(nil, "OVERLAY")
     gbar:SetPoint("TOPLEFT", 0, 0); gbar:SetPoint("BOTTOMLEFT", 0, 0); gbar:SetWidth(3)
@@ -1346,7 +1578,7 @@ local function BuildWizard()
 
     local RW = BODY_W - LW - 10
     local comp = Card(p)
-    comp:SetPoint("TOPRIGHT", 0, 0); comp:SetSize(RW, 212)
+    comp:SetPoint("TOPRIGHT", 0, 0); comp:SetSize(RW, 262)
     comp:SetBackdropBorderColor(COL.GOLD[1], COL.GOLD[2], COL.GOLD[3], 0.35)
     local cbar = comp:CreateTexture(nil, "OVERLAY")
     cbar:SetPoint("TOPLEFT", 0, 0); cbar:SetPoint("BOTTOMLEFT", 0, 0); cbar:SetWidth(3)
@@ -1361,8 +1593,8 @@ local function BuildWizard()
     for _, line in ipairs({ L.COMPANION_LINE1, L.COMPANION_LINE2, L.COMPANION_LINE3 }) do
       local sq = comp:CreateTexture(nil, "ARTWORK"); sq:SetSize(5, 5); sq:SetPoint("TOPLEFT", 18, ly - 5)
       sq:SetColorTexture(COL.GOLD[1], COL.GOLD[2], COL.GOLD[3], 1)
-      local t = Text(comp, "GameFontHighlightSmall", line, COL.TXT, RW - 50); t:SetPoint("TOPLEFT", 30, ly)
-      ly = ly - math.max(18, (t:GetStringHeight() or 12) + 6)
+      local t = Text(comp, "GameFontHighlight", line, COL.TXT, RW - 50); t:SetPoint("TOPLEFT", 30, ly)
+      ly = ly - math.max(20, (t:GetStringHeight() or 14) + 8)
     end
     local dl = Btn(comp, 140, 26, L.COMPANION_BTN, "pri"); dl:SetPoint("BOTTOMLEFT", 16, 16)
     dl:SetScript("OnClick", function() ShowURL(URL_COMPANION) end)
@@ -1480,74 +1712,81 @@ local function BuildWizard()
   local function BuildCards()
     if cardsBuilt then return end
     cardsBuilt = true
+    -- Une ligne par module, groupees par categorie. Clic sur la ligne =
+    -- l'afficher dans la vitrine ; clic sur l'interrupteur = l'activer ou non.
+    -- Etats dessines par textures (SetColorTexture), jamais SetBackdropColor :
+    -- voir le piege des onglets d'etape (alpha perdu au premier affichage).
     local host = W.cardsHost
-    local CARDW = (BODY_W - 26 - 8) / 2
-    local CARDH = 58
+    local ROW_W = host:GetWidth()
+    local ROW_H = 32
     local y = -2
     local cats = { { "t", L.WIZ_CAT_T }, { "h", L.WIZ_CAT_H }, { "o", L.WIZ_CAT_O } }
     for _, cat in ipairs(cats) do
       local list = {}
       for _, m in ipairs(W.present) do if (GROUP[m.key] or "t") == cat[1] then list[#list + 1] = m end end
       if #list > 0 then
-        local h = Label(host, cat[2]); h:SetPoint("TOPLEFT", 4, y - 6)
-        local rule = host:CreateTexture(nil, "ARTWORK"); rule:SetColorTexture(1, 1, 1, 0.08); rule:SetHeight(1)
-        rule:SetPoint("LEFT", h, "RIGHT", 8, 0); rule:SetPoint("RIGHT", host, "RIGHT", -4, 0)
-        y = y - 26
-        for j, m in ipairs(list) do
+        local h = Label(host, cat[2]); h:SetPoint("TOPLEFT", 6, y - 6)
+        y = y - 22
+        for _, m in ipairs(list) do
           local col = rgb(m)
-          local card = CreateFrame("Button", nil, host, "BackdropTemplate")
-          card:SetSize(CARDW, CARDH)
-          local cc, rr = (j - 1) % 2, math.floor((j - 1) / 2)
-          card:SetPoint("TOPLEFT", 2 + cc * (CARDW + 8), y - rr * (CARDH + 8))
-          card:SetBackdrop(FLAT)
-          local barT = card:CreateTexture(nil, "OVERLAY")
-          barT:SetPoint("TOPLEFT", 0, 0); barT:SetPoint("BOTTOMLEFT", 0, 0); barT:SetWidth(3)
-          local ico = card:CreateTexture(nil, "ARTWORK")
-          ico:SetSize(36, 36); ico:SetPoint("LEFT", 12, 0); ico:SetTexture(logoOf(m.key))
-          local sw = makeSwitch(card, col); sw:SetPoint("RIGHT", -10, 0)
-          local nm = Text(card, "GameFontNormal", m.addonName, col); nm:SetPoint("TOPLEFT", ico, "TOPRIGHT", 10, 2)
-          -- Module desactive dans la liste d'addons de WoW : reactive a l'installation.
+          local row = CreateFrame("Button", nil, host)
+          row:SetSize(ROW_W, ROW_H)
+          row:SetPoint("TOPLEFT", 0, y)
+          local sel = row:CreateTexture(nil, "BACKGROUND")
+          sel:SetAllPoints(); sel:SetColorTexture(col[1] * 0.20, col[2] * 0.20, col[3] * 0.20, 1)
+          local hov = row:CreateTexture(nil, "BACKGROUND", nil, 1)
+          hov:SetAllPoints(); hov:SetColorTexture(1, 1, 1, 0.04); hov:Hide()
+          local barT = row:CreateTexture(nil, "ARTWORK")
+          barT:SetPoint("TOPLEFT", 0, -3); barT:SetPoint("BOTTOMLEFT", 0, 3); barT:SetWidth(3)
+          local ico = row:CreateTexture(nil, "ARTWORK")
+          ico:SetSize(24, 24); ico:SetPoint("LEFT", 10, 0); ico:SetTexture(logoOf(m.key))
+          local nm = Text(row, "GameFontHighlight", m.addonName, col); nm:SetPoint("LEFT", ico, "RIGHT", 8, 0)
+          -- Module desactive dans la liste d'addons de WoW : petit repere orange.
           if TibiSuite.IsEnabledInWoW and not TibiSuite.IsEnabledInWoW(m.addonName) then
-            local wn = Text(card, "GameFontHighlightSmall", L.WIZ_WOW_DISABLED, COL.WARN)
-            wn:SetPoint("LEFT", nm, "RIGHT", 8, 0)
+            local wn = Text(row, "GameFontNormalSmall", "!", COL.WARN); wn:SetPoint("LEFT", nm, "RIGHT", 5, 0)
           end
-          local ds = Text(card, "GameFontHighlightSmall", L["DESC_" .. m.key] or "", COL.MUT, CARDW - 110)
-          ds:SetPoint("TOPLEFT", nm, "BOTTOMLEFT", 0, -3)
-          if ds.SetMaxLines then ds:SetMaxLines(2) end
+          local sw = makeSwitch(row, col); sw:SetPoint("RIGHT", -6, 0)
           local function apply()
             local on = W.choice[m.key] and true or false
             sw._set(on)
+            sel:SetShown(W.sel == m.key)
             if on then
-              card:SetBackdropColor(COL.CARD[1], COL.CARD[2], COL.CARD[3], 0.97)
-              card:SetBackdropBorderColor(col[1] * 0.45, col[2] * 0.45, col[3] * 0.45, 1)
               barT:SetColorTexture(col[1], col[2], col[3], 1)
-              card:SetAlpha(1)
+              nm:SetTextColor(col[1], col[2], col[3]); ico:SetAlpha(1)
             else
-              card:SetBackdropColor(COL.CARD[1], COL.CARD[2], COL.CARD[3], 0.97)
-              card:SetBackdropBorderColor(0, 0, 0, 1)
               barT:SetColorTexture(0.16, 0.17, 0.2, 1)
-              card:SetAlpha(0.5)
+              nm:SetTextColor(COL.DIM[1], COL.DIM[2], COL.DIM[3]); ico:SetAlpha(0.4)
             end
           end
-          local function toggle()
+          row:SetScript("OnEnter", function() hov:Show() end)
+          row:SetScript("OnLeave", function() hov:Hide() end)
+          row:SetScript("OnClick", function() W.sel = m.key; W.RefreshCards() end)
+          sw:SetScript("OnClick", function()
+            W.sel = m.key
             W.choice[m.key] = (not W.choice[m.key]) or nil
             W.preset = nil
             W.RefreshCards()
-          end
-          card:SetScript("OnClick", toggle)
-          sw:SetScript("OnClick", toggle)
-          card._apply = apply
-          W.cards[#W.cards + 1] = card
+          end)
+          row._apply = apply
+          row._mod = m
+          W.cards[#W.cards + 1] = row
+          y = y - ROW_H - 2
         end
-        y = y - math.ceil(#list / 2) * (CARDH + 8) - 6
+        y = y - 6
       end
     end
     host:SetHeight(math.max(-y + 6, 10))
   end
 
+  local function ModByKey(key)
+    for _, m in ipairs(W.present) do if m.key == key then return m end end
+  end
+
   function W.RefreshCards()
     BuildCards()
+    if not (W.sel and ModByKey(W.sel)) then W.sel = W.present[1] and W.present[1].key end
     for _, cd in ipairs(W.cards) do cd._apply() end
+    if W.ShowModule then W.ShowModule(ModByKey(W.sel)) end
     for _, b in ipairs(W.presetBtns) do
       local on = (b._id == W.preset)
       b._sel:SetShown(on)
@@ -1573,7 +1812,32 @@ local function BuildWizard()
       local ch = Chip(W.pillsHost, txt, { col = COL.MUT })
       pillFrames[#pillFrames + 1] = ch
     end
-    Flow(pillFrames, BODY_W - 12, 6, 22)
+    Flow(pillFrames, BODY_W - 4, 6, 22)
+    -- Ruban du bandeau (construit une fois : la version ne change pas en session).
+    if W.heroRibbon and not W.heroRibbon._chip then
+      local rib = Chip(W.heroRibbon, HX.GOLD .. L.WIZ_NEW_TAG .. "|r   "
+        .. string.format(L.WIZ_HERO_RIBBON, TibiSuite.VERSION or "?"), { bar = COL.GOLD, col = COL.TXT })
+      rib:SetPoint("BOTTOMLEFT", 0, 0)
+      W.heroRibbon._chip = rib
+    end
+    -- Rangee des logos des modules presents (survol = nom du module).
+    if W.heroLogos and not W.heroLogos._built then
+      W.heroLogos._built = true
+      local n, S, G = #W.present, 26, 4
+      W.heroLogos:SetWidth(math.max(10, n * (S + G) - G))
+      for i, m in ipairs(W.present) do
+        local b = CreateFrame("Frame", nil, W.heroLogos)
+        b:SetSize(S, S); b:SetPoint("LEFT", (i - 1) * (S + G), 0)
+        local t = b:CreateTexture(nil, "ARTWORK"); t:SetAllPoints(); t:SetTexture(logoOf(m.key))
+        b:EnableMouse(true)
+        b:SetScript("OnEnter", function(s)
+          local c = rgb(m)
+          GameTooltip:SetOwner(s, "ANCHOR_TOP"); GameTooltip:AddLine(m.addonName, c[1], c[2], c[3])
+          GameTooltip:AddLine(L["DESC_" .. m.key] or "", 0.8, 0.8, 0.8, true); GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+      end
+    end
   end
 
   local feedFrames = {}

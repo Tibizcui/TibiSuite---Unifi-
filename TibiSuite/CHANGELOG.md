@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.39
+- Installateur repense : fenetre agrandie, bandeau d'accueil dessine (degrade, logo en filigrane, logos des 14 modules) avec le ruban des mises a jour 12.1, etape Modules en liste + vitrine (a quoi sert le module, ses 4 points forts, nouveautes de la semaine, raccourci, bouton Activer), nouvelles cartes du Dashboard (Personnages et fiche, Leveling, Repaires). Descriptions des 14 modules reecrites pour la 12.1 (FR + EN). Aucune image ajoutee : le core reste leger.
+- Fenetre Quoi de neuf : nouvelle entree 7.1.5.39 (FR + EN). Description a verifier en jeu : l'installateur redessine n'a pas ete teste dans un vrai client.
+
 ## 7.1.5.38
 - Fenetre Quoi de neuf : synthese de la semaine (versions 7.1.5.26 a 7.1.5.38), une ligne par module, plus une ligne Dashboard et Tibi Companion (FR + EN).
 - Fenetre Quoi de neuf : les notes defilent quand elles depassent la hauteur de l'ecran (barre de defilement habillee aux couleurs de la suite).

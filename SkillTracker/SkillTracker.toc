@@ -4,7 +4,7 @@
 ## Notes: Profession progress by expansion, concentration of all your characters and weekly knowledge. Module of the TibiSuite suite by Tibiscui.
 ## Notes-frFR: Progression des métiers par extension, concentration de tous tes personnages et connaissances de la semaine. Module de la suite TibiSuite par Tibiscui.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.38
+## Version: 7.1.5.39
 ## X-Curse-Project-ID: 1651940
 ## IconTexture: Interface\AddOns\SkillTracker\media\TibiSuiteIcon
 

@@ -4,7 +4,7 @@
 ## Notes: Dungeon, raid and delve guide for every expansion, Vanilla to Midnight: entrances, waypoints, lockouts, Mythic+ season, bountiful delves.
 ## Notes-frFR: Guide des donjons, raids et gouffres de toutes les extensions, de Vanilla a Midnight : entrees, points de route, verrous, saison Mythique+, gouffres abondants.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.38
+## Version: 7.1.5.39
 ## X-Curse-Project-ID: 1533504
 ## IconTexture: Interface\AddOns\DgnTracker\medias\TibiSuiteIcon
 
