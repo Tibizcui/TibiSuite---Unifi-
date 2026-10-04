@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.1.5.39
+-- TibiSuiteCore v7.1.5.40
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.1.5.39"
+local VERSION = "7.1.5.40"
 
 -- ================================================================
 -- LOCALISATION
@@ -433,6 +433,23 @@ local MODULES = {
     curseUrl    = "https://www.curseforge.com/wow/addons/tibisuite",  -- pas encore de projet CurseForge dedie
     saved       = { "OpacityDB" },
     escClose    = true,
+  },
+  {
+    key         = "Standby",
+    addonName   = "Standby",
+    label       = "Standby",
+    frameGlobal = "StandbyMainFrame",   -- fenetre d'options / apercu, PAS l'ecran d'absence (StandbyScreen)
+    mmBtnGlobal = "StandbyMinimapBtn",  -- propre bouton minimap seulement en mode standalone (masque si TibiSuite present)
+    toggleFn    = "Standby_Toggle",
+    optionsFn   = "Standby_OpenOptions",
+    doctorFn    = "Standby_DoctorNote",
+    slashList   = "TIBISTANDBY",  -- secours : /standby si la fonction Toggle est absente
+    col         = { r=0.949, g=0.471, b=0.624 },  -- rose aube #F2789F (identite Standby)
+    curseUrl    = "https://www.curseforge.com/wow/addons/tibisuite",  -- pas encore de projet CurseForge dedie
+    saved       = { "StandbyDB" },
+    escClose    = true,   -- la fenetre d'options seulement ; l'ecran d'absence ne passe jamais par Echap
+    -- Pas de migration ponctuelle (decision 2026-10-04) : decoche pour les
+    -- joueurs existants, actif pour une nouvelle installation.
   },
 }
 
@@ -1932,6 +1949,7 @@ local INDIVIDUAL_MM_BTNS = {
   "RepBarMinimapBtn",        -- RepBar (mode standalone uniquement)
   "LairLensMinimapBtn",      -- LairLens (mode standalone uniquement)
   "OpacityMinimapBtn",       -- Opacity (mode standalone uniquement)
+  "StandbyMinimapBtn",       -- Standby (mode standalone uniquement)
 }
 
 local function HideIndividualMinimapButtons()

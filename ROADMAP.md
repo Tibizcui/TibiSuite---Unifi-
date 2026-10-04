@@ -11,8 +11,8 @@
 
 ## Vue d'ensemble
 
-- **Version courante de la suite : 7.1.5.38**, synchronisée sur les 15
-  addons (14 modules + le core `TibiSuite`).
+- **Version courante de la suite : 7.1.5.40**, synchronisée sur les 16
+  addons (15 modules + le core `TibiSuite`).
 - Écosystème élargi autour de la suite (dépôts séparés) :
   - **Tibiscui.fr** — site web, héberge le Dashboard qui décode le code
     d'export du module Stats.
@@ -39,6 +39,7 @@
 | **RenTracker** | Stable | Suivi de réputation sur 13 extensions, bascule auto par zone. |
 | **RepBar** | Stable | Remplace la barre de réputation native, bascule auto via RenTracker. |
 | **SkillTracker** | Stable | Trois vues (extension courante / toutes / compte), pas de boutons flottants. |
+| **Standby** | **Nouveau (7.1.5.40), non testé en jeu** | Écran d'absence : 3 mises en page, fond scène / illustration / noir, tuiles de la suite, sorties automatiques, restauration garantie. Projet CurseForge à créer. |
 | **Stats** | Stable, dernière grosse feature livrée | Détail par événement (Phase 1+2) livré et confirmé en jeu le 2026-09-13. Voir section dédiée. |
 | **WeeklyCompass** | Stable | Dashboard hebdo unifié Saison 1/2. |
 | **XPBar** | Stable | Barre d'XP enrichie (repos, XP/h, temps restant estimé). |

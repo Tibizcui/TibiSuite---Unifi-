@@ -13,7 +13,7 @@ suite modulaire, sans perdre la progression des joueurs.
 Chaque dossier de premier niveau est un **addon WoW autonome** (le dossier donne
 son nom au fichier SavedVariables). `TibiSuite/` est le **core**. Modules :
 DailyTracker, DgnTracker, LairLens, LegTracker, LvlHistory, MiniHub, Opacity,
-PostBox, RenTracker, RepBar, SkillTracker, Stats, WeeklyCompass, XPBar.
+PostBox, RenTracker, RepBar, SkillTracker, Standby, Stats, WeeklyCompass, XPBar.
 
 - Core : `TibiSuite/Core/TibiSuiteCore.lua`
 - Options (cases à cocher) : `TibiSuite/Core/TibiSuiteOptions.lua`
@@ -46,7 +46,8 @@ Un module type contient : `<Nom>.toc`, `Core.lua` (logique + events), `UI.lua`,
 Daily=DailyTrackerDB, Dgn=DgnTrackerDB, Leg=LegTrackerDB, Rep=RenTrackerDB,
 Lvl=LvlHistoryDB, Weekly=WeeklyCompassDB, MiniHub=MiniHubDB, XPBar=XPBarDB,
 Lair=LairLensDB (+LairLensCharDB), Skill=SkillTrackerDB, Stats=StatsDB,
-RepBar=RepBarDB, PostBox=PostBoxDB, Opacity=OpacityDB. Core=TibiSuiteDB (+TibiSuiteCharDB).
+RepBar=RepBarDB, PostBox=PostBoxDB, Opacity=OpacityDB, Standby=StandbyDB.
+Core=TibiSuiteDB (+TibiSuiteCharDB).
 
 ## Architecture du core (`TibiSuiteCore.lua`)
 
@@ -192,6 +193,33 @@ enfants et régions, frame rendue à son propriétaire), sauf types qui dessinen
 eux-mêmes (Minimap, EditBox, modèles...). Un seul moteur d'animation
 (`Hover.lua`) qui s'endort quand rien ne bouge. Codes de profil `OPA1:` (LZW de
 Stats copié dans `Opacity/Libs`, non lu par le site).
+
+## Module Standby (écran d'absence, depuis 7.1.5.40)
+
+Accent rose aube `#F2789F` = `{0.949, 0.471, 0.624}`, clé de module `Standby`,
+slash `/standby` et `/afkscreen` (`test`, `on`, `off`, `probe`). Pas de
+migration ponctuelle dans le core : décoché pour les joueurs existants, actif
+pour une nouvelle installation (`enabledModules == nil`). `StandbyMainFrame` est
+la fenêtre d'options (onglet, `escClose`) ; l'écran lui-même est `StandbyScreen`,
+frame **sans parent**, strate FULLSCREEN_DIALOG, calée sur UIParent, pour rester
+visible quand UIParent est masquée. Fichiers : `Core.lua` (drapeau Absent,
+garde-fous, alertes, journal des messages en mémoire seulement), `Scene.lua`
+(UIParent, caméra, CVars, illustrations), `Tiles.lua`, `Sheet.lua` (titre, stats,
+équipement de la mise en page Fiche), `Screen.lua`, `UI.lua`,
+`Bridge.lua` (`StandbyAPI`, recherche, `Standby_DoctorNote`, sonde).
+Règles : jamais d'entrée en combat, sortie à `PLAYER_REGEN_DISABLED` ; **aucune
+sortie par Échap captée par nous** (ni UISpecialFrames + OnHide, ni OnKeyDown) :
+quand UIParent est masquée, Échap la fait réapparaître côté Blizzard et un
+ticker d'une seconde le constate. Les fenêtres Blizzard importantes (menu,
+StaticPopup, file prête...) sont scrutées par `IsShown`, sans crochet. Toute
+modification (CVars `maxFPS`/`maxFPSBk`/`useMaxFPS*`/`Sound_EnableAmbience`,
+rotation `MoveViewLeftStart`, UIParent) est notée dans `StandbyDB.restore`
+AVANT d'être faite, rejouée au retour, au logout et au login suivant.
+Fond « illustration » : images lues dans le journal des aventures
+(`EJ_GetInstanceByIndex`, loreImage puis bgImage), jamais embarquées (droits +
+poids). `ADDON_ACTION_BLOCKED` au nom de Standby => `safeMode` (voile au lieu de
+masquer UIParent). Chat : valeurs secrètes de Midnight neutralisées par
+`issecretvalue` avant toute opération.
 
 ## Module PostBox (courrier, inspiré du cahier des charges de Postal)
 

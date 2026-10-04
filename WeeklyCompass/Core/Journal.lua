@@ -210,3 +210,34 @@ function Journal:GetRoster()
     end)
     return roster, nHidden
 end
+
+-- ================================================================
+-- API PUBLIQUE (Standby) - lecture seule, depuis 7.1.5.40
+-- Lue par la tuile « Mes personnages » de Standby. Memes donnees que la vue
+-- Personnages (persos masques exclus, recompense deduite pour un perso pas
+-- reconnecte depuis le reset).
+-- ================================================================
+WeeklyCompassAPI = WeeklyCompassAPI or {}
+WeeklyCompassAPI.version = 1
+
+-- Renvoie { { key, name, realm, class, current, claim, inferred, ilvl }, ... }
+function WeeklyCompassAPI.GetAlts()
+    local out = {}
+    local ok, roster = pcall(Journal.GetRoster, Journal)
+    if not ok or type(roster) ~= "table" then return out end
+    local all = ns.DB:GetAllChars()
+    local me = ns.charKey and ns.charKey() or nil
+    for _, r in ipairs(roster) do
+        if not r.hidden then
+            local claim, inferred = false, false
+            for _, e in ipairs(r.entries or {}) do
+                if e.key == "greatVault:claim" then claim = true; inferred = e.inferred and true or false end
+            end
+            local snap = all[r.key] and all[r.key].snapshot
+            local il = snap and snap["profile:ilvl"] and tonumber(snap["profile:ilvl"].sortValue) or nil
+            out[#out + 1] = { key = r.key, name = r.name, realm = r.realm, class = r.class,
+                              current = (r.key == me), claim = claim, inferred = inferred, ilvl = il }
+        end
+    end
+    return out
+end

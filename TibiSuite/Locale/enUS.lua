@@ -168,6 +168,7 @@ L.DESC_RepBar  = "Reputation bar that follows your zone and quests: reputation p
 L.DESC_Post    = "Complete mailbox: safe bulk taking, automatic mule, mail of all your characters, AH ledger."
 L.DESC_Stats   = "Quests, gold, dungeons and M+, playtime per day and per character. Feeds the Dashboard and Tibi Companion."
 L.DESC_Opacity = "Window transparency on hover, in combat or mounted, per-specialization profiles, mouse-wheel tuning."
+L.DESC_Standby = "AFK screen: your hero, your week and your gear at a glance. Steps aside on its own for a queue, a ready check or combat."
 
 -- Vitrine de l'installateur
 L.DETAIL_Daily   = "DailyTracker lists the daily and weekly quests of Midnight and The War Within, and ticks them off on its own when you turn them in. Tracking is per character: you see at a glance what is left to do on your main and on your alts."
@@ -198,6 +199,8 @@ L.DETAIL_Stats   = "Stats counts what you do in game, day by day and character b
 L.FEAT_Stats     = "Curves per day, week, month or year\nCharacter comparison\nAutomatic export at logout\nLegendaries, leveling and Lairs in the export"
 L.DETAIL_Opacity = "Opacity makes the windows of the game and of your addons transparent when you don't need them, and brings them back on hover. It never touches Edit Mode."
 L.FEAT_Opacity   = "Contexts: combat, raid, instance, mounted...\nPer-character and per-specialization profiles\nMouse-wheel tuning, right on the screen\nLinked window groups"
+L.DETAIL_Standby = "Standby takes over when your character goes Away: the interface fades out and your hero takes center stage. When you come back, you see what is left to do tonight, read from the other modules of the suite. It steps aside on its own as soon as the game needs you."
+L.FEAT_Standby   = "Showcase, Character sheet, Minimal, Power saving, as a slideshow\nTonight\'s to-do and My characters tiles, read from the suite\nScene, expansion artwork or black background\nSteps aside on its own, settings always restored"
 
 L.URL_HINT = "Ctrl+C to copy"
 
@@ -265,7 +268,7 @@ L.WIZ_IMPORT_TITLE  = "Import a profile"
 L.WIZ_IMPORT_DESC   = "Paste a TS1: code to reuse an existing setup."
 L.WIZ_IMPORT_LABEL  = "Profile code (Ctrl+V in the box):"
 L.WIZ_IMPORT_APPLY  = "Apply this profile"
-L.WIZ_HERO_RIBBON   = "v%s: all 14 modules updated for 12.1"
+L.WIZ_HERO_RIBBON   = "v%s: new Standby module, the AFK screen"
 L.WIZ_NEW_TAG       = "NEW"
 L.WIZ_SHOW_NEW      = "NEW THIS WEEK"
 L.WIZ_SHOW_ON       = "Enabled"
@@ -395,6 +398,9 @@ L.WN_38_13 = "Button manager, quick bar, list view, drawer mode, and automatic p
 L.WN_38_14 = "Profiles per character and per specialization, mouse wheel tuning right on screen, linked groups and six new contexts."
 L.WN_38_15 = "Mythic+ keys recorded again. The export code now carries your legendaries, leveling and Lairs; a Lair no longer counts as a Delve."
 L.WN_38_16 = "New Legendaries, Leveling and Lairs cards on the web Dashboard and in Tibi Companion, collapsible Characters and Sheet cards. 10 languages everywhere."
+L.WN_40_2  = "DailyTracker, RenTracker, SkillTracker, LegTracker, WeeklyCompass and LvlHistory feed Standby's Tonight's to-do and My characters tiles (read only)."
+L.WN_40_0  = "New Standby module, the 15th of the suite: an AFK screen that steps aside as soon as the game needs you. Unchecked by default if you already had TibiSuite: check it in /ts modules."
+L.WN_40_1  = "AFK screen in 4 layouts (Showcase, Character sheet with gear and stats, Minimal, Power saving), scene, expansion artwork or black background, slideshow. Steps aside for a queue, a ready check or combat. /standby test for a preview."
 L.WN_39_0  = "Redesigned setup: larger window, a welcome banner with the logos of all 14 modules, a Modules step as a list with a showcase per module (what it is for, its strengths, this week's news, its shortcut and an Enable button), and the new Dashboard cards. Descriptions of the 14 modules rewritten for 12.1."
 L.WN_36_1 = "DgnTracker updated for 12.1: waypoints checked in-game (203 instances in the right place), names and positions read straight from the game, and about forty instances added."
 L.WN_36_2 = "New Season (Mythic+ dungeons with your best key, current raid, bountiful delves), Near me and Favorites views."

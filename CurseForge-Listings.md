@@ -1,7 +1,7 @@
 # TibiSuite - CurseForge Listing Content
 
 This file gathers everything needed to publish/update the CurseForge pages for
-**TibiSuite** and its 14 addons. Each entry has:
+**TibiSuite** and its 15 addons. Each entry has:
 - a **Short Summary** (English only, this is the one-liner shown in CurseForge
   search results / addon manager, keep it under ~200 characters),
 - a **Full Description**, written first in **English**, then in **French**.
@@ -810,3 +810,94 @@ en avez besoin.
 Raccourcis clavier : Menu du jeu > Options > Raccourcis > AddOns > Opacity.
 Commandes : `/opacity` ou `/opa` (`pick`, `shot`, `on`, `off`, `options`,
 `reset`).
+
+---
+
+## 15. Standby
+
+**Short Summary (English):**
+AFK screen: your hero, your week and your gear at a glance while you are away. Steps aside on its own for queues, ready checks and combat. Part of TibiSuite.
+
+### Full Description - English
+
+**Standby takes over when your character goes Away.** The interface fades out, your hero takes center stage, and the screen shows what matters while you are gone. When you come back, you see at a glance what is left to do tonight.
+
+**Four layouts**
+- **Showcase**: clock, messages received while you were away, tiles from the suite, and your character card with title, specialization, item level and secondary stats.
+- **Character sheet**: your character full height in the center, your gear in two columns (item level, enchants, gems, empty sockets flagged in red) and a stats panel.
+- **Minimal**: large clock, character card and timer, nothing else.
+- **Power saving**: black screen, discreet clock and timer, capped frame rate and muted ambient sounds.
+
+An optional **slideshow** alternates Showcase and Character sheet while you are away.
+
+**Three backgrounds**
+- **Scene**: the world stays visible, the camera slowly circles your hero, the game interface is hidden.
+- **Expansion artwork**: an illustration from the game's own Adventure Guide, shown as a framed picture over a darkened backdrop. Current expansion, a specific one, or a random one. Nothing is bundled with the addon.
+- **Black**.
+
+**Tiles**
+- **Great Vault** progress, and a reminder when a reward is waiting.
+- **Tonight's to-do**: weekly and daily quests left, reputation weeklies, profession knowledge, raids still open for a legendary.
+- **My characters**: your alts that are waiting for something (vault reward, full concentration, full rested XP).
+- Experience and rested XP, concentration, Mythic keystone, watched reputation, daily and weekly resets, waiting mail.
+
+The tiles get richer with the other TibiSuite modules installed (DailyTracker, RenTracker, SkillTracker, LegTracker, WeeklyCompass, LvlHistory, XPBar). Standby only reads their data, it never changes it.
+
+**Safe by design**
+- **Steps aside on its own**: queue ready, battleground, ready check, summon, group invite, duel, trade, combat, death, loading screen, cinematic.
+- **Never shows up in combat.** Optional: not in instances, raids or groups.
+- **Comes back the way you want**: move, click the screen, or press Escape.
+- **Your settings are always restored**: frame rate cap, ambient sound and camera go back to normal when you return, at logout, and at the next login after a crash.
+- **Safe mode**: if the game ever refuses to hide the interface, a dark veil covers it instead.
+- Stands aside when ElvUI's own AFK screen is enabled.
+- Messages received while away are kept in memory only, never saved to disk.
+
+**Also**
+- Short delay before the screen appears (1 second by default, adjustable).
+- Privacy mode for streaming: hides name, title, guild, realm and gold.
+- Chat summary when you come back: time away and messages received.
+- Available in 10 languages.
+
+Slash commands: `/standby` (options), `/standby test` (15 second preview), `/standby status` (why the screen shows or not), `/standby probe` (in-game check). Also `/afkscreen`.
+
+### Full Description - Français
+
+**Standby prend le relais quand votre personnage passe Absent.** L'interface s'efface, votre héros passe au premier plan, et l'écran affiche ce qui compte pendant la pause. À votre retour, vous voyez d'un coup d'œil ce qu'il vous reste à faire ce soir.
+
+**Quatre mises en page**
+- **Vitrine** : horloge, messages reçus pendant l'absence, tuiles de la suite, et carte du personnage avec titre, spécialisation, niveau d'objet et statistiques secondaires.
+- **Fiche** : votre personnage sur toute la hauteur au centre, son équipement en deux colonnes (niveau d'objet, enchantements, gemmes, châsses vides signalées en rouge) et un panneau de statistiques.
+- **Épurée** : grande horloge, carte du personnage et minuteur, rien d'autre.
+- **Économie** : écran noir, horloge et minuteur discrets, images par seconde bridées et sons d'ambiance coupés.
+
+Un **diaporama** facultatif alterne Vitrine et Fiche pendant l'absence.
+
+**Trois fonds**
+- **Scène** : le monde reste visible, la caméra tourne lentement autour de votre héros, l'interface du jeu est masquée.
+- **Illustration d'extension** : une illustration du journal des aventures du jeu, présentée en tableau sur une ambiance assombrie. Extension actuelle, extension au choix ou au hasard. Rien n'est embarqué dans l'addon.
+- **Noir**.
+
+**Tuiles**
+- **Grande chambre forte** : progression, et rappel quand une récompense vous attend.
+- **À faire ce soir** : quêtes hebdomadaires et quotidiennes restantes, hebdos de réputation, connaissances de métier, raids encore libres pour un légendaire.
+- **Mes personnages** : vos autres personnages qui attendent quelque chose (récompense de la chambre forte, concentration pleine, repos plein).
+- Expérience et repos, concentration, clé mythique, réputation suivie, réinitialisations quotidienne et hebdomadaire, courrier en attente.
+
+Les tuiles s'enrichissent avec les autres modules de TibiSuite (DailyTracker, RenTracker, SkillTracker, LegTracker, WeeklyCompass, LvlHistory, XPBar). Standby ne fait que lire leurs données, il ne les modifie jamais.
+
+**Sûr par conception**
+- **S'écarte tout seul** : file prête, champ de bataille, appel, convocation, invitation de groupe, duel, échange, combat, mort, écran de chargement, cinématique.
+- **Jamais d'affichage en combat.** En option : pas en instance, en raid ou en groupe.
+- **Vous revenez comme vous voulez** : en bougeant, en cliquant sur l'écran, ou avec Échap.
+- **Vos réglages toujours rétablis** : limite d'images par seconde, son d'ambiance et caméra reviennent à la normale au retour, à la déconnexion, et au login suivant en cas de crash.
+- **Mode sûr** : si le jeu refuse un jour de masquer l'interface, un voile sombre la recouvre à la place.
+- Se met en retrait si l'écran d'absence d'ElvUI est activé.
+- Les messages reçus pendant l'absence restent en mémoire, ils ne sont jamais enregistrés sur le disque.
+
+**Aussi**
+- Court délai avant l'affichage (1 seconde par défaut, réglable).
+- Mode discret pour le streaming : masque nom, titre, guilde, royaume et or.
+- Résumé dans le chat au retour : durée de l'absence et messages reçus.
+- Disponible en 10 langues.
+
+Commandes : `/standby` (options), `/standby test` (aperçu de 15 secondes), `/standby status` (pourquoi l'écran s'affiche ou non), `/standby probe` (vérification en jeu). Aussi `/afkscreen`.

@@ -83,6 +83,15 @@ function pub.GetSession()
     }
 end
 
+--- Cles de tous les persos connus ("Nom-Royaume"), triees. Lue par la tuile
+--- « Mes personnages » de Standby (depuis 7.1.5.40).
+function pub.ListChars()
+    local out = {}
+    for key in pairs(Chars()) do out[#out + 1] = key end
+    table.sort(out)
+    return out
+end
+
 --- Resume d'un perso ("Nom-Royaume", perso connecte par defaut).
 function pub.GetCharSummary(key)
     key = key or T.charKey

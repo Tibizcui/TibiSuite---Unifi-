@@ -4,7 +4,7 @@
 ## Notes: Group audit, weekly status, loot and history for Lairs (12.1).
 ## Notes-frFR: Audit de groupe, semaine, butin et historique des Repaires (12.1).
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.39
+## Version: 7.1.5.40
 ## X-Curse-Project-ID: 1651462
 
 # ----------------------------------------------------------------

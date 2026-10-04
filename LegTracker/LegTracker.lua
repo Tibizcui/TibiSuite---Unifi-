@@ -1,5 +1,5 @@
 -- ================================================================
--- LegTracker v7.1.5.39
+-- LegTracker v7.1.5.40
 -- Suivi des objets legendaires de toutes les extensions WoW
 -- Auteur : Tibiscui - Kirin Tor
 -- Design & architecture propre a LegTracker
@@ -2626,7 +2626,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
     end
 
-    print(COL_BLUE .. "LegTracker v7.1.5.39" .. COL_RESET
+    print(COL_BLUE .. "LegTracker v7.1.5.40" .. COL_RESET
           .. " " .. T("LOGIN_LOADED", "chargé -- tapez") .. " " .. COL_GOLD .. "/lt" .. COL_RESET .. " " .. T("LOGIN_TO_OPEN", "pour ouvrir.")
           .. " |cFF888888" .. T("LOGIN_SUBCMDS", "(/lt scan = forcer scan, /lt verify = controler les IDs, /lt reset = reinit donnees compte)") .. "|r")
 
@@ -2662,4 +2662,31 @@ function LegTracker_Toggle()
     mainFrame:RefreshContent()
     LegTrackerDB.open = true
   end
+end
+
+-- ================================================================
+-- API PUBLIQUE (Standby) - lecture seule, depuis 7.1.5.40
+-- Lue par la tuile « A faire ce soir » de Standby. Meme regle que l'en-tete
+-- de l'onglet Collection : legendaires non obtenus, equipables par ce
+-- personnage, hors legacy, dont le raid n'a pas de verrou cette semaine.
+-- ================================================================
+LegTrackerAPI = LegTrackerAPI or {}
+LegTrackerAPI.version = 1
+
+-- Renvoie la liste des noms de raids encore libres (vide si rien a farmer).
+function LegTrackerAPI.GetFarmRaids()
+  local out, seen = {}, {}
+  for _, ext in ipairs((LegTrackerData and LegTrackerData.Extensions) or {}) do
+    for _, it in ipairs(ext.items or {}) do
+      if not it.placeholder and it._status ~= "OBTAINED" and it.raids and HasClass(it) and not it.legacy then
+        for _, raid in ipairs(it.raids) do
+          if not seen[raid.instanceID] and #GetRaidLockouts(raid.instanceID) == 0 then
+            seen[raid.instanceID] = true
+            out[#out + 1] = RaidName(raid)
+          end
+        end
+      end
+    end
+  end
+  return out
 end

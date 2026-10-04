@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.1.5.40
+- Nouveau module Standby (15e module) : entree du catalogue (prereglage End-game compris) (cle Standby, accent rose aube #F2789F, ligne /ts doctor), bouton minimap individuel masque, logo et vitrine dans l'installateur (FR + EN), raccourci /standby.
+- Pas de migration ponctuelle : Standby est decoche pour les joueurs qui avaient deja TibiSuite, actif pour une nouvelle installation.
+- Fenetre Quoi de neuf : entree 7.1.5.40 (FR + EN), trois lignes : Standby, les six modules qui alimentent ses tuiles, la suite. Ruban de l'installateur mis a jour. Non teste dans un vrai client WoW.
+
 ## 7.1.5.39
 - Installateur repense : fenetre agrandie, bandeau d'accueil dessine (degrade, logo en filigrane, logos des 14 modules) avec le ruban des mises a jour 12.1, etape Modules en liste + vitrine (a quoi sert le module, ses 4 points forts, nouveautes de la semaine, raccourci, bouton Activer), nouvelles cartes du Dashboard (Personnages et fiche, Leveling, Repaires). Descriptions des 14 modules reecrites pour la 12.1 (FR + EN). Aucune image ajoutee : le core reste leger.
 - Fenetre Quoi de neuf : nouvelle entree 7.1.5.39 (FR + EN). Description a verifier en jeu : l'installateur redessine n'a pas ete teste dans un vrai client.

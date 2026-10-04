@@ -2386,3 +2386,18 @@ end)
 function DailyTracker_Toggle()
   ToggleMain()
 end
+
+-- ================================================================
+-- API PUBLIQUE (Standby) - lecture seule, depuis 7.1.5.40
+-- Lue par la tuile « A faire ce soir » de Standby. Meme calcul que la liste
+-- « A faire » et le badge (extension courante, personnage connecte).
+-- ================================================================
+DailyTrackerAPI = DailyTrackerAPI or {}
+DailyTrackerAPI.version = 1
+
+-- Renvoie weeklyLeft, dailyLeft (nombres d'activites restantes).
+function DailyTrackerAPI.GetRemaining()
+  local weekly = #GetRemaining(CURRENT_EXT, false)
+  local all = #GetRemaining(CURRENT_EXT, true)
+  return weekly, all - weekly
+end

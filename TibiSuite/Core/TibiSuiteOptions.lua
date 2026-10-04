@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.39
+-- TibiSuiteOptions v7.1.5.40
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -33,6 +33,7 @@ local MODULE_LOGO = {
   Post    = "Interface\\AddOns\\PostBox\\medias\\Logo",
   Stats   = "Interface\\AddOns\\Stats\\medias\\Logo",
   Opacity = "Interface\\AddOns\\Opacity\\medias\\Logo",
+  Standby = "Interface\\AddOns\\Standby\\medias\\Logo",
   Suite   = LOGO,
 }
 
@@ -41,17 +42,19 @@ local MODULE_LOGO = {
 -- FEAT_) et des logos deja presents dans les dossiers des modules.
 
 -- Ligne « nouveau cette semaine » de chaque module dans la vitrine de
--- l'installateur : reprend la synthese 12.1 du Quoi de neuf (WN_38_*).
+-- l'installateur : reprend la synthese 12.1 du Quoi de neuf (WN_38_*). Une
+-- valeur texte designe directement la cle de localisation (module plus recent).
 local MODULE_NEWS = {
   Weekly = 2, Rep = 3, RepBar = 4, XPBar = 5, Leg = 6, Daily = 7, Lvl = 8,
   Skill = 9, Dgn = 10, Lair = 11, Post = 12, MiniHub = 13, Opacity = 14, Stats = 15,
+  Standby = "WN_40_1",
 }
 
 -- Raccourci de chaque module, affiche dans la vitrine.
 local MODULE_SLASH = {
   Daily = "/dt", Dgn = "/dg", Leg = "/lt", Rep = "/rt", Lvl = "/lvlh", Weekly = "/wc",
   MiniHub = "/mh", XPBar = "/xpbar", RepBar = "/repbar", Lair = "/ll", Skill = "/skt",
-  Post = "/pb", Stats = "/stats", Opacity = "/opa",
+  Post = "/pb", Stats = "/stats", Opacity = "/opa", Standby = "/standby",
 }
 
 -- ================================================================
@@ -81,6 +84,7 @@ L.DESC_RepBar  = L.DESC_RepBar  or "Barre de réputation qui suit ta zone et tes
 L.DESC_Post    = L.DESC_Post    or "Boîte aux lettres complète : prise en masse sûre, mule automatique, courrier de tous tes persos, journal HV."
 L.DESC_Stats   = L.DESC_Stats   or "Quêtes, or, donjons et M+, temps de jeu par jour et par personnage. Alimente le Dashboard et Tibi Companion."
 L.DESC_Opacity = L.DESC_Opacity or "Transparence des fenêtres au survol, en combat ou en monture, profils par spécialisation, réglage à la molette."
+L.DESC_Standby = L.DESC_Standby or "Écran d'absence : ton héros, ta semaine et ton équipement d'un coup d'œil. S'écarte tout seul pour une file, un appel ou un combat."
 
 -- Vitrine de l'installateur : explication detaillee (DETAIL_) et points forts
 -- (FEAT_, un par ligne, 4 maximum) de chaque module.
@@ -112,6 +116,8 @@ L.DETAIL_Stats   = L.DETAIL_Stats   or "Stats compte ce que tu fais en jeu, jour
 L.FEAT_Stats     = L.FEAT_Stats     or "Courbes par jour, semaine, mois ou année\nComparaison de personnages\nExport automatique à la déconnexion\nLégendaires, leveling et Repaires dans l'export"
 L.DETAIL_Opacity = L.DETAIL_Opacity or "Opacity rend transparentes les fenêtres du jeu et de tes addons quand tu n'en as pas besoin, et les fait réapparaître au survol. Il ne touche jamais au mode Édition."
 L.FEAT_Opacity   = L.FEAT_Opacity   or "Contextes : combat, raid, instance, monture...\nProfils par personnage et par spécialisation\nRéglage à la molette, directement sur l'écran\nGroupes de fenêtres liées"
+L.DETAIL_Standby = L.DETAIL_Standby or "Standby prend le relais quand ton personnage passe Absent : l'interface s'efface et ton héros passe au premier plan. À ton retour, tu vois ce qu'il reste à faire ce soir, lu dans les autres modules de la suite. Il s'écarte tout seul dès que le jeu a besoin de toi."
+L.FEAT_Standby   = L.FEAT_Standby   or "Vitrine, Fiche du personnage, Épurée, Économie, en diaporama\nTuiles À faire ce soir et Mes personnages, lues dans la suite\nFond Scène, illustration d\'extension ou noir\nS\'écarte tout seul, réglages toujours rétablis"
 
 L.URL_HINT = L.URL_HINT or "Ctrl+C pour copier"
 
@@ -183,7 +189,7 @@ L.WIZ_IMPORT_TITLE  = L.WIZ_IMPORT_TITLE  or "Importer un profil"
 L.WIZ_IMPORT_DESC   = L.WIZ_IMPORT_DESC   or "Colle un code TS1: pour reprendre une configuration existante."
 L.WIZ_IMPORT_LABEL  = L.WIZ_IMPORT_LABEL  or "Code de profil (Ctrl+V dans la case) :"
 L.WIZ_IMPORT_APPLY  = L.WIZ_IMPORT_APPLY  or "Appliquer ce profil"
-L.WIZ_HERO_RIBBON   = L.WIZ_HERO_RIBBON   or "v%s : les 14 modules mis à jour pour la 12.1"
+L.WIZ_HERO_RIBBON   = L.WIZ_HERO_RIBBON   or "v%s : nouveau module Standby, l'écran d'absence"
 L.WIZ_NEW_TAG       = L.WIZ_NEW_TAG       or "NOUVEAU"
 -- Etape 2 : vitrine du module selectionne
 L.WIZ_SHOW_NEW      = L.WIZ_SHOW_NEW      or "NOUVEAU CETTE SEMAINE"
@@ -319,6 +325,9 @@ L.WN_38_13 = L.WN_38_13 or "Gestionnaire de boutons, barre rapide, vue liste, mo
 L.WN_38_14 = L.WN_38_14 or "Profils par personnage et par spécialisation, réglage à la molette directement sur l'écran, groupes liés et six nouveaux contextes."
 L.WN_38_15 = L.WN_38_15 or "Clés Mythique+ de nouveau enregistrées. Le code d'export porte maintenant tes légendaires, ton leveling et tes Repaires ; un Repaire n'est plus compté comme un Gouffre."
 L.WN_38_16 = L.WN_38_16 or "Nouvelles cartes Légendaires, Leveling et Repaires sur le Dashboard web et dans Tibi Companion, cartes Personnages et Fiche repliables. 10 langues partout."
+L.WN_40_2  = L.WN_40_2  or "DailyTracker, RenTracker, SkillTracker, LegTracker, WeeklyCompass et LvlHistory alimentent les tuiles À faire ce soir et Mes personnages de Standby (lecture seule)."
+L.WN_40_0  = L.WN_40_0  or "Nouveau module Standby, le 15e de la suite : un écran d'absence qui s'efface dès que le jeu a besoin de toi. Décoché par défaut si tu avais déjà TibiSuite : coche-le dans /ts modules."
+L.WN_40_1  = L.WN_40_1  or "Écran d'absence en 4 mises en page (Vitrine, Fiche du personnage avec équipement et stats, Épurée, Économie), fond scène, illustration d'extension ou noir, diaporama. Sortie automatique pour une file, un appel ou un combat. /standby test pour l'aperçu."
 L.WN_39_0  = L.WN_39_0  or "Installateur repensé : fenêtre agrandie, bandeau d'accueil avec les logos des 14 modules, étape Modules en liste avec une vitrine par module (à quoi il sert, ses points forts, sa nouveauté de la semaine, son raccourci et un bouton Activer), et les nouvelles cartes du Dashboard. Descriptions des 14 modules réécrites pour la 12.1."
 L.WN_36_1 = L.WN_36_1 or "DgnTracker mis à jour pour la 12.1 : points de route vérifiés en jeu (203 instances au bon endroit), noms et positions lus directement dans le jeu, et une quarantaine d'instances ajoutées."
 L.WN_36_2 = L.WN_36_2 or "Nouvelles vues Saison (donjons M+ avec votre meilleure clé, raid en cours, gouffres abondants), Près de moi et Favoris."
@@ -362,13 +371,13 @@ L.PF_RELOAD_ASK = L.PF_RELOAD_ASK or "Profil appliqué.\n\nCertains modules ne c
 
 -- Categorie pour l'installateur : "h" = barre permanente, "o" = outil, sinon
 -- "t" (tracker, fenetre).
-local GROUP = { XPBar = "h", RepBar = "h", MiniHub = "o", Post = "o", Opacity = "o" }
+local GROUP = { XPBar = "h", RepBar = "h", MiniHub = "o", Post = "o", Opacity = "o", Standby = "o" }
 
 -- Prereglages de l'etape Modules (cles du catalogue).
 local PRESETS = {
   { id = "all",     label = L.WIZ_PRESET_ALL },
   { id = "level",   label = L.WIZ_PRESET_LEVEL,   keys = { "XPBar", "RepBar", "Lvl", "Daily", "Rep", "Stats", "MiniHub" } },
-  { id = "end",     label = L.WIZ_PRESET_END,     keys = { "Weekly", "Dgn", "Lair", "Leg", "Stats", "Rep", "Daily", "Skill", "MiniHub" } },
+  { id = "end",     label = L.WIZ_PRESET_END,     keys = { "Weekly", "Dgn", "Lair", "Leg", "Stats", "Rep", "Daily", "Skill", "MiniHub", "Standby" } },
   { id = "collect", label = L.WIZ_PRESET_COLLECT, keys = { "Leg", "Rep", "Dgn", "Skill", "Stats", "Weekly", "MiniHub" } },
   { id = "min",     label = L.WIZ_PRESET_MIN,     keys = { "Stats", "XPBar", "MiniHub" } },
 }
@@ -385,6 +394,11 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.40"] = {
+    { key = "Standby", title = "Standby",   text = L.WN_40_1, new = true },
+    { key = "Standby", title = "Standby",   text = L.WN_40_2 },
+    { key = "Suite",   title = "TibiSuite", text = L.WN_40_0 },
+  },
   ["7.1.5.39"] = {
     { key = "Suite",   title = "TibiSuite", text = L.WN_39_0, new = true },
   },
@@ -1330,7 +1344,7 @@ local function BuildWizard()
         end
       end
       local n = MODULE_NEWS[m.key]
-      local nt = n and L["WN_38_" .. n]
+      local nt = n and (type(n) == "string" and L[n] or L["WN_38_" .. n])
       newsT:SetText(nt or ""); news:SetShown(nt ~= nil)
       local on = W.choice[m.key] and true or false
       bOn:SetShown(not on); bOff:SetShown(on)

@@ -894,6 +894,18 @@ _G.SkillTrackerAPI = {
   end,
   -- Vitesse de recharge apprise (fraction du max par seconde), ou nil.
   GetConcRate = function() return ST.ConcRate and ST.ConcRate() or nil end,
+  -- Concentrations pleines de tous les persos connus (metiers principaux),
+  -- lue par la tuile « Mes personnages » de Standby (depuis 7.1.5.40) :
+  -- { { realm, name, class, prof, current }, ... }
+  GetFullConcentrations = function()
+    local out = {}
+    for _, e in ipairs(ST.ConcList and ST.ConcList() or {}) do
+      if e.pr and e.pr.full then
+        out[#out + 1] = { realm = e.realm, name = e.name, class = e.class, prof = e.prof, current = e.current }
+      end
+    end
+    return out
+  end,
 }
 
 -- ================================================================

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.40
+- SkillTrackerAPI.GetFullConcentrations() (lecture seule) : concentrations pleines de tous les personnages, lue par la tuile Mes personnages de Standby. Non teste en jeu.
+
 ## 7.1.5.39
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir TibiSuite 7.1.5.39 pour le detail : installateur repense).
 

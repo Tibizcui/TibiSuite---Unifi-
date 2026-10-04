@@ -1,5 +1,5 @@
 -- ================================================================
--- RenTracker v7.1.5.39
+-- RenTracker v7.1.5.40
 -- Suivi des reputations | Toutes les extensions depuis vanilla
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
@@ -2671,7 +2671,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- zone) si la connexion est deja effective. Aucun impact sur les donnees.
     if IsLoggedIn() then
       if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-        print("|cFF4D99FFRenTracker|r v7.1.5.39 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+        print("|cFF4D99FFRenTracker|r v7.1.5.40 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
       ScheduleParagonScan(3)
@@ -2679,7 +2679,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
 
   elseif event == "PLAYER_LOGIN" then
     if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-      print("|cFF4D99FFRenTracker|r v7.1.5.39 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFRenTracker|r v7.1.5.40 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)
@@ -2705,3 +2705,23 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
   end
 
 end)
+
+-- ================================================================
+-- API PUBLIQUE (Standby) - lecture seule, depuis 7.1.5.40
+-- Lue par la tuile « A faire ce soir » de Standby. Meme decompte que le
+-- recapitulatif de la fenetre (extension affichee, unites dedoublonnees).
+-- ================================================================
+RenTrackerAPI = RenTrackerAPI or {}
+RenTrackerAPI.version = 1
+
+-- Renvoie left, total (quetes hebdo de reputation restantes / comptees).
+function RenTrackerAPI.GetWeeklyRemaining()
+  local units = {}
+  for _, f in ipairs(GetActiveFactions()) do CollectWeeklyUnits(f, units) end
+  local left, total = 0, 0
+  for _, isDone in pairs(units) do
+    total = total + 1
+    if not isDone then left = left + 1 end
+  end
+  return left, total
+end
