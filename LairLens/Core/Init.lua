@@ -9,7 +9,7 @@ local ADDON, LL = ...
 LL.modules = {}       -- modules enregistres (audit, recompenses, ...)
 LL.callbacks = {}     -- abonnes internes par evenement logique
 LL.frame = CreateFrame("Frame", "LairLensEventFrame")
-LL.VERSION = "7.1.5.40"
+LL.VERSION = "7.1.5.41"
 
 -- Valeurs par defaut des SavedVariables. On ne touche jamais directement aux
 -- globales avant ADDON_LOADED : elles n'existent pas encore a ce stade.

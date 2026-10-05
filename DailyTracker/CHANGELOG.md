@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.41
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.41 : export des absences de Standby, carte Absences du Dashboard).
+
 ## 7.1.5.40
 - DailyTrackerAPI.GetRemaining() (lecture seule) : quetes hebdomadaires et quotidiennes restantes, lue par la tuile A faire ce soir de Standby. Non teste en jeu.
 

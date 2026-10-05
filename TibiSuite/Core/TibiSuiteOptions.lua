@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.40
+-- TibiSuiteOptions v7.1.5.41
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -249,6 +249,7 @@ L.WIZ_FEED_WEEK    = L.WIZ_FEED_WEEK    or "Semaine du Warband"
 L.WIZ_FEED_CHARS   = L.WIZ_FEED_CHARS   or "Personnages et fiche"
 L.WIZ_FEED_LEVEL   = L.WIZ_FEED_LEVEL   or "Leveling"
 L.WIZ_FEED_LAIR    = L.WIZ_FEED_LAIR    or "Repaires"
+L.WIZ_FEED_AFK     = L.WIZ_FEED_AFK     or "Absences"
 L.WIZ_FEED_OFF     = L.WIZ_FEED_OFF     or "inactif"
 L.COMPANION_TITLE = L.COMPANION_TITLE or "Tibi-Companion"
 L.COMPANION_BADGE = L.COMPANION_BADGE or "Gratuit"
@@ -325,6 +326,7 @@ L.WN_38_13 = L.WN_38_13 or "Gestionnaire de boutons, barre rapide, vue liste, mo
 L.WN_38_14 = L.WN_38_14 or "Profils par personnage et par spécialisation, réglage à la molette directement sur l'écran, groupes liés et six nouveaux contextes."
 L.WN_38_15 = L.WN_38_15 or "Clés Mythique+ de nouveau enregistrées. Le code d'export porte maintenant tes légendaires, ton leveling et tes Repaires ; un Repaire n'est plus compté comme un Gouffre."
 L.WN_38_16 = L.WN_38_16 or "Nouvelles cartes Légendaires, Leveling et Repaires sur le Dashboard web et dans Tibi Companion, cartes Personnages et Fiche repliables. 10 langues partout."
+L.WN_41_1  = L.WN_41_1  or "Nouvelle carte Absences sur le Dashboard web et dans Tibi Companion : nombre d'absences, temps total, moyenne, record et dernière absence de chaque personnage. Stats exporte maintenant le cumul tenu par Standby."
 L.WN_40_2  = L.WN_40_2  or "DailyTracker, RenTracker, SkillTracker, LegTracker, WeeklyCompass et LvlHistory alimentent les tuiles À faire ce soir et Mes personnages de Standby (lecture seule)."
 L.WN_40_0  = L.WN_40_0  or "Nouveau module Standby, le 15e de la suite : un écran d'absence qui s'efface dès que le jeu a besoin de toi. Décoché par défaut si tu avais déjà TibiSuite : coche-le dans /ts modules."
 L.WN_40_1  = L.WN_40_1  or "Écran d'absence en 4 mises en page (Vitrine, Fiche du personnage avec équipement et stats, Épurée, Économie), fond scène, illustration d'extension ou noir, diaporama. Sortie automatique pour une file, un appel ou un combat. /standby test pour l'aperçu."
@@ -388,12 +390,16 @@ local FEEDS = {
   { L.WIZ_FEED_EXPED, "Stats" },   { L.WIZ_FEED_PVP, "Stats" },    { L.WIZ_FEED_REP, "Rep" },
   { L.WIZ_FEED_LEG, "Leg" },       { L.WIZ_FEED_WEEK, "Weekly" },  { L.WIZ_FEED_CHARS, "Weekly" },
   { L.WIZ_FEED_LEVEL, "Lvl" },     { L.WIZ_FEED_LAIR, "Lair" },
+  { L.WIZ_FEED_AFK, "Standby" },
 }
 
 -- Notes de version affichees par « Quoi de neuf ». A COMPLETER a chaque
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.41"] = {
+    { key = "Stats",   title = "Stats",     text = L.WN_41_1, new = true },
+  },
   ["7.1.5.40"] = {
     { key = "Standby", title = "Standby",   text = L.WN_40_1, new = true },
     { key = "Standby", title = "Standby",   text = L.WN_40_2 },

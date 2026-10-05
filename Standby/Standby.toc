@@ -4,7 +4,7 @@
 ## Notes: Away screen: the camera slowly circles your hero, the interface fades out, and your week is shown at a glance (Great Vault, rest, concentration, messages). Steps aside on its own for queues, ready checks, summons and combat.
 ## Notes-frFR: Ecran d'absence : la camera tourne autour du heros, l'interface s'efface et votre semaine s'affiche d'un coup d'oeil (grande chambre forte, repos, concentration, messages). S'ecarte tout seul pour une file, un appel, une convocation ou un combat.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.40
+## Version: 7.1.5.41
 ## X-Curse-Project-ID: 1727149
 ## IconTexture: Interface\AddOns\Standby\medias\TibiSuiteIcon
 

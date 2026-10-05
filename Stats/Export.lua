@@ -408,6 +408,41 @@ local function collectLairs()
   return ok and res or nil
 end
 
+-- Absences (Standby 7.1.5.40) : recopie du cumul que Standby tient dans sa
+-- SavedVariable (StandbyDB.chars, mis a jour a chaque retour d'absence).
+-- Meme principe que collectLairs : lecture seule, copie champ par champ.
+-- Ajout additif, schema inchange : un site pas a jour ignore chars[k].afk.
+--   afk = { n (absences), t (s), best (s), last = { at, dur (s), msgs } }
+-- Cle : Standby nomme le personnage avec le royaume SANS espace (UnitFullName,
+-- "Nom-KirinTor"), Stats avec GetRealmName ("Nom-Kirin Tor"). On rapproche
+-- les deux en ignorant espaces, tirets et apostrophes du royaume.
+local function afkKey(key)
+  local name, realm = key:match("^(.-)%-(.+)$")
+  if not name then return nil end
+  return (name .. "-" .. (realm:gsub("[%s%-']", ""))):lower()
+end
+
+local function collectAfk()
+  local db = _G.StandbyDB
+  if type(db) ~= "table" or type(db.chars) ~= "table" then return nil end
+  local ok, res = pcall(function()
+    local out = {}
+    local function num(v) v = tonumber(v); return v and math.floor(v + 0.5) or nil end
+    for key, c in pairs(db.chars) do
+      local k = type(key) == "string" and afkKey(key) or nil
+      if k and type(c) == "table" and (tonumber(c.count) or 0) > 0 then
+        local last
+        if type(c.last) == "table" then
+          last = { at = num(c.last.at), dur = num(c.last.dur), msgs = num(c.last.msgs) }
+        end
+        out[k] = { n = num(c.count), t = num(c.total), best = num(c.longest), last = last }
+      end
+    end
+    return out
+  end)
+  return ok and res or nil
+end
+
 local function currentSpecName()
   local si = GetSpecialization and GetSpecialization()
   if not si then return nil end
@@ -428,6 +463,7 @@ function SX.CollectExportData()
   local allCompass, warband = collectCompass()
   local allLeveling = collectLeveling()
   local allLairs = collectLairs()
+  local allAfk = collectAfk()
   local chars = {}
   for _, key in ipairs(SX.GetCharKeys()) do
     local rec = StatsDB[key] or {}
@@ -478,6 +514,7 @@ function SX.CollectExportData()
       compass = allCompass and allCompass[key] or nil,
       leveling = allLeveling and allLeveling[key] or nil,
       lairs = allLairs and allLairs[key] or nil,
+      afk = allAfk and allAfk[afkKey(key) or ""] or nil,
     }
   end
 

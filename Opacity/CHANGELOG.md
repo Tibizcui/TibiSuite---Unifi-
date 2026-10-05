@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.41
+- Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir Stats 7.1.5.41 : export des absences de Standby, carte Absences du Dashboard).
+
 ## 7.1.5.40
 - Aucun changement fonctionnel dans ce module : bump de version pour aligner le numero sur l'ensemble de la suite (voir TibiSuite 7.1.5.40 : nouveau module Standby, l'ecran d'absence).
 

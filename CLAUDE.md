@@ -252,6 +252,8 @@ Le module **Stats** produit un code d'export (`SX.Export.Generate()`,
 `Stats/Export.lua` : JSON schema 2, LZW `Stats/Libs/LZW.lua`, Base64, checksum
 djb2). Au `PLAYER_LOGOUT` (couvre `/reload` et déconnexion), `Stats/Core.lua`
 auto-persiste ce code dans `StatsDB.export`. Un companion PC et un fetcher API,
-côté dépôt **Tibiscui.fr**, le consomment pour la page Dashboard-Tibi. Si tu
+côté dépôt **Tibiscui.fr**, le consomment pour la page Dashboard-Tibi. Depuis 7.1.5.41, l'export porte aussi `chars[k].afk` (absences tenues par
+Standby, rapprochées par nom + royaume sans espace, tiret ni apostrophe) pour la
+carte Absences du Dashboard et de Tibi Companion. Si tu
 touches `LZW.lua` ou le format d'export, reporte-le dans
 `Tibiscui.fr/dashboard-shared.js` (décodeur miroir bit à bit).

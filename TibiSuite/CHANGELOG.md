@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.41
+- Installateur, etape Dashboard : carte Absences (Standby). Fenetre Quoi de neuf : entree 7.1.5.41 (FR + EN). Non teste dans un vrai client WoW.
+
 ## 7.1.5.40
 - Nouveau module Standby (15e module) : entree du catalogue (prereglage End-game compris) (cle Standby, accent rose aube #F2789F, ligne /ts doctor), bouton minimap individuel masque, logo et vitrine dans l'installateur (FR + EN), raccourci /standby.
 - Pas de migration ponctuelle : Standby est decoche pour les joueurs qui avaient deja TibiSuite, actif pour une nouvelle installation.
