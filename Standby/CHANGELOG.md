@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.43
+- Icone affichee dans le Dock et le Panneau vivant de TibiSuite (nouveaux styles de barre) ; ce module n'a pas de ligne d'etat.
+- Logo refait : 128 px, meme cadrage que toute la suite, emblème sans texte, fond transparent. Icone de la liste d'addons ajoutee (elle manquait).
+
 ## 7.1.5.42
 - Socle d'interface v13 : le panneau d'options du module peut s'afficher dans le nouveau Centre TibiSuite (fenetre unique de reglages), sans aucun changement dans le module lui-meme. Centre ferme, la roue d'options et Maj+clic droit rouvrent le panneau flottant comme avant ; en addon independant, rien ne change.
 

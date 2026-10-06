@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.43
+- Panneau vivant de TibiSuite (nouveau style de barre), ligne d'etat : pourcentage du niveau ou temps estime avant le suivant (rien au niveau maximum).
+- Logo refait : 128 px, meme cadrage que toute la suite, emblème sans texte, fond transparent.
+
 ## 7.1.5.42
 - Socle d'interface v13 : le panneau d'options du module peut s'afficher dans le nouveau Centre TibiSuite (fenetre unique de reglages), sans aucun changement dans le module lui-meme. Centre ferme, la roue d'options et Maj+clic droit rouvrent le panneau flottant comme avant ; en addon independant, rien ne change.
 

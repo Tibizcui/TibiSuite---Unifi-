@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.43
+- Panneau vivant de TibiSuite (nouveau style de barre), ligne d'etat : concentrations pleines ou temps avant le plein, connaissances de la semaine. Correctif : le palier de l'extension en cours restait fige pour un metier de recolte tant que la fenetre du metier n'etait pas rouverte ; il suit maintenant la fenetre Metiers de Blizzard.
+- Logo refait : 128 px, meme cadrage que toute la suite, emblème sans texte, fond transparent.
+
 ## 7.1.5.42
 - Socle d'interface v13 : le panneau d'options du module peut s'afficher dans le nouveau Centre TibiSuite (fenetre unique de reglages), sans aucun changement dans le module lui-meme. Centre ferme, la roue d'options et Maj+clic droit rouvrent le panneau flottant comme avant ; en addon independant, rien ne change.
 

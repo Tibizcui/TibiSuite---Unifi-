@@ -10,7 +10,7 @@
 ## Title-esES: PostBox
 ## Notes-esES: Gestion avanzada del buzon: apertura masiva segura, diario de subastas, buzon de todos tus alters, mula automatica, agenda, reenvio y envio multiple. Funciona solo o integrado en TibiSuite.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.42
+## Version: 7.1.5.43
 ## IconTexture: Interface\AddOns\PostBox\medias\TibiSuiteIcon
 ## SavedVariables: PostBoxDB
 ## OptionalDeps: TibiSuite

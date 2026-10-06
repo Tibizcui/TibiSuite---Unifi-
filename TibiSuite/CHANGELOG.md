@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.1.5.43
+- Nouveaux styles de barre, au choix dans le Centre (Barre et acces), l'installateur ou /ts bar classic|dock|panel. Changement immediat, sans rechargement. Les joueurs existants gardent la barre Classique ; une nouvelle installation demarre en Dock.
+- Dock : une rangee (ou une colonne) d'icones des modules, liseré a leur couleur, badges en coin, nom court sous chaque icone (desactivable), loupe de recherche et repli.
+- Panneau vivant : en-tete du personnage, recherche, modules groupes (A faire, Progression, Interface) avec leur etat du moment ; ce qui presse remonte en rouge. Poignee en bas a droite : largeur libre et hauteur maximale (la liste defile au-dela), double-clic pour la taille d'origine.
+- Nouveau contrat statusFn pour les modules (ligne d'etat), style transporte par les profils TS1, Quoi de neuf 7.1.5.43 (FR + EN).
+- Logos de toute la suite refaits : 128 px, meme cadrage, emblème sans texte, fond transparent.
+
 ## 7.1.5.42
 - Nouveau Centre TibiSuite (/ts) : une seule fenetre pour tous les reglages, facon EllesmereUI. Barre laterale avec Accueil, Barre et acces, Diagnostic, Maintenance et un interrupteur par module ; la page d'un module affiche son propre panneau d'options. Redimensionnable (taille memorisee), filtre des modules, diagnostic et memoire affiches dans la fenetre, bouton Recharger l'interface quand un changement l'exige.
 - Ligne TibiSuite dans le menu Echap, placee sous EllesmereUI (sinon sous Boutique), habillee automatiquement par EllesmereUI ou ElvUI, desactivable dans Barre et acces. Page TibiSuite dans Options > AddOns.
