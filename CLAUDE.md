@@ -106,6 +106,33 @@ inconnue => aide. L'ancienne fenêtre d'options faite main a été supprimée en
 7.1.5.42 : `OpenOptions()` ouvre la page Barre et accès, `RefreshOptions()` la
 resynchronise (`TibiSuite.RefreshCentreBar`).
 
+## Styles de la barre (7.1.5.43, Dock et Panneau vivant)
+
+`TibiSuiteDB.barStyle` = `"classic" | "dock" | "panel"`, posé une fois à
+`ADDON_LOADED` AVANT le remplissage des défauts : `classic` si `setupDone` ou
+`mmAngle` existait déjà (joueur existant), `dock` pour une nouvelle install.
+Moteurs dans le core : `Renderers.dock/panel = { Build, Layout, Refresh, Hide }`,
+aiguillés par `LayoutBar()` ; le Classique est `LayoutClassic()` (code d'origine).
+Les onglets classiques restent toujours construits et tenus à jour par
+`UpdateTabHighlights` (ils portent le câblage d'Échap) : ne pas les supprimer.
+Icônes = `TibiSuite.MODULE_LOGO` (table déplacée d'Options vers le core),
+initiale du module si le dossier est absent. Dock : une rangée ou une colonne
+(cols/rows = Classique seulement). Panneau : groupes `PANEL_GROUPS` (À faire,
+Progression, Interface en icônes), états urgents en tête, ticker de 30 s
+seulement barre affichée. API : `GetBarStyle()`, `SetBarStyle(s)`,
+`ApplyBarSettings{style=}`, `RefreshStatus()` (regroupé à 0,5 s),
+`FmtDuration(s)`, `FmtGold(copper)`, `/ts bar classic|dock|panel`, clé `st=`
+des profils TS1 (ignorée par les anciennes versions).
+
+**Contrat `statusFn`** (champ facultatif de `RegisterModule`) : renvoie
+`{ text=, color={r,g,b}, progress=0..1, urgent=bool }` ou nil, appelé sous
+pcall par le core. Les textes viennent du core (`TibiSuiteL.ST_*`, FR + EN),
+pas des locales des modules. Branché : Daily (`DailyTracker_Status`), Weekly
+(`WeeklyCompassAPI.GetStatus`), Post (`PostBox_Status`), Skill
+(`SkillTracker_Status`), Rep (`RenTrackerAPI.GetStatus`), Leg
+(`LegTracker_Status`), et dans le glue pour Lvl, Stats, Dgn, Lair.
+XPBar, RepBar, MiniHub, Opacity, Standby : pas d'état (rangée Interface).
+
 ## Centre TibiSuite (`TibiSuite/Core/TibiSuiteCentre.lua`, 7.1.5.42)
 
 Fenêtre unique de réglages façon EllesmereUI (`TibiSuiteCentre`, DIALOG,

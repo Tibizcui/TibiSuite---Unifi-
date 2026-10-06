@@ -17,25 +17,9 @@
 local ACCENT_SUITE = { 0.769, 0.122, 0.231 }   -- rouge TibiSuite (#C41F3B)
 local LOGO         = "Interface\\AddOns\\TibiSuite\\medias\\TibiSuite"
 
--- Logo propre a chaque module (chemins sans extension, WoW resout .tga).
-local MODULE_LOGO = {
-  Daily   = "Interface\\AddOns\\DailyTracker\\medias\\DailyTracker",
-  Dgn     = "Interface\\AddOns\\DgnTracker\\medias\\DgnTracker",
-  Leg     = "Interface\\AddOns\\LegTracker\\medias\\LegTracker",
-  Rep     = "Interface\\AddOns\\RenTracker\\medias\\RenTracker",
-  Lvl     = "Interface\\AddOns\\LvlHistory\\Media\\icon",
-  Weekly  = "Interface\\AddOns\\WeeklyCompass\\medias\\logo",
-  MiniHub = "Interface\\AddOns\\MiniHub\\media\\Logo_MiniHub",
-  XPBar   = "Interface\\AddOns\\XPBar\\medias\\Logo",
-  RepBar  = "Interface\\AddOns\\RepBar\\medias\\Logo",
-  Lair    = "Interface\\AddOns\\LairLens\\Media\\Logo",
-  Skill   = "Interface\\AddOns\\SkillTracker\\media\\Logo",
-  Post    = "Interface\\AddOns\\PostBox\\medias\\Logo",
-  Stats   = "Interface\\AddOns\\Stats\\medias\\Logo",
-  Opacity = "Interface\\AddOns\\Opacity\\medias\\Logo",
-  Standby = "Interface\\AddOns\\Standby\\medias\\Logo",
-  Suite   = LOGO,
-}
+-- Logo propre a chaque module : table tenue par le core (TibiSuiteCore.lua,
+-- charge avant ce fichier), partagee avec les styles Dock et Panneau.
+local MODULE_LOGO = TibiSuite.MODULE_LOGO
 
 -- Pas de captures d'ecran dans l'installateur : le core doit rester leger
 -- (16 TGA = 6 Mo). La vitrine de chaque module est faite de texte (DETAIL_,
@@ -213,6 +197,7 @@ L.WIZ_CAT_H = L.WIZ_CAT_H or "HUD  -  BARRES PERMANENTES"
 L.WIZ_CAT_O = L.WIZ_CAT_O or "OUTILS"
 L.WIZ_WOW_DISABLED = L.WIZ_WOW_DISABLED or "désactivé dans WoW, sera réactivé"
 -- Etape 3
+L.WIZ_STYLE  = L.WIZ_STYLE  or "STYLE DE LA BARRE"
 L.WIZ_ORIENT = L.WIZ_ORIENT or "ORIENTATION"
 L.WIZ_HORIZ  = L.WIZ_HORIZ  or "Horizontale"
 L.WIZ_VERT   = L.WIZ_VERT   or "Verticale"
@@ -326,6 +311,9 @@ L.WN_38_13 = L.WN_38_13 or "Gestionnaire de boutons, barre rapide, vue liste, mo
 L.WN_38_14 = L.WN_38_14 or "Profils par personnage et par spécialisation, réglage à la molette directement sur l'écran, groupes liés et six nouveaux contextes."
 L.WN_38_15 = L.WN_38_15 or "Clés Mythique+ de nouveau enregistrées. Le code d'export porte maintenant tes légendaires, ton leveling et tes Repaires ; un Repaire n'est plus compté comme un Gouffre."
 L.WN_38_16 = L.WN_38_16 or "Nouvelles cartes Légendaires, Leveling et Repaires sur le Dashboard web et dans Tibi Companion, cartes Personnages et Fiche repliables. 10 langues partout."
+L.WN_43_0  = L.WN_43_0  or "Nouveau style de barre Dock : une rangée d'icônes discrète, le logo de chaque module souligné de sa couleur, badges en coin, loupe de recherche. Votre barre actuelle ne change pas : le style se choisit dans le Centre, page Barre et accès, ou avec /ts bar dock."
+L.WN_43_1  = L.WN_43_1  or "Nouveau style Panneau vivant : la barre devient un tableau de bord. Chaque module affiche son état du moment (hebdos restantes, Grand coffre, courriers qui expirent, concentration, coffres de Paragon, XP, or de la semaine...), et ce qui presse remonte en rouge."
+L.WN_43_2  = L.WN_43_2  or "Le changement de style est immédiat, sans rechargement. Le style voyage dans les profils TS1 et se choisit aussi dans l'installateur (/ts setup). Commandes : /ts bar classic, dock ou panel."
 L.WN_42_0  = L.WN_42_0  or "Nouveau Centre TibiSuite : une seule fenêtre pour tous les réglages, façon EllesmereUI. Barre latérale avec un interrupteur par module, et la page de chaque module affiche ses propres options. Redimensionnable, filtre des modules, diagnostic et rechargement intégrés."
 L.WN_42_1  = L.WN_42_1  or "Accès : /ts ouvre le Centre (/ts bar pour la barre), clic droit sur le bouton de la minicarte, ligne TibiSuite dans le menu Échap sous EllesmereUI (désactivable), et page TibiSuite dans Options > AddOns."
 L.WN_42_2  = L.WN_42_2  or "La page Barre et accès reprend tous les réglages de l'ancienne fenêtre : position au pixel près, onglets affichés, tout ouvrir ou fermer, minicarte et messages de connexion."
@@ -400,6 +388,11 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.43"] = {
+    { key = "Suite",   title = "TibiSuite", text = L.WN_43_0, new = true },
+    { key = "Suite",   title = "TibiSuite", text = L.WN_43_1, new = true },
+    { key = "Suite",   title = "TibiSuite", text = L.WN_43_2 },
+  },
   ["7.1.5.42"] = {
     { key = "Suite",   title = "TibiSuite", text = L.WN_42_0, new = true },
     { key = "Suite",   title = "TibiSuite", text = L.WN_42_1 },
@@ -1177,6 +1170,7 @@ local function BuildWizard()
       W.preset = nil
       local c = W.cfg
       c.vertical = prof.vertical
+      if prof.style then c.style = prof.style end
       c.scale = math.floor(prof.scale * 100 + 0.5)
       c.cols, c.rows = prof.cols, prof.rows
       c.mm, c.msg, c.exp = not prof.mmHidden, prof.loginMsg, prof.autoExport
@@ -1361,6 +1355,11 @@ local function BuildWizard()
     local y = 0
     local function lab(t) local l = Label(p, t); l:SetPoint("TOPLEFT", 0, y); y = y - 16; return l end
 
+    lab(L.WIZ_STYLE)
+    local sty = Segmented(p, 300, { { "classic", L.STYLE_classic }, { "dock", L.STYLE_dock }, { "panel", L.STYLE_panel } },
+      function() return c.style end, function(v) c.style = v; W.RenderPreview() end)
+    sty:SetPoint("TOPLEFT", 0, y); y = y - 34
+
     lab(L.WIZ_ORIENT)
     local ori = Segmented(p, 240, { { false, L.WIZ_HORIZ }, { true, L.WIZ_VERT } },
       function() return c.vertical end, function(v) c.vertical = v; W.RenderPreview() end)
@@ -1431,7 +1430,7 @@ local function BuildWizard()
     msg:SetPoint("TOPLEFT", 0, y)
 
     W.RefreshIfc = function()
-      ori.Refresh(); msg.Refresh(); sc.Refresh(); sr.Refresh(); tMM.Refresh(); tOpen.Refresh()
+      sty.Refresh(); ori.Refresh(); msg.Refresh(); sc.Refresh(); sr.Refresh(); tMM.Refresh(); tOpen.Refresh()
       sl:SetValue(c.scale); slV:SetText(c.scale .. " %")
       W.RefreshCorners()
     end
@@ -1492,24 +1491,39 @@ local function BuildWizard()
       local active = {}
       for _, m in ipairs(W.present) do if W.choice[m.key] then active[#active + 1] = m end end
       local n = #active
-      local cols = math.max(1, c.cols)
-      local rows = math.max(c.rows, math.ceil(n / cols))
-      local total = cols * rows
-      local gridW = cols * CW + (cols - 1) * CG
-      local gridH = rows * CH + (rows - 1) * CG
+      -- Taille et grille des vignettes selon le style : grille d'onglets
+      -- (Classique), rangee ou colonne d'icones (Dock), liste (Panneau).
+      local style = c.style or "classic"
+      local cw, ch, cols, rows, total
+      if style == "dock" then
+        cw, ch = CH, CH
+        if c.vertical then cols, rows = 1, math.max(1, n) else cols, rows = math.max(1, n), 1 end
+        total = n
+      elseif style == "panel" then
+        cw, ch, cols, rows, total = 96, 9, 1, math.max(1, n), n
+      else
+        cw, ch = CW, CH
+        cols = math.max(1, c.cols)
+        rows = math.max(c.rows, math.ceil(n / cols))
+        total = cols * rows
+      end
+      local gridW = cols * cw + (cols - 1) * CG
+      local gridH = rows * ch + (rows - 1) * CG
       for i = 1, math.max(total, #cells) do
         local cf = (i <= total) and cell(i) or cells[i]
         if cf then
           if i <= total then
             local m = active[i]
             cf:ClearAllPoints()
+            cf:SetSize(cw, ch); cf.t:SetWidth(cw - 2)
             local cc, rr = (i - 1) % cols, math.floor((i - 1) / cols)
-            cf._x, cf._y = cc * (CW + CG), -rr * (CH + CG)
+            cf._x, cf._y = cc * (cw + CG), -rr * (ch + CG)
             if m then
               local col = colOf(m)
               cf:SetBackdropColor(0.09, 0.1, 0.13, 1); cf:SetBackdropBorderColor(0, 0, 0, 1)
               cf.line:SetColorTexture(col.r, col.g, col.b, 1); cf.line:Show()
-              cf.t:SetText(m.label or m.addonName)
+              local label = m.label or m.addonName
+              cf.t:SetText(style == "dock" and label:sub(1, 1) or label)
             else
               cf:SetBackdropColor(0, 0, 0, 0); cf:SetBackdropBorderColor(1, 1, 1, 0.07)
               cf.line:Hide(); cf.t:SetText("")
@@ -1521,8 +1535,21 @@ local function BuildWizard()
         end
       end
       head:ClearAllPoints(); hLogo:ClearAllPoints(); hTxt:ClearAllPoints()
+      hTxt:SetShown(style ~= "dock")
       local bw, bh, gx, gy
-      if not c.vertical then
+      if style == "dock" and not c.vertical then
+        bw = 4 + 14 + 4 + gridW + 4
+        bh = ch + 8
+        head:SetSize(14, ch); head:SetPoint("TOPLEFT", 4, -4)
+        hLogo:SetPoint("CENTER")
+        gx, gy = 22, -4
+      elseif style == "dock" then
+        bw = cw + 8
+        bh = 4 + 14 + 3 + gridH + 4
+        head:SetSize(cw, 14); head:SetPoint("TOP", 0, -4)
+        hLogo:SetPoint("CENTER")
+        gx, gy = 4, -21
+      elseif style == "panel" or not c.vertical then
         bw = math.max(gridW, 72) + 8
         bh = 4 + 14 + 3 + gridH + 4
         head:SetSize(bw - 8, 14); head:SetPoint("TOP", 0, -4)
@@ -1888,7 +1915,8 @@ local function BuildWizard()
     W.recapSum:SetPoint("TOPLEFT", W.recapChips, "TOPLEFT", 0, -hChips - 14)
     local corner = c.corner and L.WIZ_CORNERS[c.corner] or L.WIZ_CORNER_CUSTOM
     local rows = {
-      { L.WIZ_SUM_BAR, string.format(L.WIZ_SUM_BAR_FMT, c.vertical and L.WIZ_VERT or L.WIZ_HORIZ, c.scale, c.cols, c.rows, corner)
+      { L.WIZ_SUM_BAR, (L["STYLE_" .. (c.style or "classic")] or "") .. ", "
+          .. string.format(L.WIZ_SUM_BAR_FMT, c.vertical and L.WIZ_VERT or L.WIZ_HORIZ, c.scale, c.cols, c.rows, corner)
           .. (c.open and "" or L.WIZ_SUM_CLOSED) },
       { L.WIZ_SUM_MM, c.mm and L.WIZ_SUM_MM_ON or L.WIZ_SUM_MM_OFF },
       { L.WIZ_SUM_LOGIN, (c.msg == "full" and L.WIZ_SUM_MSG_FULL) or (c.msg == "none" and L.WIZ_SUM_MSG_NONE) or L.WIZ_SUM_MSG_ONE },
@@ -1945,7 +1973,7 @@ local function BuildWizard()
       for k in pairs(W.importProf.hidden or {}) do TibiSuiteDB.hidden[k] = true end
     end
     TibiSuite.ApplyBarSettings({
-      vertical = c.vertical, scale = c.scale / 100, cols = c.cols, rows = c.rows,
+      style = c.style, vertical = c.vertical, scale = c.scale / 100, cols = c.cols, rows = c.rows,
       corner = c.corner, open = c.open,
       logoSize = W.importProf and W.importProf.logoSize or nil,
       locked = W.importProf and W.importProf.locked or nil,
@@ -2105,6 +2133,7 @@ function TibiSuite.RunSetup()
   end
   if first or not hasList then w.preset = "all" end
   local c = w.cfg
+  c.style    = TibiSuite.GetBarStyle and TibiSuite.GetBarStyle() or "classic"
   c.vertical = TibiSuiteDB.vertical and true or false
   c.scale    = math.floor((TibiSuiteDB.scale or 0.9) * 100 + 0.5)
   c.cols     = TibiSuiteDB.cols or 2

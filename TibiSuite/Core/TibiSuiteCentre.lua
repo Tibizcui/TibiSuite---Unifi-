@@ -71,6 +71,13 @@ D("CTR_Q_EXPORT",      "Code du Dashboard")
 D("CTR_Q_DOCTOR",      "Diagnostic")
 D("CTR_HOME_TIP",      "Astuce : chaque module garde aussi sa roue d'options et son raccourci Maj+clic droit. Ici, tout est réuni au même endroit.")
 D("CTR_DOC_RERUN",     "Relancer le diagnostic")
+D("CTR_BAR_SEC_STYLE", "Style de la barre")
+D("CTR_BAR_STYLE_NOTE","Classique : la grille d'onglets texte. Dock : une rangée d'icônes, discrète. Panneau vivant : chaque module affiche son état du moment (quêtes restantes, concentration, réputation...). Le changement est immédiat, sans rechargement.")
+D("CTR_BAR_STYLE_CLASSIC", "Classique (grille d'onglets)")
+D("CTR_BAR_STYLE_DOCK",    "Dock (icônes)")
+D("CTR_BAR_STYLE_PANEL",   "Panneau vivant (état des modules)")
+D("CTR_BAR_DOCKLBL",   "Noms courts sous les icônes du Dock")
+D("CTR_BAR_GRID_NOTE", "Colonnes de la grille : style Classique seulement. Le Dock suit l'orientation (une rangée ou une colonne), le Panneau est toujours vertical.")
 D("CTR_BAR_SEC_LAYOUT","Disposition")
 D("CTR_BAR_VERTICAL",  "Barre verticale")
 D("CTR_BAR_LOCKED",    "Verrouiller la barre")
@@ -439,6 +446,14 @@ local function BuildBarPanel()
   if barPanel then return barPanel end
   local P = UI.CreateOptionsPanel({ name = "TibiSuiteCentreBar", title = L.CTR_BAR, accent = ACC })
   local function apply(t) if TibiSuite.ApplyBarSettings then TibiSuite.ApplyBarSettings(t) end end
+  P:Section(L.CTR_BAR_SEC_STYLE)
+  P:Note(L.CTR_BAR_STYLE_NOTE)
+  for _, o in ipairs({ { "classic", L.CTR_BAR_STYLE_CLASSIC }, { "dock", L.CTR_BAR_STYLE_DOCK }, { "panel", L.CTR_BAR_STYLE_PANEL } }) do
+    P:Check(o[2], function() return (TibiSuite.GetBarStyle and TibiSuite.GetBarStyle() or "classic") == o[1] end,
+      function() apply({ style = o[1] }); P:Refresh() end)
+  end
+  P:Check(L.CTR_BAR_DOCKLBL, function() return TibiSuiteDB.dockLabels ~= false end,
+    function(v) apply({ dockLabels = v }) end)
   P:Section(L.CTR_BAR_SEC_LAYOUT)
   P:Check(L.CTR_BAR_OPEN,     function() return TibiSuiteCharDB and TibiSuiteCharDB.barOpen end, function(v) apply({ open = v }) end)
   P:Check(L.CTR_BAR_VERTICAL, function() return TibiSuiteDB.vertical end, function(v) apply({ vertical = v }) end)
@@ -446,6 +461,7 @@ local function BuildBarPanel()
   P:Slider(L.CTR_BAR_SCALE, 70, 150, 5,
     function() return math.floor((TibiSuiteDB.scale or 1) * 100 + 0.5) end,
     function(v) if math.abs((TibiSuiteDB.scale or 1) * 100 - v) > 0.5 then apply({ scale = v / 100 }) end end)
+  P:Note(L.CTR_BAR_GRID_NOTE)
   P:Slider(L.CTR_BAR_COLS, 1, #TibiSuite.GetCatalog(), 1,
     function() return TibiSuiteDB.cols or 2 end,
     function(v) if (TibiSuiteDB.cols or 2) ~= v then apply({ cols = v }) end end)

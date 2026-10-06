@@ -51,6 +51,52 @@ L.TT_TAB_OPEN         = L.TT_TAB_OPEN         or "Clic gauche : ouvrir / fermer"
 L.TT_TAB_OPTIONS      = L.TT_TAB_OPTIONS      or "Clic droit : options du module"
 L.TT_TAB_NOTINSTALLED = L.TT_TAB_NOTINSTALLED or "Non installé"
 L.TT_TAB_DOWNLOAD     = L.TT_TAB_DOWNLOAD     or "Clic : voir le lien de téléchargement"
+L.TT_TAB_DISABLED     = L.TT_TAB_DISABLED     or "Module désactivé. Clic gauche : l'activer"
+-- Styles de la barre (Dock, Panneau vivant)
+L.STYLE_classic  = L.STYLE_classic  or "Classique"
+L.STYLE_dock     = L.STYLE_dock     or "Dock"
+L.STYLE_panel    = L.STYLE_panel    or "Panneau vivant"
+L.TT_DOCK_SEARCH = L.TT_DOCK_SEARCH or "Recherche dans tous les modules"
+L.PANEL_GRP_TODO = L.PANEL_GRP_TODO or "À faire"
+L.PANEL_GRP_PROG = L.PANEL_GRP_PROG or "Progression"
+L.PANEL_GRP_UI   = L.PANEL_GRP_UI   or "Interface"
+L.PANEL_OFF      = L.PANEL_OFF      or "désactivé"
+L.PANEL_ABSENT   = L.PANEL_ABSENT   or "non installé"
+L.PANEL_LVL      = L.PANEL_LVL      or "niv."
+-- Noms courts sous les icones (Dock, rangee Interface du Panneau) quand le
+-- libelle d'onglet est trop long pour ~45 px. Les autres gardent leur libelle.
+L.TT_PANEL_GRIP  = L.TT_PANEL_GRIP  or "Glisser : largeur et hauteur du Panneau\nDouble-clic : taille d'origine"
+L.SHORT_Leg      = L.SHORT_Leg      or "Légend."
+L.SHORT_Lvl      = L.SHORT_Lvl      or "Niveaux"
+L.SHORT_Post     = L.SHORT_Post     or "Courrier"
+L.SHORT_Rep      = L.SHORT_Rep      or "Réput."
+L.SHORT_Skill    = L.SHORT_Skill    or "Métiers"
+-- Lignes d'etat des modules (Panneau vivant) : textes tenus par le core,
+-- lus par chaque module via TibiSuiteL (les modules ne s'en servent qu'avec le core).
+L.ST_WEEK_LEFT_FMT   = L.ST_WEEK_LEFT_FMT   or "%d à faire cette semaine"
+L.ST_WEEK_DONE       = L.ST_WEEK_DONE       or "Semaine terminée"
+L.ST_MAIL_EXPIRE_FMT = L.ST_MAIL_EXPIRE_FMT or "Expire bientôt : %d"
+L.ST_MAIL_NEW        = L.ST_MAIL_NEW        or "Nouveau courrier"
+L.ST_MAIL_COUNT_FMT  = L.ST_MAIL_COUNT_FMT  or "%d dans la boîte"
+L.ST_MAIL_EMPTY      = L.ST_MAIL_EMPTY      or "Boîte vide"
+L.ST_CONC_FULL_FMT   = L.ST_CONC_FULL_FMT   or "%d concentration(s) pleine(s)"
+L.ST_CONC_IN_FMT     = L.ST_CONC_IN_FMT     or "Concentration pleine dans %s"
+L.ST_KNOW_FMT        = L.ST_KNOW_FMT        or "Connaissances %d/%d"
+L.ST_VAULT_CLAIM     = L.ST_VAULT_CLAIM     or "Coffre à récupérer"
+L.ST_VAULT_FMT       = L.ST_VAULT_FMT       or "Grand coffre %d/%d"
+L.ST_PARAGON_FMT     = L.ST_PARAGON_FMT     or "%d coffre(s) de Paragon"
+L.ST_REPWEEK_FMT     = L.ST_REPWEEK_FMT     or "%d hebdo restante(s)"
+L.ST_REPWEEK_DONE    = L.ST_REPWEEK_DONE    or "Hebdo terminées"
+L.ST_LVL_FMT         = L.ST_LVL_FMT         or "Niv. %d : %d %%"
+L.ST_LVL_ETA_FMT     = L.ST_LVL_ETA_FMT     or "Niv. %d dans %s"
+L.ST_GOLD_FMT        = L.ST_GOLD_FMT        or "%s or cette semaine"
+L.ST_LAIR_FMT        = L.ST_LAIR_FMT        or "Repaire %d/%d"
+L.ST_LAIR_DONE       = L.ST_LAIR_DONE       or "Repaire terminé"
+L.ST_LOCK_FMT        = L.ST_LOCK_FMT        or "%d sauvegarde(s)"
+L.ST_LEG_FMT         = L.ST_LEG_FMT         or "%d/%d légendaires"
+L.DUR_DH             = L.DUR_DH             or "%d j %d h"
+L.DUR_HM             = L.DUR_HM             or "%d h %d min"
+L.DUR_M              = L.DUR_M              or "%d min"
 -- Placeholder (module absent)
 L.PH_MSG      = L.PH_MSG      or "Cet addon n'est pas installé."
 L.PH_URLLABEL = L.PH_URLLABEL or "Téléchargez-le gratuitement sur CurseForge :"
@@ -454,6 +500,29 @@ local MODULES = {
   },
 }
 
+-- Logo propre a chaque module (chemins sans extension, WoW resout .tga).
+-- Partage avec l'installateur et le Centre (TibiSuiteOptions.lua le relit),
+-- et sert d'icone aux styles Dock et Panneau de la barre.
+local MODULE_LOGO = {
+  Daily   = "Interface\\AddOns\\DailyTracker\\medias\\DailyTracker",
+  Dgn     = "Interface\\AddOns\\DgnTracker\\medias\\DgnTracker",
+  Leg     = "Interface\\AddOns\\LegTracker\\medias\\LegTracker",
+  Rep     = "Interface\\AddOns\\RenTracker\\medias\\RenTracker",
+  Lvl     = "Interface\\AddOns\\LvlHistory\\Media\\icon",
+  Weekly  = "Interface\\AddOns\\WeeklyCompass\\medias\\logo",
+  MiniHub = "Interface\\AddOns\\MiniHub\\media\\Logo_MiniHub",
+  XPBar   = "Interface\\AddOns\\XPBar\\medias\\Logo",
+  RepBar  = "Interface\\AddOns\\RepBar\\medias\\Logo",
+  Lair    = "Interface\\AddOns\\LairLens\\Media\\Logo",
+  Skill   = "Interface\\AddOns\\SkillTracker\\media\\Logo",
+  Post    = "Interface\\AddOns\\PostBox\\medias\\Logo",
+  Stats   = "Interface\\AddOns\\Stats\\medias\\Logo",
+  Opacity = "Interface\\AddOns\\Opacity\\medias\\Logo",
+  Standby = "Interface\\AddOns\\Standby\\medias\\Logo",
+  Suite   = "Interface\\AddOns\\TibiSuite\\medias\\TibiSuite",
+}
+TibiSuite.MODULE_LOGO = MODULE_LOGO
+
 -- ================================================================
 -- DIMENSIONS DE LA BARRE
 -- ================================================================
@@ -467,6 +536,26 @@ local ALL_W      = 22    -- taille des boutons "tout ouvrir/fermer"
 local ALL_GAP    = 3     -- espace entre les boutons du cluster droit
 local VCOL_W     = 100   -- largeur d'une colonne en mode vertical
 
+-- Styles Dock et Panneau vivant (7.1.5.43+)
+local DOCK_ICON  = 28    -- cote d'une icone du Dock
+local DOCK_GAP   = 4     -- espace entre deux icones du Dock
+local DOCK_PAD   = 6     -- marge interieure du Dock
+local DOCK_SLOT  = 46    -- largeur d'un emplacement quand le nom court est affiche
+local LABEL_H    = 11    -- hauteur du nom court sous une icone
+local PANEL_W    = 270   -- largeur du Panneau vivant
+local PANEL_ROW  = 24    -- hauteur d'une ligne de module du Panneau
+local PANEL_ICON = 24    -- cote d'une icone de la rangee « Interface »
+
+-- Style de la barre : "classic" (grille d'onglets texte, historique),
+-- "dock" (icones) ou "panel" (Panneau vivant, etat de chaque module).
+-- TibiSuiteDB.barStyle est pose a la premiere connexion : "classic" pour un
+-- joueur existant, "dock" pour une nouvelle installation.
+local BAR_STYLES = { classic = true, dock = true, panel = true }
+local function BarStyle()
+  local s = TibiSuiteDB and TibiSuiteDB.barStyle
+  return BAR_STYLES[s] and s or "classic"
+end
+
 -- ================================================================
 -- VARIABLES LOCALES (initialisées dans BuildX)
 -- ================================================================
@@ -474,6 +563,11 @@ local barFrame         -- la barre d'onglets principale
 local tabButtons = {}  -- boutons d'onglets [1..N]
 local minimapBtn       -- bouton sur la minimap
 local placeholderFrame -- frame "addon absent"
+-- Moteurs de rendu de la barre : Renderers[style] = { Build, Layout, Refresh, Hide }.
+-- Les parties communes (cadre, logo, recherche, boutons) sont creees une fois
+-- par BuildBar ; chaque style cree ses propres vignettes au premier usage.
+local Renderers   = {}
+local badgeCounts = {}  -- badges numeriques poses par SetTabBadge, par cle de module
 
 -- Fonctions déclarées ici, définies plus bas (dépendances croisées)
 local LayoutBar, SetAllModules, OpenOptions, RefreshOptions, ToggleGlobalSearch
@@ -524,6 +618,11 @@ local function UpdateTabHighlights()
       btn._badge:SetShown(show)
     end
   end
+
+  -- Les onglets classiques ci-dessus restent toujours tenus a jour (ils portent
+  -- aussi le cablage d'Echap) ; le style actif, s'il est autre, se redessine.
+  local r = Renderers[BarStyle()]
+  if r and r.built and r.Refresh and BarStyle() ~= "classic" then r.Refresh() end
 end
 
 -- ================================================================
@@ -1000,6 +1099,26 @@ local function BuildBar()
     tabButtons[i] = btn
   end
 
+  -- ── Elements communs des styles Dock et Panneau (masques en Classique) ──
+  -- Liseré rouge de marque en haut du cadre.
+  local topLine = barFrame:CreateTexture(nil, "OVERLAY")
+  topLine:SetHeight(2)
+  topLine:SetPoint("TOPLEFT", 1, -1); topLine:SetPoint("TOPRIGHT", -1, -1)
+  topLine:SetColorTexture(0.769, 0.122, 0.231, 1)
+  topLine:Hide()
+  barFrame._topLine = topLine
+  -- Titre et ligne du personnage (en-tete du Panneau vivant)
+  local logoTitle = logoBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  logoTitle:SetJustifyH("LEFT")
+  logoTitle:SetText("|cFFC41F3BTibiSuite|r")
+  logoTitle:Hide()
+  barFrame._logoTitle = logoTitle
+  local logoSub = logoBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  logoSub:SetJustifyH("LEFT")
+  logoSub:SetWordWrap(false)
+  logoSub:Hide()
+  barFrame._logoSub = logoSub
+
   -- Positionne tout selon l'orientation + applique l'échelle
   LayoutBar()
 end
@@ -1044,19 +1163,28 @@ local function ComputeGrid(m)
   return c, r
 end
 
-function LayoutBar()
-  if not barFrame then return end
-  TibiSuiteDB.hidden = TibiSuiteDB.hidden or {}
+-- helper : réinitialise l'ancrage
+local function anchor(f, ...) f:ClearAllPoints() f:SetPoint(...) end
+
+-- Style Classique : la grille d'onglets texte historique (code d'origine,
+-- inchange hormis la remise en place des elements communs, que les autres
+-- styles peuvent avoir masques ou deplaces).
+local function LayoutClassic()
   local logo     = barFrame._logo
   local sep      = barFrame._sep
   local closeBtn = barFrame._close
   local openAll  = barFrame._openAll
   local closeAll = barFrame._closeAll
 
-  barFrame:SetScale(TibiSuiteDB.scale or 1.0)
-
-  -- helper : réinitialise l'ancrage
-  local function anchor(f, ...) f:ClearAllPoints() f:SetPoint(...) end
+  barFrame._topLine:Hide()
+  barFrame._logoTitle:Hide()
+  barFrame._logoSub:Hide()
+  local ls = TibiSuiteDB.logoSize or 22
+  barFrame._logoIcon:SetSize(ls, ls)
+  anchor(barFrame._logoIcon, "CENTER", logo, "CENTER", 0, 0)
+  logo:Show(); sep:Show(); closeBtn:Show(); openAll:Show(); closeAll:Show()
+  sep:SetColorTexture(COL_BORDER.r, COL_BORDER.g, COL_BORDER.b, 0.45)
+  if barFrame._search then barFrame._search:Show() end
 
   -- Onglets à afficher (filtre utilisateur) : on masque les autres
   local vis = {}
@@ -1183,6 +1311,701 @@ function LayoutBar()
     closeBtn:SetSize(contentW, CLOSE_W)
     anchor(closeBtn, "TOPLEFT", barFrame, "TOPLEFT", MARGIN, -closeTop)
   end
+end
+
+-- ================================================================
+-- STYLES DOCK ET PANNEAU VIVANT
+-- Briques partagees : etat d'un module, ligne d'etat (statusFn), badge,
+-- info-bulle et vignette-icone. Aucune boucle par image : tout se redessine
+-- sur evenement (UpdateTabHighlights, SetTabBadge, RefreshStatus).
+-- ================================================================
+
+-- Module charge ? sa fenetre est-elle ouverte ?
+local function ModState(mod)
+  local loaded = C_AddOns.IsAddOnLoaded(mod.addonName)
+  local frame  = loaded and _G[mod.frameGlobal]
+  return loaded, (frame and frame:IsShown()) and true or false
+end
+
+-- Ligne d'etat fournie par le module (RegisterModule{ statusFn = fn }).
+-- fn renvoie { text=, color={r,g,b}, progress=0..1, urgent=bool } ou nil.
+-- nil si le module n'en fournit pas, n'est pas charge, ou si l'appel echoue.
+local function GetModuleStatus(mod)
+  if not C_AddOns.IsAddOnLoaded(mod.addonName) then return nil end
+  local reg = TibiSuite.registered and TibiSuite.registered[mod.key]
+  if not (reg and type(reg.statusFn) == "function") then return nil end
+  local ok, st = pcall(reg.statusFn)
+  if not ok or type(st) ~= "table" then return nil end
+  if st.text == nil and st.progress == nil then return nil end
+  if st.progress then st.progress = math.max(0, math.min(1, tonumber(st.progress) or 0)) end
+  return st
+end
+
+-- Texte du badge d'un module : compte pose par SetTabBadge, sinon « ! » si
+-- son badgeFn (catalogue) repond vrai, sinon nil.
+local function BadgeText(mod)
+  local n = badgeCounts[mod.key]
+  if n and n > 0 then return n > 99 and "99+" or tostring(n) end
+  if type(mod.badgeFn) == "function" and C_AddOns.IsAddOnLoaded(mod.addonName) then
+    local ok, res = pcall(mod.badgeFn)
+    if ok and res then return "!" end
+  end
+  return nil
+end
+
+-- Info-bulle d'une vignette (Dock et Panneau) : nom, etat du moment, puis
+-- le mode d'emploi en gris. Placee sur le cote libre de l'ecran.
+local function ShowModTooltip(owner, mod)
+  GameTooltip:SetOwner(owner, "ANCHOR_NONE")
+  local cx = owner:GetCenter()
+  local scx = (UIParent:GetWidth() or 1024) / 2
+  if BarStyle() == "dock" and not TibiSuiteDB.vertical then
+    GameTooltip:SetPoint("TOPLEFT", owner, "BOTTOMLEFT", 0, -8)
+  elseif cx and cx > scx then
+    GameTooltip:SetPoint("TOPRIGHT", owner, "TOPLEFT", -8, 0)
+  else
+    GameTooltip:SetPoint("TOPLEFT", owner, "TOPRIGHT", 8, 0)
+  end
+  local c = mod.col
+  if C_AddOns.IsAddOnLoaded(mod.addonName) then
+    GameTooltip:AddLine(mod.addonName, c.r, c.g, c.b)
+    local st = GetModuleStatus(mod)
+    if st and st.text then
+      if st.urgent then GameTooltip:AddLine(st.text, 1.0, 0.45, 0.45, true)
+      else GameTooltip:AddLine(st.text, 0.90, 0.90, 0.90, true) end
+    end
+    GameTooltip:AddLine(L.TT_TAB_OPEN, 0.55, 0.55, 0.60)
+    GameTooltip:AddLine(L.TT_TAB_OPTIONS, 0.55, 0.55, 0.60)
+  elseif TibiSuite.ModuleExists(mod.addonName) then
+    GameTooltip:AddLine(mod.addonName, 0.70, 0.70, 0.72)
+    GameTooltip:AddLine(L.TT_TAB_DISABLED, 0.90, 0.75, 0.40, true)
+  else
+    GameTooltip:AddLine(mod.addonName, 1.0, 0.33, 0.33)
+    GameTooltip:AddLine(L.TT_TAB_NOTINSTALLED, 0.90, 0.40, 0.40)
+    GameTooltip:AddLine(L.TT_TAB_DOWNLOAD, 0.65, 0.65, 0.65)
+  end
+  GameTooltip:Show()
+end
+
+-- Petit badge rouge de marque (textures unies : pas de backdrop, cf. la
+-- couleur perdue d'un SetBackdropColor juste apres le premier Show).
+local function MakeBadge(parent, size)
+  local badge = CreateFrame("Frame", nil, parent)
+  badge:SetSize(size, size)
+  badge:SetFrameLevel(parent:GetFrameLevel() + 3)
+  local bg = badge:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints()
+  bg:SetColorTexture(0.769, 0.122, 0.231, 1)
+  local txt = badge:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  txt:SetPoint("CENTER", 0, 0)
+  badge.text, badge.size = txt, size
+  badge:Hide()
+  return badge
+end
+
+local function SetBadge(badge, text)
+  if text then
+    badge.text:SetText(text)
+    badge:SetWidth(math.max(badge.size, (badge.text:GetStringWidth() or 0) + 6))
+    badge:Show()
+  else
+    badge:Hide()
+  end
+end
+
+-- Logo du module (ou son initiale sur fond neutre s'il est absent du disque :
+-- on n'appelle jamais SetTexture sur un fichier qui n'existe pas).
+local function ApplyModuleIcon(ico, ini, mod)
+  if MODULE_LOGO[mod.key] and TibiSuite.ModuleExists(mod.addonName) then
+    if ico._path ~= MODULE_LOGO[mod.key] then
+      ico:SetTexture(MODULE_LOGO[mod.key])
+      ico._path = MODULE_LOGO[mod.key]
+    end
+    ico:Show(); ini:Hide()
+  else
+    ico:Hide()
+    local label = tostring(mod.label or mod.key)
+    ini:SetText(ColorCode(mod.col.r, mod.col.g, mod.col.b) .. label:sub(1, 1) .. "|r")
+    ini:Show()
+  end
+end
+
+local function OnModClick(mod, button)
+  if button == "RightButton" then OpenModuleOptions(mod) else OnTabClick(mod) end
+end
+
+-- Vignette-icone : logo du module, liseré a sa couleur en bas, badge en coin.
+local function ShortLabel(mod)
+  return L["SHORT_" .. mod.key] or mod.label or mod.key
+end
+
+-- withLabel : nom court du module sous l'icone (hors du cadre du bouton, la
+-- mise en page reserve LABEL_H en dessous).
+local function MakeIconButton(mod, size, withLabel, parent)
+  local b = CreateFrame("Button", nil, parent or barFrame)
+  b:SetSize(size, size)
+  b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  local bg = b:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints()
+  local ico = b:CreateTexture(nil, "ARTWORK")
+  ico:SetPoint("TOPLEFT", 3, -3); ico:SetPoint("BOTTOMRIGHT", -3, 3)
+  local ini = b:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  ini:SetPoint("CENTER", 0, 1)
+  local line = b:CreateTexture(nil, "OVERLAY")
+  line:SetHeight(2)
+  line:SetPoint("BOTTOMLEFT", 2, 0); line:SetPoint("BOTTOMRIGHT", -2, 0)
+  line:SetColorTexture(mod.col.r, mod.col.g, mod.col.b, 1)
+  local hl = b:CreateTexture(nil, "HIGHLIGHT")
+  hl:SetAllPoints()
+  hl:SetColorTexture(1, 1, 1, 0.08)
+  local badge = MakeBadge(b, 14)
+  badge:SetPoint("TOPRIGHT", b, "TOPRIGHT", 4, 4)
+  b._bg, b._ico, b._ini, b._line, b._badge, b._mod = bg, ico, ini, line, badge, mod
+  if withLabel then
+    local lbl = b:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    lbl:SetFont(STANDARD_TEXT_FONT, 9, "")
+    lbl:SetPoint("TOP", b, "BOTTOM", 0, -2)
+    lbl:SetWidth(DOCK_SLOT)
+    lbl:SetWordWrap(false)
+    lbl:SetText(ShortLabel(mod))
+    lbl:SetTextColor(mod.col.r, mod.col.g, mod.col.b)
+    b._lbl = lbl
+  end
+  b:SetScript("OnEnter", function(s) ShowModTooltip(s, mod) end)
+  b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  b:SetScript("OnClick", function(_, button) OnModClick(mod, button) end)
+  return b
+end
+
+local function RefreshIconButton(b)
+  local mod = b._mod
+  local loaded, active = ModState(mod)
+  local c = mod.col
+  ApplyModuleIcon(b._ico, b._ini, mod)
+  b._ico:SetDesaturated(not loaded)
+  b._ico:SetAlpha(loaded and 1 or 0.40)
+  b._ini:SetAlpha(loaded and 1 or 0.40)
+  if b._lbl then b._lbl:SetAlpha(loaded and 1 or 0.40) end
+  if active then
+    b._bg:SetColorTexture(c.r * 0.25, c.g * 0.25, c.b * 0.25, 1)
+    b._line:SetAlpha(1)
+  else
+    b._bg:SetColorTexture(0.10, 0.105, 0.125, 1)
+    b._line:SetAlpha(loaded and 0.40 or 0.12)
+  end
+  SetBadge(b._badge, BadgeText(mod))
+end
+
+-- Petit bouton carre a texture (loupe du Dock)
+local function MakeTexButton(texture, size, iconSize)
+  local b = CreateFrame("Button", nil, barFrame)
+  b:SetSize(size, size)
+  local bg = b:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints()
+  bg:SetColorTexture(0.10, 0.105, 0.125, 1)
+  local t = b:CreateTexture(nil, "ARTWORK")
+  t:SetSize(iconSize, iconSize)
+  t:SetPoint("CENTER")
+  t:SetTexture(texture)
+  local hl = b:CreateTexture(nil, "HIGHLIGHT")
+  hl:SetAllPoints()
+  hl:SetColorTexture(1, 1, 1, 0.10)
+  return b
+end
+
+-- Bulle simple pour les boutons utilitaires
+local function SimpleTip(owner, text)
+  GameTooltip:SetOwner(owner, "ANCHOR_NONE")
+  GameTooltip:SetPoint("TOPLEFT", owner, "BOTTOMLEFT", 0, -6)
+  GameTooltip:AddLine(text, 0.85, 0.85, 0.90)
+  GameTooltip:Show()
+end
+
+-- ----------------------------------------------------------------
+-- STYLE DOCK : logo, icones des modules, loupe et repli.
+-- Une seule rangee (horizontal) ou une seule colonne (vertical) :
+-- colonnes et lignes ne concernent que le style Classique.
+-- ----------------------------------------------------------------
+local dockBtns = {}
+Renderers.dock = {}
+
+function Renderers.dock.Build()
+  for i, mod in ipairs(MODULES) do dockBtns[i] = MakeIconButton(mod, DOCK_ICON, true) end
+  local sep2 = barFrame:CreateTexture(nil, "ARTWORK")
+  sep2:SetColorTexture(1, 1, 1, 0.10)
+  barFrame._sep2 = sep2
+  local mag = MakeTexButton("Interface\\Common\\UI-Searchbox-Icon", 22, 14)
+  mag:SetScript("OnClick", function() ToggleGlobalSearch() end)
+  mag:SetScript("OnEnter", function(s) SimpleTip(s, L.TT_DOCK_SEARCH) end)
+  mag:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  barFrame._mag = mag
+end
+
+function Renderers.dock.Hide()
+  for _, b in ipairs(dockBtns) do b:Hide() end
+  barFrame._sep2:Hide()
+  barFrame._mag:Hide()
+  if barSearchField and barSearchField.box:IsShown() then barSearchField.Toggle() end
+end
+
+function Renderers.dock.Refresh()
+  for _, b in ipairs(dockBtns) do
+    if b:IsShown() then RefreshIconButton(b) end
+  end
+end
+
+function Renderers.dock.Layout()
+  local logo, sep, sep2 = barFrame._logo, barFrame._sep, barFrame._sep2
+  local mag, closeBtn = barFrame._mag, barFrame._close
+  barFrame._topLine:Show()
+  barFrame._logoTitle:Hide(); barFrame._logoSub:Hide()
+  barFrame._openAll:Hide(); barFrame._closeAll:Hide()
+  if barFrame._search then barFrame._search:Hide() end
+  if barFrame._searchField then barFrame._searchField.drop:Hide() end
+  logo:Show(); sep:Show(); sep2:Show(); mag:Show(); closeBtn:Show()
+  sep:SetColorTexture(1, 1, 1, 0.10)
+
+  local P, I, G, U = DOCK_PAD, DOCK_ICON, DOCK_GAP, 22
+  logo:SetSize(I, I)
+  barFrame._logoIcon:SetSize(I - 2, I - 2)
+  anchor(barFrame._logoIcon, "CENTER", logo, "CENTER", 0, 0)
+  mag:SetSize(U, U)
+  closeBtn:SetSize(U, U)
+
+  -- Noms courts sous les icones (case du Centre, actifs par defaut) : chaque
+  -- icone occupe alors un emplacement plus large (S) et plus haut (H).
+  local labels = TibiSuiteDB.dockLabels ~= false
+  local S = labels and DOCK_SLOT or I
+  local H = labels and (I + 2 + LABEL_H) or I
+  local inset = (S - I) / 2
+  local vis = {}
+  for i, mod in ipairs(MODULES) do
+    local b = dockBtns[i]
+    if IsModuleVisible(mod) then b:Show(); vis[#vis + 1] = b else b:Hide() end
+    if b._lbl then b._lbl:SetShown(labels) end
+  end
+
+  local top = P + 2   -- sous le liseré
+  local off = (I - U) / 2
+  if not TibiSuiteDB.vertical then
+    local x = P
+    anchor(logo, "TOPLEFT", barFrame, "TOPLEFT", x, -top); x = x + I + 6
+    sep:SetSize(1, H); anchor(sep, "TOPLEFT", barFrame, "TOPLEFT", x, -top); x = x + 1 + 6
+    for _, b in ipairs(vis) do
+      anchor(b, "TOPLEFT", barFrame, "TOPLEFT", x + inset, -top); x = x + S + G
+    end
+    if #vis > 0 then x = x - G end
+    x = x + 6
+    sep2:SetSize(1, H); anchor(sep2, "TOPLEFT", barFrame, "TOPLEFT", x, -top); x = x + 1 + 6
+    anchor(mag, "TOPLEFT", barFrame, "TOPLEFT", x, -(top + off)); x = x + U + 3
+    anchor(closeBtn, "TOPLEFT", barFrame, "TOPLEFT", x, -(top + off)); x = x + U
+    barFrame:SetSize(x + P, top + H + P)
+  else
+    local W = math.max(S, I)
+    local cx = P + (W - I) / 2      -- icones centrees dans la colonne
+    local y = top
+    anchor(logo, "TOPLEFT", barFrame, "TOPLEFT", cx, -y); y = y + I + 6
+    sep:SetSize(W, 1); anchor(sep, "TOPLEFT", barFrame, "TOPLEFT", P, -y); y = y + 1 + 6
+    for _, b in ipairs(vis) do
+      anchor(b, "TOPLEFT", barFrame, "TOPLEFT", cx, -y); y = y + H + G
+    end
+    if #vis > 0 then y = y - G end
+    y = y + 6
+    sep2:SetSize(W, 1); anchor(sep2, "TOPLEFT", barFrame, "TOPLEFT", P, -y); y = y + 1 + 6
+    anchor(mag, "TOPLEFT", barFrame, "TOPLEFT", cx + off, -y); y = y + U + 3
+    anchor(closeBtn, "TOPLEFT", barFrame, "TOPLEFT", cx + off, -y); y = y + U
+    barFrame:SetSize(P + W + P, y + P)
+  end
+  Renderers.dock.Refresh()
+end
+
+-- ----------------------------------------------------------------
+-- STYLE PANNEAU VIVANT : en-tete (logo, personnage), recherche, puis les
+-- modules par groupe, chacun avec sa ligne d'etat. Les modules sans etat
+-- (interface) tiennent sur une rangee d'icones. Un etat « urgent » passe en
+-- rouge et remonte en tete de son groupe. Toujours vertical.
+-- ----------------------------------------------------------------
+local PANEL_GROUPS = {
+  { label = "PANEL_GRP_TODO", keys = { "Daily", "Weekly", "Post" } },
+  { label = "PANEL_GRP_PROG", keys = { "Rep", "Skill", "Lvl", "Stats", "Dgn", "Leg", "Lair" } },
+  { label = "PANEL_GRP_UI",   keys = { "XPBar", "RepBar", "MiniHub", "Opacity", "Standby" }, icons = true },
+}
+local panelRows, panelIcons, panelHeads = {}, {}, {}
+local panelTicker
+-- Taille reglable a la poignee : largeur libre, hauteur = maximum (la liste
+-- des modules defile a la molette au-dela). TibiSuiteDB.panelW / panelH.
+local PANEL_W_MIN, PANEL_W_MAX = 220, 520
+local PANEL_H_MIN, PANEL_H_MAX = 160, 1200
+local panelScroll, panelList, panelGrip
+local panelContentH, panelViewH = 0, 0
+local panelDragging = false   -- pendant l'etirement : etats en cache, pas de recalcul par image
+Renderers.panel = {}
+
+local function PanelWidth()
+  local w = tonumber(TibiSuiteDB.panelW) or PANEL_W
+  return math.max(PANEL_W_MIN, math.min(PANEL_W_MAX, w))
+end
+
+local function ScrollPanelTo(v)
+  if not panelScroll then return end
+  local maxV = math.max(0, panelContentH - panelViewH)
+  panelScroll:SetVerticalScroll(math.max(0, math.min(maxV, v or 0)))
+end
+
+local function MakePanelRow(mod)
+  local r = CreateFrame("Button", nil, panelList)
+  r:SetHeight(PANEL_ROW)
+  r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  local bg = r:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints()
+  bg:SetColorTexture(0, 0, 0, 0)
+  local hl = r:CreateTexture(nil, "HIGHLIGHT")
+  hl:SetAllPoints()
+  hl:SetColorTexture(1, 1, 1, 0.05)
+  local stripe = r:CreateTexture(nil, "ARTWORK")
+  stripe:SetWidth(2)
+  stripe:SetPoint("TOPLEFT", 0, -2); stripe:SetPoint("BOTTOMLEFT", 0, 2)
+  stripe:SetColorTexture(mod.col.r, mod.col.g, mod.col.b, 1)
+  local ico = r:CreateTexture(nil, "ARTWORK")
+  ico:SetSize(16, 16)
+  ico:SetPoint("LEFT", 9, 0)
+  local ini = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  ini:SetPoint("CENTER", ico, "CENTER", 0, 0)
+  local st = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  st:SetPoint("RIGHT", -8, 0)
+  st:SetJustifyH("RIGHT")
+  st:SetWordWrap(false)
+  st:SetWidth(math.floor(PANEL_W * 0.55))
+  local name = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  name:SetPoint("LEFT", ico, "RIGHT", 7, 0)
+  name:SetJustifyH("LEFT")
+  name:SetWordWrap(false)
+  local pBg = r:CreateTexture(nil, "ARTWORK")
+  pBg:SetHeight(2)
+  pBg:SetPoint("BOTTOMLEFT", 32, 2); pBg:SetPoint("BOTTOMRIGHT", -8, 2)
+  pBg:SetColorTexture(1, 1, 1, 0.06)
+  local pFill = r:CreateTexture(nil, "OVERLAY")
+  pFill:SetHeight(2)
+  pFill:SetPoint("BOTTOMLEFT", pBg, "BOTTOMLEFT", 0, 0)
+  pFill:SetColorTexture(mod.col.r, mod.col.g, mod.col.b, 0.85)
+  local badge = MakeBadge(r, 12)
+  badge:SetPoint("CENTER", ico, "TOPRIGHT", 0, 0)
+  r._bg, r._stripe, r._ico, r._ini, r._st, r._name = bg, stripe, ico, ini, st, name
+  r._pBg, r._pFill, r._badge, r._mod = pBg, pFill, badge, mod
+  r:SetScript("OnEnter", function(s) ShowModTooltip(s, mod) end)
+  r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  r:SetScript("OnClick", function(_, button) OnModClick(mod, button) end)
+  return r
+end
+
+-- Met a jour une ligne et renvoie true si son etat est urgent.
+local function RefreshPanelRow(r, W)
+  local mod = r._mod
+  local loaded, active = ModState(mod)
+  local c = mod.col
+  ApplyModuleIcon(r._ico, r._ini, mod)
+  r._ico:SetDesaturated(not loaded)
+  r._ico:SetAlpha(loaded and 1 or 0.40)
+  r._name:SetText(mod.label or mod.addonName)
+  if loaded then r._name:SetTextColor(c.r, c.g, c.b) else r._name:SetTextColor(0.45, 0.45, 0.48) end
+  if active then
+    r._bg:SetColorTexture(c.r * 0.14, c.g * 0.14, c.b * 0.14, 0.95)
+    r._stripe:SetAlpha(1)
+  else
+    r._bg:SetColorTexture(0, 0, 0, 0)
+    r._stripe:SetAlpha(loaded and 0.55 or 0.15)
+  end
+  SetBadge(r._badge, BadgeText(mod))
+
+  local urgent = false
+  local st
+  if panelDragging and r._stCache ~= nil then
+    st = r._stCache or nil
+  else
+    st = loaded and GetModuleStatus(mod) or nil
+    r._stCache = st or false
+  end
+  r._st:SetWidth(math.floor(W * 0.55))
+  if not loaded then
+    r._st:SetText(TibiSuite.ModuleExists(mod.addonName) and L.PANEL_OFF or L.PANEL_ABSENT)
+    r._st:SetTextColor(0.40, 0.40, 0.43)
+  elseif st and st.text then
+    r._st:SetText(st.text)
+    if st.urgent then
+      urgent = true
+      r._st:SetTextColor(1.0, 0.42, 0.42)
+    elseif type(st.color) == "table" then
+      r._st:SetTextColor(st.color[1] or st.color.r or 0.8, st.color[2] or st.color.g or 0.8, st.color[3] or st.color.b or 0.8)
+    else
+      r._st:SetTextColor(0.62, 0.62, 0.66)
+    end
+  else
+    r._st:SetText("")
+  end
+  local w = r._st:GetStringWidth() or 0
+  r._name:SetPoint("RIGHT", r, "RIGHT", -(8 + math.min(w, W * 0.55) + 6), 0)
+  if st and st.progress then
+    r._pBg:Show(); r._pFill:Show()
+    -- Largeur connue d'avance (ligne W-2, piste de 32 a -8) : pas de GetWidth
+    -- avant le premier rendu.
+    r._pFill:SetWidth(math.max(1, (W - 2 - 40) * st.progress))
+  else
+    r._pBg:Hide(); r._pFill:Hide()
+  end
+  return urgent
+end
+
+function Renderers.panel.Build()
+  -- Tout module du catalogue absent des groupes rejoint « Progression ».
+  local listed = {}
+  for _, g in ipairs(PANEL_GROUPS) do for _, k in ipairs(g.keys) do listed[k] = true end end
+  for _, mod in ipairs(MODULES) do
+    if not listed[mod.key] then table.insert(PANEL_GROUPS[2].keys, mod.key) end
+  end
+  -- Liste des modules dans une zone defilante (coupe ce qui depasse).
+  panelScroll = CreateFrame("ScrollFrame", nil, barFrame)
+  panelList = CreateFrame("Frame", nil, panelScroll)
+  panelList:SetSize(PANEL_W, 10)
+  panelScroll:SetScrollChild(panelList)
+  panelScroll:EnableMouseWheel(true)
+  panelScroll:SetScript("OnMouseWheel", function(s, delta)
+    ScrollPanelTo(s:GetVerticalScroll() - delta * PANEL_ROW * 2)
+  end)
+
+  -- Poignee en bas a droite : glisser = largeur et hauteur, double-clic =
+  -- taille d'origine. Redimensionnement fait a la main (ecart du curseur) :
+  -- StartSizing reancrerait la barre et casserait sa position memorisee.
+  panelGrip = CreateFrame("Button", nil, barFrame)
+  panelGrip:SetSize(16, 16)
+  panelGrip:SetPoint("BOTTOMRIGHT", barFrame, "BOTTOMRIGHT", -2, 2)
+  panelGrip:SetFrameLevel(barFrame:GetFrameLevel() + 10)
+  panelGrip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
+  panelGrip:SetHighlightTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Highlight")
+  panelGrip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
+  panelGrip:SetScript("OnEnter", function(s) SimpleTip(s, L.TT_PANEL_GRIP) end)
+  panelGrip:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  panelGrip:SetScript("OnMouseDown", function(s, button)
+    if button ~= "LeftButton" or TibiSuiteDB.locked then return end
+    GameTooltip:Hide()
+    local scale = barFrame:GetEffectiveScale()
+    local cx, cy = GetCursorPosition()
+    local w0, h0 = barFrame:GetWidth(), barFrame:GetHeight()
+    panelDragging = true
+    s:SetScript("OnUpdate", function()
+      local x, y = GetCursorPosition()
+      local w = math.floor(w0 + (x - cx) / scale + 0.5)
+      local h = math.floor(h0 + (cy - y) / scale + 0.5)
+      TibiSuiteDB.panelW = math.max(PANEL_W_MIN, math.min(PANEL_W_MAX, w))
+      TibiSuiteDB.panelH = math.max(PANEL_H_MIN, math.min(PANEL_H_MAX, h))
+      Renderers.panel.Layout()
+    end)
+  end)
+  panelGrip:SetScript("OnMouseUp", function(s)
+    s:SetScript("OnUpdate", nil)
+    if panelDragging then
+      panelDragging = false
+      Renderers.panel.Layout()
+      RefreshOptions()
+    end
+  end)
+  panelGrip:SetScript("OnDoubleClick", function()
+    TibiSuiteDB.panelW, TibiSuiteDB.panelH = nil, nil
+    Renderers.panel.Layout()
+  end)
+
+  for gi, g in ipairs(PANEL_GROUPS) do
+    local h = panelList:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    h:SetJustifyH("LEFT")
+    h:SetText(L[g.label] or g.label)
+    panelHeads[gi] = h
+  end
+  for _, mod in ipairs(MODULES) do
+    panelRows[mod.key] = MakePanelRow(mod)
+    panelIcons[mod.key] = MakeIconButton(mod, PANEL_ICON, true, panelList)
+  end
+  -- Rafraichissement doux tant que le Panneau est affiche (etats qui
+  -- evoluent seuls : concentration, XP...). Arrete des que la barre se cache.
+  barFrame:HookScript("OnShow", function()
+    if BarStyle() == "panel" then Renderers.panel.StartTicker(); Renderers.panel.Refresh() end
+  end)
+  barFrame:HookScript("OnHide", function() Renderers.panel.StopTicker() end)
+end
+
+function Renderers.panel.StartTicker()
+  if panelTicker or not C_Timer.NewTicker then return end
+  panelTicker = C_Timer.NewTicker(30, function()
+    if barFrame and barFrame:IsShown() and BarStyle() == "panel" then Renderers.panel.Refresh()
+    else Renderers.panel.StopTicker() end
+  end)
+end
+
+function Renderers.panel.StopTicker()
+  if panelTicker then panelTicker:Cancel(); panelTicker = nil end
+end
+
+function Renderers.panel.Hide()
+  Renderers.panel.StopTicker()
+  for _, r in pairs(panelRows) do r:Hide() end
+  for _, b in pairs(panelIcons) do b:Hide() end
+  for _, h in pairs(panelHeads) do h:Hide() end
+  if panelScroll then panelScroll:Hide() end
+  if panelGrip then panelGrip:Hide(); panelGrip:SetScript("OnUpdate", nil) end
+  panelDragging = false
+  barFrame._logoTitle:Hide(); barFrame._logoSub:Hide()
+end
+
+-- Ligne courte du personnage : nom a la couleur de classe, niveau, ilvl.
+local function PanelCharLine()
+  local name = UnitName and UnitName("player")
+  if not name then return "" end
+  local _, class = UnitClass("player")
+  local cc = (class and C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(class))
+    or (class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class])
+  local s = (cc and ColorCode(cc.r, cc.g, cc.b) or "|cFFE6E6E6") .. name .. "|r"
+  s = s .. "|cFF8D8A84  " .. L.PANEL_LVL .. " " .. tostring(UnitLevel("player") or "?")
+  if GetAverageItemLevel then
+    local _, eq = GetAverageItemLevel()
+    if eq and eq > 0 then s = s .. "  -  ilvl " .. math.floor(eq + 0.5) end
+  end
+  return s .. "|r"
+end
+
+-- Le Panneau se met en page a chaque rafraichissement : l'ordre des lignes
+-- depend des etats urgents. Une quinzaine de lignes, sur evenement : negligeable.
+function Renderers.panel.Layout()
+  local W, P = PanelWidth(), 8
+  local logo, sep, closeBtn = barFrame._logo, barFrame._sep, barFrame._close
+  barFrame._topLine:Show()
+  barFrame._openAll:Hide(); barFrame._closeAll:Hide()
+  if barFrame._sep2 then barFrame._sep2:Hide() end
+  if barFrame._mag then barFrame._mag:Hide() end
+  logo:Show(); sep:Show(); closeBtn:Show()
+  sep:SetColorTexture(1, 1, 1, 0.10)
+
+  -- En-tete : logo + titre + personnage ; repli (×) au-dessus, a droite.
+  local HEAD = 40
+  logo:SetSize(W - 2, HEAD)
+  anchor(logo, "TOPLEFT", barFrame, "TOPLEFT", 1, -3)
+  local icon = barFrame._logoIcon
+  icon:SetSize(26, 26)
+  anchor(icon, "LEFT", logo, "LEFT", 8, 0)
+  local title, sub = barFrame._logoTitle, barFrame._logoSub
+  anchor(title, "TOPLEFT", icon, "TOPRIGHT", 8, 1)
+  anchor(sub, "BOTTOMLEFT", icon, "BOTTOMRIGHT", 8, -1)
+  sub:SetWidth(W - 26 - 8 - 8 - 40)
+  sub:SetText(PanelCharLine())
+  title:Show(); sub:Show()
+  closeBtn:SetSize(22, 22)
+  closeBtn:SetFrameLevel(logo:GetFrameLevel() + 5)
+  anchor(closeBtn, "TOPRIGHT", barFrame, "TOPRIGHT", -P, -(3 + (HEAD - 22) / 2))
+
+  local y = 3 + HEAD + 2
+  sep:SetSize(W - 2 * P, 1)
+  anchor(sep, "TOPLEFT", barFrame, "TOPLEFT", P, -y)
+  y = y + 7
+  if barFrame._search then
+    local box = barFrame._search
+    box:SetSize(W - 2 * P, 20)
+    anchor(box, "TOPLEFT", barFrame, "TOPLEFT", P, -y)
+    box:Show()
+    y = y + 20 + 4
+  end
+
+  -- A partir d'ici, tout est place dans la liste defilante (y local).
+  local listTop = y
+  y = 0
+  for _, r in pairs(panelRows) do r:Hide() end
+  for _, b in pairs(panelIcons) do b:Hide() end
+  local byKey = {}
+  for _, mod in ipairs(MODULES) do byKey[mod.key] = mod end
+
+  for gi, g in ipairs(PANEL_GROUPS) do
+    local head = panelHeads[gi]
+    local list = {}
+    for _, k in ipairs(g.keys) do
+      local mod = byKey[k]
+      if mod and IsModuleVisible(mod) then list[#list + 1] = mod end
+    end
+    if #list == 0 then
+      head:Hide()
+    else
+      y = y + 6
+      anchor(head, "TOPLEFT", panelList, "TOPLEFT", P + 2, -y)
+      head:Show()
+      y = y + 14
+      if g.icons then
+        -- Emplacements de DOCK_SLOT de large : icone centree, nom court dessous.
+        local rowH = PANEL_ICON + 2 + LABEL_H + 4
+        local x, perLine = P, math.max(1, math.floor((W - 2 * P) / DOCK_SLOT))
+        local inset = (DOCK_SLOT - PANEL_ICON) / 2
+        for i, mod in ipairs(list) do
+          local b = panelIcons[mod.key]
+          if i > 1 and (i - 1) % perLine == 0 then x = P; y = y + rowH end
+          anchor(b, "TOPLEFT", panelList, "TOPLEFT", x + inset, -(y + 2))
+          b:Show()
+          RefreshIconButton(b)
+          x = x + DOCK_SLOT
+        end
+        y = y + 2 + rowH
+      else
+        -- Etats urgents d'abord, ordre du groupe conserve sinon.
+        local urgent, normal = {}, {}
+        for _, mod in ipairs(list) do
+          local r = panelRows[mod.key]
+          r:SetWidth(W - 2)
+          if RefreshPanelRow(r, W) then urgent[#urgent + 1] = r else normal[#normal + 1] = r end
+        end
+        for _, set in ipairs({ urgent, normal }) do
+          for _, r in ipairs(set) do
+            anchor(r, "TOPLEFT", panelList, "TOPLEFT", 1, -y)
+            r:Show()
+            y = y + PANEL_ROW
+          end
+        end
+      end
+    end
+  end
+  -- Hauteur : celle du contenu, plafonnee par la poignee (TibiSuiteDB.panelH) ;
+  -- au-dela, la liste defile. Jamais de vide sous le dernier module.
+  panelContentH = y
+  local viewH = y
+  local maxH = tonumber(TibiSuiteDB.panelH)
+  if maxH then viewH = math.min(y, math.max(40, maxH - listTop - P)) end
+  panelViewH = viewH
+  panelList:SetSize(W, math.max(1, y))
+  panelScroll:ClearAllPoints()
+  panelScroll:SetPoint("TOPLEFT", barFrame, "TOPLEFT", 0, -listTop)
+  panelScroll:SetSize(W, math.max(1, viewH))
+  panelScroll:Show()
+  ScrollPanelTo(panelScroll:GetVerticalScroll())
+  barFrame:SetSize(W, listTop + viewH + P)
+  panelGrip:SetShown(not TibiSuiteDB.locked)
+  if barFrame:IsShown() then Renderers.panel.StartTicker() end
+end
+
+Renderers.panel.Refresh = function() Renderers.panel.Layout() end
+
+-- Aiguillage :masque ce qui appartient aux autres styles, construit le style
+-- actif au premier usage, puis le met en page. Appelee a la construction et a
+-- chaque changement de reglage.
+function LayoutBar()
+  if not barFrame then return end
+  TibiSuiteDB.hidden = TibiSuiteDB.hidden or {}
+  barFrame:SetScale(TibiSuiteDB.scale or 1.0)
+  local style = BarStyle()
+  if style ~= "classic" then
+    for _, b in ipairs(tabButtons) do b:Hide() end
+  end
+  for name, r in pairs(Renderers) do
+    if name ~= style and r.built then r.Hide() end
+  end
+  if style == "classic" then
+    LayoutClassic()
+    return
+  end
+  local r = Renderers[style]
+  if not r.built then r.Build(); r.built = true end
+  r.Layout()
 end
 
 -- ================================================================
@@ -1941,6 +2764,18 @@ SlashCmdList["TIBISUITE"] = function(msg)
   elseif msg == "bar" or msg == "barre" then
     ToggleBar()
 
+  elseif msg:match("^barr?e?%s+%a+$") then
+    -- /ts bar classic | dock | panel : change le style de la barre
+    local style = msg:match("%s+(%a+)$")
+    local alias = { classique = "classic", panneau = "panel" }
+    style = alias[style] or style
+    if BAR_STYLES[style] then
+      TibiSuite.ApplyBarSettings({ style = style, open = true })
+      print("|cFFC41F3BTibiSuite|r " .. L.SLASH_BAR .. " : " .. (L["STYLE_" .. style] or style) .. ".")
+    else
+      print("|cFFC41F3BTibiSuite|r : /ts bar classic | dock | panel")
+    end
+
   elseif msg == "reset" then
     -- Recentre la barre (secours si elle a été perdue hors écran)
     TibiSuiteCharDB.barPos = CopyDefaultBarPos()
@@ -2193,8 +3028,18 @@ end
 -- (aucun effet si le module absent du catalogue ou barre pas encore construite -
 -- le module doit retenter apres son propre evenement de rafraichissement).
 -- ============================================================================
+-- Redessine le style actif s'il n'est pas Classique (Dock / Panneau).
+local function RefreshStyled()
+  if not barFrame then return end
+  local style = BarStyle()
+  local r = Renderers[style]
+  if style ~= "classic" and r and r.built and r.Refresh then r.Refresh() end
+end
+
 function TibiSuite.SetTabBadge(key, count)
   count = tonumber(count) or 0
+  badgeCounts[key] = count
+  RefreshStyled()
   for i, mod in ipairs(MODULES) do
     if mod.key == key then
       local btn = tabButtons[i]
@@ -2240,9 +3085,40 @@ function TibiSuite.SetMinimapBadge(count)
   end
 end
 
+-- Ligne d'etat d'un module (Panneau vivant, info-bulles du Dock) : un module
+-- appelle TibiSuite.RefreshStatus() quand ses donnees changent. Regroupe les
+-- appels rapproches (un seul rafraichissement par demi-seconde), et ne fait
+-- rien si la barre est cachee : elle se rafraichit de toute facon a l'ouverture.
+local statusPending = false
+function TibiSuite.RefreshStatus()
+  if statusPending then return end
+  statusPending = true
+  C_Timer.After(0.5, function()
+    statusPending = false
+    if barFrame and barFrame:IsShown() then RefreshStyled() end
+  end)
+end
+
+-- Outils de mise en forme pour les lignes d'etat des modules (meme langue
+-- que le reste du Panneau) : duree courte et or arrondi.
+function TibiSuite.FmtDuration(s)
+  s = math.max(0, math.floor(tonumber(s) or 0))
+  local d, h, m = math.floor(s / 86400), math.floor((s % 86400) / 3600), math.floor((s % 3600) / 60)
+  if d > 0 then return string.format(L.DUR_DH, d, h) end
+  if h > 0 then return string.format(L.DUR_HM, h, m) end
+  return string.format(L.DUR_M, math.max(1, m))
+end
+
+function TibiSuite.FmtGold(copper)
+  local g = math.floor(math.abs(tonumber(copper) or 0) / 10000)
+  local txt = (BreakUpLargeNumbers and BreakUpLargeNumbers(g)) or tostring(g)
+  return ((tonumber(copper) or 0) < 0 and "-" or "+") .. txt
+end
+
 -- API appelee par chaque module a son chargement : il s'inscrit comme onglet de
 -- la barre unifiee et dans la recherche globale existante (RegisterSearch).
---   spec = { key=, label=, accent={r,g,b}, onOpen=fn, onOptions=fn, searchProvider=fn }
+--   spec = { key=, label=, accent={r,g,b}, onOpen=fn, onOptions=fn, searchProvider=fn,
+--            statusFn=fn }  -- statusFn (facultatif, 7.1.5.44) : voir GetModuleStatus
 function TibiSuite.RegisterModule(spec)
   if type(spec) ~= "table" or not spec.key then return end
   TibiSuite.registered[spec.key] = spec
@@ -2431,9 +3307,13 @@ function TibiSuite.GetBarCorner()
   return nil   -- position personnalisee (deplacee a la main)
 end
 
---   s = { vertical=, scale= (0-1), cols=, rows=, corner= (1-9), open=, logoSize=, locked= }
+--   s = { style= ("classic"|"dock"|"panel"), vertical=, scale= (0-1), cols=, rows=,
+--         corner= (1-9), open=, logoSize=, locked= }
 function TibiSuite.ApplyBarSettings(s)
   if type(s) ~= "table" then return end
+  if s.style and BAR_STYLES[s.style] then TibiSuiteDB.barStyle = s.style end
+  if s.dockLabels ~= nil then TibiSuiteDB.dockLabels = s.dockLabels and true or false end
+  if s.panelReset then TibiSuiteDB.panelW, TibiSuiteDB.panelH = nil, nil end
   if s.vertical ~= nil then TibiSuiteDB.vertical = s.vertical and true or false end
   if s.scale then TibiSuiteDB.scale = math.max(SCALE_MIN, math.min(SCALE_MAX, s.scale)) end
   if s.cols then TibiSuiteDB.cols = math.max(1, math.min(#MODULES, s.cols)) end
@@ -2458,6 +3338,10 @@ function TibiSuite.ApplyBarSettings(s)
   end
   RefreshOptions()
 end
+
+-- Style de la barre : "classic" | "dock" | "panel"
+function TibiSuite.GetBarStyle() return BarStyle() end
+function TibiSuite.SetBarStyle(style) TibiSuite.ApplyBarSettings({ style = style }) end
 
 -- ================================================================
 -- BARRE : position precise, onglets affiches, tout ouvrir / fermer
@@ -2561,6 +3445,7 @@ function TibiSuite.ExportProfile()
     "lm=" .. (TibiSuiteDB.loginMsg or "one"),
     "ex=" .. ((TibiSuiteDB.statsAutoExport == false) and 0 or 1),
     "hd=" .. table.concat(hid, ","),
+    "st=" .. BarStyle(),
   }, ";")
   return "TS1:" .. B64Encode(p .. "|" .. Djb2(p))
 end
@@ -2591,6 +3476,7 @@ function TibiSuite.DecodeProfile(code)
   prof.mmHidden   = (t.mm == "1")
   prof.loginMsg   = (t.lm == "full" or t.lm == "none") and t.lm or "one"
   prof.autoExport = (t.ex ~= "0")
+  prof.style      = BAR_STYLES[t.st or ""] and t.st or nil   -- absent des codes d'avant 7.1.5.43
   return prof
 end
 
@@ -2603,8 +3489,8 @@ function TibiSuite.ApplyProfile(prof, skipModules)
   TibiSuite.SetMinimapHidden(prof.mmHidden)
   TibiSuiteDB.loginMsg = prof.loginMsg
   TibiSuiteDB.statsAutoExport = prof.autoExport and true or false
-  TibiSuite.ApplyBarSettings({ vertical = prof.vertical, scale = prof.scale, cols = prof.cols,
-    rows = prof.rows, logoSize = prof.logoSize, locked = prof.locked })
+  TibiSuite.ApplyBarSettings({ style = prof.style, vertical = prof.vertical, scale = prof.scale,
+    cols = prof.cols, rows = prof.rows, logoSize = prof.logoSize, locked = prof.locked })
   if not skipModules then
     for _, mod in ipairs(MODULES) do
       if ModuleExists(mod.addonName) then
@@ -2788,6 +3674,15 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
 
   -- ── ADDON_LOADED : TibiSuite vient d'être chargé ──────────────
   if event == "ADDON_LOADED" and arg1 == ADDON then
+
+    -- Style de la barre, pose une seule fois : un joueur existant (installation
+    -- deja faite ou reglages deja presents) garde la grille Classique qu'il
+    -- connait ; une nouvelle installation demarre en Dock. Ce test passe AVANT
+    -- le remplissage des defauts, qui rendrait tout le monde « existant ».
+    if not BAR_STYLES[TibiSuiteDB.barStyle or ""] then
+      local existing = TibiSuiteDB.setupDone or TibiSuiteDB.mmAngle ~= nil
+      TibiSuiteDB.barStyle = existing and "classic" or "dock"
+    end
 
     -- Réglages compte : on comble les champs manquants avec les défauts
     for k, v in pairs(DEFAULTS) do
