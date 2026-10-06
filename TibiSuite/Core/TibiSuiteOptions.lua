@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.41
+-- TibiSuiteOptions v7.1.5.42
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -292,7 +292,7 @@ L.WIZ_DONE_TITLE = L.WIZ_DONE_TITLE or "C'est prêt"
 L.WIZ_DONE_FMT   = L.WIZ_DONE_FMT   or "%d modules actifs."
 L.WIZ_DONE_RELOAD_FMT = L.WIZ_DONE_RELOAD_FMT or " Un /reload finalisera %d changement(s) de module."
 L.WIZ_G1_T = L.WIZ_G1_T or "/ts"
-L.WIZ_G1_D = L.WIZ_G1_D or "Ouvre ou ferme la barre d'onglets."
+L.WIZ_G1_D = L.WIZ_G1_D or "Ouvre le Centre TibiSuite : tous les réglages au même endroit. /ts bar affiche la barre."
 L.WIZ_G2_T = L.WIZ_G2_T or "Maj + clic droit"
 L.WIZ_G2_D = L.WIZ_G2_D or "Sur une fenêtre de module : ses options."
 L.WIZ_G3_T = L.WIZ_G3_T or "Onglet Stats"
@@ -326,6 +326,9 @@ L.WN_38_13 = L.WN_38_13 or "Gestionnaire de boutons, barre rapide, vue liste, mo
 L.WN_38_14 = L.WN_38_14 or "Profils par personnage et par spécialisation, réglage à la molette directement sur l'écran, groupes liés et six nouveaux contextes."
 L.WN_38_15 = L.WN_38_15 or "Clés Mythique+ de nouveau enregistrées. Le code d'export porte maintenant tes légendaires, ton leveling et tes Repaires ; un Repaire n'est plus compté comme un Gouffre."
 L.WN_38_16 = L.WN_38_16 or "Nouvelles cartes Légendaires, Leveling et Repaires sur le Dashboard web et dans Tibi Companion, cartes Personnages et Fiche repliables. 10 langues partout."
+L.WN_42_0  = L.WN_42_0  or "Nouveau Centre TibiSuite : une seule fenêtre pour tous les réglages, façon EllesmereUI. Barre latérale avec un interrupteur par module, et la page de chaque module affiche ses propres options. Redimensionnable, filtre des modules, diagnostic et rechargement intégrés."
+L.WN_42_1  = L.WN_42_1  or "Accès : /ts ouvre le Centre (/ts bar pour la barre), clic droit sur le bouton de la minicarte, ligne TibiSuite dans le menu Échap sous EllesmereUI (désactivable), et page TibiSuite dans Options > AddOns."
+L.WN_42_2  = L.WN_42_2  or "La page Barre et accès reprend tous les réglages de l'ancienne fenêtre : position au pixel près, onglets affichés, tout ouvrir ou fermer, minicarte et messages de connexion."
 L.WN_41_1  = L.WN_41_1  or "Nouvelle carte Absences sur le Dashboard web et dans Tibi Companion : nombre d'absences, temps total, moyenne, record et dernière absence de chaque personnage. Stats exporte maintenant le cumul tenu par Standby."
 L.WN_40_2  = L.WN_40_2  or "DailyTracker, RenTracker, SkillTracker, LegTracker, WeeklyCompass et LvlHistory alimentent les tuiles À faire ce soir et Mes personnages de Standby (lecture seule)."
 L.WN_40_0  = L.WN_40_0  or "Nouveau module Standby, le 15e de la suite : un écran d'absence qui s'efface dès que le jeu a besoin de toi. Décoché par défaut si tu avais déjà TibiSuite : coche-le dans /ts modules."
@@ -397,6 +400,11 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.42"] = {
+    { key = "Suite",   title = "TibiSuite", text = L.WN_42_0, new = true },
+    { key = "Suite",   title = "TibiSuite", text = L.WN_42_1 },
+    { key = "Suite",   title = "TibiSuite", text = L.WN_42_2 },
+  },
   ["7.1.5.41"] = {
     { key = "Stats",   title = "Stats",     text = L.WN_41_1, new = true },
   },
@@ -693,31 +701,10 @@ local function Build()
     logo  = LOGO,
   })
 
-  panel:Section(L.SEC_MODULES)
-  panel:Note(L.NOTE_MODULES)
-
+  -- Les cases d'activation des modules ont quitte ce panneau : elles sont
+  -- desormais les interrupteurs de la barre laterale du Centre TibiSuite,
+  -- qui affiche ce panneau comme page « Maintenance ».
   local catalog = (TibiSuite.GetCatalog and TibiSuite.GetCatalog()) or {}
-  for _, mod in ipairs(catalog) do
-    local key     = mod.key
-    local present = TibiSuite.ModuleExists and TibiSuite.ModuleExists(mod.addonName)
-    local label   = Hex(mod.col) .. (mod.addonName or mod.label) .. "|r"
-    if not present then
-      label = label .. L.LBL_ABSENT
-    end
-    panel:Check(
-      label,
-      function() return TibiSuite.IsModuleEnabled and TibiSuite.IsModuleEnabled(key) end,
-      function(v)
-        local status = TibiSuite.SetModuleEnabled and TibiSuite.SetModuleEnabled(key, v)
-        ToastModuleStatus(mod, status)
-      end,
-      present and (L.CHECK_TOOLTIP_ON .. mod.addonName)
-              or (mod.addonName .. L.CHECK_TOOLTIP_OFF)
-    )
-  end
-
-  panel:Section(L.SEC_TIP)
-  panel:Note(L.NOTE_TIP)
 
   -- ── Installation et profil ─────────────────────────────────────
   panel:Section(L.SEC_SETUP)
@@ -2306,3 +2293,16 @@ function TibiSuite.OpenProfileWindow()
   pf.frame:Show()
   pf.ex:SetFocus()
 end
+
+-- ================================================================
+-- BOITE A OUTILS PARTAGEE avec le Centre TibiSuite (TibiSuiteCentre.lua)
+-- Memes briques visuelles que l'installateur : un seul style dans la suite.
+-- ================================================================
+TibiSuite._kit = {
+  COL = COL, HX = HX, FLAT = FLAT, ACC = ACCENT_SUITE, LOGO = LOGO,
+  MODULE_LOGO = MODULE_LOGO, MODULE_SLASH = MODULE_SLASH,
+  ICON_OK = ICON_OK, ICON_FAIL = ICON_FAIL, ICON_WAIT = ICON_WAIT,
+  Card = Card, Text = Text, Label = Label, Btn = Btn, makeSwitch = makeSwitch,
+  Toggle = Toggle, Segmented = Segmented, ShowURL = ShowURL, SkinLikeSuite = SkinLikeSuite,
+  AddFadeIn = AddFadeIn,
+}

@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.1.5.41
+-- TibiSuiteCore v7.1.5.42
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.1.5.41"
+local VERSION = "7.1.5.42"
 
 -- ================================================================
 -- LOCALISATION
@@ -87,7 +87,7 @@ L.MSG_OLDLIB  = L.MSG_OLDLIB  or "bibliothèque obsolète, faites |cFFFFD700/rel
 L.PILL_CLICK = L.PILL_CLICK or "Clic : réafficher la barre et les modules"
 -- Bouton minimap
 L.MM_TT_LEFT = L.MM_TT_LEFT or "Clic gauche : afficher / masquer la barre"
-L.MM_TT_RIGHT = L.MM_TT_RIGHT or "Clic droit : options"
+L.MM_TT_RIGHT = L.MM_TT_RIGHT or "Clic droit : Centre TibiSuite (réglages)"
 L.MM_TT_DRAG = L.MM_TT_DRAG or "|cFFFFD700Glisser|r pour repositionner"
 -- Commande slash /ts
 L.SLASH_BAR        = L.SLASH_BAR        or "barre"
@@ -105,7 +105,8 @@ L.VERT_OFF = L.VERT_OFF or "horizontale"
 L.MSG_MODULES_UNAVAIL = L.MSG_MODULES_UNAVAIL or "panneau des modules indisponible (faites |cFFFFD700/reload|r)."
 L.HELP_HEADER  = L.HELP_HEADER  or "commandes :"
 L.HELP_TOGGLE  = L.HELP_TOGGLE  or "afficher / masquer la barre"
-L.HELP_CONFIG  = L.HELP_CONFIG  or "panneau d'options"
+L.HELP_CONFIG  = L.HELP_CONFIG  or "réglages de la barre (Centre)"
+L.HELP_CENTRE  = L.HELP_CENTRE  or "ouvrir / fermer le Centre TibiSuite (tous les réglages)"
 L.HELP_MODULES = L.HELP_MODULES or "activer / désactiver les modules (cases à cocher)"
 L.HELP_STATS   = L.HELP_STATS   or "ouvrir directement l'onglet Stats"
 L.HELP_OPENCLOSEALL = L.HELP_OPENCLOSEALL or "tout ouvrir / fermer"
@@ -128,7 +129,7 @@ L.MSG_TAB_NEEDRELOAD  = L.MSG_TAB_NEEDRELOAD  or " est maintenant coché.\n\nWoW
 L.MSG_SYNC_REENABLED  = L.MSG_SYNC_REENABLED  or "réactivé(s) dans la liste d'addons, actif(s) après |cFFFFD700/reload|r :"
 L.MSG_SYNC_DISABLED   = L.MSG_SYNC_DISABLED   or "décoché(s) dans TibiSuite, désactivé(s) dans la liste d'addons (|cFFFFD700/ts modules|r pour réactiver) :"
 L.MSG_SYNC_FIRST      = L.MSG_SYNC_FIRST      or "module(s) décoché(s) ne seront plus chargés par WoW à partir du prochain |cFFFFD700/reload|r :"
-L.MSG_LOGIN_ONE       = L.MSG_LOGIN_ONE       or "afficher la barre"
+L.MSG_LOGIN_ONE       = L.MSG_LOGIN_ONE       or "ouvrir le Centre"
 -- /ts doctor
 L.DOC_HEADER    = L.DOC_HEADER    or "diagnostic des modules"
 L.DOC_SOCLE     = L.DOC_SOCLE     or "socle d'interface"
@@ -473,7 +474,6 @@ local barFrame         -- la barre d'onglets principale
 local tabButtons = {}  -- boutons d'onglets [1..N]
 local minimapBtn       -- bouton sur la minimap
 local placeholderFrame -- frame "addon absent"
-local optionsFrame     -- panneau d'options /ts config
 
 -- Fonctions déclarées ici, définies plus bas (dépendances croisées)
 local LayoutBar, SetAllModules, OpenOptions, RefreshOptions, ToggleGlobalSearch
@@ -749,6 +749,7 @@ local function SaveBarPos()
   if not barFrame then return end
   local point, _, _, x, y = barFrame:GetPoint()
   TibiSuiteCharDB.barPos = { point = point, x = x, y = y }
+  if RefreshOptions then RefreshOptions() end   -- curseurs X / Y du Centre
 end
 
 -- Restaure la position sauvegardée (par personnage), avec valeurs de secours
@@ -831,7 +832,7 @@ local function BuildBar()
   end)
   logoBtn:SetScript("OnClick", function(_, button)
     if button == "RightButton" then
-      OpenOptions()
+      if TibiSuite.ToggleCentre then TibiSuite.ToggleCentre() else OpenOptions() end
     elseif button == "LeftButton" then
       if IsShiftKeyDown() then
         -- Maj + clic gauche : masquer totalement (icône minimap pour rouvrir)
@@ -1185,382 +1186,21 @@ function LayoutBar()
 end
 
 -- ================================================================
--- PANNEAU D'OPTIONS  (/ts config, ou clic droit sur le logo)
--- Contrôles faits main, aucune dépendance aux templates Blizzard.
+-- REGLAGES DE LA BARRE : page « Barre et acces » du Centre TibiSuite
+-- L'ancienne fenetre faite main (/ts config) a ete retiree en 7.1.5.42 :
+-- tous ses reglages sont dans le Centre. Les deux relais ci-dessous gardent
+-- les appels existants : OpenOptions ouvre la page, RefreshOptions la
+-- resynchronise quand un reglage change ailleurs (/ts lock, /ts vertical,
+-- barre deplacee a la souris, profils, installateur...).
 -- ================================================================
-local SCALE_MIN, SCALE_MAX, SCALE_STEP = 0.70, 1.50, 0.05
+local SCALE_MIN, SCALE_MAX = 0.70, 1.50
 
--- Petit bouton texte réutilisable (avec surbrillance de bordure au survol)
-local function MakeTextButton(parent, w, h, text)
-  local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
-  b:SetSize(w, h)
-  b:SetBackdrop(MakeBackdrop(3))
-  b:SetBackdropColor(0.12, 0.09, 0.16, 0.95)
-  b:SetBackdropBorderColor(0.55, 0.45, 0.20, 0.75)
-  local fs = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  fs:SetAllPoints()
-  fs:SetText(text)
-  b._label = fs
-  b:SetScript("OnEnter", function(s) s:SetBackdropBorderColor(0.85, 0.72, 0.30, 1.0) end)
-  b:SetScript("OnLeave", function(s) s:SetBackdropBorderColor(0.55, 0.45, 0.20, 0.75) end)
-  return b
-end
-
--- Met à jour l'affichage des contrôles selon la DB
 function RefreshOptions()
-  local f = optionsFrame
-  if not f then return end
-  f._scaleVal:SetText(string.format("%d%%",
-    math.floor((TibiSuiteDB.scale or 1) * 100 + 0.5)))
-  f._logoSizeVal:SetText(tostring(TibiSuiteDB.logoSize or 22) .. "px")
-  f._lockBtn._label:SetText(L.OPT_LOCKED_LABEL ..
-    (TibiSuiteDB.locked and ("|cFF66FF66" .. L.STATE_YES .. "|r") or ("|cFFFF7777" .. L.STATE_NO .. "|r")))
-  f._vertBtn._label:SetText(L.OPT_VERTICAL_LABEL ..
-    (TibiSuiteDB.vertical and ("|cFF66FF66" .. L.STATE_YES .. "|r") or ("|cFFFF7777" .. L.STATE_NO .. "|r")))
-
-  -- Position (X / Y) : synchronise les curseurs avec la position courante.
-  if f._xSlider and f._ySlider then
-    local pos = TibiSuiteCharDB.barPos or DEFAULT_BAR_POS
-    local x = math.floor((pos.x or 0) + 0.5)
-    local y = math.floor((pos.y or 0) + 0.5)
-    f._xSlider:SetValue(x)
-    f._ySlider:SetValue(y)
-    f._xVal:SetText(tostring(x))
-    f._yVal:SetText(tostring(y))
-  end
-
-  -- Grille de toggles : colonnes (pilotées) et lignes (déduites)
-  if f._colsVal then
-    local c, r = ComputeGrid(VisibleCount())
-    f._colsVal:SetText(tostring(c))
-    f._rowsVal:SetText(tostring(r))
-  end
-
-  -- Bascules par module (statut d'installation + affiché/masqué)
-  if f._moduleRows then
-    TibiSuiteDB.hidden = TibiSuiteDB.hidden or {}
-    for _, row in ipairs(f._moduleRows) do
-      local mod     = row.mod
-      local loaded  = C_AddOns.IsAddOnLoaded(mod.addonName)
-      local dot     = loaded and (ICON_OK .. " ") or (ICON_MISS .. " ")
-      local visible = not TibiSuiteDB.hidden[mod.key]
-      local state   = visible and ("|cFF66FF66" .. L.STATE_VISIBLE .. "|r") or ("|cFFFF7777" .. L.STATE_HIDDEN .. "|r")
-      row.btn._label:SetText(dot ..
-        ColorCode(mod.col.r, mod.col.g, mod.col.b) .. mod.label .. "|r   " .. state)
-      row.btn._label:SetJustifyH("CENTER")
-    end
-  end
-end
-
-local function BuildOptions()
-  if optionsFrame then return end
-  local f = CreateFrame("Frame", "TibiSuiteOptions", UIParent, "BackdropTemplate")
-  optionsFrame = f
-  -- Hauteur calculee pour englober tout le contenu (une ligne par module) :
-  -- evite qu'un bouton deborde sous le cadre.
-  f:SetSize(300, 510 + #MODULES * 26)  -- +30 Position (X / Y), +40 Taille du logo
-  f:SetPoint("CENTER", UIParent, "CENTER", 0, 80)
-  f:SetFrameStrata("DIALOG")
-  f:SetMovable(true)
-  f:EnableMouse(true)
-  f:RegisterForDrag("LeftButton")
-  f:SetScript("OnDragStart", f.StartMoving)
-  f:SetScript("OnDragStop", f.StopMovingOrSizing)
-  f:SetBackdrop(MakeBackdrop(6))
-  f:SetBackdropColor(COL_BG.r, COL_BG.g, COL_BG.b, COL_BG.a)
-  f:SetBackdropBorderColor(COL_BORDER.r, COL_BORDER.g, COL_BORDER.b)
-  f:Hide()
-
-  local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  title:SetPoint("TOP", f, "TOP", 0, -14)
-  title:SetText("|cFFC41F3BTibiSuite|r  Options")
-
-  local xBtn = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-  xBtn:SetPoint("TOPRIGHT", f, "TOPRIGHT", 2, 2)
-  xBtn:SetScript("OnClick", function() f:Hide() end)
-
-  -- ── Échelle : label + [-] valeur [+] ──
-  -- CTRL_COL_X : colonne fixe ou demarrent les boutons [-], commune a
-  -- Echelle et Taille du logo, pour que les deux rangees s'alignent
-  -- malgre leurs libelles de longueurs differentes.
-  local CTRL_COL_X = 140
-
-  local scaleLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  scaleLbl:SetPoint("TOPLEFT", f, "TOPLEFT", 20, -50)
-  scaleLbl:SetText(L.OPT_SCALE_LABEL)
-
-  local minus = MakeTextButton(f, 26, 22, "|cFFFFD700-|r")
-  minus:SetPoint("LEFT", scaleLbl, "LEFT", CTRL_COL_X, 0)
-  local scaleVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  scaleVal:SetPoint("LEFT", minus, "RIGHT", 8, 0)
-  scaleVal:SetWidth(48)
-  scaleVal:SetJustifyH("CENTER")
-  f._scaleVal = scaleVal
-  local plus = MakeTextButton(f, 26, 22, "|cFFFFD700+|r")
-  plus:SetPoint("LEFT", scaleVal, "RIGHT", 8, 0)
-
-  local function stepScale(d)
-    local v = (TibiSuiteDB.scale or 1) + d
-    if v < SCALE_MIN then v = SCALE_MIN elseif v > SCALE_MAX then v = SCALE_MAX end
-    TibiSuiteDB.scale = v
-    LayoutBar()
-    RefreshOptions()
-  end
-  minus:SetScript("OnClick", function() stepScale(-SCALE_STEP) end)
-  plus:SetScript("OnClick",  function() stepScale( SCALE_STEP) end)
-
-  -- ── Taille du logo (independante de l'echelle globale) ──
-  -- Plafonnee a la resolution native du fichier (64x64) : au-dela, WoW
-  -- agrandit par interpolation et l'icone se met a flouter.
-  local logoSizeLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  logoSizeLbl:SetPoint("TOPLEFT", scaleLbl, "BOTTOMLEFT", 0, -16)
-  logoSizeLbl:SetText(L.OPT_LOGOSIZE_LABEL)
-
-  local logoMinus = MakeTextButton(f, 26, 22, "|cFFFFD700-|r")
-  logoMinus:SetPoint("LEFT", logoSizeLbl, "LEFT", CTRL_COL_X, 0)
-  local logoSizeVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  logoSizeVal:SetPoint("LEFT", logoMinus, "RIGHT", 8, 0)
-  logoSizeVal:SetWidth(48)
-  logoSizeVal:SetJustifyH("CENTER")
-  f._logoSizeVal = logoSizeVal
-  local logoPlus = MakeTextButton(f, 26, 22, "|cFFFFD700+|r")
-  logoPlus:SetPoint("LEFT", logoSizeVal, "RIGHT", 8, 0)
-
-  local function stepLogoSize(d)
-    local v = (TibiSuiteDB.logoSize or 22) + d
-    if v < LOGO_SIZE_MIN then v = LOGO_SIZE_MIN elseif v > LOGO_SIZE_MAX then v = LOGO_SIZE_MAX end
-    TibiSuiteDB.logoSize = v
-    if barFrame and barFrame._logoIcon then barFrame._logoIcon:SetSize(v, v) end
-    LayoutBar()
-    RefreshOptions()
-  end
-  logoMinus:SetScript("OnClick", function() stepLogoSize(-4) end)
-  logoPlus:SetScript("OnClick",  function() stepLogoSize( 4) end)
-
-  -- ── Verrou ──
-  local lockBtn = MakeTextButton(f, 260, 24, "")
-  lockBtn:SetPoint("TOPLEFT", logoSizeLbl, "BOTTOMLEFT", 0, -14)
-  f._lockBtn = lockBtn
-  lockBtn:SetScript("OnClick", function()
-    TibiSuiteDB.locked = not TibiSuiteDB.locked
-    RefreshOptions()
-  end)
-
-  -- ── Orientation verticale ──
-  local vertBtn = MakeTextButton(f, 260, 24, "")
-  vertBtn:SetPoint("TOPLEFT", lockBtn, "BOTTOMLEFT", 0, -8)
-  f._vertBtn = vertBtn
-  vertBtn:SetScript("OnClick", function()
-    TibiSuiteDB.vertical = not TibiSuiteDB.vertical
-    LayoutBar()
-    RefreshOptions()
-  end)
-
-  -- ── Réinstaller TibiSuite (placé entre l'orientation et la disposition) ──
-  local reinstallBtn = MakeTextButton(f, 260, 24, "|cFFC41F3B" .. L.OPT_REINSTALL_BTN .. "|r")
-  reinstallBtn:SetPoint("TOPLEFT", vertBtn, "BOTTOMLEFT", 0, -8)
-  reinstallBtn:SetScript("OnClick", function()
-    -- Fenetre maison (pas StaticPopupDialogs) : voir piege ADDON_ACTION_FORBIDDEN
-    -- documente dans TibiSuiteOptions.lua.
-    if TibiSuite.ShowConfirm then
-      TibiSuite.ShowConfirm(L.CONFIRM_REINSTALL_CORE,
-        function() if TibiSuite.ReinstallCore then TibiSuite.ReinstallCore() end end
-      )
-    end
-  end)
-
-  -- ── Disposition : grille de toggles (colonnes × lignes, liées) ──
-  local gridLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  gridLbl:SetPoint("TOPLEFT", reinstallBtn, "BOTTOMLEFT", 0, -14)
-  gridLbl:SetText(L.OPT_GRID_LABEL)
-
-  -- Colonnes : label + [-] valeur [+]
-  local colsLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  colsLbl:SetPoint("TOPLEFT", gridLbl, "BOTTOMLEFT", 4, -8)
-  colsLbl:SetText(L.OPT_COLS_LABEL)
-  local colMinus = MakeTextButton(f, 26, 22, "|cFFFFD700-|r")
-  colMinus:SetPoint("LEFT", colsLbl, "RIGHT", 24, 0)
-  local colsVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  colsVal:SetPoint("LEFT", colMinus, "RIGHT", 8, 0)
-  colsVal:SetWidth(30); colsVal:SetJustifyH("CENTER")
-  f._colsVal = colsVal
-  local colPlus = MakeTextButton(f, 26, 22, "|cFFFFD700+|r")
-  colPlus:SetPoint("LEFT", colsVal, "RIGHT", 8, 0)
-
-  -- Lignes : label + [-] valeur [+]
-  local rowsLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  rowsLbl:SetPoint("TOPLEFT", colsLbl, "BOTTOMLEFT", 0, -10)
-  rowsLbl:SetText(L.OPT_ROWS_LABEL)
-  local rowMinus = MakeTextButton(f, 26, 22, "|cFFFFD700-|r")
-  rowMinus:SetPoint("LEFT", rowsLbl, "RIGHT", 40, 0)
-  local rowsVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  rowsVal:SetPoint("LEFT", rowMinus, "RIGHT", 8, 0)
-  rowsVal:SetWidth(30); rowsVal:SetJustifyH("CENTER")
-  f._rowsVal = rowsVal
-  local rowPlus = MakeTextButton(f, 26, 22, "|cFFFFD700+|r")
-  rowPlus:SetPoint("LEFT", rowsVal, "RIGHT", 8, 0)
-
-  -- Handlers INDÉPENDANTS : chaque réglage n'édite que sa propre valeur, sans
-  -- recalculer l'autre. Bornes : 1 à nombre total de modules.
-  local maxTabs = #MODULES
-  local function setCols(c)
-    if c < 1 then c = 1 elseif c > maxTabs then c = maxTabs end
-    TibiSuiteDB.cols = c
-    LayoutBar(); RefreshOptions()
-  end
-  local function setRows(r)
-    if r < 1 then r = 1 elseif r > maxTabs then r = maxTabs end
-    TibiSuiteDB.rows = r
-    LayoutBar(); RefreshOptions()
-  end
-  colMinus:SetScript("OnClick", function() local c = ComputeGrid(VisibleCount()); setCols(c - 1) end)
-  colPlus:SetScript("OnClick",  function() local c = ComputeGrid(VisibleCount()); setCols(c + 1) end)
-  rowMinus:SetScript("OnClick", function() local _, r = ComputeGrid(VisibleCount()); setRows(r - 1) end)
-  rowPlus:SetScript("OnClick",  function() local _, r = ComputeGrid(VisibleCount()); setRows(r + 1) end)
-
-  -- ── Actions : Tout ouvrir / Tout fermer / Recentrer ──
-  local openA = MakeTextButton(f, 80, 24, "|cFF66FF66" .. L.OPT_OPENALL_BTN .. "|r")
-  openA:SetPoint("TOPLEFT", rowsLbl, "BOTTOMLEFT", -4, -14)
-  openA:SetScript("OnClick", function() SetAllModules(true) end)
-
-  local closeA = MakeTextButton(f, 80, 24, "|cFFFFAA55" .. L.OPT_CLOSEALL_BTN .. "|r")
-  closeA:SetPoint("LEFT", openA, "RIGHT", 8, 0)
-  closeA:SetScript("OnClick", function() SetAllModules(false) end)
-
-  local recenter = MakeTextButton(f, 80, 24, "|cFFAAD4FF" .. L.OPT_RECENTER_BTN .. "|r")
-  recenter:SetPoint("LEFT", closeA, "RIGHT", 8, 0)
-  recenter:SetScript("OnClick", function()
-    TibiSuiteCharDB.barPos = CopyDefaultBarPos()
-    if barFrame then
-      RestoreBarPos()
-      barFrame:Show()
-      TibiSuiteCharDB.barOpen = true
-      UpdateTabHighlights()
-    end
-    RefreshOptions()
-  end)
-
-  -- ── Position (X / Y) : emplacement precis, ajustable par curseur ──
-  local POS_RANGE = 1500  -- large marge ; SetClampedToScreen empeche de sortir de l'ecran
-
-  local posLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  posLbl:SetPoint("TOPLEFT", openA, "BOTTOMLEFT", 0, -14)
-  posLbl:SetText("Position")
-
-  local xLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  xLbl:SetPoint("TOPLEFT", posLbl, "BOTTOMLEFT", 4, -14)
-  xLbl:SetText("X")
-
-  local xSlider = CreateFrame("Slider", nil, f, "OptionsSliderTemplate")
-  xSlider:SetSize(190, 16)
-  xSlider:SetPoint("LEFT", xLbl, "RIGHT", 8, 0)
-  xSlider:SetMinMaxValues(-POS_RANGE, POS_RANGE)
-  xSlider:SetValueStep(1)
-  xSlider:SetObeyStepOnDrag(true)
-  if xSlider.Low then xSlider.Low:SetText("") end
-  if xSlider.High then xSlider.High:SetText("") end
-  if xSlider.Text then xSlider.Text:SetText("") end
-  f._xSlider = xSlider
-
-  local xVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  xVal:SetPoint("LEFT", xSlider, "RIGHT", 8, 0)
-  xVal:SetWidth(36)
-  xVal:SetJustifyH("CENTER")
-  f._xVal = xVal
-
-  local yLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-  yLbl:SetPoint("TOPLEFT", xLbl, "BOTTOMLEFT", 0, -26)
-  yLbl:SetText("Y")
-
-  local ySlider = CreateFrame("Slider", nil, f, "OptionsSliderTemplate")
-  ySlider:SetSize(190, 16)
-  ySlider:SetPoint("LEFT", yLbl, "RIGHT", 8, 0)
-  ySlider:SetMinMaxValues(-POS_RANGE, POS_RANGE)
-  ySlider:SetValueStep(1)
-  ySlider:SetObeyStepOnDrag(true)
-  if ySlider.Low then ySlider.Low:SetText("") end
-  if ySlider.High then ySlider.High:SetText("") end
-  if ySlider.Text then ySlider.Text:SetText("") end
-  f._ySlider = ySlider
-
-  local yVal = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  yVal:SetPoint("LEFT", ySlider, "RIGHT", 8, 0)
-  yVal:SetWidth(36)
-  yVal:SetJustifyH("CENTER")
-  f._yVal = yVal
-
-  -- Applique la position des curseurs (point d'ancrage conserve tel quel,
-  -- ou TOPLEFT par defaut).
-  local function ApplyBarPosSliders()
-    local pos = TibiSuiteCharDB.barPos or DEFAULT_BAR_POS
-    local x = math.floor(xSlider:GetValue() + 0.5)
-    local y = math.floor(ySlider:GetValue() + 0.5)
-    TibiSuiteCharDB.barPos = { point = pos.point or "TOPLEFT", x = x, y = y }
-    xVal:SetText(tostring(x))
-    yVal:SetText(tostring(y))
-    if barFrame then RestoreBarPos() end
-  end
-  xSlider:SetScript("OnValueChanged", ApplyBarPosSliders)
-  ySlider:SetScript("OnValueChanged", ApplyBarPosSliders)
-
-  -- ── Séparateur + section "Onglets affichés" ──
-  local div = f:CreateTexture(nil, "ARTWORK")
-  div:SetSize(260, 1)
-  div:SetPoint("TOPLEFT", yLbl, "BOTTOMLEFT", -4, -14)
-  div:SetColorTexture(COL_BORDER.r, COL_BORDER.g, COL_BORDER.b, 0.40)
-
-  local secLbl = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  secLbl:SetPoint("TOPLEFT", div, "BOTTOMLEFT", 0, -8)
-  secLbl:SetText(L.OPT_TABS_SECTION)
-
-  -- Une bascule par module (masque / affiche l'onglet)
-  f._moduleRows = {}
-  local prev = secLbl
-  for _, mod in ipairs(MODULES) do
-    local capturedMod = mod
-    local row = MakeTextButton(f, 260, 22, "")
-    if prev == secLbl then
-      row:SetPoint("TOPLEFT", secLbl, "BOTTOMLEFT", 0, -6)
-    else
-      row:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -4)
-    end
-    row:SetScript("OnClick", function()
-      TibiSuiteDB.hidden = TibiSuiteDB.hidden or {}
-      TibiSuiteDB.hidden[capturedMod.key] = not TibiSuiteDB.hidden[capturedMod.key]
-      LayoutBar()
-      RefreshOptions()
-    end)
-    f._moduleRows[#f._moduleRows + 1] = { btn = row, mod = mod }
-    prev = row
-  end
-
-  -- Raccourci : masquer tous les modules non installés
-  local hideMissing = MakeTextButton(f, 260, 24, "|cFFAAD4FF" .. L.OPT_HIDE_MISSING_BTN .. "|r")
-  hideMissing:SetPoint("TOPLEFT", prev, "BOTTOMLEFT", 0, -10)
-  hideMissing:SetScript("OnClick", function()
-    TibiSuiteDB.hidden = TibiSuiteDB.hidden or {}
-    for _, mod in ipairs(MODULES) do
-      if not C_AddOns.IsAddOnLoaded(mod.addonName) then
-        TibiSuiteDB.hidden[mod.key] = true
-      end
-    end
-    LayoutBar()
-    RefreshOptions()
-  end)
-
-  -- Accès au panneau « Modules » : cases à cocher pour charger / décharger
-  -- (chargement conditionnel LoadOnDemand). Différent de « masquer l'onglet ».
-  local modulesBtn = MakeTextButton(f, 260, 24, "|cFFC41F3B" .. L.OPT_MODULES_BTN .. "|r")
-  modulesBtn:SetPoint("TOPLEFT", hideMissing, "BOTTOMLEFT", 0, -8)
-  modulesBtn:SetScript("OnClick", function()
-    if TibiSuite.OpenModulePanel then TibiSuite.OpenModulePanel() end
-  end)
+  if TibiSuite.RefreshCentreBar then TibiSuite.RefreshCentreBar() end
 end
 
 function OpenOptions()
-  BuildOptions()
-  RefreshOptions()
-  optionsFrame:Show()
+  if TibiSuite.OpenCentre then TibiSuite.OpenCentre("bar") end
 end
 
 -- ================================================================
@@ -1889,7 +1529,7 @@ local function BuildMinimapButton()
   -- ── Clic gauche : toggle de la barre ; clic droit : options ──
   minimapBtn:SetScript("OnClick", function(_, btn)
     if btn == "RightButton" then
-      OpenOptions()
+      if TibiSuite.ToggleCentre then TibiSuite.ToggleCentre() else OpenOptions() end
     else
       if barFrame and barFrame:IsShown() then
         barFrame:Hide()
@@ -2119,8 +1759,8 @@ local function WireAllHeaderExtras()
 end
 TibiSuite.WireAllHeaderExtras = WireAllHeaderExtras
 
-function TibiSuite_OnAddonCompartmentClick()
-  ToggleBar()
+function TibiSuite_OnAddonCompartmentClick(_, button)
+  if button == "RightButton" and TibiSuite.ToggleCentre then TibiSuite.ToggleCentre() else ToggleBar() end
 end
 
 function TibiSuite_OnAddonCompartmentEnter(btn)
@@ -2141,6 +1781,153 @@ end
 function TibiSuite_OnAddonCompartmentLeave() GameTooltip:Hide() end
 
 -- ================================================================
+-- ENTREE « TibiSuite » DANS LE MENU ECHAP (Centre TibiSuite, lot 3)
+-- ----------------------------------------------------------------
+-- Valide en jeu le 2026-10-05 (sonde du lot 0) : GameMenuFrame:AddButton
+-- en post-hook de InitButtons, clic hors combat ET en combat, aucun
+-- ADDON_ACTION_BLOCKED / FORBIDDEN. On n'intercepte PAS Echap : ni
+-- UISpecialFrames + OnHide, ni OnKeyDown, ni StaticPopupDialogs.
+-- Case : TibiSuiteDB.gameMenuEntry (nil = active). Pris en compte a la
+-- prochaine ouverture du menu, sans /reload (Blizzard reconstruit les
+-- lignes a chaque affichage).
+-- ================================================================
+local GM_LABEL_PLAIN = "TibiSuite"
+local GM_LABEL_RED   = "|cFFC41F3BTibiSuite|r"
+
+function TibiSuite.IsGameMenuEntryOn()
+  return not (type(TibiSuiteDB) == "table" and TibiSuiteDB.gameMenuEntry == false)
+end
+
+function TibiSuite.SetGameMenuEntry(on)
+  -- Pas de « (not on) and false or nil » : en Lua, « and false or » donne
+  -- toujours nil, la case ne se decochait jamais.
+  if on then TibiSuiteDB.gameMenuEntry = nil else TibiSuiteDB.gameMenuEntry = false end
+end
+
+local function GameMenuClick()
+  HideUIPanel(GameMenuFrame)
+  -- Sortie de la pile d'appel de Blizzard avant toute action de notre part.
+  C_Timer.After(0, function()
+    if TibiSuite.OpenCentre then TibiSuite.OpenCentre() end
+  end)
+end
+
+-- Le menu est-il habille par EllesmereUI ou ElvUI ? (choix du libelle seulement)
+local function MenuSkinned()
+  local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
+  if not loaded then return false end
+  if loaded("EllesmereUIBlizzardSkin") and not (EllesmereUIDB and EllesmereUIDB.reskinGameMenu == false) then
+    return true
+  end
+  if loaded("ElvUI") then
+    local ok, on = pcall(function()
+      local E = _G.ElvUI and _G.ElvUI[1]
+      local b = E and E.private and E.private.skins and E.private.skins.blizzard
+      return b and b.enable and b.misc and true or false
+    end)
+    return ok and on or false
+  end
+  return false
+end
+
+-- Retrouve notre ligne parmi les boutons actifs du menu.
+local function FindGameMenuButton()
+  local pool = GameMenuFrame and GameMenuFrame.buttonPool
+  if not (pool and pool.EnumerateActive) then return nil end
+  for b in pool:EnumerateActive() do
+    local t = b:GetText()
+    if t == GM_LABEL_RED or t == GM_LABEL_PLAIN then return b end
+  end
+end
+
+-- Crochet InitButtons. IMPORTANT : pose des le chargement du fichier, donc
+-- AVANT les PLAYER_LOGIN d'EllesmereUI et d'ElvUI. Les crochets
+-- hooksecurefunc s'executent dans l'ordre de pose : notre AddButton passe en
+-- premier, puis leur crochet InitButtons parcourt buttonPool et habille notre
+-- bouton comme les autres (aucun code d'habillage de notre cote).
+if GameMenuFrame and GameMenuFrame.InitButtons and GameMenuFrame.AddButton then
+  hooksecurefunc(GameMenuFrame, "InitButtons", function(self)
+    if not TibiSuite.IsGameMenuEntryOn() then return end
+    -- Menu habille (fond sombre) : rouge du logo #C41F3B. Menu Blizzard
+    -- (boutons rouges) : libelle sans couleur, le rouge serait illisible.
+    self:AddButton(MenuSkinned() and GM_LABEL_RED or GM_LABEL_PLAIN, GameMenuClick)
+  end)
+end
+
+-- Placement : AddButton ajoute notre ligne tout en bas. On la remonte sous
+-- la ligne d'EllesmereUI (ou sous « Boutique » sans EllesmereUI), en
+-- decalant vers le bas les boutons qui suivent, comme le fait EllesmereUI
+-- pour sa propre ligne. Ce crochet Layout est pose APRES ceux d'EllesmereUI
+-- et d'ElvUI (premier PLAYER_ENTERING_WORLD + 1 s) pour passer en dernier.
+-- Hors combat seulement (EllesmereUI masque d'ailleurs sa ligne en combat) ;
+-- avec ElvUI, qui gere son propre bouton, la notre reste en bas.
+local function PlaceGameMenuButton()
+  if InCombatLockdown() then return end
+  local B = FindGameMenuButton()
+  if not (B and B:IsShown()) then return end
+  local elv = _G.ElvUI_GameMenuButton
+  if elv and elv:IsShown() then return end
+
+  local others = {}
+  for b in GameMenuFrame.buttonPool:EnumerateActive() do
+    if b ~= B then others[#others + 1] = b end
+  end
+
+  local A, gap
+  local eui, unlock = _G.EllesmereUI_GameMenuButton, _G.EllesmereUI_UnlockMenuButton
+  if unlock and unlock:IsShown() then A, gap = unlock, 4
+  elseif eui and eui:IsShown() then A, gap = eui, 4 end
+  if not A then
+    for _, b in ipairs(others) do
+      local t = b:GetText()
+      if t == BLIZZARD_STORE then A = b; break elseif t == GAMEMENU_OPTIONS then A = b end
+    end
+    gap = 12   -- section a part, comme EllesmereUI sans son skin
+  end
+  if not A then return end
+
+  local aBottom, bBottom, bh = A:GetBottom(), B:GetBottom(), B:GetHeight()
+  if not (aBottom and bBottom and bh) then return end
+  -- Espace libere en bas par le depart de notre ligne.
+  local lowest
+  for _, b in ipairs(others) do
+    local bt = b:GetBottom()
+    if bt and (not lowest or bt < lowest) then lowest = bt end
+  end
+  local freed = lowest and (lowest - bBottom) or 0
+  local push = gap + bh
+
+  B:ClearAllPoints()
+  B:SetPoint("TOP", A, "BOTTOM", 0, -gap)
+  for _, b in ipairs(others) do
+    local top = b:GetTop()
+    if top and top < aBottom + 2 then
+      local p, rel, rp, x, y = b:GetPoint(1)
+      if p then
+        b:ClearAllPoints()
+        b:SetPoint(p, rel, rp, x, (y or 0) - push)
+      end
+    end
+  end
+  GameMenuFrame:SetHeight(GameMenuFrame:GetHeight() + push - freed)
+end
+
+do
+  local f = CreateFrame("Frame")
+  f:RegisterEvent("PLAYER_ENTERING_WORLD")
+  f:SetScript("OnEvent", function(self)
+    self:UnregisterAllEvents()
+    -- Reliquat de la sonde du lot 0 : plus utilise.
+    if type(TibiSuiteDB) == "table" then TibiSuiteDB.menuProbe = nil end
+    C_Timer.After(1, function()
+      if GameMenuFrame and GameMenuFrame.Layout then
+        hooksecurefunc(GameMenuFrame, "Layout", function() pcall(PlaceGameMenuButton) end)
+      end
+    end)
+  end)
+end
+
+-- ================================================================
 -- COMMANDE SLASH  /tibisuite
 -- ================================================================
 SLASH_TIBISUITE1 = "/tibisuite"
@@ -2149,7 +1936,10 @@ SlashCmdList["TIBISUITE"] = function(msg)
   msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
 
   if msg == "config" or msg == "options" then
-    OpenOptions()
+    OpenOptions()   -- page « Barre et acces » du Centre
+
+  elseif msg == "bar" or msg == "barre" then
+    ToggleBar()
 
   elseif msg == "reset" then
     -- Recentre la barre (secours si elle a été perdue hors écran)
@@ -2210,7 +2000,9 @@ SlashCmdList["TIBISUITE"] = function(msg)
       (TibiSuiteDB.vertical and L.VERT_ON or L.VERT_OFF) .. ".")
 
   elseif msg == "modules" then
-    if TibiSuite.OpenModulePanel then TibiSuite.OpenModulePanel()
+    -- Les interrupteurs des modules sont dans la barre laterale du Centre.
+    if TibiSuite.OpenCentre then TibiSuite.OpenCentre("home")
+    elseif TibiSuite.OpenModulePanel then TibiSuite.OpenModulePanel()
     else print("|cFFC41F3BTibiSuite|r : " .. L.MSG_MODULES_UNAVAIL) end
 
   elseif msg == "stats" then
@@ -2245,9 +2037,14 @@ SlashCmdList["TIBISUITE"] = function(msg)
   elseif msg == "minimap" then
     TibiSuite.SetMinimapHidden(not TibiSuiteDB.mmHidden)
 
+  elseif msg == "centre" or msg == "center" or msg == "hub" then
+    if TibiSuite.ToggleCentre then TibiSuite.ToggleCentre() end
+
+
   elseif msg == "help" or msg == "?" then
     print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " - " .. L.HELP_HEADER)
-    print("  |cFFFFD700/ts|r : " .. L.HELP_TOGGLE)
+    print("  |cFFFFD700/ts|r : " .. L.HELP_CENTRE)
+    print("  |cFFFFD700/ts bar|r : " .. L.HELP_TOGGLE)
     print("  |cFFFFD700/ts config|r : " .. L.HELP_CONFIG)
     print("  |cFFFFD700/ts modules|r : " .. L.HELP_MODULES)
     print("  |cFFFFD700/ts stats|r : " .. L.HELP_STATS)
@@ -2262,8 +2059,12 @@ SlashCmdList["TIBISUITE"] = function(msg)
     print("  |cFFFFD700/ts setup|r : " .. L.HELP_SETUP)
     print("  |cFFFFD700/ts news|r : " .. L.HELP_NEWS)
 
+  elseif msg == "" then
+    if TibiSuite.ToggleCentre then TibiSuite.ToggleCentre() else ToggleBar() end
+
   else
-    ToggleBar()
+    -- Sous-commande inconnue : on affiche l'aide plutot que d'agir au hasard.
+    SlashCmdList["TIBISUITE"]("help")
   end
 end
 
@@ -2286,7 +2087,7 @@ local function SetupLDB()
     label = "TibiSuite",
     OnClick = function(_, button)
       if button == "RightButton" then
-        OpenOptions()
+        if TibiSuite.ToggleCentre then TibiSuite.ToggleCentre() else OpenOptions() end
       else
         ToggleBar()
       end
@@ -2602,6 +2403,12 @@ function TibiSuite.SetModuleEnabled(key, on)
   return status
 end
 
+-- Ouvre la fenetre d'un module comme un clic sur son onglet (Centre TibiSuite).
+function TibiSuite.OpenModule(key)
+  local mod = CatalogByKey(key)
+  if mod then OnTabClick(mod) end
+end
+
 -- ================================================================
 -- REGLAGES DE LA BARRE EN UN APPEL (installateur, profils)
 -- ================================================================
@@ -2651,6 +2458,35 @@ function TibiSuite.ApplyBarSettings(s)
   end
   RefreshOptions()
 end
+
+-- ================================================================
+-- BARRE : position precise, onglets affiches, tout ouvrir / fermer
+-- (page Barre d'onglets du Centre ; meme logique que /ts config)
+-- ================================================================
+function TibiSuite.GetBarPos()
+  local pos = TibiSuiteCharDB.barPos or DEFAULT_BAR_POS
+  return math.floor((pos.x or 0) + 0.5), math.floor((pos.y or 0) + 0.5)
+end
+
+function TibiSuite.SetBarPos(x, y)
+  local pos = TibiSuiteCharDB.barPos or DEFAULT_BAR_POS
+  TibiSuiteCharDB.barPos = { point = pos.point or "TOPLEFT", x = math.floor(x + 0.5), y = math.floor(y + 0.5) }
+  if barFrame then RestoreBarPos() end
+  RefreshOptions()
+end
+
+function TibiSuite.IsTabShown(key)
+  return not (TibiSuiteDB.hidden and TibiSuiteDB.hidden[key])
+end
+
+function TibiSuite.SetTabShown(key, show)
+  TibiSuiteDB.hidden = TibiSuiteDB.hidden or {}
+  TibiSuiteDB.hidden[key] = (not show) or nil
+  if barFrame then LayoutBar() end
+  RefreshOptions()
+end
+
+function TibiSuite.SetAllModulesShown(show) SetAllModules(show) end
 
 -- ================================================================
 -- PROFILS DE SUITE (code TS1:)
@@ -2781,7 +2617,9 @@ end
 -- ================================================================
 -- /ts doctor : etat reel de chaque module
 -- ================================================================
-function TibiSuite.RunDoctor()
+-- emit (optionnel) : recoit chaque ligne au lieu du chat (page Diagnostic du Centre).
+function TibiSuite.RunDoctor(emit)
+  local print = emit or print
   local tag = "|cFFC41F3BTibiSuite|r "
   print(tag .. L.DOC_HEADER .. " (core v" .. VERSION .. ")")
   local UI = _G.TibiMidnight
@@ -2840,7 +2678,8 @@ end
 -- /ts perf : memoire de chaque module charge (et temps CPU recent si le
 -- profileur d'addons du client est disponible)
 -- ================================================================
-function TibiSuite.RunPerf()
+function TibiSuite.RunPerf(emit)
+  local print = emit or print
   local tag = "|cFFC41F3BTibiSuite|r "
   local update = UpdateAddOnMemoryUsage or (C_AddOns and C_AddOns.UpdateAddOnMemoryUsage)
   local getMem = GetAddOnMemoryUsage or (C_AddOns and C_AddOns.GetAddOnMemoryUsage)
@@ -3028,7 +2867,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     local loginMsg = TibiSuiteDB.loginMsg or "one"
     if loginMsg == "full" then
       print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " " .. L.WELCOME_HEADER)
-      print("  |cFFFFD700/ts|r " .. L.HELP_TOGGLE .. "    |cFFFFD700/ts modules|r " .. L.WELCOME_MODULES)
+      print("  |cFFFFD700/ts|r " .. L.HELP_CENTRE .. "    |cFFFFD700/ts bar|r " .. L.HELP_TOGGLE)
       print("  |cFFFFD700/ts config|r options    |cFFFFD700/ts openall|r / |cFFFFD700closeall|r " .. L.HELP_OPENCLOSEALL)
       print("  |cFFFFD700/ts lock|r " .. L.WELCOME_LOCK .. "    |cFFFFD700/ts vertical|r orientation    |cFFFFD700/ts help|r " .. L.WELCOME_HELP)
 

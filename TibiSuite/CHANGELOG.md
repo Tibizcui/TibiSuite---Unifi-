@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.1.5.42
+- Nouveau Centre TibiSuite (/ts) : une seule fenetre pour tous les reglages, facon EllesmereUI. Barre laterale avec Accueil, Barre et acces, Diagnostic, Maintenance et un interrupteur par module ; la page d'un module affiche son propre panneau d'options. Redimensionnable (taille memorisee), filtre des modules, diagnostic et memoire affiches dans la fenetre, bouton Recharger l'interface quand un changement l'exige.
+- Ligne TibiSuite dans le menu Echap, placee sous EllesmereUI (sinon sous Boutique), habillee automatiquement par EllesmereUI ou ElvUI, desactivable dans Barre et acces. Page TibiSuite dans Options > AddOns.
+- Acces : /ts ouvre le Centre, /ts bar affiche la barre, /ts config ouvre la page Barre et acces ; clic droit sur le bouton de la minicarte, le logo de la barre et l'entree du menu des addons ouvre le Centre.
+- Page Barre et acces : disposition, echelle, colonnes, logo, position au pixel pres, onglets affiches, tout ouvrir / fermer, minicarte, messages de connexion. L'ancienne fenetre d'options /ts config est supprimee.
+- Socle d'interface v13 (panneaux d'options ancrables) diffuse dans les 16 addons. Fenetre Quoi de neuf : entree 7.1.5.42 (FR + EN). Centre traduit en anglais.
+
 ## 7.1.5.41
 - Installateur, etape Dashboard : carte Absences (Standby). Fenetre Quoi de neuf : entree 7.1.5.41 (FR + EN). Non teste dans un vrai client WoW.
 

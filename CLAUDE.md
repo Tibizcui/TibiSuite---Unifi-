@@ -100,7 +100,37 @@ le choix de l'utilisateur. Logos par module : table `MODULE_LOGO`. Un seul bouto
 créés uniquement par le core ; les boutons minimap individuels sont masqués.
 
 Slash : `/tibisuite` et `/ts` (sous-commandes dont `/ts modules`). Chaque module
-garde aussi son propre slash (ex. `/stats`).
+garde aussi son propre slash (ex. `/stats`). Depuis le Centre : `/ts` ouvre le
+Centre, `/ts bar` la barre, `/ts config` la page Barre et accès, sous-commande
+inconnue => aide. L'ancienne fenêtre d'options faite main a été supprimée en
+7.1.5.42 : `OpenOptions()` ouvre la page Barre et accès, `RefreshOptions()` la
+resynchronise (`TibiSuite.RefreshCentreBar`).
+
+## Centre TibiSuite (`TibiSuite/Core/TibiSuiteCentre.lua`, 7.1.5.42)
+
+Fenêtre unique de réglages façon EllesmereUI (`TibiSuiteCentre`, DIALOG,
+UISpecialFrames sans hook, redimensionnable : `TibiSuiteDB.centreW/centreH`).
+Barre latérale : Général (Accueil, Barre et accès, Diagnostic, Maintenance) puis
+un interrupteur par module (`SetModuleEnabled`). Page d'un module = SON panneau
+d'options **ancré** (socle v13) : le Centre appelle `onOptions` /
+`<Addon>_OpenOptions`, lit `UI.lastShownPanel`, puis `panel:Dock(page, largeur)`.
+Aucun module n'a été modifié pour ça ; Centre fermé, la roue du module rouvre le
+panneau en flottant (`panel:Show` désancre). Maintenance = panneau
+`TibiSuiteModulesPanel` (sans les cases des modules, passées dans la barre
+latérale). Briques visuelles partagées : `TibiSuite._kit` (fin de
+`TibiSuiteOptions.lua`). API : `OpenCentre(page)`, `ToggleCentre()`,
+`IsCentreShown()`, `OpenModule(key)`, `RunDoctor(emit)` / `RunPerf(emit)`,
+`GetBarPos/SetBarPos`, `IsTabShown/SetTabShown`, `SetAllModulesShown`.
+Clic droit (minimap, logo de barre, LDB, AddonCompartment) => Centre. Page
+« TibiSuite » dans Options > AddOns (ne referme jamais `SettingsPanel` : taint).
+
+**Menu Échap (validé en jeu, y compris en combat).** `GameMenuFrame:AddButton`
+dans un post-hook de `InitButtons` posé **au chargement du fichier**, donc avant
+ceux d'EllesmereUI/ElvUI : leur passe d'habillage stylise notre bouton toute
+seule. Placement sous EllesmereUI (sinon sous Boutique) par un post-hook de
+`Layout` posé au premier `PLAYER_ENTERING_WORLD` + 1 s (après les leurs),
+hors combat, rien avec ElvUI. Case `TibiSuiteDB.gameMenuEntry` (nil = actif ;
+attention au piège Lua `x and false or nil` qui vaut toujours nil).
 
 ## Socle UI (`TibiSuiteUI.lua`, global `_G.TibiMidnight`, alias `_G.TibiSuiteUI`)
 
@@ -116,6 +146,13 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   d'accent en haut), `UI.SkinFrame(f,accent,bg)`, `UI.FitHeight(frame,
   contentHeight,{chrome=,min=,margin=80,apply=true})` (auto-hauteur centralisée),
   `UI.AddHeaderLogo`, `UI.HeaderIcon`, `UI.MakeButton`, `UI.CreateOptionsPanel`.
+- Panneau ancré (v13) : `panel:Dock(host, w)` (ne déplace que la zone
+  défilante), `panel:Undock()`, `panel:SetContentWidth(w)` (élargit séparateurs,
+  notes, champs ; remonte tout objet ancré TOPLEFT sur `content` sous une note
+  raccourcie, y compris les widgets maison de MiniHub/Standby), `panel:IsDocked()`.
+  Registre `UI.panels` (+ par `cfg.name`) et `UI.lastShownPanel`. Toute
+  évolution du socle : bump `NS_VERSION` + recopie dans les 16 copies en gardant
+  leur bloc d'en-tête « COPIE EMBARQUEE (module X) ».
 - En-tête : `UI.AddHeaderControls(frame,cfg)` pose les boutons flottants Options
   (roue) et Recherche (loupe) au coin haut-droit, applique l'état masqué dès la
   création via `_G.TibiSuite.IsCtrlHidden`, et câble Maj+clic droit -> `cfg.onOptions`.

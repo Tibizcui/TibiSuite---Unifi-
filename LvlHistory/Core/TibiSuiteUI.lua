@@ -29,7 +29,7 @@
   le socle du core evolue (bump NS_VERSION cote core -> reporter ici).
 ============================================================================]]
 
-local NS_VERSION = 12
+local NS_VERSION = 13
 
 if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
   return
@@ -38,6 +38,7 @@ end
 local UI = _G.TibiMidnight or {}
 _G.TibiMidnight = UI
 UI._version = NS_VERSION
+UI.panels = UI.panels or {}  -- registre des panneaux d'options (v13, rempli par CreateOptionsPanel)
 
 -- ============================================================================
 -- PALETTE PLATE  (facon WeeklyCompass) - valeurs 0-1, r,g,b,a
@@ -642,9 +643,12 @@ function UI.CreateOptionsPanel(cfg)
   content:SetSize(280, 10)
   scroll:SetScrollChild(content)
 
-  local panel = { frame = f, content = content, _y = -6, _refresh = {} }
+  -- _seps / _notes / _boxes : elements dont la largeur suit la colonne en mode
+  -- ancre (v13). _shift : hauteur gagnee par le re-calage des notes elargies.
+  local panel = { frame = f, content = content, scroll = scroll, _y = -6, _refresh = {},
+                  _seps = {}, _notes = {}, _boxes = {}, _shift = 0, _width = 280 }
   local function advance(h) panel._y = panel._y - h end
-  local function fit() content:SetHeight(math.max(-panel._y + 10, 10)) end
+  local function fit() content:SetHeight(math.max(-(panel._y + panel._shift) + 10, 10)) end
 
   local function accentText(txt)
     if accent then return UI.Hex(accent[1], accent[2], accent[3]) .. txt .. "|r" end
@@ -656,6 +660,7 @@ function UI.CreateOptionsPanel(cfg)
     s:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
     s:SetSize(264, 1)
     s:SetPoint("TOPLEFT", content, "TOPLEFT", 4, panel._y - 4)
+    panel._seps[#panel._seps + 1] = s
     local fs = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     fs:SetPoint("TOPLEFT", content, "TOPLEFT", 4, panel._y - 10)
     fs:SetText(accentText(text))
@@ -666,7 +671,9 @@ function UI.CreateOptionsPanel(cfg)
     local fs = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     fs:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
     fs:SetWidth(260); fs:SetJustifyH("LEFT"); fs:SetText(text)
-    advance((fs:GetStringHeight() or 12) + 10); fit(); return self
+    local h = fs:GetStringHeight() or 12
+    panel._notes[#panel._notes + 1] = { fs = fs, y = panel._y, h = h }
+    advance(h + 10); fit(); return self
   end
 
   -- Champ texte en lecture seule mais SELECTIONNABLE (Ctrl+C) : un EditBox
@@ -682,6 +689,7 @@ function UI.CreateOptionsPanel(cfg)
     local box = CreateFrame("EditBox", nil, content, "BackdropTemplate")
     box:SetSize(258, 20)
     box:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
+    panel._boxes[#panel._boxes + 1] = box
     box:SetBackdrop(UI.FlatBackdrop())
     box:SetBackdropColor(0.02, 0.02, 0.03, 0.9)
     box:SetBackdropBorderColor(1, 1, 1, 0.15)
@@ -765,12 +773,101 @@ function UI.CreateOptionsPanel(cfg)
     advance(30); fit(); return self
   end
 
+  -- ── Largeur de colonne (v13) ─────────────────────────────────────
+  -- Elargit separateurs, notes et champs texte. Une note plus large prend
+  -- moins de lignes : tout objet ancre en TOPLEFT sur `content` SOUS cette
+  -- note remonte d'autant (y compris les widgets poses a la main par un
+  -- module via panel._y, ex. MiniHub et Standby). Les objets ancres sur un
+  -- autre objet (libelle d'une case...) suivent leur ancre. Revenir a 280
+  -- restaure exactement la mise en page d'origine. A appeler une fois le
+  -- panneau entierement construit.
+  function panel:SetContentWidth(w)
+    w = math.max(280, math.floor(w or 280))
+    local d = w - 280
+    panel._width = w
+    content:SetWidth(w)
+    for _, s in ipairs(panel._seps) do s:SetWidth(264 + d) end
+    for _, b in ipairs(panel._boxes) do b:SetWidth(258 + d) end
+    local total = 0
+    for _, n in ipairs(panel._notes) do
+      n.fs:SetWidth(260 + d)
+      n.delta = n.h - (n.fs:GetStringHeight() or n.h)
+      total = total + n.delta
+    end
+    local function recale(obj)
+      if not (obj and obj.GetNumPoints and obj:GetNumPoints() == 1) then return end
+      local p, rel, rp, x, y = obj:GetPoint(1)
+      if rel ~= content or p ~= "TOPLEFT" or rp ~= "TOPLEFT" then return end
+      local y0 = obj._tsBaseY
+      if not y0 then y0 = y; obj._tsBaseY = y end
+      local s = 0
+      for _, n in ipairs(panel._notes) do
+        if obj ~= n.fs and y0 < n.y then s = s + n.delta end
+      end
+      obj:SetPoint("TOPLEFT", content, "TOPLEFT", x, y0 + s)
+    end
+    for _, c in ipairs({ content:GetChildren() }) do recale(c) end
+    for _, r in ipairs({ content:GetRegions() }) do recale(r) end
+    panel._shift = total
+    fit()
+  end
+
+  -- ── Mode ancre (v13) : le panneau s'affiche DANS un cadre hote ──────
+  -- Seule la zone defilante change de parent : en-tete, fond et bouton
+  -- fermer restent sur la fenetre flottante, qui est masquee. Le module
+  -- n'a rien a changer : ses cases, son Refresh et ses widgets maison
+  -- suivent. panel:Undock() rend le panneau flottant tel qu'avant.
+  function panel:Dock(host, width)
+    if not host then return end
+    f:Hide()
+    scroll:SetParent(host)
+    scroll:SetFrameStrata(host:GetFrameStrata())
+    scroll:SetFrameLevel(host:GetFrameLevel() + 2)
+    scroll:ClearAllPoints()
+    scroll:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
+    scroll:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -24, 0)
+    scroll:Show()
+    panel._host = host
+    panel:SetContentWidth(width or ((host:GetWidth() or 304) - 24))
+    panel:Refresh()
+  end
+
+  function panel:Undock()
+    if not panel._host then return end
+    panel._host = nil
+    scroll:SetParent(f)
+    scroll:SetFrameStrata(f:GetFrameStrata())
+    scroll:SetFrameLevel(f:GetFrameLevel() + 2)
+    scroll:ClearAllPoints()
+    scroll:SetPoint("TOPLEFT", 10, -42)
+    scroll:SetPoint("BOTTOMRIGHT", -30, 12)
+    panel:SetContentWidth(280)
+  end
+
+  function panel:IsDocked() return panel._host ~= nil end
+
+  -- Ancre ET hote visible : le panneau est deja a l'ecran, dans le Centre.
+  -- Ancre mais hote ferme : on le rend flottant pour que la roue d'un module
+  -- (ou Maj+clic droit) ouvre toujours ses options.
+  local function dockedVisible() return panel._host and panel._host:IsVisible() end
+
   function panel:Refresh() for _, fn in ipairs(panel._refresh) do pcall(fn) end end
-  function panel:Show() panel:Refresh(); f:Show() end
+  function panel:Show()
+    UI.lastShownPanel = panel
+    if dockedVisible() then panel:Refresh(); return end
+    panel:Undock(); panel:Refresh(); f:Show()
+  end
   function panel:Hide() f:Hide() end
-  function panel:IsShown() return f:IsShown() end
-  function panel:Toggle() if f:IsShown() then f:Hide() else panel:Show() end end
+  function panel:IsShown() return f:IsShown() or (dockedVisible() and true or false) end
+  function panel:Toggle()
+    if dockedVisible() then return end
+    if f:IsShown() then f:Hide() else panel:Show() end
+  end
   f:SetScript("OnShow", function() panel:Refresh() end)
+  -- Registre (v13) : le Centre TibiSuite retrouve ici le panneau d'un module.
+  UI.panels = UI.panels or {}
+  UI.panels[#UI.panels + 1] = panel
+  if cfg.name then UI.panels[cfg.name] = panel end
   return panel
 end
 
