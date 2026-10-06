@@ -78,6 +78,7 @@ if HasCore() and IsEnabledByCore() then
     accent    = ACCENT,
     onOpen    = function() if _G.DailyTracker_Toggle then _G.DailyTracker_Toggle() end end,
     onOptions = function() if _G.DailyTracker_OpenOptions then _G.DailyTracker_OpenOptions() end end,
+    statusFn  = function() if _G.DailyTracker_Status then return _G.DailyTracker_Status() end end,
   })
 end
 

@@ -66,6 +66,7 @@ if HasCore() and IsEnabledByCore() then
     accent    = ACCENT,
     onOpen    = function() if _G.SkillTracker_Toggle then _G.SkillTracker_Toggle() end end,
     onOptions = function() if _G.SkillTracker_OpenOptions then _G.SkillTracker_OpenOptions() end end,
+    statusFn  = function() if _G.SkillTracker_Status then return _G.SkillTracker_Status() end end,
   })
 end
 

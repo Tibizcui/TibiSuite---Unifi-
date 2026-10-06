@@ -2714,6 +2714,20 @@ end)
 RenTrackerAPI = RenTrackerAPI or {}
 RenTrackerAPI.version = 1
 
+-- Ligne d'etat du Panneau vivant de TibiSuite (statusFn, lue par le core) :
+-- coffres de Paragon a recuperer (meme decompte que le badge), sinon les
+-- quetes hebdo de reputation restantes de l'extension affichee.
+function RenTrackerAPI.GetStatus()
+  local SL = _G.TibiSuiteL or {}
+  local para = 0
+  for _ in pairs(paragonPending) do para = para + 1 end
+  if para > 0 then return { text = string.format(SL.ST_PARAGON_FMT or "%d", para), color = { 1, 0.82, 0 } } end
+  local ok, left, total = pcall(RenTrackerAPI.GetWeeklyRemaining)
+  if not ok or not total or total <= 0 then return nil end
+  if left == 0 then return { text = SL.ST_REPWEEK_DONE, progress = 1 } end
+  return { text = string.format(SL.ST_REPWEEK_FMT or "%d", left), progress = (total - left) / total }
+end
+
 -- Renvoie left, total (quetes hebdo de reputation restantes / comptees).
 function RenTrackerAPI.GetWeeklyRemaining()
   local units = {}

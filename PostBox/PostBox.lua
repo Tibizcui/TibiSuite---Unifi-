@@ -1333,6 +1333,7 @@ function P.UpdateBadges()
   end
   if _G.TibiSuite then
     if TibiSuite.SetTabBadge then TibiSuite.SetTabBadge("Post", n) end
+    if TibiSuite.RefreshStatus then TibiSuite.RefreshStatus() end
     if TibiSuite.SetMinimapBadge then TibiSuite.SetMinimapBadge(n) end
   end
   local mm = _G.PostBoxMinimapBtn

@@ -237,6 +237,7 @@ local function Init()
       onOpen         = function() PostBox_Toggle() end,
       onOptions      = function() PostBox_OpenOptions() end,
       searchProvider = P.SearchProvider,
+      statusFn       = function() if _G.PostBox_Status then return _G.PostBox_Status() end end,
     })
   else
     BuildStandaloneMinimapButton()

@@ -99,6 +99,29 @@ if HasCore() and IsEnabledByCore() then
     onOpen         = function() if _G.LvlHistory_Toggle then _G.LvlHistory_Toggle() end end,
     onOptions      = function() if _G.LvlHistory_OpenOptions then _G.LvlHistory_OpenOptions() end end,
     searchProvider = nil,
+    -- Ligne d'etat du Panneau vivant : XP du niveau en cours, et temps estime
+    -- jusqu'au suivant quand la session a un rythme d'XP. Rien au niveau max.
+    statusFn       = function()
+      local maxXP = UnitXPMax and UnitXPMax("player") or 0
+      if maxXP <= 0 or (IsPlayerAtEffectiveMaxLevel and IsPlayerAtEffectiveMaxLevel()) then return nil end
+      local SL, TS = _G.TibiSuiteL or {}, _G.TibiSuite
+      local cur, lvl = UnitXP("player") or 0, UnitLevel("player") or 0
+      -- Constate en jeu (2026-10-06) : au niveau 90, UnitXPMax reste > 0 et
+      -- IsPlayerAtEffectiveMaxLevel ne suffit pas. On compare au plafond de
+      -- l'extension, et on se tait aussi si l'XP est bloquee.
+      local cap = GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion()
+      if (cap and lvl >= cap) or (IsXPUserDisabled and IsXPUserDisabled()) then return nil end
+      local pct = cur / maxXP
+      local xph = 0
+      if _G.LvlHistoryAPI and LvlHistoryAPI.GetSession then
+        local ok, s = pcall(LvlHistoryAPI.GetSession)
+        if ok and s then xph = tonumber(s.liveXPH) or tonumber(s.xph) or 0 end
+      end
+      if xph > 0 and TS and TS.FmtDuration then
+        return { text = string.format(SL.ST_LVL_ETA_FMT or "%d %s", lvl + 1, TS.FmtDuration((maxXP - cur) / xph * 3600)), progress = pct }
+      end
+      return { text = string.format(SL.ST_LVL_FMT or "%d %d", lvl, math.floor(pct * 100)), progress = pct }
+    end,
   })
 end
 

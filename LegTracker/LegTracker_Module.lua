@@ -139,6 +139,7 @@ if HasCore() and IsEnabledByCore() then
     onOpen         = function() if _G.LegTracker_Toggle then _G.LegTracker_Toggle() end end,
     onOptions      = function() if _G.LegTracker_OpenOptions then _G.LegTracker_OpenOptions() end end,
     searchProvider = nil,  -- deja enregistree par LegTracker_Suite.lua (pas de doublon)
+    statusFn       = function() if _G.LegTracker_Status then return _G.LegTracker_Status() end end,
   })
 elseif GetUI() and GetUI().RegisterSearch then
   -- Repli : suite absente mais socle present. _Suite.lua enregistre deja la

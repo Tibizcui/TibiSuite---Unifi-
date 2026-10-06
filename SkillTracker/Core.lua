@@ -166,9 +166,10 @@ local function GatherKnownProfessions()
 
   local function readInto(idx, isPrimary)
     if not idx then return end
-    local name, _, cur, max, _, _, skillLine = GetProfessionInfo(idx)
+    local name, _, cur, max, _, _, skillLine, _, _, _, lineName = GetProfessionInfo(idx)
     if skillLine and name then
-      known[skillLine] = { name = name, cur = cur or 0, max = max or 0, isPrimary = isPrimary }
+      known[skillLine] = { name = name, cur = cur or 0, max = max or 0, isPrimary = isPrimary,
+                           lineName = lineName }
     end
   end
   readInto(p1, true)
@@ -240,6 +241,31 @@ local function MergeExpansionDetail(char, known)
           storeLine(parent, id, i.skillLevel, i.maxSkillLevel, i.expansionName)
         end
       end
+    end
+  end
+end
+
+-- Palier de l'extension en cours : constate en jeu (2026-10-06), pour un
+-- metier de recolte C_TradeSkillUI garde le niveau du palier tant que la
+-- fenetre du metier n'a pas ete rouverte (Herboristerie 96 au lieu de 100).
+-- GetProfessionInfo (grimoire, celui de la fenetre Metiers de Blizzard) est
+-- toujours a jour et decrit ce palier : on le recopie, apres avoir verifie
+-- que c'est bien le meme palier (nom du palier, sinon meme maximum).
+local function SyncCurrentLine(char, known)
+  local api = C_TradeSkillUI
+  for parent, kinfo in pairs(known) do
+    local prof = char.professions[parent]
+    local ln, id = ST.CurrentLine(prof)
+    if ln and (kinfo.max or 0) > 0 then
+      local same
+      if kinfo.lineName and api and api.GetProfessionInfoBySkillLineID then
+        local ok, i = pcall(api.GetProfessionInfoBySkillLineID, id)
+        if ok and i and i.professionName and i.professionName ~= "" then
+          same = (i.professionName == kinfo.lineName)
+        end
+      end
+      if same == nil then same = (kinfo.max == ln.max) end
+      if same then ln.cur, ln.max = kinfo.cur or ln.cur, kinfo.max end
     end
   end
 end
@@ -392,6 +418,7 @@ function ST.ScanProfessions()
 
   MergeExpansionDetail(char, known)
   for _, p in pairs(char.professions) do ST.ResolveLineIndexes(p, ST.db.tierIndex) end
+  SyncCurrentLine(char, known)
   ReadProfessionMeta(char, known)
 
   if arch then
@@ -907,6 +934,48 @@ _G.SkillTrackerAPI = {
     return out
   end,
 }
+
+-- ================================================================
+-- LIGNE D'ETAT DU PANNEAU VIVANT DE TIBISUITE (statusFn, lue par le core)
+-- Concentrations pleines (tous persos) d'abord, sinon le prochain plein du
+-- perso connecte ; la barre de progression suit ses connaissances hebdo.
+-- ================================================================
+function SkillTracker_Status()
+  if not ST.db or not ST.ConcList then return nil end
+  local SL = _G.TibiSuiteL or {}
+  local TS = _G.TibiSuite
+  local full, nextIn = 0, nil
+  for _, e in ipairs(ST.ConcList()) do
+    if e.pr.full then
+      full = full + 1
+    elseif e.current and e.pr.fullIn and (not nextIn or e.pr.fullIn < nextIn) then
+      nextIn = e.pr.fullIn
+    end
+  end
+  local out = {}
+  if full > 0 then
+    out.text = string.format(SL.ST_CONC_FULL_FMT or "%d", full)
+    out.color = { 1, 0.82, 0 }
+  elseif nextIn and TS and TS.FmtDuration then
+    out.text = string.format(SL.ST_CONC_IN_FMT or "%s", TS.FmtDuration(nextIn))
+  end
+  local rec = ST.CurrentRec()
+  if rec and ST.WeeklyCount then
+    local d, t = 0, 0
+    for parent, prof in pairs(rec.professions or {}) do
+      if prof.isPrimary then
+        local a, b = ST.WeeklyCount(rec, parent)
+        d, t = d + a, t + b
+      end
+    end
+    if t > 0 then
+      out.progress = d / t
+      if not out.text then out.text = string.format(SL.ST_KNOW_FMT or "%d/%d", d, t) end
+    end
+  end
+  if not out.text and not out.progress then return nil end
+  return out
+end
 
 -- ================================================================
 -- POINTS D'ENTREE PUBLICS (attendus par TibiSuite)

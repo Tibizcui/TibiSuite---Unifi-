@@ -46,6 +46,20 @@ if HasCore() and IsEnabledByCore() then
     accent    = ACCENT,
     onOpen    = function() SX.Toggle() end,
     onOptions = function() if SX.OpenOptions then SX.OpenOptions() end end,
+    -- Ligne d'etat du Panneau vivant : or net du perso depuis le reset
+    -- hebdomadaire (meme fenetre que la carte « Or (semaine) »).
+    statusFn  = function()
+      if not (SX.Aggregate and SX.WeeklyGoldRange and SX.CurrentCharKey) then return nil end
+      local key = SX.CurrentCharKey()
+      if not key or not StatsDB or not StatsDB[key] then return nil end
+      local from, to = SX.WeeklyGoldRange()
+      local agg = SX.Aggregate(key, from, to)
+      local net = (agg.goldGain or 0) - (agg.goldSpent or 0)
+      local SL, TS = _G.TibiSuiteL or {}, _G.TibiSuite
+      if not (TS and TS.FmtGold) then return nil end
+      return { text = string.format(SL.ST_GOLD_FMT or "%s", TS.FmtGold(net)),
+               color = net >= 0 and { 1, 0.843, 0 } or { 0.85, 0.45, 0.45 } }
+    end,
   })
 end
 

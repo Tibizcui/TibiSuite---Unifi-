@@ -182,6 +182,9 @@ if HasCore() and IsEnabledByCore() then
     onOpen         = function() if _G.WeeklyCompass_Toggle then _G.WeeklyCompass_Toggle() end end,
     onOptions      = function() WeeklyCompass_OpenOptions() end,
     searchProvider = provider,
+    statusFn       = function()
+      if _G.WeeklyCompassAPI and WeeklyCompassAPI.GetStatus then return WeeklyCompassAPI.GetStatus() end
+    end,
   })
 elseif GetUI() and GetUI().RegisterSearch then
   -- Repli : suite absente mais socle present -> au moins la recherche marche.

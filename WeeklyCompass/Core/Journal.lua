@@ -220,6 +220,34 @@ end
 WeeklyCompassAPI = WeeklyCompassAPI or {}
 WeeklyCompassAPI.version = 1
 
+-- Ligne d'etat du Panneau vivant de TibiSuite (statusFn, lue par le core) :
+-- recompense du Grand coffre a recuperer (urgent), sinon emplacements
+-- debloques cette semaine sur les lignes que la fenetre de Blizzard affiche
+-- (meme filtre que l'activite greatVault).
+function WeeklyCompassAPI.GetStatus()
+    local W = C_WeeklyRewards
+    if not W then return nil end
+    local SL = _G.TibiSuiteL or {}
+    if type(W.HasAvailableRewards) == "function" then
+        local ok, pending = pcall(W.HasAvailableRewards)
+        if ok and pending then return { text = SL.ST_VAULT_CLAIM, urgent = true } end
+    end
+    if type(W.GetActivities) ~= "function" then return nil end
+    local ok, acts = pcall(W.GetActivities)
+    if not ok or type(acts) ~= "table" then return nil end
+    local E = Enum and Enum.WeeklyRewardChestThresholdType
+    local done, total = 0, 0
+    for _, a in ipairs(acts) do
+        local shown = not E or a.type == E.Activities or a.type == E.Raid or a.type == E.World
+        if shown and (a.threshold or 0) > 0 then
+            total = total + 1
+            if (a.progress or 0) >= a.threshold then done = done + 1 end
+        end
+    end
+    if total == 0 then return nil end
+    return { text = string.format(SL.ST_VAULT_FMT or "%d/%d", done, total), progress = done / total }
+end
+
 -- Renvoie { { key, name, realm, class, current, claim, inferred, ilvl }, ... }
 function WeeklyCompassAPI.GetAlts()
     local out = {}

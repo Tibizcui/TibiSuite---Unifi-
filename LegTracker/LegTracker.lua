@@ -611,6 +611,24 @@ local function CountExtension(ext)
   return got, total, inProg
 end
 
+-- Ligne d'etat du Panneau vivant de TibiSuite (statusFn, lue par le core) :
+-- legendaires obtenus sur l'ensemble des extensions, selon le dernier scan
+-- (fait au login). Rien tant qu'aucun scan n'a eu lieu.
+function LegTracker_Status()
+  if not LegTrackerData or not LegTrackerData.Extensions then return nil end
+  local got, total, scanned = 0, 0, false
+  for _, ext in ipairs(LegTrackerData.Extensions) do
+    local g, t = CountExtension(ext)
+    got, total = got + g, total + t
+    for _, item in ipairs(ext.items or {}) do
+      if item._status ~= nil then scanned = true; break end
+    end
+  end
+  if not scanned or total == 0 then return nil end
+  local SL = _G.TibiSuiteL or {}
+  return { text = string.format(SL.ST_LEG_FMT or "%d/%d", got, total), progress = got / total }
+end
+
 -- ================================================================
 -- TOMTOM
 -- ================================================================

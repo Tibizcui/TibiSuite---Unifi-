@@ -82,6 +82,19 @@ if HasCore() and IsEnabledByCore() then
     onOptions = function() if _G.DgnTracker_OpenOptions then _G.DgnTracker_OpenOptions() end end,
     -- searchProvider volontairement omis : DgnTracker_Suite.lua enregistre
     -- deja la recherche pour la cle "Dgn".
+    -- Ligne d'etat du Panneau vivant : sauvegardes d'instance encore actives
+    -- (donjons et raids), lues dans l'API du jeu.
+    statusFn  = function()
+      if not (GetNumSavedInstances and GetSavedInstanceInfo) then return nil end
+      local n = 0
+      for i = 1, GetNumSavedInstances() or 0 do
+        local _, _, reset, _, locked = GetSavedInstanceInfo(i)
+        if locked and (reset or 0) > 0 then n = n + 1 end
+      end
+      if n == 0 then return nil end
+      local SL = _G.TibiSuiteL or {}
+      return { text = string.format(SL.ST_LOCK_FMT or "%d", n) }
+    end,
   })
 elseif GetUI() and GetUI().RegisterSearch then
   -- Repli : suite absente mais socle present. _Suite.lua a normalement deja

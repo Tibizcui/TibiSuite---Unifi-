@@ -257,6 +257,22 @@ if HasCore() and IsEnabledByCore() then
         onOpen         = function() if _G.LairLens_Toggle then _G.LairLens_Toggle() end end,
         onOptions      = function() if _G.LairLens_OpenOptions then _G.LairLens_OpenOptions() end end,
         searchProvider = provider,
+        -- Ligne d'etat du Panneau vivant : difficultes du Repaire faites cette
+        -- semaine (LairLensAPI.GetWeek, perso connecte).
+        statusFn       = function()
+            local api = _G.LairLensAPI
+            if not (api and api.GetWeek) then return nil end
+            local ok, w = pcall(api.GetWeek)
+            if not ok or type(w) ~= "table" then return nil end
+            local done, total = 0, 0
+            for _, d in ipairs({ "world", "normal", "heroic", "mythic" }) do
+                total = total + 1
+                if w[d] then done = done + 1 end
+            end
+            local SL = _G.TibiSuiteL or {}
+            if done == total then return { text = SL.ST_LAIR_DONE, progress = 1 } end
+            return { text = string.format(SL.ST_LAIR_FMT or "%d/%d", done, total), progress = done / total }
+        end,
     })
 elseif not HasCore() then
     BuildStandaloneMinimapButton()

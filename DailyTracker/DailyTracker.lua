@@ -2037,9 +2037,25 @@ end
 UpdateBadge = function()
   local TS = _G.TibiSuite
   if not (HasCore() and TS.SetTabBadge) then return end
+  if TS.RefreshStatus then TS.RefreshStatus() end
   if DailyTrackerDB.badge == false then TS.SetTabBadge("Daily", 0); return end
   local d, total = GetExtStats(CURRENT_EXT, "weekly")
   TS.SetTabBadge("Daily", math.max(0, total - d))
+end
+
+-- Ligne d'etat du Panneau vivant de TibiSuite (statusFn, lue par le core
+-- seulement) : hebdomadaires restantes de l'extension suivie, urgente a moins
+-- de 24 h du reset. Memes chiffres que le badge.
+function DailyTracker_Status()
+  if not MY_KEY then return nil end
+  local d, total = GetExtStats(CURRENT_EXT, "weekly")
+  if not total or total <= 0 then return nil end
+  local SL = _G.TibiSuiteL or {}
+  local left = math.max(0, total - d)
+  if left == 0 then return { text = SL.ST_WEEK_DONE, progress = 1 } end
+  local secs = SecUntilWeeklyReset()
+  return { text = string.format(SL.ST_WEEK_LEFT_FMT or "%d", left), progress = d / total,
+           urgent = secs > 0 and secs < 86400 }
 end
 
 -- Rappel avant le reset hebdo : une seule fois par reset et par personnage.

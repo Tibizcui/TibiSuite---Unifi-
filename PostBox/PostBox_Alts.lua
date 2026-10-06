@@ -134,6 +134,33 @@ function A.LoginAlert()
 end
 
 -- ============================================================================
+-- LIGNE D'ETAT DU PANNEAU VIVANT DE TIBISUITE (statusFn, lue par le core)
+-- Courriers de valeur qui expirent bientot (tous persos, meme horizon que
+-- l'alerte au login), sinon nouveau courrier, sinon le contenu de la boite du
+-- perso connecte (instantane de sa derniere visite). Les courriers deja
+-- expires a la date de l'instantane ne comptent plus : ils sont partis.
+-- ============================================================================
+function A.Status()
+  if not PostBoxDB or not PostBoxDB.inboxes then return nil end
+  local SL = _G.TibiSuiteL or {}
+  local now = time()
+  local horizon = (PostBoxDB.altAlertDays or 3) * 86400
+  local soon = 0
+  for _, snap in pairs(PostBoxDB.inboxes) do
+    for _, x in ipairs(snap.exp or {}) do
+      if x.at > now and x.at - now <= horizon then soon = soon + 1 end
+    end
+  end
+  if soon > 0 then return { text = string.format(SL.ST_MAIL_EXPIRE_FMT or "%d", soon), urgent = true } end
+  if HasNewMail and HasNewMail() then return { text = SL.ST_MAIL_NEW } end
+  local snap = PostBoxDB.inboxes[P.CharKey() or ""]
+  if not snap then return nil end
+  if (snap.count or 0) > 0 then return { text = string.format(SL.ST_MAIL_COUNT_FMT or "%d", snap.count) } end
+  return { text = SL.ST_MAIL_EMPTY }
+end
+function PostBox_Status() return A.Status() end
+
+-- ============================================================================
 -- FENETRE
 -- ============================================================================
 local COLS = { 160, 70, 100, 50, 40, 90, 70 }
