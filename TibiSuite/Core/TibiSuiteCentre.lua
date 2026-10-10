@@ -8,8 +8,14 @@
   La page d'un module affiche SON PROPRE panneau d'options, ancre ici grace
   au socle v13 (panel:Dock). Aucun module n'a ete modifie : le Centre ouvre
   le panneau par la voie habituelle (onOptions ou <Addon>_OpenOptions), le
-  recupere dans UI.lastShownPanel puis l'ancre. Fermer le Centre ne casse
-  rien : la roue du module rouvre le panneau en fenetre flottante.
+  recupere dans UI.lastShownPanel puis l'ancre.
+
+  Depuis le socle v14, c'est le chemin par defaut : toute ouverture flottante
+  d'un panneau de module (roue, Maj+clic droit, clic droit sur l'onglet,
+  commande du module) passe par UI.PanelRedirect, qui ouvre le Centre sur la
+  page du module (table PANEL_PAGE). Reglage « Ouvrir les options des modules
+  dans le Centre » (TibiSuiteDB.optionsInCentre, nil = actif) dans Barre et
+  acces ; decoche, ou sans le core, les fenetres flottantes reviennent.
 
   Aucun crochet Blizzard : la fenetre est seulement inscrite dans
   UISpecialFrames (Echap natif, sans OnHide), comme les fenetres escClose.
@@ -69,7 +75,38 @@ D("CTR_Q_NEWS",        "Quoi de neuf")
 D("CTR_Q_PROFILE",     "Profils")
 D("CTR_Q_EXPORT",      "Code du Dashboard")
 D("CTR_Q_DOCTOR",      "Diagnostic")
-D("CTR_HOME_TIP",      "Astuce : chaque module garde aussi sa roue d'options et son raccourci Maj+clic droit. Ici, tout est réuni au même endroit.")
+D("CTR_HOME_TIP",      "Astuce : la roue d'options d'un module, Maj + clic droit sur sa fenêtre ou clic droit sur son onglet ouvrent directement sa page ici.")
+D("CTR_WEEK_TITLE",    "Ma semaine")
+D("CTR_ACTIVITY",      "Fil d'activité")
+D("CTR_ACTIVITY_DESC", "Tout ce qui s'est passé dans la suite : butin, records, paliers, courrier, semaine terminée. Clic sur une ligne : ouvrir le module.")
+D("CTR_ACT_ALL",       "Tout")
+D("CTR_ACT_EMPTY",     "Rien pour l'instant. Les événements de tes modules apparaîtront ici au fil du jeu.")
+D("CTR_ACT_TODAY",     "AUJOURD'HUI")
+D("CTR_ACT_YESTERDAY", "HIER")
+D("CTR_ACT_CLEAR",     "Effacer l'historique")
+D("CTR_ACT_CLEAR_ASK", "Effacer tout le fil d'activité ?\n\nLes notifications passées disparaissent. Rien d'autre n'est touché.")
+D("CTR_BAR_SEC_NOTIF", "Notifications")
+D("CTR_BAR_NOTIF_NOTE","Les événements arrivent toujours dans le Fil d'activité. Ici, tu choisis s'ils s'affichent aussi à l'écran, et pour quels modules.")
+D("CTR_BAR_NOTIF_TOAST","Afficher les notifications à l'écran")
+D("CTR_BAR_NOTIF_SOUND","Jouer un son")
+D("CTR_BAR_NOTIF_COMBAT","Attendre la fin du combat pour les afficher")
+D("CTR_BAR_NOTIF_MOD_FMT","Notifications de %s")
+D("CTR_WEEK_DESC_FMT", "%s : ce qui presse, où en sont tes modules et le temps avant le prochain reset.")
+D("CTR_WEEK_DAILY",    "RESET QUOTIDIEN DANS")
+D("CTR_WEEK_WEEKLY",   "RESET HEBDO DANS")
+D("CTR_WEEK_URGENT",   "À TRAITER")
+D("CTR_WEEK_NONE",     "Rien d'urgent")
+D("CTR_WEEK_EMPTY",    "Aucun module actif ne donne encore son état. Active DailyTracker, WeeklyCompass, RenTracker ou SkillTracker pour remplir cette page.")
+D("CTR_WEEK_CARD_TT",  "Clic : ouvrir le module. Clic droit : ses options.")
+D("CTR_WEEK_INFO_FMT", "%d / %d modules actifs")
+D("CTR_Q_PALETTE",     "Palette de commandes")
+D("CTR_BAR_SEC_LOOK",  "Couleur d'accent")
+D("CTR_BAR_LOOK_NOTE", "Couleur des liserés, sélections et boutons de la barre, du Centre et des fenêtres de la suite. Le nom TibiSuite et les pastilles d'alerte restent rouges. La couleur de classe suit le personnage connecté.")
+D("CTR_BAR_ACC_SUITE", "Rouge TibiSuite")
+D("CTR_BAR_ACC_CLASS", "Couleur de ta classe")
+D("CTR_BAR_SEC_OPT",   "Options des modules")
+D("CTR_BAR_OPTCENTRE", "Ouvrir les options des modules dans le Centre")
+D("CTR_BAR_OPT_NOTE",  "Clic droit sur un onglet, roue d'options d'une fenêtre, Maj + clic droit ou commande du module : tout ouvre la page du module dans ce Centre. Décoche pour retrouver les petites fenêtres d'options flottantes. Standby garde sa propre fenêtre.")
 D("CTR_DOC_RERUN",     "Relancer le diagnostic")
 D("CTR_BAR_SEC_STYLE", "Style de la barre")
 D("CTR_BAR_STYLE_NOTE","Classique : la grille d'onglets texte. Dock : une rangée d'icônes, discrète. Panneau vivant : chaque module affiche son état du moment (quêtes restantes, concentration, réputation...). Le changement est immédiat, sans rechargement.")
@@ -105,6 +142,91 @@ D("CTR_BAR_LOGIN_NONE","Aucun")
 D("CTR_BAR_SEC_GM",    "Menu Échap")
 D("CTR_BAR_GM",        "Ligne TibiSuite dans le menu Échap")
 D("CTR_BAR_GM_NOTE",   "Placée sous EllesmereUI quand il est présent, sinon sous « Boutique ». Elle ouvre ce Centre. Pris en compte à la prochaine ouverture du menu.")
+D("CTR_BAR_SEC_STREAM","Mode streaming")
+D("CTR_BAR_STREAM",    "Masquer le nom du personnage et les montants d'or")
+D("CTR_BAR_STREAM_NOTE","Pour diffuser ou faire des captures : dans la barre, Ma semaine et le fil d'activité, le nom devient « Personnage » et l'or « *** ». Les fenêtres propres des modules (Stats, PostBox...) ne sont pas concernées. Raccourci et palette : « Mode streaming ».")
+D("CTR_BAR_SEC_AUTO",  "Masquage automatique")
+D("CTR_BAR_AUTO_NOTE", "La barre s'efface d'elle-même dans les situations cochées, puis revient exactement comme tu l'avais laissée. Estompée : elle reste visible en transparence et se rallume au survol.")
+D("CTR_BAR_AUTO_COMBAT","En combat")
+D("CTR_BAR_AUTO_INST", "En instance (donjon, raid, champ de bataille, gouffre)")
+D("CTR_BAR_AUTO_MOUNT","Sur une monture")
+D("CTR_BAR_AUTO_VEH",  "Dans un véhicule")
+D("CTR_BAR_AUTO_PET",  "En combat de mascottes")
+D("CTR_BAR_AUTO_FADE", "Estomper (revient au survol)")
+D("CTR_BAR_AUTO_HIDE", "Masquer complètement")
+D("CTR_BAR_AUTO_ALPHA","Opacité estompée (%)")
+D("CTR_NEXT",          "PROCHAINE ACTION")
+D("CTR_NEXT_DONE",     "Tout est à jour. Rien ne presse pour l'instant.")
+D("CTR_NEXT_TT",       "Clic : ouvrir le module concerné.")
+D("CTR_BAR_SEC_WID",   "Widgets épinglés")
+D("CTR_BAR_WID_NOTE",  "Épingle la ligne d'état d'un module à l'écran : une petite carte toujours à jour, que tu places où tu veux. Aussi depuis Ma semaine (Maj + clic sur une carte) ou la palette. Ils suivent le masquage automatique ci-dessus.")
+D("CTR_BAR_WID_FMT",   "Épingler %s")
+D("CTR_BAR_WID_LOCK",  "Verrouiller les widgets (plus de déplacement à la souris)")
+D("CTR_BAR_WID_SCALE", "Taille des widgets (%)")
+D("CTR_BAR_WID_NONE",  "Tout désépingler")
+D("CTR_WEEK_PIN_TT",   "Punaise en haut à droite (ou Maj + clic) : épingler à l'écran.")
+D("CTR_DISPLAY",       "Lisibilité")
+D("CTR_DISPLAY_DESC",  "Taille des fenêtres de la suite, contraste élevé et couleurs adaptées au daltonisme.")
+D("CTR_DSP_SEC_SIZE",  "Taille")
+D("CTR_DSP_SIZE",      "Taille des fenêtres de la suite (%)")
+D("CTR_DSP_SIZE_NOTE", "Centre, palette, installateur, notifications et widgets. Les fenêtres propres des modules gardent leur taille (beaucoup ont leur propre réglage d'échelle).")
+D("CTR_DSP_SEC_COL",   "Contraste et couleurs")
+D("CTR_DSP_CONTRAST",  "Contraste élevé (textes plus clairs, fonds opaques)")
+D("CTR_DSP_CVD",       "Couleurs adaptées au daltonisme (bleu, vermillon, jaune)")
+D("CTR_DSP_COL_NOTE",  "Le mode daltonien remplace le vert « terminé » par du bleu et l'orange d'alerte par du jaune, dans la suite et dans les fenêtres de modules qui utilisent la palette commune. Une partie des fenêtres déjà dessinées n'est mise à jour qu'après un rechargement.")
+D("CTR_REMIND",        "Rappels")
+D("CTR_REMIND_DESC",   "Avant les resets, une note pour chaque personnage, et tes événements du calendrier. Les rappels arrivent dans le Fil d'activité et à l'écran.")
+D("CTR_REM_SEC_RESET", "Resets")
+D("CTR_REM_WEEKLY",    "Rappel avant le reset hebdomadaire")
+D("CTR_REM_WEEKLY_H",  "Heures avant le reset hebdo")
+D("CTR_REM_DAILY",     "Rappel avant le reset quotidien")
+D("CTR_REM_DAILY_M",   "Minutes avant le reset quotidien")
+D("CTR_REM_RESET_NOTE","Le rappel hebdo indique combien de modules « À faire » ne sont pas terminés. Une seule fois par reset et par personnage.")
+D("CTR_REM_SEC_CAL",   "Calendrier")
+D("CTR_REM_CAL",       "Rappel 15 minutes avant un événement du calendrier")
+D("CTR_REM_CAL_NOTE",  "Événements de guilde et invitations du jour. Les fêtes et réinitialisations de raid sont ignorées.")
+D("CTR_REM_SEC_NOTE",  "Note pour ce personnage")
+D("CTR_REM_NOTE_ON",   "Afficher la note à la connexion")
+D("CTR_REM_NOTE_HINT", "Écris ta note puis Entrée (par exemple « Vendre les composants à l'HV »). Vide = aucune note.")
+D("CTR_REM_TEST",      "Afficher un rappel d'essai")
+D("CTR_REM_TEST_TXT",  "Rappel d'essai : voici à quoi ressemblent les rappels TibiSuite.")
+D("CTR_PROFILES",      "Profils et restauration")
+D("CTR_PROFILES_DESC", "Plusieurs jeux de réglages de la suite, choisis tout seuls selon le personnage, la spécialisation ou la montée de niveau. Et des points de restauration pour revenir en arrière.")
+D("CTR_PRF_SEC_SETUPS","PROFILS DE SUITE")
+D("CTR_PRF_NAME",      "Nom du profil...")
+D("CTR_PRF_SAVE",      "Enregistrer les réglages actuels")
+D("CTR_PRF_APPLY",     "Appliquer")
+D("CTR_PRF_UPDATE",    "Mettre à jour")
+D("CTR_PRF_DELETE",    "Supprimer")
+D("CTR_PRF_ACTIVE",    "actif")
+D("CTR_PRF_NONE",      "Aucun profil enregistré. Règle la suite comme tu l'aimes, donne un nom puis « Enregistrer ». Le profil actif retient tes changements quand tu passes à un autre.")
+D("CTR_PRF_SEC_RULES", "CHOIX AUTOMATIQUE")
+D("CTR_PRF_RULES_NOTE","Clic sur un bouton pour changer de profil (Aucun = ne rien changer). Priorité : spécialisation, puis personnage, puis montée de niveau. Un module à activer ou couper demande un rechargement : il est proposé, jamais imposé.")
+D("CTR_PRF_R_CHAR_FMT","Ce personnage (%s)")
+D("CTR_PRF_R_SPEC_FMT","Spécialisation actuelle (%s)")
+D("CTR_PRF_R_LVL",     "Personnages en montée de niveau")
+D("CTR_PRF_R_NONE",    "Aucun")
+D("CTR_PRF_SEC_RP",    "POINTS DE RESTAURATION")
+D("CTR_PRF_RP_NOTE",   "Créés tout seuls à la connexion (si quelque chose a changé), avant un profil ou une restauration. Seuls les réglages de la suite sont concernés, jamais la progression des modules.")
+D("CTR_PRF_RP_NEW",    "Créer un point maintenant")
+D("CTR_PRF_RP_RESTORE","Restaurer")
+D("CTR_PRF_RP_ASK",    "Revenir aux réglages de la suite de ce point ?\n\nUn point « Avant restauration » est créé d'abord : tu pourras revenir ici.")
+D("CTR_PRF_DEL_ASK_FMT","Supprimer le profil « %s » ?\n\nLes règles qui l'utilisent repassent à « Aucun ».")
+D("CTR_PRF_RP_NONE",   "Aucun point pour l'instant.")
+D("CTR_UNDO_FMT",      "Annuler : %s")
+D("CTR_UNDO_TT",       "Annule le dernier réglage changé, dans la suite ou dans un module (30 derniers, jusqu'au rechargement).")
+D("CTR_WIDGETS",       "Widgets")
+D("CTR_WIDGETS_DESC",  "Épingle à l'écran la ligne d'état d'un module : une petite carte toujours à jour, que tu déplaces à la souris. Elles suivent le masquage automatique de la barre (combat, instance...).")
+D("CTR_WID_PIN",       "Épingler")
+D("CTR_WID_UNPIN",     "Désépingler")
+D("CTR_WID_LOCK",      "Verrouiller les widgets")
+D("CTR_WID_UNLOCK",    "Déverrouiller les widgets")
+D("CTR_WID_SIZE_FMT",  "Taille : %d %%")
+D("CTR_WID_NONE",      "Aucun module actif ne donne de ligne d'état. Active DailyTracker, WeeklyCompass, RenTracker, SkillTracker... pour pouvoir les épingler.")
+D("CTR_WID_TIP",       "Aussi : la punaise des cartes de Ma semaine, le clic droit sur un module de la barre (Dock, Panneau vivant) et la palette de commandes.")
+D("CTR_WID_PINNED",    "À L'ÉCRAN")
+D("CTR_WID_TT_PIN",    "Épingler à l'écran")
+D("CTR_WID_TT_UNPIN",  "Désépingler de l'écran")
 D("CTR_SOCLE",         "socle v")
 D("CTR_UNAVAIL",       "Centre indisponible (socle v13 requis).")
 D("CTR_SET_DESC",     "Tous les réglages de la suite et de ses modules sont réunis dans le Centre TibiSuite.")
@@ -122,7 +244,12 @@ local PAGE_FOOT   = 36                     -- boutons de page
 
 local GENERAL = {
   { id = "home",   label = "CTR_HOME"   },
+  { id = "activity", label = "CTR_ACTIVITY" },
   { id = "bar",    label = "CTR_BAR"    },
+  { id = "widgets", label = "CTR_WIDGETS" },
+  { id = "display", label = "CTR_DISPLAY" },
+  { id = "reminders", label = "CTR_REMIND" },
+  { id = "profiles", label = "CTR_PROFILES" },
   { id = "doctor", label = "CTR_DOCTOR" },
   { id = "maint",  label = "CTR_MAINT"  },
 }
@@ -139,6 +266,9 @@ local pendingTxt, reloadBtn
 local current = "home"
 local byKey = {}
 local docked                    -- panneau socle actuellement ancre dans la page
+local barPanel                  -- page Barre et acces (panneau socle)
+local dspPanel, remPanel        -- pages Lisibilite et Rappels (panneaux socle)
+local undoBtn                   -- bouton Annuler du pied de fenetre
 
 -- Taille variable (poignee bas-droit) : largeurs calculees a la volee.
 local MIN_W, MIN_H = 760, 480
@@ -183,9 +313,13 @@ local function GrabPanel(id, opener)
   if panelCache[id] then return panelCache[id] end
   if not (UI and UI.panels) then return nil end
   UI.lastShownPanel = nil
+  -- Pendant la recuperation, le panneau s'ouvre en flottant comme avant :
+  -- sans ce drapeau, la redirection (socle v14) rouvrirait le Centre en boucle.
+  UI._noRedirect = true
   pcall(opener)
   local p = UI.lastShownPanel
   if not p then pcall(opener); p = UI.lastShownPanel end
+  UI._noRedirect = nil
   if p and p.Dock then panelCache[id] = p; return p end
   return nil
 end
@@ -354,6 +488,10 @@ local function RefreshRows()
     else
       local c = sel and K.COL.TXT or K.COL.MUT
       r.txt:SetTextColor(c[1], c[2], c[3])
+      if r.id == "activity" then
+        local n = TibiSuite.UnreadCount and TibiSuite.UnreadCount() or 0
+        r.txt:SetText(L.CTR_ACTIVITY .. (n > 0 and ("  " .. K.HX.WARN .. "(" .. n .. ")|r") or ""))
+      end
     end
   end
 end
@@ -370,43 +508,192 @@ local function RefreshFooter()
 end
 
 -- ── Pages generales ────────────────────────────────────────────────
--- Place cartes et boutons de l'Accueil selon la largeur courante.
-local function LayoutHome(p)
-  local pw = PaneW()
-  local cw = math.floor((pw - 20) / 3)
-  p.intro:SetWidth(pw - 10)
-  p.tip:SetWidth(pw - 10)
-  for i, c in ipairs(p.cardFrames) do
-    c:SetSize(cw, 62)
-    c:ClearAllPoints(); c:SetPoint("TOPLEFT", (i - 1) * (cw + 10), -58)
+-- ACCUEIL = « Ma semaine » : tableau de bord de la semaine en cours.
+--   1. trois tuiles : reset quotidien, reset hebdomadaire, points a traiter ;
+--   2. une carte par module qui fournit une ligne d'etat (statusFn), par
+--      groupe (A faire, Progression), ce qui presse en tete ;
+--   3. acces rapides, puis une ligne d'informations sur la suite.
+-- Tout est dans une zone defilante. Clic sur une carte = fenetre du module,
+-- clic droit = sa page d'options ici.
+local function ResetIn(kind)
+  local f = C_DateAndTime and (kind == "week" and C_DateAndTime.GetSecondsUntilWeeklyReset
+    or C_DateAndTime.GetSecondsUntilDailyReset)
+  if f then
+    local ok, s = pcall(f)
+    if ok and tonumber(s) then return tonumber(s) end
   end
-  for i, b in ipairs(p.quickBtns) do
-    b:SetSize(cw, 30)
-    b:ClearAllPoints(); b:SetPoint("TOPLEFT", ((i - 1) % 3) * (cw + 10), -162 - math.floor((i - 1) / 3) * 40)
+  if kind == "day" and GetQuestResetTime then
+    local ok, s = pcall(GetQuestResetTime)
+    if ok and tonumber(s) then return tonumber(s) end
   end
+  return nil
+end
+
+local CARD_H = 58
+local RefreshHome   -- definie plus bas (le ticker de BuildHome l'appelle)
+
+-- Prochaine action : ce qui presse d'abord, puis le premier « A faire »
+-- incomplet, puis la progression la plus basse. nil = tout est a jour.
+function TibiSuite.GetNextAction()
+  local cat = {}
+  for _, mod in ipairs(TibiSuite.GetCatalog()) do cat[mod.key] = mod end
+  local best, bestScore
+  for gi, g in ipairs(TibiSuite.PANEL_GROUPS or {}) do
+    if not g.icons then
+      for ki, key in ipairs(g.keys) do
+        local st = cat[key] and TibiSuite.GetModuleStatus and TibiSuite.GetModuleStatus(key)
+        if st then
+          local prog = tonumber(st.progress)
+          local score
+          if st.urgent then score = ki
+          elseif gi == 1 and (prog == nil or prog < 1) then score = 100 + ki
+          elseif prog and prog < 1 then score = 200 + math.floor(prog * 100)
+          end
+          if score and (not bestScore or score < bestScore) then
+            best, bestScore = { key = key, mod = cat[key], text = st.text, urgent = st.urgent and true or false, progress = prog }, score
+          end
+        end
+      end
+    end
+  end
+  return best
+end
+
+-- Ouvre le module de la prochaine action, sinon Ma semaine.
+function TibiSuite.RunNextAction()
+  local na = TibiSuite.GetNextAction()
+  if na then TibiSuite.OpenModule(na.key) else TibiSuite.OpenCentre("home") end
+end
+
+local function MakeStatusCard(parent)
+  local c = K.Card(parent)
+  c:SetHeight(CARD_H)
+  c:EnableMouse(true)
+  c.bar = c:CreateTexture(nil, "OVERLAY")
+  c.bar:SetPoint("TOPLEFT"); c.bar:SetPoint("BOTTOMLEFT"); c.bar:SetWidth(3)
+  c.edge = c:CreateTexture(nil, "OVERLAY")       -- liseré d'urgence (haut)
+  c.edge:SetPoint("TOPLEFT", 1, -1); c.edge:SetPoint("TOPRIGHT", -1, -1); c.edge:SetHeight(2)
+  c.ico = c:CreateTexture(nil, "ARTWORK")
+  c.ico:SetSize(26, 26); c.ico:SetPoint("TOPLEFT", 12, -9)
+  c.name = K.Text(c, "GameFontNormal", "", K.COL.TXT)
+  c.name:SetPoint("TOPLEFT", c.ico, "TOPRIGHT", 8, 1)
+  c.flag = K.Text(c, "GameFontNormalSmall", "", K.COL.WARN)
+  c.flag:SetPoint("TOPRIGHT", -32, -9)
+  -- Punaise : epingler la carte a l'ecran (widget). Toujours visible,
+  -- discrete tant que la carte n'est pas epinglee.
+  local pin = CreateFrame("Button", nil, c)
+  pin:SetSize(18, 18); pin:SetPoint("TOPRIGHT", -7, -6)
+  pin.tex = pin:CreateTexture(nil, "ARTWORK"); pin.tex:SetAllPoints()
+  local atlas
+  for _, name in ipairs({ "Waypoint-MapPin-Untracked", "Waypoint-MapPin-Tracked", "Waypoint-MapPin-ChatIcon" }) do
+    if C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) then atlas = name; break end
+  end
+  if atlas then pin.tex:SetAtlas(atlas) else pin.tex:SetTexture("Interface\\Buttons\\UI-CheckBox-Check") end
+  function pin:Paint(hover)
+    local on = c.mod and TibiSuite.IsWidgetPinned and TibiSuite.IsWidgetPinned(c.mod.key)
+    if on then pin.tex:SetVertexColor(ACC[1], ACC[2], ACC[3]); pin:SetAlpha(1)
+    else pin.tex:SetVertexColor(0.85, 0.85, 0.85); pin:SetAlpha(hover and 1 or 0.35) end
+  end
+  pin:SetScript("OnClick", function()
+    if c.mod and TibiSuite.ToggleWidget then TibiSuite.ToggleWidget(c.mod.key) end
+    pin:Paint(true)
+  end)
+  pin:SetScript("OnEnter", function(s)
+    s:Paint(true)
+    local on = c.mod and TibiSuite.IsWidgetPinned and TibiSuite.IsWidgetPinned(c.mod.key)
+    GameTooltip:SetOwner(s, "ANCHOR_TOP"); GameTooltip:AddLine(on and L.CTR_WID_TT_UNPIN or L.CTR_WID_TT_PIN, 1, 1, 1); GameTooltip:Show()
+  end)
+  pin:SetScript("OnLeave", function(s) s:Paint(false); GameTooltip:Hide() end)
+  pin:SetShown(TibiSuite.ToggleWidget ~= nil)
+  c.pin = pin
+  c.txt = K.Text(c, "GameFontHighlightSmall", "", K.COL.MUT)
+  c.txt:SetPoint("TOPLEFT", c.name, "BOTTOMLEFT", 0, -3)
+  c.txt:SetJustifyH("LEFT"); c.txt:SetWordWrap(false)
+  c.pbg = c:CreateTexture(nil, "ARTWORK")
+  c.pbg:SetPoint("BOTTOMLEFT", 12, 9); c.pbg:SetPoint("BOTTOMRIGHT", -12, 9); c.pbg:SetHeight(4)
+  c.pbg:SetColorTexture(1, 1, 1, 0.07)
+  c.pfill = c:CreateTexture(nil, "ARTWORK", nil, 1)
+  c.pfill:SetPoint("TOPLEFT", c.pbg, "TOPLEFT"); c.pfill:SetPoint("BOTTOMLEFT", c.pbg, "BOTTOMLEFT")
+  local hl = c:CreateTexture(nil, "HIGHLIGHT")
+  hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.04)
+  c:SetScript("OnMouseUp", function(s, btn)
+    if not s.mod then return end
+    if btn == "RightButton" then Select(s.mod.key)
+    elseif IsShiftKeyDown() and TibiSuite.ToggleWidget then
+      TibiSuite.ToggleWidget(s.mod.key)
+      if barPanel then barPanel:Refresh() end
+    else frame:Hide(); TibiSuite.OpenModule(s.mod.key) end
+  end)
+  c:SetScript("OnEnter", function(s)
+    if not s.mod then return end
+    GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+    local mc = ModCol(s.mod)
+    GameTooltip:AddLine(s.mod.addonName, mc[1], mc[2], mc[3])
+    if s.stText and s.stText ~= "" then GameTooltip:AddLine(s.stText, 1, 1, 1, true) end
+    GameTooltip:AddLine(L.CTR_WEEK_CARD_TT, 0.6, 0.6, 0.65, true)
+    if TibiSuite.ToggleWidget then GameTooltip:AddLine(L.CTR_WEEK_PIN_TT, 0.6, 0.6, 0.65, true) end
+    GameTooltip:Show()
+  end)
+  c:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  return c
 end
 
 local function BuildHome(p)
-  local intro = K.Text(p, "GameFontHighlight", L.INTRO or "", K.COL.MUT, PaneW() - 10)
-  intro:SetPoint("TOPLEFT", 0, -2)
-  p.intro = intro
-  p.cards, p.cardFrames, p.quickBtns = {}, {}, {}
-  local cw = math.floor((PaneW() - 20) / 3)
-  for i, lbl in ipairs({ L.CTR_CARD_MODULES, L.CTR_CARD_RELOAD, L.CTR_CARD_VERSION }) do
-    local c = K.Card(p)
-    c:SetSize(cw, 62)
-    local l = K.Text(c, "GameFontNormalSmall", lbl, K.COL.DIM)
-    l:SetPoint("TOPLEFT", 12, -10)
-    local v = K.Text(c, "GameFontHighlightLarge", "", K.COL.TXT)
-    v:SetPoint("TOPLEFT", 12, -30)
-    p.cards[i] = v
-    p.cardFrames[i] = c
+  local sc = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
+  sc:SetPoint("TOPLEFT", 0, 0); sc:SetPoint("BOTTOMRIGHT", -24, 0)
+  if UI.SkinScrollBar then UI.SkinScrollBar(sc, ACC) end
+  local c = CreateFrame("Frame", nil, sc)
+  c:SetSize(DockW(), 10)
+  sc:SetScrollChild(c)
+  p.scroll, p.child = sc, c
+
+  -- Tuiles du haut
+  p.tiles = {}
+  for i, lbl in ipairs({ L.CTR_WEEK_DAILY, L.CTR_WEEK_WEEKLY, L.CTR_WEEK_URGENT }) do
+    local t = K.Card(c)
+    t:SetHeight(58)
+    local l = K.Label(t, lbl); l:SetPoint("TOPLEFT", 12, -10)
+    local v = K.Text(t, "GameFontHighlightLarge", "", K.COL.TXT); v:SetPoint("TOPLEFT", 12, -28)
+    t.value = v
+    p.tiles[i] = t
   end
-  local q = K.Label(p, L.CTR_QUICK)
-  q:SetPoint("TOPLEFT", 0, -140)
+
+  -- Bandeau « prochaine action ».
+  local nx = CreateFrame("Button", nil, c)
+  nx:SetHeight(40)
+  nx.bg = nx:CreateTexture(nil, "BACKGROUND"); nx.bg:SetAllPoints(); nx.bg:SetColorTexture(1, 1, 1, 0.04)
+  nx.bar = nx:CreateTexture(nil, "ARTWORK"); nx.bar:SetPoint("TOPLEFT"); nx.bar:SetPoint("BOTTOMLEFT"); nx.bar:SetWidth(3)
+  nx.ico = nx:CreateTexture(nil, "ARTWORK"); nx.ico:SetSize(24, 24); nx.ico:SetPoint("LEFT", 12, 0)
+  nx.lbl = K.Label(nx, L.CTR_NEXT); nx.lbl:SetPoint("TOPLEFT", 44, -6)
+  nx.txt = K.Text(nx, "GameFontHighlight", "", K.COL.TXT); nx.txt:SetPoint("TOPLEFT", nx.lbl, "BOTTOMLEFT", 0, -2)
+  nx.txt:SetJustifyH("LEFT"); nx.txt:SetWordWrap(false)
+  local nhl = nx:CreateTexture(nil, "HIGHLIGHT"); nhl:SetAllPoints(); nhl:SetColorTexture(1, 1, 1, 0.04)
+  nx:SetScript("OnClick", function(s) if s.key then frame:Hide(); TibiSuite.OpenModule(s.key) end end)
+  nx:SetScript("OnEnter", function(s)
+    if not s.key then return end
+    GameTooltip:SetOwner(s, "ANCHOR_BOTTOM"); GameTooltip:AddLine(L.CTR_NEXT_TT, 1, 1, 1); GameTooltip:Show()
+  end)
+  nx:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  p.next = nx
+
+  -- Groupes de cartes (memes groupes que le Panneau vivant, sans la rangee
+  -- Interface : ces modules n'ont pas de ligne d'etat).
+  p.groups = {}
+  for gi, g in ipairs(TibiSuite.PANEL_GROUPS or {}) do
+    if not g.icons then
+      local head = K.Label(c, L[g.label] or g.label)
+      p.groups[#p.groups + 1] = { head = head, keys = g.keys, cards = {} }
+    end
+  end
+  p.empty = K.Text(c, "GameFontHighlight", L.CTR_WEEK_EMPTY, K.COL.DIM)
+
+  -- Acces rapides
+  p.quickHead = K.Label(c, L.CTR_QUICK)
+  p.quickBtns = {}
   local function hideThen(fn) return function() frame:Hide(); fn() end end
   local quick = {
     { L.CTR_Q_BAR,     function() SlashCmdList["TIBISUITE"]("bar") end },
+    { L.CTR_Q_PALETTE, hideThen(function() if TibiSuite.OpenPalette then TibiSuite.OpenPalette() end end) },
     { L.CTR_Q_SETUP,   hideThen(function() if TibiSuite.RunSetup then TibiSuite.RunSetup() end end) },
     { L.CTR_Q_NEWS,    hideThen(function() if TibiSuite.ShowWhatsNew then TibiSuite.ShowWhatsNew(true) end end) },
     { L.CTR_Q_PROFILE, hideThen(function() if TibiSuite.OpenProfileWindow then TibiSuite.OpenProfileWindow() end end) },
@@ -414,20 +701,161 @@ local function BuildHome(p)
         if _G.Stats and _G.Stats.ShowExportPopup then frame:Hide(); _G.Stats.ShowExportPopup()
         elseif TibiSuite.ShowToast then TibiSuite.ShowToast(L.TOAST_NEED_STATS or "Stats") end
       end },
-    { L.CTR_Q_DOCTOR,  function() Select("doctor") end },
   }
   for i, spec in ipairs(quick) do
-    local b = K.Btn(p, cw, 30, spec[1])
+    local b = K.Btn(c, 100, 30, spec[1])
     b:SetScript("OnClick", spec[2])
     p.quickBtns[i] = b
   end
-  local tip = K.Text(p, "GameFontDisableSmall", L.CTR_HOME_TIP, K.COL.DIM, PaneW() - 10)
-  tip:SetPoint("TOPLEFT", 0, -260)
-  p.tip = tip
-  LayoutHome(p)
+  p.info = K.Text(c, "GameFontHighlightSmall", "", K.COL.DIM)
+  p.tip = K.Text(c, "GameFontDisableSmall", L.CTR_HOME_TIP, K.COL.DIM)
+  p.cards = p.tiles       -- marqueur « page construite » (RefreshAll)
+  p.cardFrames = p.tiles  -- marqueur « mise en page » (Relayout)
+
+  -- Comptes a rebours : rafraichis toutes les 30 s, page affichee seulement.
+  p:SetScript("OnShow", function(s)
+    if s.ticker then s.ticker:Cancel() end
+    s.ticker = C_Timer.NewTicker(30, function() if s:IsVisible() then RefreshHome(s) end end)
+  end)
+  p:SetScript("OnHide", function(s) if s.ticker then s.ticker:Cancel(); s.ticker = nil end end)
 end
 
-local function RefreshHome(p)
+-- Place tuiles, cartes et boutons selon la largeur courante, puis remplit.
+local function LayoutHome(p)
+  if not p.child then return end
+  local w = DockW()
+  local c = p.child
+  c:SetWidth(w)
+  local tw = math.floor((w - 20) / 3)
+  for i, t in ipairs(p.tiles) do
+    t:SetWidth(tw)
+    t:ClearAllPoints(); t:SetPoint("TOPLEFT", (i - 1) * (tw + 10), -2)
+  end
+  p.next:SetWidth(w)
+  p.next.txt:SetWidth(w - 60)
+  p.next:ClearAllPoints(); p.next:SetPoint("TOPLEFT", 0, -70)
+  local y = -120
+  local cols = (w >= 600) and 3 or 2
+  local cw = math.floor((w - (cols - 1) * 10) / cols)
+  local shown = 0
+  for _, g in ipairs(p.groups) do
+    local n = 0
+    for _, card in ipairs(g.cards) do if card:IsShown() then n = n + 1 end end
+    g.head:SetShown(n > 0)
+    if n > 0 then
+      g.head:ClearAllPoints(); g.head:SetPoint("TOPLEFT", 2, y - 4)
+      y = y - 22
+      local i = 0
+      for _, card in ipairs(g.cards) do
+        if card:IsShown() then
+          card:SetWidth(cw)
+          card.txt:SetWidth(cw - 60)
+          card:ClearAllPoints()
+          card:SetPoint("TOPLEFT", (i % cols) * (cw + 10), y - math.floor(i / cols) * (CARD_H + 8))
+          i = i + 1
+        end
+      end
+      y = y - math.ceil(n / cols) * (CARD_H + 8) - 6
+      shown = shown + n
+    end
+  end
+  p.empty:SetShown(shown == 0)
+  if shown == 0 then
+    p.empty:ClearAllPoints(); p.empty:SetPoint("TOPLEFT", 2, y - 4); p.empty:SetWidth(w - 4)
+    y = y - 34
+  end
+  p.quickHead:ClearAllPoints(); p.quickHead:SetPoint("TOPLEFT", 2, y - 8)
+  y = y - 28
+  local qw = math.floor((w - 20) / 3)
+  for i, b in ipairs(p.quickBtns) do
+    b:SetSize(qw, 30)
+    b:ClearAllPoints(); b:SetPoint("TOPLEFT", ((i - 1) % 3) * (qw + 10), y - math.floor((i - 1) / 3) * 40)
+  end
+  y = y - math.ceil(#p.quickBtns / 3) * 40 - 6
+  p.info:ClearAllPoints(); p.info:SetPoint("TOPLEFT", 2, y); p.info:SetWidth(w - 4)
+  y = y - 22
+  p.tip:ClearAllPoints(); p.tip:SetPoint("TOPLEFT", 2, y); p.tip:SetWidth(w - 4)
+  y = y - (p.tip:GetStringHeight() or 14) - 10
+  c:SetHeight(-y)
+end
+
+function RefreshHome(p)
+  if not p.child then return end
+  -- Tuiles
+  local d, wk = ResetIn("day"), ResetIn("week")
+  p.tiles[1].value:SetText(d and TibiSuite.FmtDuration(d) or "-")
+  p.tiles[2].value:SetText(wk and TibiSuite.FmtDuration(wk) or "-")
+  local urgent = 0
+
+  -- Cartes : creees a la demande, une par module present dans le groupe.
+  local cat = {}
+  for _, mod in ipairs(TibiSuite.GetCatalog()) do cat[mod.key] = mod end
+  for _, g in ipairs(p.groups) do
+    local list = {}
+    for _, key in ipairs(g.keys) do
+      local mod = cat[key]
+      local st = mod and TibiSuite.GetModuleStatus and TibiSuite.GetModuleStatus(key)
+      if st then list[#list + 1] = { mod = mod, st = st } end
+    end
+    -- Ce qui presse en tete, puis l'ordre du groupe.
+    table.sort(list, function(a, b)
+      if (a.st.urgent and true or false) ~= (b.st.urgent and true or false) then return a.st.urgent and true or false end
+      return false
+    end)
+    for i, e in ipairs(list) do
+      local card = g.cards[i]
+      if not card then card = MakeStatusCard(p.child); g.cards[i] = card end
+      local mod, st = e.mod, e.st
+      local mc = ModCol(mod)
+      card.mod, card.stText, card.stProgress = mod, st.text, st.progress
+      if card.pin then card.pin:Paint(false) end
+      card.bar:SetColorTexture(mc[1], mc[2], mc[3], 1)
+      card.ico:SetTexture(K.MODULE_LOGO and K.MODULE_LOGO[mod.key] or K.LOGO)
+      card.name:SetText(mod.addonName)
+      card.name:SetTextColor(mc[1], mc[2], mc[3])
+      local sc = st.color or K.COL.TXT
+      card.txt:SetText(st.text or "")
+      card.txt:SetTextColor(sc[1] or 1, sc[2] or 1, sc[3] or 1)
+      if st.urgent then
+        urgent = urgent + 1
+        card.edge:SetColorTexture(K.COL.WARN[1], K.COL.WARN[2], K.COL.WARN[3], 1); card.edge:Show()
+        card.flag:SetText("!")
+      else
+        card.edge:Hide(); card.flag:SetText("")
+      end
+      if st.progress then
+        card.pbg:Show(); card.pfill:Show()
+        local pw = math.max(1, (card.pbg:GetWidth() or 100) * st.progress)
+        card.pfill:SetWidth(pw)
+        local done = st.progress >= 1
+        local fc = done and K.COL.OK or mc
+        card.pfill:SetColorTexture(fc[1], fc[2], fc[3], 1)
+      else
+        card.pbg:Hide(); card.pfill:Hide()
+      end
+      card:Show()
+    end
+    for i = #list + 1, #g.cards do g.cards[i]:Hide() end
+  end
+  p.tiles[3].value:SetText(urgent > 0 and (K.HX.WARN .. urgent .. "|r") or (K.HX.OK .. L.CTR_WEEK_NONE .. "|r"))
+
+  -- Prochaine action
+  local na = TibiSuite.GetNextAction()
+  local nx = p.next
+  if na then
+    local mc = ModCol(na.mod)
+    nx.key = na.key
+    nx.bar:SetColorTexture(mc[1], mc[2], mc[3], 1)
+    nx.ico:SetTexture(K.MODULE_LOGO and K.MODULE_LOGO[na.key] or K.LOGO); nx.ico:Show()
+    nx.txt:SetText(Hex(mc) .. na.mod.addonName .. "|r  " .. (na.urgent and (K.HX.WARN .. "! |r") or "") .. (na.text or ""))
+  else
+    nx.key = nil
+    nx.bar:SetColorTexture(K.COL.OK[1], K.COL.OK[2], K.COL.OK[3], 1)
+    nx.ico:SetTexture(K.LOGO); nx.ico:Show()
+    nx.txt:SetText(K.HX.OK .. L.CTR_NEXT_DONE .. "|r")
+  end
+
+  -- Ligne d'informations (anciennes tuiles de l'Accueil).
   local on, present = 0, 0
   for _, mod in ipairs(TibiSuite.GetCatalog()) do
     if TibiSuite.ModuleExists(mod.addonName) then
@@ -435,17 +863,187 @@ local function RefreshHome(p)
       if C_AddOns.IsAddOnLoaded(mod.addonName) then on = on + 1 end
     end
   end
-  p.cards[1]:SetText(on .. " / " .. present)
   local n = PendingCount()
-  p.cards[2]:SetText(n == 0 and L.CTR_RELOAD_NONE or (K.HX.GOLD .. n .. L.CTR_RELOAD_WAIT .. "|r"))
-  p.cards[3]:SetText((TibiSuite.VERSION or "?") .. K.HX.DIM .. "  " .. L.CTR_SOCLE .. tostring(UI._version) .. "|r")
+  p.info:SetText(string.format(L.CTR_WEEK_INFO_FMT, on, present)
+    .. "   " .. (n == 0 and L.CTR_RELOAD_NONE or (K.HX.GOLD .. n .. L.CTR_RELOAD_WAIT .. "|r"))
+    .. "   v" .. (TibiSuite.VERSION or "?") .. "  " .. L.CTR_SOCLE .. tostring(UI._version))
+  LayoutHome(p)
+  -- La largeur des barres de progression depend de la mise en page : seconde passe.
+  for _, g in ipairs(p.groups) do
+    for _, card in ipairs(g.cards) do
+      if card:IsShown() and card.pbg:IsShown() and card.stProgress then
+        card.pfill:SetWidth(math.max(1, (card.pbg:GetWidth() or 100) * card.stProgress))
+      end
+    end
+  end
 end
 
-local barPanel
+-- ── Fil d'activite ─────────────────────────────────────────────────
+local actFilter = nil      -- cle de module filtree, nil = tout
+
+local function DayLabel(t)
+  local today = date("*t")
+  local d = date("*t", t)
+  if d.year == today.year and d.yday == today.yday then return L.CTR_ACT_TODAY end
+  local y = date("*t", time() - 86400)
+  if d.year == y.year and d.yday == y.yday then return L.CTR_ACT_YESTERDAY end
+  return date("%d/%m/%Y", t)
+end
+
+local function ActOwner(key)
+  for _, m in ipairs(TibiSuite.GetCatalog()) do
+    if m.key == key then return m end
+  end
+end
+
+local function BuildActivity(p)
+  p.chipsHost = CreateFrame("Frame", nil, p)
+  p.chipsHost:SetPoint("TOPLEFT", 0, 0); p.chipsHost:SetPoint("TOPRIGHT", -24, 0); p.chipsHost:SetHeight(24)
+  p.chips = {}
+  local sc = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
+  sc:SetPoint("TOPLEFT", 0, -34); sc:SetPoint("BOTTOMRIGHT", -24, 0)
+  if UI.SkinScrollBar then UI.SkinScrollBar(sc, ACC) end
+  local c = CreateFrame("Frame", nil, sc)
+  c:SetSize(DockW(), 10)
+  sc:SetScrollChild(c)
+  p.scroll, p.child = sc, c
+  p.rows, p.heads = {}, {}
+  p.empty = K.Text(c, "GameFontHighlight", L.CTR_ACT_EMPTY, K.COL.DIM)
+end
+
+local function ActRow(p, i)
+  local r = p.rows[i]
+  if r then return r end
+  r = CreateFrame("Button", nil, p.child)
+  r.bar = r:CreateTexture(nil, "ARTWORK"); r.bar:SetPoint("TOPLEFT", 0, -3); r.bar:SetPoint("BOTTOMLEFT", 0, 3); r.bar:SetWidth(2)
+  local hl = r:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.04)
+  r.time = K.Text(r, "GameFontHighlightSmall", "", K.COL.DIM); r.time:SetPoint("TOPLEFT", 10, -6)
+  r.ico = r:CreateTexture(nil, "ARTWORK"); r.ico:SetSize(18, 18); r.ico:SetPoint("TOPLEFT", 52, -3)
+  r.name = K.Text(r, "GameFontNormalSmall", "", K.COL.TXT); r.name:SetPoint("TOPLEFT", 78, -6)
+  r.who = K.Text(r, "GameFontHighlightSmall", "", K.COL.DIM); r.who:SetPoint("TOPRIGHT", -8, -6)
+  r.txt = K.Text(r, "GameFontHighlightSmall", "", K.COL.TXT); r.txt:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -3)
+  r.txt:SetJustifyH("LEFT")
+  r:SetScript("OnClick", function(s)
+    if s.key and s.key ~= "Suite" and ActOwner(s.key) then frame:Hide(); TibiSuite.OpenModule(s.key) end
+  end)
+  p.rows[i] = r
+  return r
+end
+
+local function RefreshActivity(p)
+  if not p.child then return end
+  local feed = TibiSuite.GetFeed and TibiSuite.GetFeed() or {}
+  local w = DockW()
+  p.child:SetWidth(w)
+  -- Filtres : Tout + un par module present dans le fil.
+  local keys, seen = {}, {}
+  for _, e in ipairs(feed) do if not seen[e.k] then seen[e.k] = true; keys[#keys + 1] = e.k end end
+  table.sort(keys)
+  for _, ch in ipairs(p.chips) do ch:Hide() end
+  local x = 0
+  local function chip(i, label, key, col)
+    local b = p.chips[i]
+    if not b then b = K.Btn(p.chipsHost, 60, 22, ""); p.chips[i] = b end
+    b._label:SetText(label)
+    b:SetWidth(b._label:GetStringWidth() + 22)
+    b:ClearAllPoints(); b:SetPoint("TOPLEFT", x, 0)
+    x = x + b:GetWidth() + 6
+    local on = (actFilter == key)
+    local c = on and (col or ACC) or K.COL.MUT
+    b._label:SetTextColor(c[1], c[2], c[3])
+    b:SetScript("OnClick", function() actFilter = key; RefreshActivity(p) end)
+    b:Show()
+  end
+  chip(1, L.CTR_ACT_ALL, nil)
+  for i, k in ipairs(keys) do
+    local m = ActOwner(k)
+    chip(i + 1, m and m.addonName or (L.ACT_SUITE or "TibiSuite"), k, m and ModCol(m))
+  end
+  -- Lignes, de la plus recente a la plus ancienne, groupees par jour.
+  for _, r in ipairs(p.rows) do r:Hide() end
+  for _, h in ipairs(p.heads) do h:Hide() end
+  local y, n, hn, lastDay = -2, 0, 0, nil
+  for i = #feed, 1, -1 do
+    local e = feed[i]
+    if actFilter == nil or e.k == actFilter then
+      local day = DayLabel(e.t or 0)
+      if day ~= lastDay then
+        hn = hn + 1
+        local h = p.heads[hn]
+        if not h then h = K.Label(p.child, ""); p.heads[hn] = h end
+        h:SetText(day); h:ClearAllPoints(); h:SetPoint("TOPLEFT", 4, y - 4); h:Show()
+        y = y - 22
+        lastDay = day
+      end
+      n = n + 1
+      local r = ActRow(p, n)
+      local m = ActOwner(e.k)
+      local col = m and ModCol(m) or ACC
+      r.key = e.k
+      r.bar:SetColorTexture(col[1], col[2], col[3], 1)
+      r.time:SetText(date("%H:%M", e.t or 0))
+      r.ico:SetTexture(m and K.MODULE_LOGO and K.MODULE_LOGO[m.key] or K.LOGO)
+      r.name:SetText(m and m.addonName or (L.ACT_SUITE or "TibiSuite"))
+      r.name:SetTextColor(col[1], col[2], col[3])
+      r.who:SetText((TibiSuite.IsStreaming and TibiSuite.IsStreaming()) and "" or (e.c or ""))
+      r.txt:SetWidth(w - 90)
+      r.txt:SetText((e.u and (K.HX.WARN .. "! |r") or "") .. (e.x or ""))
+      if e.u then r.txt:SetTextColor(K.COL.TXT[1], K.COL.TXT[2], K.COL.TXT[3]) else r.txt:SetTextColor(K.COL.MUT[1], K.COL.MUT[2], K.COL.MUT[3]) end
+      local h = math.max(34, (r.txt:GetStringHeight() or 12) + 24)
+      r:SetSize(w, h)
+      r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y)
+      r:Show()
+      y = y - h - 2
+    end
+  end
+  p.empty:SetShown(n == 0)
+  if n == 0 then p.empty:ClearAllPoints(); p.empty:SetPoint("TOPLEFT", 4, -6); p.empty:SetWidth(w - 8); y = -40 end
+  p.child:SetHeight(-y + 6)
+end
+
 local function BuildBarPanel()
   if barPanel then return barPanel end
   local P = UI.CreateOptionsPanel({ name = "TibiSuiteCentreBar", title = L.CTR_BAR, accent = ACC })
   local function apply(t) if TibiSuite.ApplyBarSettings then TibiSuite.ApplyBarSettings(t) end end
+
+  -- Couleur d'accent de la suite : rouge TibiSuite ou couleur de classe.
+  P:Section(L.CTR_BAR_SEC_LOOK)
+  P:Note(L.CTR_BAR_LOOK_NOTE)
+  local className, classToken = UnitClass("player")
+  local cc = classToken and ((C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(classToken))
+    or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[classToken]))
+  local classLbl = L.CTR_BAR_ACC_CLASS
+  if className and cc and cc.r then
+    classLbl = classLbl .. "  " .. Hex({ cc.r, cc.g, cc.b }) .. "(" .. className .. ")|r"
+  end
+  P:Check("|cFFC41F3B" .. L.CTR_BAR_ACC_SUITE .. "|r",
+    function() return TibiSuite.GetAccentMode() == "suite" end,
+    function() TibiSuite.SetAccentMode("suite"); P:Refresh() end)
+  P:Check(classLbl,
+    function() return TibiSuite.GetAccentMode() == "class" end,
+    function() TibiSuite.SetAccentMode("class"); P:Refresh() end)
+
+  P:Section(L.CTR_BAR_SEC_STREAM)
+  P:Note(L.CTR_BAR_STREAM_NOTE)
+  P:Check(L.CTR_BAR_STREAM, function() return TibiSuite.IsStreaming and TibiSuite.IsStreaming() end,
+    function(v) if TibiSuite.SetStreaming then TibiSuite.SetStreaming(v) end end)
+
+  P:Section(L.CTR_BAR_SEC_AUTO)
+  P:Note(L.CTR_BAR_AUTO_NOTE)
+  local function autoApply() if TibiSuite.ApplyAutoBar then TibiSuite.ApplyAutoBar() end end
+  for _, o in ipairs({ { "autoCombat", L.CTR_BAR_AUTO_COMBAT }, { "autoInstance", L.CTR_BAR_AUTO_INST },
+    { "autoMount", L.CTR_BAR_AUTO_MOUNT }, { "autoVehicle", L.CTR_BAR_AUTO_VEH }, { "autoPet", L.CTR_BAR_AUTO_PET } }) do
+    P:Check(o[2], function() return TibiSuiteDB[o[1]] == true end,
+      function(v) TibiSuiteDB[o[1]] = v and true or nil; autoApply() end)
+  end
+  P:Check(L.CTR_BAR_AUTO_FADE, function() return TibiSuiteDB.autoMode ~= "hide" end,
+    function() TibiSuiteDB.autoMode = nil; autoApply(); P:Refresh() end)
+  P:Check(L.CTR_BAR_AUTO_HIDE, function() return TibiSuiteDB.autoMode == "hide" end,
+    function() TibiSuiteDB.autoMode = "hide"; autoApply(); P:Refresh() end)
+  P:Slider(L.CTR_BAR_AUTO_ALPHA, 0, 60, 5,
+    function() return tonumber(TibiSuiteDB.autoFade) or 20 end,
+    function(v) if (tonumber(TibiSuiteDB.autoFade) or 20) ~= v then TibiSuiteDB.autoFade = v; autoApply() end end)
+
   P:Section(L.CTR_BAR_SEC_STYLE)
   P:Note(L.CTR_BAR_STYLE_NOTE)
   for _, o in ipairs({ { "classic", L.CTR_BAR_STYLE_CLASSIC }, { "dock", L.CTR_BAR_STYLE_DOCK }, { "panel", L.CTR_BAR_STYLE_PANEL } }) do
@@ -495,6 +1093,32 @@ local function BuildBarPanel()
     P:Refresh()
   end)
 
+  -- Notifications (fil d'activite).
+  P:Section(L.CTR_BAR_SEC_NOTIF)
+  P:Note(L.CTR_BAR_NOTIF_NOTE)
+  P:Check(L.CTR_BAR_NOTIF_TOAST, function() return TibiSuiteDB.notifToasts ~= false end,
+    function(v) if v then TibiSuiteDB.notifToasts = nil else TibiSuiteDB.notifToasts = false end end)
+  P:Check(L.CTR_BAR_NOTIF_SOUND, function() return TibiSuiteDB.notifSound ~= false end,
+    function(v) if v then TibiSuiteDB.notifSound = nil else TibiSuiteDB.notifSound = false end end)
+  P:Check(L.CTR_BAR_NOTIF_COMBAT, function() return TibiSuiteDB.notifCombat ~= false end,
+    function(v) if v then TibiSuiteDB.notifCombat = nil else TibiSuiteDB.notifCombat = false end end)
+  P:Check(string.format(L.CTR_BAR_NOTIF_MOD_FMT, "|cFFC41F3BTibiSuite|r"),
+    function() return not (TibiSuite.IsNotifMuted and TibiSuite.IsNotifMuted("Suite")) end,
+    function(v) if TibiSuite.SetNotifMuted then TibiSuite.SetNotifMuted("Suite", not v) end end)
+  for _, mod in ipairs(TibiSuite.GetCatalog()) do
+    if TibiSuite.ModuleExists(mod.addonName) then
+      P:Check(string.format(L.CTR_BAR_NOTIF_MOD_FMT, Hex(ModCol(mod)) .. mod.addonName .. "|r"),
+        function() return not (TibiSuite.IsNotifMuted and TibiSuite.IsNotifMuted(mod.key)) end,
+        function(v) if TibiSuite.SetNotifMuted then TibiSuite.SetNotifMuted(mod.key, not v) end end)
+    end
+  end
+
+  -- Ou s'ouvrent les options des modules (nil = dans le Centre).
+  P:Section(L.CTR_BAR_SEC_OPT)
+  P:Note(L.CTR_BAR_OPT_NOTE)
+  P:Check(L.CTR_BAR_OPTCENTRE, function() return TibiSuiteDB.optionsInCentre ~= false end,
+    function(v) if v then TibiSuiteDB.optionsInCentre = nil else TibiSuiteDB.optionsInCentre = false end end)
+
   P:Section(L.CTR_BAR_SEC_WIN)
   P:Button(L.CTR_BAR_OPENALL,  function() TibiSuite.SetAllModulesShown(true) end)
   P:Button(L.CTR_BAR_CLOSEALL, function() TibiSuite.SetAllModulesShown(false) end)
@@ -512,6 +1136,361 @@ local function BuildBarPanel()
   end
   barPanel = P
   return P
+end
+
+local function BuildDisplayPanel()
+  if dspPanel then return dspPanel end
+  local P = UI.CreateOptionsPanel({ name = "TibiSuiteCentreDisplay", title = L.CTR_DISPLAY, accent = ACC })
+  P:Section(L.CTR_DSP_SEC_SIZE)
+  P:Note(L.CTR_DSP_SIZE_NOTE)
+  P:Slider(L.CTR_DSP_SIZE, 90, 130, 5,
+    function() return tonumber(TibiSuiteDB.uiScale) or 100 end,
+    function(v)
+      if (tonumber(TibiSuiteDB.uiScale) or 100) == v then return end
+      TibiSuiteDB.uiScale = (v ~= 100) and v or nil
+      if TibiSuite.ApplyReadability then TibiSuite.ApplyReadability() end
+    end)
+  P:Section(L.CTR_DSP_SEC_COL)
+  P:Note(L.CTR_DSP_COL_NOTE)
+  P:Check(L.CTR_DSP_CONTRAST, function() return TibiSuiteDB.highContrast == true end,
+    function(v) TibiSuiteDB.highContrast = v and true or nil; if TibiSuite.ApplyReadability then TibiSuite.ApplyReadability() end end)
+  P:Check(L.CTR_DSP_CVD, function() return TibiSuiteDB.cvd == true end,
+    function(v) TibiSuiteDB.cvd = v and true or nil; if TibiSuite.ApplyReadability then TibiSuite.ApplyReadability() end end)
+  P:Button(L.CTR_RELOAD, function() TibiSuite.Reload() end)
+  dspPanel = P
+  return P
+end
+
+local function BuildRemindPanel()
+  if remPanel then return remPanel end
+  local P = UI.CreateOptionsPanel({ name = "TibiSuiteCentreRemind", title = L.CTR_REMIND, accent = ACC })
+  P:Section(L.CTR_REM_SEC_RESET)
+  P:Note(L.CTR_REM_RESET_NOTE)
+  P:Check(L.CTR_REM_WEEKLY, function() return TibiSuiteDB.remindWeekly ~= false end,
+    function(v) TibiSuiteDB.remindWeekly = (not v) and false or nil end)
+  P:Slider(L.CTR_REM_WEEKLY_H, 1, 24, 1, function() return tonumber(TibiSuiteDB.remindWeeklyH) or 3 end,
+    function(v) TibiSuiteDB.remindWeeklyH = (v ~= 3) and v or nil end)
+  P:Check(L.CTR_REM_DAILY, function() return TibiSuiteDB.remindDaily == true end,
+    function(v) TibiSuiteDB.remindDaily = v and true or nil end)
+  P:Slider(L.CTR_REM_DAILY_M, 15, 180, 15, function() return tonumber(TibiSuiteDB.remindDailyMin) or 60 end,
+    function(v) TibiSuiteDB.remindDailyMin = (v ~= 60) and v or nil end)
+  P:Section(L.CTR_REM_SEC_CAL)
+  P:Note(L.CTR_REM_CAL_NOTE)
+  P:Check(L.CTR_REM_CAL, function() return TibiSuiteDB.remindCal ~= false end,
+    function(v) TibiSuiteDB.remindCal = (not v) and false or nil end)
+  P:Section(L.CTR_REM_SEC_NOTE)
+  P:Check(L.CTR_REM_NOTE_ON, function() return TibiSuiteDB.remindNote ~= false end,
+    function(v) TibiSuiteDB.remindNote = (not v) and false or nil end)
+  P:Note(L.CTR_REM_NOTE_HINT)
+  -- Champ libre (le socle n'a qu'un champ en lecture seule) : pose a la main
+  -- a la position courante du panneau, elargi avec lui (_boxes).
+  local box = CreateFrame("EditBox", nil, P.content, "BackdropTemplate")
+  box:SetSize(258, 22)
+  box:SetPoint("TOPLEFT", P.content, "TOPLEFT", 6, P._y)
+  box:SetBackdrop(K.FLAT)
+  box:SetBackdropColor(0.02, 0.02, 0.03, 0.9)
+  box:SetBackdropBorderColor(1, 1, 1, 0.18)
+  box:SetAutoFocus(false)
+  box:SetMaxLetters(200)
+  box:SetFontObject("GameFontHighlightSmall")
+  box:SetTextInsets(6, 6, 0, 0)
+  local function save(s) if TibiSuite.SetCharNote then TibiSuite.SetCharNote(s:GetText()) end end
+  box:SetScript("OnEnterPressed", function(s) save(s); s:ClearFocus() end)
+  box:SetScript("OnEditFocusLost", save)
+  box:SetScript("OnEscapePressed", function(s) s:SetText(TibiSuite.GetCharNote and TibiSuite.GetCharNote() or ""); s:ClearFocus() end)
+  P._boxes[#P._boxes + 1] = box
+  P._refresh[#P._refresh + 1] = function() if not box:HasFocus() then box:SetText(TibiSuite.GetCharNote and TibiSuite.GetCharNote() or "") end end
+  P._y = P._y - 32
+  P.content:SetHeight(math.max(-(P._y + (P._shift or 0)) + 10, 10))
+  P:Button(L.CTR_REM_TEST, function()
+    if TibiSuite.Notify then TibiSuite.Notify("Suite", L.CTR_REM_TEST_TXT, { sound = true }) end
+  end)
+  remPanel = P
+  return P
+end
+
+-- ── Profils et restauration ────────────────────────────────────────
+local RefreshProfiles
+
+local function ProfRow(p, i)
+  local r = p.rows[i]
+  if r then return r end
+  r = CreateFrame("Frame", nil, p.child)
+  r:SetHeight(30)
+  r.bg = r:CreateTexture(nil, "BACKGROUND"); r.bg:SetAllPoints(); r.bg:SetColorTexture(1, 1, 1, 0.03)
+  r.txt = K.Text(r, "GameFontHighlight", "", K.COL.TXT); r.txt:SetPoint("LEFT", 10, 0)
+  r.txt:SetJustifyH("LEFT"); r.txt:SetWordWrap(false)
+  r.b = {}
+  for j = 1, 3 do
+    local b = K.Btn(r, 96, 22, "")
+    r.b[j] = b
+  end
+  p.rows[i] = r
+  return r
+end
+
+local function BuildProfiles(p)
+  local sc = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
+  sc:SetPoint("TOPLEFT", 0, 0); sc:SetPoint("BOTTOMRIGHT", -24, 0)
+  if UI.SkinScrollBar then UI.SkinScrollBar(sc, ACC) end
+  local c = CreateFrame("Frame", nil, sc)
+  c:SetSize(DockW(), 10)
+  sc:SetScrollChild(c)
+  p.scroll, p.child = sc, c
+  p.rows = {}
+  p.h1 = K.Label(c, L.CTR_PRF_SEC_SETUPS)
+  local name = CreateFrame("EditBox", nil, c, "BackdropTemplate")
+  name:SetSize(220, 26)
+  name:SetBackdrop(K.FLAT)
+  name:SetBackdropColor(1, 1, 1, 0.05)
+  name:SetBackdropBorderColor(1, 1, 1, 0.14)
+  name:SetFontObject("GameFontHighlightSmall")
+  name:SetTextInsets(8, 8, 0, 0)
+  name:SetAutoFocus(false)
+  name:SetMaxLetters(32)
+  local ph = K.Text(name, "GameFontDisableSmall", L.CTR_PRF_NAME, K.COL.DIM); ph:SetPoint("LEFT", 9, 0)
+  name:SetScript("OnTextChanged", function(s) ph:SetShown(s:GetText() == "") end)
+  name:SetScript("OnEscapePressed", function(s) s:ClearFocus() end)
+  local function saveNew()
+    TibiSuite.SaveSetup(name:GetText()); name:SetText(""); name:ClearFocus(); RefreshProfiles(p)
+  end
+  name:SetScript("OnEnterPressed", saveNew)
+  p.name = name
+  p.save = K.Btn(c, 230, 26, L.CTR_PRF_SAVE, "pri")
+  p.save:SetScript("OnClick", saveNew)
+  p.none = K.Text(c, "GameFontHighlightSmall", L.CTR_PRF_NONE, K.COL.DIM)
+  p.h2 = K.Label(c, L.CTR_PRF_SEC_RULES)
+  p.rulesNote = K.Text(c, "GameFontDisableSmall", L.CTR_PRF_RULES_NOTE, K.COL.DIM)
+  p.rules = {}
+  for i, kind in ipairs({ "spec", "char", "leveling" }) do
+    local r = CreateFrame("Frame", nil, c)
+    r:SetHeight(30)
+    r.kind = kind
+    r.txt = K.Text(r, "GameFontHighlight", "", K.COL.TXT); r.txt:SetPoint("LEFT", 10, 0)
+    r.btn = K.Btn(r, 200, 24, "")
+    r.btn:SetPoint("RIGHT", -4, 0)
+    r.btn:SetScript("OnClick", function()
+      local names = TibiSuite.GetSetupNames()
+      local cur = TibiSuite.GetSetupRule(kind)
+      local nxt
+      if not cur then nxt = names[1]
+      else
+        for j, n in ipairs(names) do if n == cur then nxt = names[j + 1]; break end end
+      end
+      TibiSuite.SetSetupRule(kind, nxt)
+      TibiSuite.CheckAutoSetup()
+      RefreshProfiles(p)
+    end)
+    p.rules[i] = r
+  end
+  p.h3 = K.Label(c, L.CTR_PRF_SEC_RP)
+  p.rpNote = K.Text(c, "GameFontDisableSmall", L.CTR_PRF_RP_NOTE, K.COL.DIM)
+  p.rpNew = K.Btn(c, 230, 26, L.CTR_PRF_RP_NEW)
+  p.rpNew:SetScript("OnClick", function()
+    local ok = TibiSuite.CreateRestorePoint(L.RP_MANUAL)
+    if TibiSuite.ShowToast then TibiSuite.ShowToast(ok and L.RP_CREATED or L.RP_SAME) end
+    RefreshProfiles(p)
+  end)
+  p.rpNone = K.Text(c, "GameFontHighlightSmall", L.CTR_PRF_RP_NONE, K.COL.DIM)
+end
+
+function RefreshProfiles(p)
+  if not p or not p.child then return end
+  local w = DockW()
+  local c = p.child
+  c:SetWidth(w)
+  for _, r in ipairs(p.rows) do r:Hide() end
+  local n, y = 0, -2
+  local function row(text, btns)
+    n = n + 1
+    local r = ProfRow(p, n)
+    r:SetWidth(w)
+    r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y)
+    r.txt:SetText(text)
+    r.txt:SetWidth(w - 330)
+    for j, b in ipairs(r.b) do
+      local spec = btns[j]
+      if spec then
+        b._label:SetText(spec[1])
+        b:SetScript("OnClick", spec[2])
+        b:ClearAllPoints(); b:SetPoint("RIGHT", -4 - (#btns - j) * 102, 0)
+        b:Show()
+      else b:Hide() end
+    end
+    r:Show()
+    y = y - 34
+  end
+
+  -- Profils
+  p.h1:ClearAllPoints(); p.h1:SetPoint("TOPLEFT", 2, y - 4); y = y - 24
+  p.name:ClearAllPoints(); p.name:SetPoint("TOPLEFT", 0, y)
+  p.save:ClearAllPoints(); p.save:SetPoint("LEFT", p.name, "RIGHT", 10, 0)
+  y = y - 36
+  local names = TibiSuite.GetSetupNames()
+  local active = TibiSuite.GetActiveSetup()
+  p.none:SetShown(#names == 0)
+  if #names == 0 then
+    p.none:ClearAllPoints(); p.none:SetPoint("TOPLEFT", 4, y); p.none:SetWidth(w - 8)
+    y = y - (p.none:GetStringHeight() or 14) - 10
+  end
+  for _, nm in ipairs(names) do
+    local label = nm .. ((nm == active) and ("  " .. K.HX.OK .. L.CTR_PRF_ACTIVE .. "|r") or "")
+    row(label, {
+      { L.CTR_PRF_APPLY, function() TibiSuite.ApplySetup(nm); RefreshProfiles(p) end },
+      { L.CTR_PRF_UPDATE, function() TibiSuite.SaveSetup(nm); RefreshProfiles(p) end },
+      { L.CTR_PRF_DELETE, function()
+          TibiSuite.ShowConfirm(string.format(L.CTR_PRF_DEL_ASK_FMT, nm), function() TibiSuite.DeleteSetup(nm); RefreshProfiles(p) end)
+        end },
+    })
+  end
+
+  -- Regles
+  y = y - 8
+  p.h2:ClearAllPoints(); p.h2:SetPoint("TOPLEFT", 2, y - 4); y = y - 24
+  p.rulesNote:ClearAllPoints(); p.rulesNote:SetPoint("TOPLEFT", 4, y); p.rulesNote:SetWidth(w - 8)
+  y = y - (p.rulesNote:GetStringHeight() or 14) - 10
+  local who = UnitName("player") or "?"
+  if TibiSuite.SafeName then who = TibiSuite.SafeName(who) end
+  local specName = "?"
+  local idx = GetSpecialization and GetSpecialization()
+  if idx and GetSpecializationInfo then
+    local _, sn = GetSpecializationInfo(idx); specName = sn or specName
+  end
+  for _, r in ipairs(p.rules) do
+    local lbl = (r.kind == "spec" and string.format(L.CTR_PRF_R_SPEC_FMT, specName))
+      or (r.kind == "char" and string.format(L.CTR_PRF_R_CHAR_FMT, who)) or L.CTR_PRF_R_LVL
+    r.txt:SetText(lbl)
+    local cur = TibiSuite.GetSetupRule(r.kind)
+    r.btn._label:SetText(cur or (K.HX.DIM .. L.CTR_PRF_R_NONE .. "|r"))
+    r:SetWidth(w)
+    r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y)
+    r:SetShown(#names > 0)
+    if #names > 0 then y = y - 34 end
+  end
+
+  -- Points de restauration
+  y = y - 8
+  p.h3:ClearAllPoints(); p.h3:SetPoint("TOPLEFT", 2, y - 4); y = y - 24
+  p.rpNote:ClearAllPoints(); p.rpNote:SetPoint("TOPLEFT", 4, y); p.rpNote:SetWidth(w - 8)
+  y = y - (p.rpNote:GetStringHeight() or 14) - 10
+  p.rpNew:ClearAllPoints(); p.rpNew:SetPoint("TOPLEFT", 0, y); y = y - 36
+  local pts = TibiSuite.GetRestorePoints()
+  p.rpNone:SetShown(#pts == 0)
+  if #pts == 0 then p.rpNone:ClearAllPoints(); p.rpNone:SetPoint("TOPLEFT", 4, y); y = y - 22 end
+  for i = #pts, 1, -1 do
+    local pt = pts[i]
+    row(K.HX.DIM .. date("%d/%m %H:%M", pt.t or 0) .. "|r   " .. tostring(pt.why or ""), {
+      { L.CTR_PRF_RP_RESTORE, function()
+          TibiSuite.ShowConfirm(L.CTR_PRF_RP_ASK, function() TibiSuite.RestorePoint(i); RefreshProfiles(p) end)
+        end },
+      { L.CTR_PRF_DELETE, function() TibiSuite.DeleteRestorePoint(i); RefreshProfiles(p) end },
+    })
+  end
+  c:SetHeight(-y + 10)
+end
+
+-- ── Widgets ────────────────────────────────────────────────────────
+local RefreshWidgetsPage
+local TILE_H = 104
+
+local function BuildWidgetsPage(p)
+  local sc = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
+  sc:SetPoint("TOPLEFT", 0, 0); sc:SetPoint("BOTTOMRIGHT", -24, 0)
+  if UI.SkinScrollBar then UI.SkinScrollBar(sc, ACC) end
+  local c = CreateFrame("Frame", nil, sc)
+  c:SetSize(DockW(), 10)
+  sc:SetScrollChild(c)
+  p.scroll, p.child = sc, c
+  p.lock = K.Btn(c, 210, 26, "")
+  p.lock:SetScript("OnClick", function()
+    TibiSuite.SetWidgetsLocked(not TibiSuiteDB.widgetsLocked); RefreshWidgetsPage(p)
+  end)
+  local function size(d)
+    local v = math.max(70, math.min(150, (tonumber(TibiSuiteDB.widgetScale) or 100) + d))
+    TibiSuiteDB.widgetScale = (v ~= 100) and v or nil
+    TibiSuite.ApplyWidgets(); RefreshWidgetsPage(p)
+  end
+  p.minus = K.Btn(c, 30, 26, "-"); p.minus:SetScript("OnClick", function() size(-10) end)
+  p.size = K.Text(c, "GameFontHighlight", "", K.COL.TXT)
+  p.plus = K.Btn(c, 30, 26, "+"); p.plus:SetScript("OnClick", function() size(10) end)
+  p.none = K.Btn(c, 170, 26, L.CTR_BAR_WID_NONE or "Tout désépingler")
+  p.none:SetScript("OnClick", function() TibiSuite.UnpinAllWidgets(); RefreshWidgetsPage(p) end)
+  p.empty = K.Text(c, "GameFontHighlight", L.CTR_WID_NONE, K.COL.DIM)
+  p.tip = K.Text(c, "GameFontDisableSmall", L.CTR_WID_TIP, K.COL.DIM)
+  p.tiles = {}
+end
+
+local function WidgetTile(p, i)
+  local t = p.tiles[i]
+  if t then return t end
+  t = K.Card(p.child)
+  t:SetHeight(TILE_H)
+  t.state = K.Label(t, L.CTR_WID_PINNED)
+  t.state:SetPoint("TOPRIGHT", -10, -10)
+  t.btn = K.Btn(t, 120, 24, "")
+  t.btn:SetPoint("BOTTOMRIGHT", -10, 10)
+  p.tiles[i] = t
+  return t
+end
+
+function RefreshWidgetsPage(p)
+  if not (p and p.child) then return end
+  local w = DockW()
+  local c = p.child
+  c:SetWidth(w)
+  local y = -2
+  p.lock._label:SetText(TibiSuiteDB.widgetsLocked and L.CTR_WID_UNLOCK or L.CTR_WID_LOCK)
+  p.lock:ClearAllPoints(); p.lock:SetPoint("TOPLEFT", 0, y)
+  p.minus:ClearAllPoints(); p.minus:SetPoint("LEFT", p.lock, "RIGHT", 16, 0)
+  p.size:SetText(string.format(L.CTR_WID_SIZE_FMT, tonumber(TibiSuiteDB.widgetScale) or 100))
+  p.size:ClearAllPoints(); p.size:SetPoint("LEFT", p.minus, "RIGHT", 10, 0)
+  p.plus:ClearAllPoints(); p.plus:SetPoint("LEFT", p.size, "RIGHT", 10, 0)
+  p.none:ClearAllPoints(); p.none:SetPoint("TOPRIGHT", 0, y)
+  y = y - 40
+  local mods = TibiSuite.PinnableModules()
+  for _, t in ipairs(p.tiles) do t:Hide() end
+  p.empty:SetShown(#mods == 0)
+  if #mods == 0 then
+    p.empty:ClearAllPoints(); p.empty:SetPoint("TOPLEFT", 4, y); p.empty:SetWidth(w - 8)
+    y = y - 40
+  end
+  local cols = (w >= 620) and 2 or 1
+  local tw = math.floor((w - (cols - 1) * 10) / cols)
+  for i, mod in ipairs(mods) do
+    local t = WidgetTile(p, i)
+    t:SetWidth(tw)
+    t:ClearAllPoints(); t:SetPoint("TOPLEFT", ((i - 1) % cols) * (tw + 10), y - math.floor((i - 1) / cols) * (TILE_H + 10))
+    if t.preview and t.preview.key ~= mod.key then t.preview:Hide(); t.preview = nil end
+    if not t.preview then
+      t.preview = TibiSuite.MakeWidgetPreview(t, mod.key)
+      t.preview:SetPoint("TOPLEFT", 10, -10)
+    end
+    t.preview:SetWidth(math.min(260, tw - 20))
+    t.preview:Refresh()
+    local on = TibiSuite.IsWidgetPinned(mod.key)
+    t.state:SetShown(on)
+    t.state:SetTextColor(ACC[1], ACC[2], ACC[3])
+    t.btn._label:SetText(on and L.CTR_WID_UNPIN or L.CTR_WID_PIN)
+    t.btn:SetScript("OnClick", function() TibiSuite.PinWidget(mod.key, not on); RefreshWidgetsPage(p) end)
+    t:Show()
+  end
+  y = y - math.ceil(#mods / cols) * (TILE_H + 10)
+  p.tip:ClearAllPoints(); p.tip:SetPoint("TOPLEFT", 4, y - 4); p.tip:SetWidth(w - 8)
+  y = y - (p.tip:GetStringHeight() or 14) - 14
+  c:SetHeight(-y)
+end
+
+-- Bouton Annuler du pied de fenetre : visible tant qu'il y a quelque chose a annuler.
+local function RefreshUndo()
+  if not undoBtn then return end
+  local lbl = TibiSuite.GetUndoLabel and TibiSuite.GetUndoLabel()
+  if lbl then
+    if #lbl > 26 then lbl = lbl:sub(1, 24):gsub("[\128-\191]*$", ""):gsub("[\192-\255]$", "") .. "..." end
+    undoBtn._label:SetText(string.format(L.CTR_UNDO_FMT, lbl))
+    undoBtn:Show()
+  else
+    undoBtn:Hide()
+  end
 end
 
 local function BuildDoctor(p)
@@ -554,6 +1533,8 @@ local function Relayout()
   note.text:SetWidth(pw - 20)
   if pages.home and pages.home.cardFrames then LayoutHome(pages.home) end
   if pages.doctor and pages.doctor.fs then LayoutDoctor(pages.doctor) end
+  if pages.profiles and pages.profiles.child and pages.profiles:IsShown() then RefreshProfiles(pages.profiles) end
+  if pages.widgets and pages.widgets.child and pages.widgets:IsShown() then RefreshWidgetsPage(pages.widgets) end
   if docked and docked:IsDocked() then docked:SetContentWidth(DockW()) end
 end
 
@@ -569,15 +1550,58 @@ function Select(id)
   if id == "home" then
     local p = Page("home")
     if not p.cards then BuildHome(p) end
-    RefreshHome(p)
-    SetHeader(K.LOGO, L.CTR_HOME, ACC, L.CTR_HOME_DESC)
+    local who = UnitName("player")
+    if who and TibiSuite.SafeName then who = TibiSuite.SafeName(who) end
+    SetHeader(K.LOGO, L.CTR_WEEK_TITLE, ACC,
+      who and string.format(L.CTR_WEEK_DESC_FMT, who) or L.CTR_HOME_DESC)
     p:Show()
+    RefreshHome(p)
     return
   elseif id == "bar" then
     local p = Page("bar")
     SetHeader(K.LOGO, L.CTR_BAR, ACC, L.CTR_BAR_DESC)
     p:Show()
     docked = BuildBarPanel(); docked:Dock(p, DockW())
+    return
+  elseif id == "widgets" then
+    local p = Page("widgets")
+    if not p.child then BuildWidgetsPage(p) end
+    SetHeader(K.LOGO, L.CTR_WIDGETS, ACC, L.CTR_WIDGETS_DESC)
+    p:Show()
+    RefreshWidgetsPage(p)
+    return
+  elseif id == "display" then
+    local p = Page("display")
+    SetHeader(K.LOGO, L.CTR_DISPLAY, ACC, L.CTR_DISPLAY_DESC)
+    p:Show()
+    docked = BuildDisplayPanel(); docked:Dock(p, DockW())
+    return
+  elseif id == "reminders" then
+    local p = Page("reminders")
+    SetHeader(K.LOGO, L.CTR_REMIND, ACC, L.CTR_REMIND_DESC)
+    p:Show()
+    docked = BuildRemindPanel(); docked:Dock(p, DockW())
+    return
+  elseif id == "profiles" then
+    local p = Page("profiles")
+    if not p.child then BuildProfiles(p) end
+    SetHeader(K.LOGO, L.CTR_PROFILES, ACC, L.CTR_PROFILES_DESC)
+    p:Show()
+    RefreshProfiles(p)
+    SetFooter({ { L.CTR_Q_PROFILE, function() frame:Hide(); if TibiSuite.OpenProfileWindow then TibiSuite.OpenProfileWindow() end end } })
+    return
+  elseif id == "activity" then
+    local p = Page("activity")
+    if not p.child then BuildActivity(p) end
+    SetHeader(K.LOGO, L.CTR_ACTIVITY, ACC, L.CTR_ACTIVITY_DESC)
+    p:Show()
+    RefreshActivity(p)
+    if TibiSuite.MarkFeedSeen then TibiSuite.MarkFeedSeen() end
+    SetFooter({ { L.CTR_ACT_CLEAR, function()
+      if TibiSuite.ShowConfirm then
+        TibiSuite.ShowConfirm(L.CTR_ACT_CLEAR_ASK, function() if TibiSuite.ClearFeed then TibiSuite.ClearFeed() end end)
+      end
+    end } })
     return
   elseif id == "doctor" then
     local p = Page("doctor")
@@ -638,6 +1662,12 @@ function RefreshAll()
   RefreshRows()
   RefreshFooter()
   if current == "home" and pages.home and pages.home.cards then RefreshHome(pages.home) end
+end
+
+if TibiSuite.OnDisplayChanged then
+  TibiSuite.OnDisplayChanged(function()
+    if frame and frame:IsShown() and (current == "home" or current == "activity") then Select(current) end
+  end)
 end
 
 -- ── Construction de la fenetre ─────────────────────────────────────
@@ -808,8 +1838,67 @@ local function Build()
   reloadBtn:SetScript("OnClick", function() TibiSuite.Reload() end)
   pendingTxt = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   pendingTxt:SetPoint("BOTTOMLEFT", 16, 16)
+  undoBtn = K.Btn(f, 220, 26, "")
+  undoBtn:SetPoint("BOTTOMLEFT", PANE_X, 9)
+  undoBtn:SetScript("OnClick", function() if TibiSuite.Undo then TibiSuite.Undo() end end)
+  undoBtn:SetScript("OnEnter", function(s)
+    GameTooltip:SetOwner(s, "ANCHOR_TOP"); GameTooltip:AddLine(L.CTR_UNDO_TT, 1, 1, 1, true); GameTooltip:Show()
+  end)
+  undoBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  undoBtn:Hide()
+  if TibiSuite.OnUndoChanged then TibiSuite.OnUndoChanged(RefreshUndo) end
+  if TibiSuite.ApplyUIScaleTo then TibiSuite.ApplyUIScaleTo(f) end
+  local function refreshProf()
+    local pp = pages.profiles
+    if pp and pp.child and pp:IsVisible() then RefreshProfiles(pp) end
+  end
+  if TibiSuite.OnSetupsChanged then TibiSuite.OnSetupsChanged(refreshProf) end
+  local function refreshWid()
+    local wp = pages.widgets
+    if wp and wp.child and wp:IsVisible() then RefreshWidgetsPage(wp) end
+    local hp = pages.home
+    if hp and hp.groups and hp:IsVisible() then
+      for _, g in ipairs(hp.groups) do for _, card in ipairs(g.cards) do if card.pin then card.pin:Paint(false) end end end
+    end
+  end
+  if TibiSuite.OnWidgetsChanged then TibiSuite.OnWidgetsChanged(refreshWid) end
+  if TibiSuite.OnStatusChanged then TibiSuite.OnStatusChanged(refreshWid) end
+  if TibiSuite.OnRestorePointsChanged then TibiSuite.OnRestorePointsChanged(refreshProf) end
 
   if K.AddFadeIn then K.AddFadeIn(f, 0.15) end
+
+  -- Couleur d'accent changee (Barre et acces) : le liseré suit deja (socle),
+  -- on rafraichit le titre, la barre laterale et la page ouverte.
+  if TibiSuite.OnAccentChanged then
+    TibiSuite.OnAccentChanged(function()
+      title:SetTextColor(ACC[1], ACC[2], ACC[3])
+      -- La page Barre et acces colore ses titres de section a la creation :
+      -- on la reconstruit (l'ancienne est rendue a sa fenetre, masquee).
+      for _, which in ipairs({ "bar", "dsp", "rem" }) do
+        local old = (which == "bar" and barPanel) or (which == "dsp" and dspPanel) or remPanel
+        if old then
+          if which == "bar" then barPanel = nil elseif which == "dsp" then dspPanel = nil else remPanel = nil end
+          pcall(old.Undock, old)
+          if old.frame then old.frame:Hide() end
+        end
+      end
+      if f:IsShown() then RefreshAll(); Select(current) end
+    end)
+  end
+  if TibiSuite.OnFeedChanged then
+    TibiSuite.OnFeedChanged(function()
+      RefreshRows()
+      local ap = pages.activity
+      if ap and ap.child and ap:IsVisible() then RefreshActivity(ap) end
+    end)
+  end
+  -- Un module signale un changement d'etat : « Ma semaine » suit, si affichee.
+  if TibiSuite.OnStatusChanged then
+    TibiSuite.OnStatusChanged(function()
+      local hp = pages.home
+      if hp and hp.child and hp:IsVisible() then RefreshHome(hp) end
+    end)
+  end
   return true
 end
 
@@ -824,6 +1913,71 @@ function TibiSuite.OpenCentre(pageId)
   frame:Raise()
   RefreshAll()
   Select(current)
+end
+
+-- ── Options des modules dans le Centre (socle v14) ─────────────────
+-- Nom du panneau d'options (cfg.name du socle) -> page du Centre. Standby est
+-- volontairement absent : son panneau est aussi sa fenetre principale (son
+-- onglet), il reste donc flottant. Un module ajoute a la suite et absent de
+-- cette table garde simplement sa fenetre flottante.
+local PANEL_PAGE = {
+  DailyTrackerOptionsMidnight  = "Daily",
+  DgnTrackerOptionsMidnight    = "Dgn",
+  LegTrackerOptionsMidnight    = "Leg",
+  RenTrackerOptionsMidnight    = "Rep",
+  LvlHistoryOptionsMidnight    = "Lvl",
+  WeeklyCompassOptionsMidnight = "Weekly",
+  MiniHubOptionsMidnight       = "MiniHub",
+  XPBarOptionsMidnight         = "XPBar",
+  RepBarOptionsMidnight        = "RepBar",
+  LairLensOptionsMidnight      = "Lair",
+  SkillTrackerOptions          = "Skill",
+  PostBoxOptionsFrame          = "Post",
+  StatsOptions                 = "Stats",
+  OpacityOptions               = "Opacity",
+  TibiSuiteModulesPanel        = "maint",
+}
+TibiSuite.PANEL_PAGE = PANEL_PAGE
+
+-- Construit (sans les afficher) les panneaux d'options des modules charges,
+-- pour que la palette de commandes connaisse tous leurs reglages. Le panneau
+-- s'ouvre puis se referme dans la meme image : rien n'apparait a l'ecran.
+function TibiSuite.PrebuildPanels()
+  if not Build() then return end
+  local pageHas = {}
+  for _, page in pairs(PANEL_PAGE) do pageHas[page] = true end
+  for _, mod in ipairs(TibiSuite.GetCatalog()) do
+    if pageHas[mod.key] and not panelCache[mod.key] and C_AddOns.IsAddOnLoaded(mod.addonName) then
+      local p = GrabPanel(mod.key, ModuleOpener(mod))
+      if p and not p:IsDocked() and p.frame then p.frame:Hide() end
+    end
+  end
+  BuildBarPanel()
+  BuildDisplayPanel()
+  BuildRemindPanel()
+end
+
+function TibiSuite.OptionsInCentre()
+  return not (TibiSuiteDB and TibiSuiteDB.optionsInCentre == false)
+end
+
+-- Appele par panel:Show() du socle quand un panneau veut s'ouvrir en
+-- flottant. true = le Centre a pris la main (le panneau sera ancre dans la
+-- page du module par Select), false = comportement d'origine.
+local function PanelRedirect(panel)
+  if not TibiSuite.OptionsInCentre() then return false end
+  local id = panel and panel._name and PANEL_PAGE[panel._name]
+  if not id then return false end
+  -- Le Centre recupere ce panneau la premiere fois par la voie du module :
+  -- on le memorise tout de suite pour eviter un second aller-retour.
+  if not panelCache[id] and panel.Dock then panelCache[id] = panel end
+  TibiSuite.OpenCentre(id)
+  return true
+end
+
+do
+  local S = _G.TibiMidnight
+  if S then S.PanelRedirect = PanelRedirect end
 end
 
 function TibiSuite.ToggleCentre(pageId)

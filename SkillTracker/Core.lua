@@ -374,7 +374,12 @@ local function ReadProfessionMeta(char, known)
         if prof.conc.cur >= prof.conc.max then
           if not ST.runtime.concAlerted[key] then
             ST.runtime.concAlerted[key] = true
-            print(ST.TAG .. " " .. string.format(L.CONC_FULL_ALERT, prof.name or "?", prof.conc.cur, prof.conc.max))
+            local msg = string.format(L.CONC_FULL_ALERT, prof.name or "?", prof.conc.cur, prof.conc.max)
+            print(ST.TAG .. " " .. msg)
+            -- Fil d'activite de TibiSuite (trace seulement : l'alerte est deja dans le chat).
+            if _G.TibiSuite and _G.TibiSuite.Notify then
+              pcall(_G.TibiSuite.Notify, "Skill", msg, { toast = false })
+            end
           end
         else
           ST.runtime.concAlerted[key] = nil

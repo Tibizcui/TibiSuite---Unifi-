@@ -141,8 +141,15 @@ Barre latérale : Général (Accueil, Barre et accès, Diagnostic, Maintenance) 
 un interrupteur par module (`SetModuleEnabled`). Page d'un module = SON panneau
 d'options **ancré** (socle v13) : le Centre appelle `onOptions` /
 `<Addon>_OpenOptions`, lit `UI.lastShownPanel`, puis `panel:Dock(page, largeur)`.
-Aucun module n'a été modifié pour ça ; Centre fermé, la roue du module rouvre le
-panneau en flottant (`panel:Show` désancre). Maintenance = panneau
+Aucun module n'a été modifié pour ça. **Depuis le socle v14**, toute ouverture
+flottante d'un panneau de module (roue, Maj+clic droit, clic droit sur l'onglet,
+slash) est redirigée vers le Centre : `panel:Show` appelle `UI.PanelRedirect`
+(posé par le Centre ; table `PANEL_PAGE` nom du panneau -> page, `_name` =
+`cfg.name`), sauf pendant `GrabPanel` (`UI._noRedirect`). Réglage
+`TibiSuiteDB.optionsInCentre` (nil = actif, `false` = fenêtres flottantes) dans
+Barre et accès ; `TibiSuite.OptionsInCentre()`. Standby est hors table (son
+panneau est aussi sa fenêtre principale). Un nouveau module doit être ajouté à
+`PANEL_PAGE`, sinon il reste flottant. Maintenance = panneau
 `TibiSuiteModulesPanel` (sans les cases des modules, passées dans la barre
 latérale). Briques visuelles partagées : `TibiSuite._kit` (fin de
 `TibiSuiteOptions.lua`). API : `OpenCentre(page)`, `ToggleCentre()`,
@@ -150,6 +157,79 @@ latérale). Briques visuelles partagées : `TibiSuite._kit` (fin de
 `GetBarPos/SetBarPos`, `IsTabShown/SetTabShown`, `SetAllModulesShown`.
 Clic droit (minimap, logo de barre, LDB, AddonCompartment) => Centre. Page
 « TibiSuite » dans Options > AddOns (ne referme jamais `SettingsPanel` : taint).
+
+**Ma semaine, palette, fil d'activité (7.1.5.44, non testés en jeu).**
+- Accueil du Centre = « Ma semaine » : tuiles reset quotidien / hebdo
+  (`C_DateAndTime`) / points urgents, puis une carte par module qui a un
+  `statusFn` (groupes `TibiSuite.PANEL_GROUPS`, urgent en tête), accès rapides.
+  Core : `TibiSuite.GetModuleStatus(key)`, `TibiSuite.OnStatusChanged(fn)`
+  (appelé après chaque `RefreshStatus`, même barre cachée).
+- `Core/TibiSuitePalette.lua` : `OpenPalette(q)` / `TogglePalette()` /
+  `ClosePalette()`. Commandes + **réglages** (index du socle v14 :
+  `panel._items` {kind,label,section,obj}, `panel:Reveal(item)` défile et
+  surligne) + contenu (`UI.RunGlobalSearch`). `TibiSuite.PrebuildPanels()`
+  (Centre) construit les panneaux des modules chargés sans les afficher. La loupe
+  de la barre ouvre la palette ; `/ts k`. Raccourcis : `TibiSuite/Bindings.xml`
+  (palette, Centre, Ma semaine, fil, barre), aucune touche par défaut.
+- `Core/TibiSuiteActivity.lua` : `TibiSuite.Notify(key, text, {urgent, toast,
+  sound, once})`, `GetFeed`, `UnreadCount`, `MarkFeedSeen`, `ClearFeed`,
+  `OnFeedChanged`, `IsNotifMuted/SetNotifMuted`. `TibiSuiteDB.feed` (200 max),
+  `feedSeen`, `notifToasts/notifSound/notifCombat` (nil = actif), `notifMute`.
+  Sources du core : transitions des `statusFn` (devient urgent / atteint 100 %),
+  courrier, niveau, Renom, nouvelle semaine (`TibiSuiteCharDB.nextWeeklyReset`).
+  Modules branchés (trace seule, `toast=false`) : LegTracker (butin),
+  SkillTracker (concentration pleine). Page Centre « Fil d'activité ».
+  Nouveaux fichiers => redémarrage complet du client.
+
+**Lots 1 à 6 (7.1.5.44, non testés en jeu, nouveaux fichiers => redémarrage complet).**
+- Lot 1 (core) : mode streaming (`TibiSuiteDB.streaming`, `IsStreaming`,
+  `SetStreaming`, `SafeName`, `OnDisplayChanged` ; `FmtGold` renvoie `***`,
+  nom « Personnage » dans Panneau vivant, Ma semaine, fil). Masquage auto de la
+  barre ET des widgets : `autoCombat/autoInstance/autoMount/autoVehicle/autoPet`,
+  `autoMode` (nil = estomper, "hide"), `autoFade` (%) ; ne touche jamais
+  `barOpen/barCollapsed`. `TibiSuite.GetNextAction()` / `RunNextAction()` (urgent,
+  puis 1er « À faire » incomplet, puis plus faible progression), bandeau dans
+  Ma semaine. Slash `/ts stream|next`.
+- Lot 2 : `Core/TibiSuiteWidgets.lua`, lignes d'état épinglées à l'écran
+  (`TibiSuiteDB.widgets[key]={p,x,y}`, `widgetsLocked`, `widgetScale`),
+  `PinWidget/ToggleWidget/UnpinAllWidgets/ApplyWidgets/PinnableModules`.
+  Maj + clic sur une carte de Ma semaine.
+- Socle **v15** : `index()` garde `get/set` des cases et curseurs,
+  `UI.RecordUndo(panel,item,snapFn)` appelé avant chaque changement souris
+  (muet pendant `Refresh`), `panel:ApplySnapshot(snap)` (cases cochées d'abord :
+  gère les cases « radio »), `UI.ApplyReadability{contrast,cvd}` modifie `UI.C`
+  sur place.
+- `Core/TibiSuiteComfort.lua` (lots 3-6) : `SET_KEYS` = réglages de suite
+  photographiés (`CaptureSettings` / `ApplySettings`, rechargement proposé
+  jamais forcé). Annuler : `Undo/CanUndo/GetUndoLabel/OnUndoChanged` (30,
+  session). Points de restauration `TibiSuiteDB.restorePoints` (8, auto à la
+  connexion si changement, avant import TS1 / profil / restauration).
+  Lisibilité : `uiScale` (90-130, fenêtres de la suite seulement), `highContrast`,
+  `cvd`. Profils auto : `TibiSuiteDB.setups`, `setupRules{char,spec,leveling}`,
+  `activeSetup` (mémorisé avant de passer à un autre), priorité spé > perso >
+  montée de niveau. Rappels : `remindWeekly` (défaut actif, `remindWeeklyH`=3),
+  `remindDaily` (défaut coupé, `remindDailyMin`=60), `remindCal` (C_Calendar,
+  15 min avant), `remindNote` + `TibiSuiteCharDB.note`, déjà-vus dans
+  `TibiSuiteCharDB.remindFired`. Ajouter toute nouvelle clé de réglage de suite
+  à `SET_KEYS`.
+- Centre : pages Lisibilité, Rappels, Profils et restauration ; bouton
+  Annuler dans le pied. Raccourcis ajoutés : streaming, prochaine action,
+  annuler. Slash `/ts undo|restore|display|rappels`.
+
+**Accessibilité widgets et palette (7.1.5.44, non testé en jeu).** Socle **v16**
+(curseurs indexés avec `min/max/step`). Page Centre « Widgets » (aperçus via
+`TibiSuite.MakeWidgetPreview(parent,key)`, épingler, verrou, taille) ; la section
+widgets a quitté Barre et accès. Punaise sur les cartes de Ma semaine.
+Clic droit sur un module de la barre (Dock, Panneau, Classique) =>
+`TibiSuite.ShowModuleMenu(owner, mod)` (MenuUtil : Ouvrir, Options, Épingler),
+repli sur les options si MenuUtil absent. `OnWidgetsChanged(fn)`. Palette :
+rubriques non sélectionnables (Prochaine action, Récents, Actions rapides ;
+recherche groupée par catégorie), filtres Tout/Commandes/Réglages/Modules/Contenu
+(Tab), réglages modifiables sur place (Entrée coche, Gauche/Droite curseur,
+Maj+Entrée ouvre le Centre ; enregistrés dans Annuler), icônes par type (éclair,
+engrenage, logo). Lot 7 : `TibiSuite.ExportSuite()` / `TibiSuiteDB.weekSnap`,
+lus par `Stats/Export.lua` (`chars[k].week`, `data.suite`) ; cartes « Ma semaine »
+et « Fil d'activité » du Dashboard (site + copie de Companion).
 
 **Menu Échap (validé en jeu, y compris en combat).** `GameMenuFrame:AddButton`
 dans un post-hook de `InitButtons` posé **au chargement du fichier**, donc avant
@@ -178,7 +258,7 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   notes, champs ; remonte tout objet ancré TOPLEFT sur `content` sous une note
   raccourcie, y compris les widgets maison de MiniHub/Standby), `panel:IsDocked()`.
   Registre `UI.panels` (+ par `cfg.name`) et `UI.lastShownPanel`. Toute
-  évolution du socle : bump `NS_VERSION` + recopie dans les 16 copies en gardant
+  évolution du socle (actuellement v16) : bump `NS_VERSION` + recopie dans les 16 copies en gardant
   leur bloc d'en-tête « COPIE EMBARQUEE (module X) ».
 - En-tête : `UI.AddHeaderControls(frame,cfg)` pose les boutons flottants Options
   (roue) et Recherche (loupe) au coin haut-droit, applique l'état masqué dès la
@@ -215,7 +295,16 @@ socle (ne pas le re-câbler dans le core, sinon double-toggle).
 ## Identité visuelle
 
 Accent de la suite = **rouge de marque `#C41F3B`** = `{0.769, 0.122, 0.231}` (le
-violet/lavande d'origine a été purgé, y compris les `|cFF9480FF` des prints). Chaque
+violet/lavande d'origine a été purgé, y compris les `|cFF9480FF` des prints).
+**Réglable depuis 7.1.5.44** (Centre > Barre et accès > Couleur d'accent) :
+`TibiSuiteDB.accentMode` (nil = rouge, `"class"` = couleur de classe du perso).
+`TibiSuite.ACCENT` / `ACCENT_HI` sont des tables PARTAGÉES mises à jour sur
+place par `RefreshAccent()` (ADDON_LOADED, PLAYER_LOGIN, `SetAccentMode`) ; ce
+qui a déjà dessiné s'abonne à `TibiSuite.OnAccentChanged(fn)`. Ne plus écrire le
+rouge en dur dans l'interface du core : utiliser `TibiSuite.ACCENT`,
+`AccentHex(hi)`, `AccentIsLight()` (texte sombre sur accent clair : Prêtre,
+Voleur...). Restent rouges : le nom « TibiSuite » (logo, chat, infobulles) et
+les pastilles d'alerte. Clé `ac=` des profils TS1. Chaque
 module garde sa propre couleur d'accent (`col` dans le catalogue, `accent` au
 RegisterModule ; ex. Stats = or `{1,0.843,0}`, Daily = cyan `#16C4FC`). Palette
 socle : fond plat sombre, bordure fine quasi noire, séparateurs blancs à 10 %,

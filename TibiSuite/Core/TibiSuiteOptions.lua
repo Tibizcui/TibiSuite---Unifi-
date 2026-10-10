@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.43
+-- TibiSuiteOptions v7.1.5.44
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -14,7 +14,9 @@
 -- le core (TibiSuite.SetModuleEnabled, ApplyBarSettings, ApplyProfile...).
 -- ================================================================
 
-local ACCENT_SUITE = { 0.769, 0.122, 0.231 }   -- rouge TibiSuite (#C41F3B)
+-- Accent de la suite : table PARTAGEE avec le core (rouge TibiSuite ou couleur
+-- de classe, mise a jour sur place par TibiSuite.RefreshAccent).
+local ACCENT_SUITE = (TibiSuite and TibiSuite.ACCENT) or { 0.769, 0.122, 0.231 }
 local LOGO         = "Interface\\AddOns\\TibiSuite\\medias\\TibiSuite"
 
 -- Logo propre a chaque module : table tenue par le core (TibiSuiteCore.lua,
@@ -314,6 +316,12 @@ L.WN_38_16 = L.WN_38_16 or "Nouvelles cartes Légendaires, Leveling et Repaires 
 L.WN_43_0  = L.WN_43_0  or "Nouveau style de barre Dock : une rangée d'icônes discrète, le logo de chaque module souligné de sa couleur, badges en coin, loupe de recherche. Votre barre actuelle ne change pas : le style se choisit dans le Centre, page Barre et accès, ou avec /ts bar dock."
 L.WN_43_1  = L.WN_43_1  or "Nouveau style Panneau vivant : la barre devient un tableau de bord. Chaque module affiche son état du moment (hebdos restantes, Grand coffre, courriers qui expirent, concentration, coffres de Paragon, XP, or de la semaine...), et ce qui presse remonte en rouge."
 L.WN_43_2  = L.WN_43_2  or "Le changement de style est immédiat, sans rechargement. Le style voyage dans les profils TS1 et se choisit aussi dans l'installateur (/ts setup). Commandes : /ts bar classic, dock ou panel."
+L.WN_44_0  = L.WN_44_0  or "Ma semaine : l'accueil du Centre devient ton tableau de bord. Comptes à rebours des resets, prochaine action à faire, une carte par module avec sa progression, ce qui presse en tête."
+L.WN_44_1  = L.WN_44_1  or "Palette de commandes (raccourci au choix, /ts k ou la loupe) : une commande, un réglage, une instance, une faction, tout se trouve en tapant. Filtres par catégorie (Tab), cases et curseurs modifiables sur place."
+L.WN_44_2  = L.WN_44_2  or "Fil d'activité et notifications : butin, paliers de Renom, courrier, semaine terminée, rappels. Un seul fil pour toute la suite, des notifications à l'écran que tu règles module par module."
+L.WN_44_3  = L.WN_44_3  or "Widgets : épingle la ligne d'état d'un module à l'écran (punaise des cartes, clic droit dans la barre ou page Widgets). Masquage automatique de la barre et des widgets en combat, en instance, sur monture."
+L.WN_44_4  = L.WN_44_4  or "Annuler le dernier réglage (même dans un module), points de restauration, profils de suite choisis tout seuls selon le personnage ou la spécialisation, rappels avant les resets et pour le calendrier."
+L.WN_44_5  = L.WN_44_5  or "Les options de tous les modules s'ouvrent dans le Centre. Nouveau : couleur d'accent (rouge TibiSuite ou couleur de classe), mode streaming, page Lisibilité (taille, contraste, daltonisme). Ma semaine et le fil arrivent aussi sur le Dashboard du site."
 L.WN_42_0  = L.WN_42_0  or "Nouveau Centre TibiSuite : une seule fenêtre pour tous les réglages, façon EllesmereUI. Barre latérale avec un interrupteur par module, et la page de chaque module affiche ses propres options. Redimensionnable, filtre des modules, diagnostic et rechargement intégrés."
 L.WN_42_1  = L.WN_42_1  or "Accès : /ts ouvre le Centre (/ts bar pour la barre), clic droit sur le bouton de la minicarte, ligne TibiSuite dans le menu Échap sous EllesmereUI (désactivable), et page TibiSuite dans Options > AddOns."
 L.WN_42_2  = L.WN_42_2  or "La page Barre et accès reprend tous les réglages de l'ancienne fenêtre : position au pixel près, onglets affichés, tout ouvrir ou fermer, minicarte et messages de connexion."
@@ -388,6 +396,14 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.44"] = {
+    { key = "Suite",   title = "TibiSuite", text = L.WN_44_0, new = true },
+    { key = "Suite",   title = "TibiSuite", text = L.WN_44_1, new = true },
+    { key = "Suite",   title = "TibiSuite", text = L.WN_44_2, new = true },
+    { key = "Suite",   title = "TibiSuite", text = L.WN_44_3, new = true },
+    { key = "Suite",   title = "TibiSuite", text = L.WN_44_4, new = true },
+    { key = "Suite",   title = "TibiSuite", text = L.WN_44_5 },
+  },
   ["7.1.5.43"] = {
     { key = "Suite",   title = "TibiSuite", text = L.WN_43_0, new = true },
     { key = "Suite",   title = "TibiSuite", text = L.WN_43_1, new = true },
@@ -526,6 +542,9 @@ local function SkinLikeSuite(f, accent)
   local UI = _G.TibiMidnight
   if UI and UI.SkinFrame then
     UI.SkinFrame(f, accent, UI.C.PANEL)
+    if accent == ACCENT_SUITE and TibiSuite.OnAccentChanged then
+      TibiSuite.OnAccentChanged(function(c) UI.SetLisere(f, c) end)
+    end
   else
     f:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     f:SetBackdropColor(0.055, 0.063, 0.082, 0.98)
@@ -641,7 +660,7 @@ function TibiSuite.ShowToast(text)
       edgeSize = 1,
     })
     toastFrame:SetBackdropColor(0.06, 0.07, 0.09, 0.95)
-    toastFrame:SetBackdropBorderColor(0.769, 0.122, 0.231, 1)
+    toastFrame:SetBackdropBorderColor(ACCENT_SUITE[1], ACCENT_SUITE[2], ACCENT_SUITE[3], 1)
     toastFrame:Hide()
 
     local msg = toastFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -662,6 +681,7 @@ function TibiSuite.ShowToast(text)
   end
 
   toastFrame._msg:SetText(text or "")
+  toastFrame:SetBackdropBorderColor(ACCENT_SUITE[1], ACCENT_SUITE[2], ACCENT_SUITE[3], 1)
   toastFrame:SetAlpha(0)
   toastFrame:Show()
   toastFrame._anim:Stop()
@@ -774,7 +794,7 @@ local COL = {
   MUT   = { 0.627, 0.620, 0.651 },
   DIM   = { 0.384, 0.380, 0.420 },
   ACC   = ACCENT_SUITE,
-  ACCHI = { 0.886, 0.204, 0.322 },
+  ACCHI = (TibiSuite and TibiSuite.ACCENT_HI) or { 0.886, 0.204, 0.322 },
   GOLD  = { 1.000, 0.820, 0.000 },
   OK    = { 0.310, 0.820, 0.420 },
   WARN  = { 1.000, 0.604, 0.235 },
@@ -783,11 +803,21 @@ local HX = {
   TXT = "|cFFECEAE6", MUT = "|cFFA09EA6", DIM = "|cFF62616B", ACC = "|cFFE23452",
   GOLD = "|cFFFFD100", OK = "|cFF4FD16B", WARN = "|cFFFF9A3C",
 }
+-- HX.ACC suit l'accent de la suite (rouge TibiSuite ou couleur de classe).
+if TibiSuite.OnAccentChanged then
+  TibiSuite.OnAccentChanged(function() HX.ACC = TibiSuite.AccentHex(true) end)
+end
 local ICON_OK   = "|TInterface\\RaidFrame\\ReadyCheck-Ready:13:13|t"
 local ICON_FAIL = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:13:13|t"
 local ICON_WAIT = "|TInterface\\RaidFrame\\ReadyCheck-Waiting:13:13|t"
 
 local FLAT = { bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 }
+
+-- Couleur d'accent fondue dans le fond sombre (k = part d'accent, 0..1).
+local function AccentTint(k)
+  local A, bg = COL.ACC, { 0.055, 0.063, 0.082 }
+  return bg[1] + (A[1] - bg[1]) * k, bg[2] + (A[2] - bg[2]) * k, bg[3] + (A[3] - bg[3]) * k, 1
+end
 
 local function Card(parent, col)
   local f = CreateFrame("Frame", nil, parent, "BackdropTemplate")
@@ -827,6 +857,9 @@ local function Btn(parent, w, h, text, kind)
       local c = hover and COL.ACCHI or COL.ACC
       b:SetBackdropColor(c[1], c[2], c[3], 1)
       b:SetBackdropBorderColor(COL.ACCHI[1], COL.ACCHI[2], COL.ACCHI[3], 1)
+      -- Accent clair (couleur de classe Pretre, Voleur...) : texte sombre.
+      if TibiSuite.AccentIsLight and TibiSuite.AccentIsLight() then fs:SetTextColor(0.08, 0.08, 0.10)
+      else fs:SetTextColor(1, 1, 1) end
     elseif kind == "ghost" then
       b:SetBackdropColor(1, 1, 1, hover and 0.06 or 0)
       b:SetBackdropBorderColor(0, 0, 0, 0)
@@ -839,6 +872,9 @@ local function Btn(parent, w, h, text, kind)
   paint(false)
   b:SetScript("OnEnter", function() paint(true) end)
   b:SetScript("OnLeave", function() paint(false) end)
+  if kind == "pri" and TibiSuite.OnAccentChanged then
+    TibiSuite.OnAccentChanged(function() paint(false) end)
+  end
   return b
 end
 
@@ -992,6 +1028,7 @@ local function BuildWizard()
   f:SetMovable(true); f:RegisterForDrag("LeftButton")
   f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
   UI.SkinFrame(f, ACCENT_SUITE, UI.C.PANEL)
+  TibiSuite.OnAccentChanged(function(c) UI.SetLisere(f, c) end)
   f:Hide()
   AddFadeIn(f, 0.25)
   W.frame = f
@@ -1204,7 +1241,7 @@ local function BuildWizard()
       -- Selection : textures (voir le piege SetBackdropColor des onglets d'etape).
       b._sel = b:CreateTexture(nil, "BORDER")
       b._sel:SetPoint("TOPLEFT", 1, -1); b._sel:SetPoint("BOTTOMRIGHT", -1, 1)
-      b._sel:SetColorTexture(0.29, 0.086, 0.122, 1)
+      b._sel:SetColorTexture(AccentTint(0.35))
       b._selLine = b:CreateTexture(nil, "ARTWORK")
       b._selLine:SetHeight(2); b._selLine:SetPoint("BOTTOMLEFT", 1, 1); b._selLine:SetPoint("BOTTOMRIGHT", -1, 1)
       b._selLine:SetColorTexture(COL.ACCHI[1], COL.ACCHI[2], COL.ACCHI[3], 1)
@@ -1944,7 +1981,7 @@ local function BuildWizard()
       local active = (i - 1) == W.step
       local done   = (i - 1) < W.step
       if active then
-        s.fill:SetColorTexture(0.137, 0.075, 0.094, 1)   -- rouge TibiSuite a 10 % sur le fond
+        s.fill:SetColorTexture(AccentTint(0.12))   -- accent a 12 % sur le fond
         s.edge:SetColorTexture(COL.ACC[1] * 0.75, COL.ACC[2] * 0.75, COL.ACC[3] * 0.75, 1)
         s.num:SetColorTexture(COL.ACC[1], COL.ACC[2], COL.ACC[3], 1)
         s.numT:SetTextColor(1, 1, 1); s.lbl:SetTextColor(COL.TXT[1], COL.TXT[2], COL.TXT[3])
@@ -1952,7 +1989,7 @@ local function BuildWizard()
         s.fill:SetColorTexture(0.078, 0.086, 0.106, 1)   -- blanc a 3 % sur le fond
         s.edge:SetColorTexture(0, 0, 0, 1)
         if done then
-          s.num:SetColorTexture(0.23, 0.07, 0.1, 1)
+          s.num:SetColorTexture(AccentTint(0.28))
           s.numT:SetTextColor(COL.ACCHI[1], COL.ACCHI[2], COL.ACCHI[3])
           s.lbl:SetTextColor(COL.MUT[1], COL.MUT[2], COL.MUT[3])
         else
@@ -2179,6 +2216,7 @@ function TibiSuite.ShowWhatsNew(force)
     f:EnableMouse(true); f:SetMovable(true); f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
     UI.SkinFrame(f, ACCENT_SUITE, UI.C.PANEL)
+    TibiSuite.OnAccentChanged(function(c) UI.SetLisere(f, c) end)
     AddFadeIn(f, 0.25)
     f:Hide()
     tinsert(UISpecialFrames, "TibiSuiteWhatsNew")
@@ -2276,6 +2314,7 @@ function TibiSuite.OpenProfileWindow()
     f:EnableMouse(true); f:SetMovable(true); f:RegisterForDrag("LeftButton")
     f:SetScript("OnDragStart", f.StartMoving); f:SetScript("OnDragStop", f.StopMovingOrSizing)
     UI.SkinFrame(f, ACCENT_SUITE, UI.C.PANEL)
+    TibiSuite.OnAccentChanged(function(c) UI.SetLisere(f, c) end)
     f:Hide()
     tinsert(UISpecialFrames, "TibiSuiteProfileFrame")
     local t = Text(f, "GameFontNormalLarge", L.PF_TITLE, COL.ACCHI); t:SetPoint("TOPLEFT", 18, -16)

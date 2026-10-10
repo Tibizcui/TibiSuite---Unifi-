@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.1.5.43
+-- TibiSuiteCore v7.1.5.44
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.1.5.43"
+local VERSION = "7.1.5.44"
 
 -- ================================================================
 -- LOCALISATION
@@ -97,6 +97,10 @@ L.ST_LEG_FMT         = L.ST_LEG_FMT         or "%d/%d légendaires"
 L.DUR_DH             = L.DUR_DH             or "%d j %d h"
 L.DUR_HM             = L.DUR_HM             or "%d h %d min"
 L.DUR_M              = L.DUR_M              or "%d min"
+L.STREAM_NAME        = L.STREAM_NAME        or "Personnage"
+L.STREAM_GOLD        = L.STREAM_GOLD        or "***"
+L.STREAM_TOAST_ON    = L.STREAM_TOAST_ON    or "Mode streaming activé : nom et or masqués"
+L.STREAM_TOAST_OFF   = L.STREAM_TOAST_OFF   or "Mode streaming désactivé"
 -- Placeholder (module absent)
 L.PH_MSG      = L.PH_MSG      or "Cet addon n'est pas installé."
 L.PH_URLLABEL = L.PH_URLLABEL or "Téléchargez-le gratuitement sur CurseForge :"
@@ -131,6 +135,7 @@ L.MSG_NOLIB   = L.MSG_NOLIB   or "bibliothèque d'interface absente (TibiMidnigh
 L.MSG_OLDLIB  = L.MSG_OLDLIB  or "bibliothèque obsolète, faites |cFFFFD700/reload|r."
 -- Pastille repliée
 L.PILL_CLICK = L.PILL_CLICK or "Clic : réafficher la barre et les modules"
+L.PILL_RCLICK = L.PILL_RCLICK or "Clic droit : ouvrir le Centre TibiSuite"
 -- Bouton minimap
 L.MM_TT_LEFT = L.MM_TT_LEFT or "Clic gauche : afficher / masquer la barre"
 L.MM_TT_RIGHT = L.MM_TT_RIGHT or "Clic droit : Centre TibiSuite (réglages)"
@@ -197,6 +202,15 @@ L.PERF_NOTLOADED = L.PERF_NOTLOADED or "non chargés :"
 L.PROFILE_ERR_format   = L.PROFILE_ERR_format   or "code invalide (il doit commencer par TS1:)."
 L.PROFILE_ERR_checksum = L.PROFILE_ERR_checksum or "code abîmé ou incomplet (somme de contrôle incorrecte)."
 L.PROFILE_ERR_version  = L.PROFILE_ERR_version  or "code créé par une version plus récente de TibiSuite."
+L.HELP_PALETTE  = L.HELP_PALETTE  or "palette de commandes (raccourci : Echap > Options > Raccourcis > TibiSuite)"
+L.HELP_WEEK     = L.HELP_WEEK     or "Ma semaine (tableau de bord du Centre)"
+L.HELP_ACTIVITY = L.HELP_ACTIVITY or "fil d'activité et notifications"
+L.HELP_STREAM   = L.HELP_STREAM   or "mode streaming (masque nom et or)"
+L.HELP_NEXT     = L.HELP_NEXT     or "ouvre le module de la prochaine action"
+L.HELP_UNDO     = L.HELP_UNDO     or "annule le dernier réglage changé"
+L.HELP_RESTORE  = L.HELP_RESTORE  or "profils de suite et points de restauration"
+L.HELP_DISPLAY  = L.HELP_DISPLAY  or "lisibilité (taille, contraste, daltonisme)"
+L.HELP_REMIND   = L.HELP_REMIND   or "rappels (resets, calendrier, note du personnage)"
 L.HELP_DOCTOR  = L.HELP_DOCTOR  or "vérifier les modules (versions, activation)"
 L.HELP_PERF    = L.HELP_PERF    or "mémoire utilisée par chaque module"
 L.HELP_PROFILE = L.HELP_PROFILE or "exporter / importer un profil de la suite"
@@ -213,6 +227,76 @@ TibiSuite.modules = TibiSuite.modules or {}
 TibiSuite.VERSION = VERSION
 -- Modules dont l'etat change au prochain /reload (session seulement).
 TibiSuite.pendingReload = TibiSuite.pendingReload or {}
+
+-- ================================================================
+-- COULEUR D'ACCENT DE LA SUITE
+-- ----------------------------------------------------------------
+-- Rouge TibiSuite (defaut) ou couleur de classe du personnage connecte
+-- (TibiSuiteDB.accentMode = "class"). TibiSuite.ACCENT et ACCENT_HI sont des
+-- tables PARTAGEES, mises a jour sur place : le Centre, l'installateur et les
+-- fenetres de la suite les lisent directement, et ceux qui ont deja dessine
+-- s'abonnent a OnAccentChanged. Le nom « TibiSuite » (logo, chat, infobulles)
+-- et les pastilles d'alerte restent rouges : c'est la marque, pas l'accent.
+-- ================================================================
+local SUITE_RED    = { 0.769, 0.122, 0.231 }   -- #C41F3B
+local SUITE_RED_HI = { 0.886, 0.204, 0.322 }   -- #E23452
+TibiSuite.ACCENT    = TibiSuite.ACCENT    or { SUITE_RED[1], SUITE_RED[2], SUITE_RED[3] }
+TibiSuite.ACCENT_HI = TibiSuite.ACCENT_HI or { SUITE_RED_HI[1], SUITE_RED_HI[2], SUITE_RED_HI[3] }
+local accentListeners = {}
+
+function TibiSuite.OnAccentChanged(fn)
+  if type(fn) == "function" then accentListeners[#accentListeners + 1] = fn end
+end
+
+function TibiSuite.GetAccentMode()
+  return (TibiSuiteDB and TibiSuiteDB.accentMode == "class") and "class" or "suite"
+end
+
+local function ClassRGB()
+  local _, token = UnitClass("player")
+  if not token then return nil end
+  if C_ClassColor and C_ClassColor.GetClassColor then
+    local ok, c = pcall(C_ClassColor.GetClassColor, token)
+    if ok and c and c.r then return c.r, c.g, c.b end
+  end
+  local c = (CUSTOM_CLASS_COLORS and CUSTOM_CLASS_COLORS[token]) or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[token])
+  if c then return c.r, c.g, c.b end
+end
+
+-- Texte lisible sur un fond de la couleur d'accent (Pretre blanc, Voleur
+-- jaune...) : sombre si l'accent est clair, blanc sinon.
+function TibiSuite.AccentIsLight()
+  local A = TibiSuite.ACCENT
+  return (0.299 * A[1] + 0.587 * A[2] + 0.114 * A[3]) > 0.62
+end
+
+function TibiSuite.AccentHex(hi)
+  local c = hi and TibiSuite.ACCENT_HI or TibiSuite.ACCENT
+  return string.format("|cFF%02X%02X%02X", math.floor(c[1] * 255 + 0.5),
+    math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5))
+end
+
+function TibiSuite.RefreshAccent()
+  local r, g, b = SUITE_RED[1], SUITE_RED[2], SUITE_RED[3]
+  local hr, hg, hb = SUITE_RED_HI[1], SUITE_RED_HI[2], SUITE_RED_HI[3]
+  if TibiSuite.GetAccentMode() == "class" then
+    local cr, cg, cb = ClassRGB()
+    if cr then
+      r, g, b = cr, cg, cb
+      -- Variante claire (survols, textes d'accent) : 18 % vers le blanc.
+      hr, hg, hb = r + (1 - r) * 0.18, g + (1 - g) * 0.18, b + (1 - b) * 0.18
+    end
+  end
+  local A, H = TibiSuite.ACCENT, TibiSuite.ACCENT_HI
+  A[1], A[2], A[3] = r, g, b
+  H[1], H[2], H[3] = hr, hg, hb
+  for _, fn in ipairs(accentListeners) do pcall(fn, A, H) end
+end
+
+function TibiSuite.SetAccentMode(mode)
+  TibiSuiteDB.accentMode = (mode == "class") and "class" or nil
+  TibiSuite.RefreshAccent()
+end
 
 -- SavedVariables (compte) : réglages partagés par tous les personnages
 --   mmAngle  : angle du bouton minimap
@@ -811,6 +895,14 @@ end
 -- Chaque module expose une fonction globale <Addon>_OpenOptions().
 -- ================================================================
 local function OpenModuleOptions(mod)
+  -- Centre TibiSuite (reglage « options dans le Centre », actif par defaut) :
+  -- la page du module, quel que soit son etat. Charge : ses options ancrees ;
+  -- desactive, en attente ou absent : l'explication et le bon bouton
+  -- (Activer, Recharger, CurseForge).
+  if TibiSuite.OpenCentre and TibiSuite.OptionsInCentre and TibiSuite.OptionsInCentre() then
+    TibiSuite.OpenCentre(mod.key)
+    return
+  end
   -- Module absent -> on montre le placeholder CurseForge (comme le clic gauche)
   if not C_AddOns.IsAddOnLoaded(mod.addonName) then
     ShowPlaceholder(mod)
@@ -1088,9 +1180,11 @@ local function BuildBar()
       GameTooltip:Hide()
     end)
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    btn:SetScript("OnClick", function(_, button)
+    btn:SetScript("OnClick", function(self, button)
       if button == "RightButton" then
-        OpenModuleOptions(capturedMod)
+        if not (TibiSuite.ShowModuleMenu and TibiSuite.ShowModuleMenu(self, capturedMod)) then
+          OpenModuleOptions(capturedMod)
+        end
       else
         OnTabClick(capturedMod)
       end
@@ -1104,9 +1198,11 @@ local function BuildBar()
   local topLine = barFrame:CreateTexture(nil, "OVERLAY")
   topLine:SetHeight(2)
   topLine:SetPoint("TOPLEFT", 1, -1); topLine:SetPoint("TOPRIGHT", -1, -1)
-  topLine:SetColorTexture(0.769, 0.122, 0.231, 1)
+  local A = TibiSuite.ACCENT
+  topLine:SetColorTexture(A[1], A[2], A[3], 1)
   topLine:Hide()
   barFrame._topLine = topLine
+  TibiSuite.OnAccentChanged(function(c) topLine:SetColorTexture(c[1], c[2], c[3], 1) end)
   -- Titre et ligne du personnage (en-tete du Panneau vivant)
   local logoTitle = logoBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   logoTitle:SetJustifyH("LEFT")
@@ -1340,6 +1436,12 @@ local function GetModuleStatus(mod)
   if st.progress then st.progress = math.max(0, math.min(1, tonumber(st.progress) or 0)) end
   return st
 end
+-- Publique (Centre « Ma semaine », fil d'activite) : par cle de module.
+function TibiSuite.GetModuleStatus(key)
+  for _, mod in ipairs(MODULES) do
+    if mod.key == key then return GetModuleStatus(mod) end
+  end
+end
 
 -- Texte du badge d'un module : compte pose par SetTabBadge, sinon « ! » si
 -- son badgeFn (catalogue) repond vrai, sinon nil.
@@ -1430,8 +1532,12 @@ local function ApplyModuleIcon(ico, ini, mod)
   end
 end
 
-local function OnModClick(mod, button)
-  if button == "RightButton" then OpenModuleOptions(mod) else OnTabClick(mod) end
+-- Clic droit : petit menu (Ouvrir, Options, Epingler a l'ecran) quand le
+-- client le permet (MenuUtil), sinon les options comme avant.
+local function OnModClick(mod, button, owner)
+  if button == "RightButton" then
+    if not (TibiSuite.ShowModuleMenu and TibiSuite.ShowModuleMenu(owner, mod)) then OpenModuleOptions(mod) end
+  else OnTabClick(mod) end
 end
 
 -- Vignette-icone : logo du module, liseré a sa couleur en bas, badge en coin.
@@ -1473,7 +1579,7 @@ local function MakeIconButton(mod, size, withLabel, parent)
   end
   b:SetScript("OnEnter", function(s) ShowModTooltip(s, mod) end)
   b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  b:SetScript("OnClick", function(_, button) OnModClick(mod, button) end)
+  b:SetScript("OnClick", function(self, button) OnModClick(mod, button, self) end)
   return b
 end
 
@@ -1630,6 +1736,7 @@ local PANEL_GROUPS = {
   { label = "PANEL_GRP_PROG", keys = { "Rep", "Skill", "Lvl", "Stats", "Dgn", "Leg", "Lair" } },
   { label = "PANEL_GRP_UI",   keys = { "XPBar", "RepBar", "MiniHub", "Opacity", "Standby" }, icons = true },
 }
+TibiSuite.PANEL_GROUPS = PANEL_GROUPS
 local panelRows, panelIcons, panelHeads = {}, {}, {}
 local panelTicker
 -- Taille reglable a la poignee : largeur libre, hauteur = maximum (la liste
@@ -1694,7 +1801,7 @@ local function MakePanelRow(mod)
   r._pBg, r._pFill, r._badge, r._mod = pBg, pFill, badge, mod
   r:SetScript("OnEnter", function(s) ShowModTooltip(s, mod) end)
   r:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  r:SetScript("OnClick", function(_, button) OnModClick(mod, button) end)
+  r:SetScript("OnClick", function(self, button) OnModClick(mod, button, self) end)
   return r
 end
 
@@ -1858,6 +1965,7 @@ end
 local function PanelCharLine()
   local name = UnitName and UnitName("player")
   if not name then return "" end
+  if TibiSuite.IsStreaming and TibiSuite.IsStreaming() then name = L.STREAM_NAME end
   local _, class = UnitClass("player")
   local cc = (class and C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(class))
     or (class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class])
@@ -2046,7 +2154,8 @@ local function BuildGlobalSearch()
   f:SetScript("OnDragStart", f.StartMoving)
   f:SetScript("OnDragStop", f.StopMovingOrSizing)
   f:SetClampedToScreen(true)
-  UI.SkinFrame(f, { 0.769, 0.118, 0.137 }, UI.C.PANEL)
+  UI.SkinFrame(f, TibiSuite.ACCENT, UI.C.PANEL)
+  TibiSuite.OnAccentChanged(function(c) UI.SetLisere(f, c) end)
   UI.AddHeaderLogo(f, "Interface\\AddOns\\TibiSuite\\medias\\TibiSuite")
 
   local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -2100,7 +2209,7 @@ local function BuildGlobalSearch()
       end
       r:ClearAllPoints()
       r:SetPoint("TOPLEFT", content, "TOPLEFT", 4, y)
-      r._label:SetText(UI.Hex(0.769, 0.122, 0.231) .. "[" .. (item._module or "?") .. "]|r "
+      r._label:SetText(TibiSuite.AccentHex() .. "[" .. (item._module or "?") .. "]|r "
         .. (item.text or ""))
       r:SetScript("OnClick", function()
         if item.onClick then pcall(item.onClick) end
@@ -2125,7 +2234,7 @@ GlobalProvider = function(q)
   if not UI then return {} end
   local res = UI.RunGlobalSearch(q)
   for _, item in ipairs(res) do
-    item.text = UI.Hex(0.769, 0.122, 0.231) .. "[" .. (item._module or "?") .. "]|r " .. (item.text or "")
+    item.text = TibiSuite.AccentHex() .. "[" .. (item._module or "?") .. "]|r " .. (item.text or "")
   end
   return res
 end
@@ -2133,6 +2242,7 @@ end
 -- La loupe de la barre ouvre un champ INLINE ; on tape, les résultats
 -- s'affichent en direct dans un popup déroulant juste en dessous.
 ToggleGlobalSearch = function()
+  if TibiSuite.TogglePalette then TibiSuite.TogglePalette(); return end
   local UI = _G.TibiMidnight
   if not UI then
     print("|cFFC41F3BTibiSuite|r : " .. L.MSG_NOLIB)
@@ -2188,7 +2298,9 @@ BuildPill = function()
   pill:SetClampedToScreen(true)
   pill:SetBackdrop(MakeBackdrop(4))
   pill:SetBackdropColor(COL_BG.r, COL_BG.g, COL_BG.b, COL_BG.a)
-  pill:SetBackdropBorderColor(0.77, 0.12, 0.14, 1.0)  -- bordure rouge
+  local PA = TibiSuite.ACCENT
+  pill:SetBackdropBorderColor(PA[1], PA[2], PA[3], 1.0)  -- bordure a la couleur d'accent
+  TibiSuite.OnAccentChanged(function(c) pill:SetBackdropBorderColor(c[1], c[2], c[3], 1.0) end)
 
   local icon = pill:CreateTexture(nil, "ARTWORK")
   icon:SetSize(20, 20)
@@ -2211,11 +2323,17 @@ BuildPill = function()
     local point, _, _, x, y = s:GetPoint()
     TibiSuiteCharDB.barPos = { point = point, x = x, y = y }
   end)
-  pill:SetScript("OnClick", function() ExpandBar() end)
+  pill:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  -- Clic droit : le Centre TibiSuite, comme le bouton de la minicarte et le
+  -- logo de la barre (la barre reste repliee).
+  pill:SetScript("OnClick", function(_, button)
+    if button == "RightButton" and TibiSuite.ToggleCentre then TibiSuite.ToggleCentre() else ExpandBar() end
+  end)
   pill:SetScript("OnEnter", function(s)
     GameTooltip:SetOwner(s, "ANCHOR_BOTTOM")
     GameTooltip:AddLine("|cFFC41F3BTibiSuite|r")
     GameTooltip:AddLine(L.PILL_CLICK, 0.8, 0.8, 0.9)
+    GameTooltip:AddLine(L.PILL_RCLICK, 0.8, 0.8, 0.9)
     GameTooltip:Show()
   end)
   pill:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -2854,6 +2972,33 @@ SlashCmdList["TIBISUITE"] = function(msg)
       OnTabClick(statsMod)
     end
 
+  elseif msg == "k" or msg == "palette" or msg:match("^k%s+") then
+    if TibiSuite.OpenPalette then TibiSuite.OpenPalette(msg:match("^k%s+(.+)")) end
+
+  elseif msg == "semaine" or msg == "week" then
+    if TibiSuite.OpenCentre then TibiSuite.OpenCentre("home") end
+
+  elseif msg == "activite" or msg == "activité" or msg == "activity" or msg == "act" then
+    if TibiSuite.OpenCentre then TibiSuite.OpenCentre("activity") end
+
+  elseif msg == "stream" or msg == "streaming" then
+    TibiSuite.SetStreaming(not TibiSuite.IsStreaming())
+
+  elseif msg == "undo" or msg == "annuler" then
+    if TibiSuite.Undo then TibiSuite.Undo() end
+
+  elseif msg == "restore" or msg == "restaurer" or msg == "profils" or msg == "profiles" then
+    if TibiSuite.OpenCentre then TibiSuite.OpenCentre("profiles") end
+
+  elseif msg == "lisibilite" or msg == "lisibilité" or msg == "display" then
+    if TibiSuite.OpenCentre then TibiSuite.OpenCentre("display") end
+
+  elseif msg == "rappels" or msg == "reminders" then
+    if TibiSuite.OpenCentre then TibiSuite.OpenCentre("reminders") end
+
+  elseif msg == "next" or msg == "suivant" then
+    if TibiSuite.RunNextAction then TibiSuite.RunNextAction() end
+
   elseif msg == "doctor" then
     TibiSuite.RunDoctor()
 
@@ -2888,6 +3033,15 @@ SlashCmdList["TIBISUITE"] = function(msg)
     print("  |cFFFFD700/ts vertical|r : " .. L.HELP_VERTICAL)
     print("  |cFFFFD700/ts reset|r : " .. L.HELP_RESET)
     print("  |cFFFFD700/ts minimap|r : " .. L.HELP_MINIMAP)
+    print("  |cFFFFD700/ts k|r : " .. L.HELP_PALETTE)
+    print("  |cFFFFD700/ts semaine|r : " .. L.HELP_WEEK)
+    print("  |cFFFFD700/ts activite|r : " .. L.HELP_ACTIVITY)
+    print("  |cFFFFD700/ts stream|r : " .. L.HELP_STREAM)
+    print("  |cFFFFD700/ts next|r : " .. L.HELP_NEXT)
+    print("  |cFFFFD700/ts undo|r : " .. L.HELP_UNDO)
+    print("  |cFFFFD700/ts restore|r : " .. L.HELP_RESTORE)
+    print("  |cFFFFD700/ts display|r : " .. L.HELP_DISPLAY)
+    print("  |cFFFFD700/ts rappels|r : " .. L.HELP_REMIND)
     print("  |cFFFFD700/ts doctor|r : " .. L.HELP_DOCTOR)
     print("  |cFFFFD700/ts perf|r : " .. L.HELP_PERF)
     print("  |cFFFFD700/ts profile|r : " .. L.HELP_PROFILE)
@@ -3090,12 +3244,18 @@ end
 -- appels rapproches (un seul rafraichissement par demi-seconde), et ne fait
 -- rien si la barre est cachee : elle se rafraichit de toute facon a l'ouverture.
 local statusPending = false
+local statusListeners = {}
+-- Abonnement aux changements d'etat des modules (Centre, fil d'activite).
+function TibiSuite.OnStatusChanged(fn)
+  if type(fn) == "function" then statusListeners[#statusListeners + 1] = fn end
+end
 function TibiSuite.RefreshStatus()
   if statusPending then return end
   statusPending = true
   C_Timer.After(0.5, function()
     statusPending = false
     if barFrame and barFrame:IsShown() then RefreshStyled() end
+    for _, fn in ipairs(statusListeners) do pcall(fn) end
   end)
 end
 
@@ -3110,10 +3270,143 @@ function TibiSuite.FmtDuration(s)
 end
 
 function TibiSuite.FmtGold(copper)
+  if TibiSuite.IsStreaming and TibiSuite.IsStreaming() then return L.STREAM_GOLD end
   local g = math.floor(math.abs(tonumber(copper) or 0) / 10000)
   local txt = (BreakUpLargeNumbers and BreakUpLargeNumbers(g)) or tostring(g)
   return ((tonumber(copper) or 0) < 0 and "-" or "+") .. txt
 end
+
+-- ================================================================
+-- MODE STREAMING
+-- ----------------------------------------------------------------
+-- Un interrupteur (TibiSuiteDB.streaming) masque, dans les fenetres de la
+-- SUITE, le nom du personnage et les montants d'or : Panneau vivant, Ma
+-- semaine, fil d'activite, lignes d'etat formatees par FmtGold. Les fenetres
+-- propres des modules ne sont pas concernees (ils peuvent lire
+-- TibiSuite.IsStreaming() pour s'y conformer).
+-- ================================================================
+local displayListeners = {}
+function TibiSuite.OnDisplayChanged(fn)
+  if type(fn) == "function" then displayListeners[#displayListeners + 1] = fn end
+end
+local function DisplayChanged() for _, fn in ipairs(displayListeners) do pcall(fn) end end
+
+function TibiSuite.IsStreaming()
+  return TibiSuiteDB and TibiSuiteDB.streaming == true and not TibiSuite._noMask or false
+end
+
+-- Nom affichable : le vrai nom, ou « Personnage » en mode streaming.
+function TibiSuite.SafeName(name)
+  if TibiSuite.IsStreaming() then return L.STREAM_NAME end
+  return name
+end
+
+function TibiSuite.SetStreaming(on)
+  TibiSuiteDB.streaming = on and true or nil
+  if barFrame and LayoutBar then pcall(LayoutBar) end
+  RefreshStyled()
+  if TibiSuite.RefreshStatus then TibiSuite.RefreshStatus() end
+  DisplayChanged()
+  if TibiSuite.ShowToast then
+    TibiSuite.ShowToast(on and L.STREAM_TOAST_ON or L.STREAM_TOAST_OFF)
+  end
+end
+
+-- ================================================================
+-- MASQUAGE AUTOMATIQUE DE LA BARRE (contexte)
+-- ----------------------------------------------------------------
+-- Cases : combat, instance, monture, vehicule, combat de mascottes
+-- (TibiSuiteDB.autoCombat / autoInstance / autoMount / autoVehicle /
+-- autoPet). Mode commun : "fade" (estompee, revient au survol, defaut) ou
+-- "hide" (masquee). TibiSuiteDB.autoFade = opacite estompee en % (20).
+-- On ne touche jamais a barOpen / barCollapsed : a la sortie du contexte, la
+-- barre (ou sa pastille) revient exactement dans l'etat choisi par le joueur.
+-- Une commande manuelle (/ts bar...) pendant le contexte reprend la main.
+-- ================================================================
+local autoHidden = false
+local fadeTicker
+local ctx = { combat = false, instance = false, mount = false, vehicle = false, pet = false }
+
+local function ReadContext()
+  local inInst, instType = false, nil
+  if IsInInstance then inInst, instType = IsInInstance() end
+  ctx.instance = inInst and instType ~= "none" or false
+  ctx.mount = (IsMounted and IsMounted()) and true or false
+  ctx.vehicle = (UnitInVehicle and UnitInVehicle("player")) and true or false
+  ctx.pet = (C_PetBattles and C_PetBattles.IsInBattle and C_PetBattles.IsInBattle()) and true or false
+end
+
+-- Mode a appliquer : nil (normal), "fade" ou "hide".
+local function AutoMode()
+  local D = TibiSuiteDB
+  if not D then return nil end
+  local active = (D.autoCombat and ctx.combat) or (D.autoInstance and ctx.instance)
+    or (D.autoMount and ctx.mount) or (D.autoVehicle and ctx.vehicle) or (D.autoPet and ctx.pet)
+  if not active then return nil end
+  return (D.autoMode == "hide") and "hide" or "fade"
+end
+TibiSuite.GetAutoBarMode = AutoMode
+
+local function SetBarAlpha(a)
+  if barFrame then barFrame:SetAlpha(a) end
+  if barFrame and barFrame._pill then barFrame._pill:SetAlpha(a) end
+end
+
+local function StopFade()
+  if fadeTicker then fadeTicker:Cancel(); fadeTicker = nil end
+  SetBarAlpha(1)
+end
+
+local function StartFade()
+  local low = math.max(0, math.min(0.6, (tonumber(TibiSuiteDB.autoFade) or 20) / 100))
+  local function tick()
+    local over = (barFrame and barFrame:IsShown() and barFrame:IsMouseOver())
+      or (barFrame and barFrame._pill and barFrame._pill:IsShown() and barFrame._pill:IsMouseOver())
+    SetBarAlpha(over and 1 or low)
+  end
+  tick()
+  if not fadeTicker then fadeTicker = C_Timer.NewTicker(0.15, tick) end
+end
+
+local function ApplyAutoVis()
+  local mode = AutoMode()
+  -- Les widgets epingles suivent le meme contexte que la barre.
+  if TibiSuite.ApplyAutoWidgets then pcall(TibiSuite.ApplyAutoWidgets, mode) end
+  if not barFrame then return end
+  local pill = barFrame._pill
+  if mode == "hide" then
+    StopFade()
+    if barFrame:IsShown() or (pill and pill:IsShown()) then
+      autoHidden = true
+      barFrame:Hide()
+      if pill then pill:Hide() end
+    end
+    return
+  end
+  if autoHidden then
+    autoHidden = false
+    if TibiSuiteCharDB.barCollapsed and pill then pill:Show()
+    elseif TibiSuiteCharDB.barOpen then barFrame:Show(); UpdateTabHighlights() end
+  end
+  if mode == "fade" then StartFade() else StopFade() end
+end
+TibiSuite.ApplyAutoBar = ApplyAutoVis
+
+local autoFrame = CreateFrame("Frame")
+for _, e in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD",
+  "ZONE_CHANGED_NEW_AREA", "PLAYER_MOUNT_DISPLAY_CHANGED", "UNIT_ENTERED_VEHICLE",
+  "UNIT_EXITED_VEHICLE", "PET_BATTLE_OPENING_START", "PET_BATTLE_CLOSE" }) do
+  pcall(autoFrame.RegisterEvent, autoFrame, e)
+end
+autoFrame:SetScript("OnEvent", function(_, event, unit)
+  if (event == "UNIT_ENTERED_VEHICLE" or event == "UNIT_EXITED_VEHICLE") and unit ~= "player" then return end
+  if event == "PLAYER_REGEN_DISABLED" then ctx.combat = true
+  elseif event == "PLAYER_REGEN_ENABLED" then ctx.combat = false end
+  ReadContext()
+  -- Fin de combat de mascottes : l'etat n'est a jour qu'un instant apres.
+  if event == "PET_BATTLE_CLOSE" then C_Timer.After(0.5, function() ReadContext(); ApplyAutoVis() end) end
+  ApplyAutoVis()
+end)
 
 -- API appelee par chaque module a son chargement : il s'inscrit comme onglet de
 -- la barre unifiee et dans la recherche globale existante (RegisterSearch).
@@ -3446,6 +3739,7 @@ function TibiSuite.ExportProfile()
     "ex=" .. ((TibiSuiteDB.statsAutoExport == false) and 0 or 1),
     "hd=" .. table.concat(hid, ","),
     "st=" .. BarStyle(),
+    "ac=" .. (TibiSuite.GetAccentMode() == "class" and 1 or 0),
   }, ";")
   return "TS1:" .. B64Encode(p .. "|" .. Djb2(p))
 end
@@ -3477,6 +3771,7 @@ function TibiSuite.DecodeProfile(code)
   prof.loginMsg   = (t.lm == "full" or t.lm == "none") and t.lm or "one"
   prof.autoExport = (t.ex ~= "0")
   prof.style      = BAR_STYLES[t.st or ""] and t.st or nil   -- absent des codes d'avant 7.1.5.43
+  prof.accent     = (t.ac == "1") and "class" or ((t.ac == "0") and "suite" or nil)   -- idem avant 7.1.5.44
   return prof
 end
 
@@ -3489,6 +3784,7 @@ function TibiSuite.ApplyProfile(prof, skipModules)
   TibiSuite.SetMinimapHidden(prof.mmHidden)
   TibiSuiteDB.loginMsg = prof.loginMsg
   TibiSuiteDB.statsAutoExport = prof.autoExport and true or false
+  if prof.accent then TibiSuite.SetAccentMode(prof.accent) end
   TibiSuite.ApplyBarSettings({ style = prof.style, vertical = prof.vertical, scale = prof.scale,
     cols = prof.cols, rows = prof.rows, logoSize = prof.logoSize, locked = prof.locked })
   if not skipModules then
@@ -3705,6 +4001,10 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- État par personnage : ouverte par défaut au premier login du perso
     if TibiSuiteCharDB.barOpen == nil then TibiSuiteCharDB.barOpen = true end
 
+    -- Couleur d'accent AVANT de dessiner la barre (classe deja connue ici
+    -- en temps normal ; recalculee au PLAYER_LOGIN par securite).
+    TibiSuite.RefreshAccent()
+
     BuildMinimapButton()
     BuildBar()
     SetupLDB()
@@ -3712,6 +4012,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
 
   -- ── PLAYER_LOGIN : tous les addons sont chargés ───────────────
   elseif event == "PLAYER_LOGIN" then
+    TibiSuite.RefreshAccent()
 
     -- Premier lancement : on propose l'installateur (cases à cocher par lots de
     -- 3) qui choisit les modules à activer. Les fois suivantes : chargement

@@ -1,5 +1,5 @@
 -- ================================================================
--- LegTracker v7.1.5.43
+-- LegTracker v7.1.5.44
 -- Suivi des objets legendaires de toutes les extensions WoW
 -- Auteur : Tibiscui - Kirin Tor
 -- Design & architecture propre a LegTracker
@@ -2491,6 +2491,11 @@ local lootMuteUntil = 0
 
 local function LootAlert(text)
   print(PREFIX .. text)
+  -- Fil d'activite de TibiSuite (si le core est la) : trace seulement, ce
+  -- module affiche deja son alerte a l'ecran.
+  if _G.TibiSuite and _G.TibiSuite.Notify then
+    pcall(_G.TibiSuite.Notify, "Leg", (text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")), { toast = false })
+  end
   if RaidNotice_AddMessage and RaidWarningFrame then
     pcall(RaidNotice_AddMessage, RaidWarningFrame, text,
           (ChatTypeInfo and ChatTypeInfo["RAID_WARNING"]) or {r=1, g=0.43, b=0.04})
@@ -2644,7 +2649,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
     end
 
-    print(COL_BLUE .. "LegTracker v7.1.5.43" .. COL_RESET
+    print(COL_BLUE .. "LegTracker v7.1.5.44" .. COL_RESET
           .. " " .. T("LOGIN_LOADED", "chargé -- tapez") .. " " .. COL_GOLD .. "/lt" .. COL_RESET .. " " .. T("LOGIN_TO_OPEN", "pour ouvrir.")
           .. " |cFF888888" .. T("LOGIN_SUBCMDS", "(/lt scan = forcer scan, /lt verify = controler les IDs, /lt reset = reinit donnees compte)") .. "|r")
 

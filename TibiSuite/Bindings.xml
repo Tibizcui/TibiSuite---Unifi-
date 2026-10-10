@@ -1,0 +1,32 @@
+<Bindings>
+	<!-- Raccourcis clavier TibiSuite (Echap > Options > Raccourcis > TibiSuite),
+	     dans leur propre categorie (meme mecanisme que Raider.IO). Les libelles
+	     viennent des globales BINDING_CATEGORY_TIBISUITE, BINDING_HEADER_TIBISUITE
+	     et BINDING_NAME_* definies dans Core\TibiSuitePalette.lua. Aucune touche
+	     n'est attribuee d'office : le joueur choisit (par exemple Ctrl+K pour
+	     la palette). -->
+	<Binding name="TIBISUITE_PALETTE" header="TIBISUITE" category="BINDING_CATEGORY_TIBISUITE">
+		if TibiSuite and TibiSuite.TogglePalette then TibiSuite.TogglePalette() end
+	</Binding>
+	<Binding name="TIBISUITE_CENTRE" category="BINDING_CATEGORY_TIBISUITE">
+		if TibiSuite and TibiSuite.ToggleCentre then TibiSuite.ToggleCentre() end
+	</Binding>
+	<Binding name="TIBISUITE_WEEK" category="BINDING_CATEGORY_TIBISUITE">
+		if TibiSuite and TibiSuite.OpenCentre then TibiSuite.OpenCentre("home") end
+	</Binding>
+	<Binding name="TIBISUITE_ACTIVITY" category="BINDING_CATEGORY_TIBISUITE">
+		if TibiSuite and TibiSuite.OpenCentre then TibiSuite.OpenCentre("activity") end
+	</Binding>
+	<Binding name="TIBISUITE_BAR" category="BINDING_CATEGORY_TIBISUITE">
+		if SlashCmdList and SlashCmdList["TIBISUITE"] then SlashCmdList["TIBISUITE"]("bar") end
+	</Binding>
+	<Binding name="TIBISUITE_STREAMING" category="BINDING_CATEGORY_TIBISUITE">
+		if TibiSuite and TibiSuite.SetStreaming then TibiSuite.SetStreaming(not TibiSuite.IsStreaming()) end
+	</Binding>
+	<Binding name="TIBISUITE_UNDO" category="BINDING_CATEGORY_TIBISUITE">
+		if TibiSuite and TibiSuite.Undo then TibiSuite.Undo() end
+	</Binding>
+	<Binding name="TIBISUITE_NEXT" category="BINDING_CATEGORY_TIBISUITE">
+		if TibiSuite and TibiSuite.RunNextAction then TibiSuite.RunNextAction() end
+	</Binding>
+</Bindings>

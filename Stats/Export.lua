@@ -443,6 +443,21 @@ local function collectAfk()
   return ok and res or nil
 end
 
+-- Ma semaine et fil d'activite (core TibiSuite 7.1.5.44, lot 7) : photo des
+-- lignes d'etat de chaque personnage + 60 derniers evenements du fil, fournies
+-- par TibiSuite.ExportSuite() (lecture seule, sous pcall). Ajout additif,
+-- schema inchange : un site pas a jour ignore chars[k].week et data.suite.
+--   chars[k].week = { at, l = { {k, x, p, u, g} }, nx = {k, x, u} }
+--   data.suite    = { v, at, mods = { [k] = {n, c} }, reset = {d, w}, feed = { {t, k, x, u, c} } }
+-- Meme cle de rapprochement que les absences (afkKey).
+local function collectSuite()
+  local TS = _G.TibiSuite
+  if type(TS) ~= "table" or type(TS.ExportSuite) ~= "function" then return nil end
+  local ok, res = pcall(TS.ExportSuite)
+  if not ok or type(res) ~= "table" then return nil end
+  return res
+end
+
 local function currentSpecName()
   local si = GetSpecialization and GetSpecialization()
   if not si then return nil end
@@ -464,6 +479,8 @@ function SX.CollectExportData()
   local allLeveling = collectLeveling()
   local allLairs = collectLairs()
   local allAfk = collectAfk()
+  local suite = collectSuite()
+  local allWeek = suite and suite.chars
   local chars = {}
   for _, key in ipairs(SX.GetCharKeys()) do
     local rec = StatsDB[key] or {}
@@ -515,6 +532,7 @@ function SX.CollectExportData()
       leveling = allLeveling and allLeveling[key] or nil,
       lairs = allLairs and allLairs[key] or nil,
       afk = allAfk and allAfk[afkKey(key) or ""] or nil,
+      week = allWeek and allWeek[afkKey(key) or ""] or nil,
     }
   end
 
@@ -526,6 +544,7 @@ function SX.CollectExportData()
       chars = chars,
       warband = warband,   -- banque de Bataillon (WeeklyCompass), commune au compte
       legendaries = collectLegendaries(),   -- LegTracker, commun au compte
+      suite = suite and { v = suite.v, at = suite.at, mods = suite.mods, reset = suite.reset, feed = suite.feed } or nil,
     },
   }
 end

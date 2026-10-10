@@ -29,7 +29,7 @@
   socle du core evolue (bump NS_VERSION cote core -> reporter ici).
 ============================================================================]]
 
-local NS_VERSION = 13
+local NS_VERSION = 16
 
 if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
   return
@@ -58,6 +58,33 @@ UI.C = {
   NO      = { 0.898, 0.420, 0.420, 1.00 },  -- rouge "non"
   WARN    = { 1.000, 0.549, 0.000, 1.00 },  -- orange d'alerte (ex: concentration pleine)
 }
+
+-- Lisibilite (v15) : modifie UI.C SUR PLACE (les fenetres creees ensuite en
+-- profitent, celles deja dessinees apres un /reload). contrast = textes plus
+-- clairs, fonds opaques, separateurs plus visibles ; cvd = palette sure pour
+-- les daltonismes rouge-vert (bleu au lieu de vert, vermillon, jaune).
+-- Appele par le core TibiSuite ; sans lui, rien ne change.
+local C_BASE
+function UI.ApplyReadability(opts)
+  opts = opts or {}
+  if not C_BASE then
+    C_BASE = {}
+    for k, v in pairs(UI.C) do C_BASE[k] = { v[1], v[2], v[3], v[4] } end
+  end
+  local function set(k, r, g, b, a) local t = UI.C[k]; if t then t[1], t[2], t[3], t[4] = r, g, b, a end end
+  for k, v in pairs(C_BASE) do set(k, v[1], v[2], v[3], v[4]) end
+  if opts.contrast then
+    set("BG", 0.030, 0.035, 0.045, 1); set("PANEL", 0.028, 0.032, 0.042, 1)
+    set("SEP", 1, 1, 1, 0.24)
+    set("TXT", 1, 1, 1, 1); set("DIM", 0.820, 0.840, 0.880, 1); set("MUTED", 0.690, 0.715, 0.765, 1)
+  end
+  if opts.cvd then
+    set("OK", 0.337, 0.706, 0.914, 1)     -- bleu ciel
+    set("NO", 0.835, 0.369, 0.000, 1)     -- vermillon
+    set("WARN", 0.941, 0.894, 0.259, 1)   -- jaune
+  end
+  UI._readability = { contrast = opts.contrast and true or false, cvd = opts.cvd and true or false }
+end
 
 function UI.Hex(r, g, b)
   return string.format("|cFF%02X%02X%02X",
@@ -646,7 +673,35 @@ function UI.CreateOptionsPanel(cfg)
   -- _seps / _notes / _boxes : elements dont la largeur suit la colonne en mode
   -- ancre (v13). _shift : hauteur gagnee par le re-calage des notes elargies.
   local panel = { frame = f, content = content, scroll = scroll, _y = -6, _refresh = {},
-                  _seps = {}, _notes = {}, _boxes = {}, _shift = 0, _width = 280 }
+                  _seps = {}, _notes = {}, _boxes = {}, _shift = 0, _width = 280,
+                  _name = cfg.name,    -- v14 : le Centre retrouve le module par ce nom
+                  _items = {} }        -- v14 : reglages indexes (palette de commandes)
+  -- Chaque reglage cree est note : libelle, section courante, objet a l'ecran.
+  -- La palette de commandes du core cherche dedans, puis panel:Reveal(item).
+  local function index(kind, label, obj, getFn, setFn)
+    if type(label) ~= "string" or label == "" then return end
+    local it = { kind = kind, label = label, section = panel._section, obj = obj, get = getFn, set = setFn }
+    panel._items[#panel._items + 1] = it
+    return it
+  end
+  -- Annuler (v15) : juste AVANT d'appliquer un changement venu de la souris,
+  -- le socle confie a UI.RecordUndo (fourni par le core TibiSuite) une
+  -- fonction qui photographie toutes les cases et curseurs du panneau. Rien
+  -- n'est enregistre pendant un Refresh ni pendant une annulation.
+  local function snapshot()
+    local t = {}
+    for i, it in ipairs(panel._items) do
+      if it.get then
+        local ok, v = pcall(it.get)
+        if ok then t[i] = (v == nil) and false or v end
+      end
+    end
+    return t
+  end
+  local function beforeChange(it)
+    if panel._muted or not it or not UI.RecordUndo then return end
+    pcall(UI.RecordUndo, panel, it, snapshot)
+  end
   local function advance(h) panel._y = panel._y - h end
   local function fit() content:SetHeight(math.max(-(panel._y + panel._shift) + 10, 10)) end
 
@@ -664,6 +719,8 @@ function UI.CreateOptionsPanel(cfg)
     local fs = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     fs:SetPoint("TOPLEFT", content, "TOPLEFT", 4, panel._y - 10)
     fs:SetText(accentText(text))
+    panel._section = text
+    index("section", text, fs)
     advance(30); fit(); return self
   end
 
@@ -715,12 +772,14 @@ function UI.CreateOptionsPanel(cfg)
     local t = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     t:SetPoint("LEFT", cb, "RIGHT", 4, 0); t:SetText(label)
     cb:SetChecked(getFn())
-    cb:SetScript("OnClick", function(s) setFn(s:GetChecked() and true or false) end)
+    local it
+    cb:SetScript("OnClick", function(s) beforeChange(it); setFn(s:GetChecked() and true or false) end)
     if tooltip then
       cb:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s, "ANCHOR_RIGHT"); GameTooltip:SetText(tooltip, nil, nil, nil, nil, true); GameTooltip:Show() end)
       cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end
     panel._refresh[#panel._refresh + 1] = function() cb:SetChecked(getFn()) end
+    it = index("check", label, cb, getFn, setFn)
     advance(28); fit(); return self
   end
 
@@ -737,8 +796,17 @@ function UI.CreateOptionsPanel(cfg)
     if sl.Low then sl.Low:SetText("") end
     if sl.High then sl.High:SetText("") end
     if sl.Text then sl.Text:SetText("") end
-    sl:SetScript("OnValueChanged", function(_, v) v = math.floor(v / step + 0.5) * step; setCap(v); setFn(v) end)
+    local it
+    sl:SetScript("OnValueChanged", function(_, v)
+      v = math.floor(v / step + 0.5) * step; setCap(v)
+      local ok, cur = pcall(getFn)
+      if not (ok and cur == v) then beforeChange(it) end
+      setFn(v)
+    end)
     panel._refresh[#panel._refresh + 1] = function() sl:SetValue(getFn()); setCap(getFn()) end
+    it = index("slider", label, cap, function() return getFn() end, function(v) sl:SetValue(v); setFn(v) end)
+    -- v16 : bornes et pas (palette de commandes : Gauche / Droite).
+    if it then it.min, it.max, it.step = minV, maxV, step end
     advance(52); fit(); return self
   end
 
@@ -763,6 +831,7 @@ function UI.CreateOptionsPanel(cfg)
         ColorPickerFrame.hasOpacity = true; ColorPickerFrame.opacity = a; ColorPickerFrame:SetColorRGB(r, g, bl); ColorPickerFrame:Show() end
     end)
     panel._refresh[#panel._refresh + 1] = refresh
+    index("color", label, b)
     advance(28); fit(); return self
   end
 
@@ -770,6 +839,7 @@ function UI.CreateOptionsPanel(cfg)
     local b = UI.MakeButton(content, 250, 24, label)
     b:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
     b:SetScript("OnClick", onClick)
+    index("button", label, b)
     advance(30); fit(); return self
   end
 
@@ -846,15 +916,87 @@ function UI.CreateOptionsPanel(cfg)
 
   function panel:IsDocked() return panel._host ~= nil end
 
+  -- Reveal (v14) : amene un reglage indexe a l'ecran et le surligne 1,5 s a
+  -- la couleur d'accent du panneau. A appeler une fois le panneau affiche.
+  function panel:Reveal(item)
+    local obj = item and item.obj
+    if not (obj and obj.GetTop) then return end
+    local top, ot = content:GetTop(), obj:GetTop()
+    if not (top and ot) then return end
+    local off = top - ot
+    local range = scroll:GetVerticalScrollRange() or 0
+    scroll:SetVerticalScroll(math.max(0, math.min(range, off - 40)))
+    if not panel._flash then
+      local fl = content:CreateTexture(nil, "BACKGROUND")
+      fl:SetHeight(28)
+      local ag = fl:CreateAnimationGroup()
+      local a = ag:CreateAnimation("Alpha"); a:SetFromAlpha(0.45); a:SetToAlpha(0); a:SetDuration(1.5)
+      a:SetSmoothing("IN")
+      ag:SetScript("OnFinished", function() fl:Hide() end)
+      panel._flash, panel._flashAG = fl, ag
+    end
+    local c = accent or UI.C.GOLD
+    local fl = panel._flash
+    fl:SetColorTexture(c[1], c[2], c[3], 1)
+    fl:ClearAllPoints()
+    fl:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -off + 4)
+    fl:SetPoint("RIGHT", content, "RIGHT", 0, 0)
+    fl:Show()
+    panel._flashAG:Stop(); panel._flashAG:Play()
+  end
+
   -- Ancre ET hote visible : le panneau est deja a l'ecran, dans le Centre.
   -- Ancre mais hote ferme : on le rend flottant pour que la roue d'un module
   -- (ou Maj+clic droit) ouvre toujours ses options.
   local function dockedVisible() return panel._host and panel._host:IsVisible() end
 
-  function panel:Refresh() for _, fn in ipairs(panel._refresh) do pcall(fn) end end
+  function panel:Refresh()
+    local was = panel._muted
+    panel._muted = true
+    for _, fn in ipairs(panel._refresh) do pcall(fn) end
+    panel._muted = was
+  end
+
+  -- Remet le panneau dans l'etat d'une photo (v15, Annuler). Les cases
+  -- cochees sur la photo sont restaurees d'abord : une case « radio » dont
+  -- le setter ignore la valeur reselectionne ainsi l'ancien choix, et les
+  -- autres retrouvent d'elles-memes leur etat. Puis le reste, un par un, en
+  -- relisant la valeur courante juste avant (aucun appel inutile).
+  function panel:ApplySnapshot(snap)
+    if type(snap) ~= "table" then return 0 end
+    panel._muted = true
+    local n = 0
+    local function pass(onlyTrue)
+      for i, it in ipairs(panel._items) do
+        local old = snap[i]
+        if old ~= nil and it.get and it.set and (not onlyTrue or old == true) then
+          local ok, cur = pcall(it.get)
+          if ok and ((cur == nil) and false or cur) ~= old then
+            pcall(it.set, old); n = n + 1
+          end
+        end
+      end
+    end
+    pass(true); pass(false)
+    panel._muted = false
+    panel:Refresh()
+    return n
+  end
+  -- Redirection vers le Centre (v14) : quand le core TibiSuite est present,
+  -- toute demande d'affichage FLOTTANT (roue d'un module, Maj+clic droit,
+  -- clic droit sur un onglet, commande slash) ouvre le Centre sur la page du
+  -- module. UI.PanelRedirect(panel) est fourni par le core et renvoie true
+  -- s'il a pris la main ; absent (mode autonome) = comportement d'origine.
+  -- UI._noRedirect est leve par le Centre pendant qu'il recupere un panneau,
+  -- sinon il se rappellerait lui-meme.
   function panel:Show()
     UI.lastShownPanel = panel
     if dockedVisible() then panel:Refresh(); return end
+    local redirect = UI.PanelRedirect
+    if redirect and not UI._noRedirect then
+      local ok, handled = pcall(redirect, panel)
+      if ok and handled then return end
+    end
     panel:Undock(); panel:Refresh(); f:Show()
   end
   function panel:Hide() f:Hide() end
