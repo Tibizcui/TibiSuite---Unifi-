@@ -1,5 +1,14 @@
 # Changelog
 
+## 7.1.5.44
+- Ma semaine : l'accueil du Centre devient un tableau de bord (resets, prochaine action, une carte par module avec sa progression, urgences en tete).
+- Palette de commandes (/ts k, la loupe ou un raccourci) : commandes, reglages de tous les modules et contenu ; filtres par categorie (Tab), cases et curseurs modifiables sur place, icones par type.
+- Fil d'activite et notifications unifiees (butin, Renom, courrier, niveau, semaine terminee, rappels), reglables module par module.
+- Widgets epinglables a l'ecran (punaise des cartes, clic droit sur un module de la barre, nouvelle page Widgets) ; masquage automatique de la barre et des widgets en combat, instance, monture, vehicule, combat de mascottes.
+- Annuler le dernier reglage, points de restauration, profils de suite automatiques (personnage, specialisation, montee de niveau), rappels (resets, calendrier, note par personnage).
+- Options de tous les modules dans le Centre, couleur d'accent (rouge TibiSuite ou couleur de classe), mode streaming, page Lisibilite (taille, contraste eleve, daltonisme), raccourcis clavier dans leur propre categorie.
+- Clic droit sur la pastille de la barre repliee : ouvre le Centre. Ma semaine et le fil d'activite partent dans l'export Stats pour le Dashboard du site et Tibi Companion.
+
 ## 7.1.5.43
 - Nouveaux styles de barre, au choix dans le Centre (Barre et acces), l'installateur ou /ts bar classic|dock|panel. Changement immediat, sans rechargement. Les joueurs existants gardent la barre Classique ; une nouvelle installation demarre en Dock.
 - Dock : une rangee (ou une colonne) d'icones des modules, liseré a leur couleur, badges en coin, nom court sous chaque icone (desactivable), loupe de recherche et repli.

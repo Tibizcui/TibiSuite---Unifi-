@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.44
+- Socle d'interface v16 : les options du module s'ouvrent dans le Centre TibiSuite (roue, Maj+clic droit, clic droit sur l'onglet, commande), le dernier reglage change peut etre annule, et la palette de commandes trouve et modifie ses reglages sur place.
+- Le butin d'un legendaire arrive aussi dans le fil d'activite de TibiSuite.
+
 ## 7.1.5.43
 - Panneau vivant de TibiSuite (nouveau style de barre), ligne d'etat : legendaires obtenus sur l'ensemble des extensions.
 - Logo refait : 128 px, meme cadrage que toute la suite, emblème sans texte, fond transparent.

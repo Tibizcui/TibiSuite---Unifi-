@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.44
+- Socle d'interface v16 : les options du module s'ouvrent dans le Centre TibiSuite (roue, Maj+clic droit, clic droit sur l'onglet, commande), le dernier reglage change peut etre annule, et la palette de commandes trouve et modifie ses reglages sur place.
+
 ## 7.1.5.43
 - Icone affichee dans le Dock et le Panneau vivant de TibiSuite (nouveaux styles de barre) ; ce module n'a pas de ligne d'etat.
 - Logo refait : 128 px, meme cadrage que toute la suite, emblème sans texte, fond transparent.
