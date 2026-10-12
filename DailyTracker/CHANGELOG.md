@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.1.5.45
+- Vue Rares : chaque rare tue est retenu avec son etat (deja tue ou de nouveau disponible), rares presents sur la minicarte, boss mondiaux et Repaires de la semaine.
+- Boss mondiaux faits par personnage dans la vue Personnages ; alerte quand un rare connu apparait.
+- Recap des hebdos a la connexion en notification flottante (plus dans la discussion).
+- Apercu du module dans sa page du Centre TibiSuite et dans les infobulles de la barre (Dock, Panneau vivant, onglets, widgets).
+
 ## 7.1.5.44
 - Socle d'interface v16 : les options du module s'ouvrent dans le Centre TibiSuite (roue, Maj+clic droit, clic droit sur l'onglet, commande), le dernier reglage change peut etre annule, et la palette de commandes trouve et modifie ses reglages sur place.
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.1.5.45
+- Vue Collections : montures, mascottes et jouets du butin de 213 instances (Classic a Midnight), etat de la semaine, extensions repliables, filtres.
+- Taux de drop estimes des montures (sources communautaires) et rubrique Comment l'obtenir dans l'infobulle.
+- Montures de l'instance dans sa fiche, badge des montures encore a obtenir.
+- Apercu du module dans sa page du Centre TibiSuite et dans les infobulles de la barre (Dock, Panneau vivant, onglets, widgets).
+
 ## 7.1.5.44
 - Socle d'interface v16 : les options du module s'ouvrent dans le Centre TibiSuite (roue, Maj+clic droit, clic droit sur l'onglet, commande), le dernier reglage change peut etre annule, et la palette de commandes trouve et modifie ses reglages sur place.
 

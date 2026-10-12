@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.1.5.45
+- Apercus des modules dans le Centre et les infobulles de la barre ; un clic sur une ligne ouvre le module au bon endroit.
+- Objectifs personnels de la semaine : page Objectifs, groupe en tete de Ma semaine, prochaine action, fil d'activite, export vers le Dashboard.
+- Evenement de la semaine (calendrier) dans Ma semaine ; resets quotidien et hebdo epingles en haut du fil d'activite.
+- Maj + clic droit sur un module de la barre : options directes (clic droit = menu).
+
 ## 7.1.5.44
 - Ma semaine : l'accueil du Centre devient un tableau de bord (resets, prochaine action, une carte par module avec sa progression, urgences en tete).
 - Palette de commandes (/ts k, la loupe ou un raccourci) : commandes, reglages de tous les modules et contenu ; filtres par categorie (Tab), cases et curseurs modifiables sur place, icones par type.

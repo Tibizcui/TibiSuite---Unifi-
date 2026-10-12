@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.1.5.45
+- Nouveau tableau de bord : 12 tuiles chiffrees (Activite, Contenu, Progression) avec mini-courbe et evolution a date egale, puis un grand graphique (chiffres cles, moyenne, record, projection, eclairage par mesure, phrase de bilan).
+- Hauts faits presque finis (80 % ou plus) et bilan de session dans le fil d'activite.
+- Nouvelles mesures : points de hauts faits gagnes, sessions de jeu. Export : objectifs et semaine de la suite pour le Dashboard.
+- Apercu du module dans sa page du Centre TibiSuite et dans les infobulles de la barre (Dock, Panneau vivant, onglets, widgets).
+
 ## 7.1.5.44
 - Socle d'interface v16 : les options du module s'ouvrent dans le Centre TibiSuite (roue, Maj+clic droit, clic droit sur l'onglet, commande), le dernier reglage change peut etre annule, et la palette de commandes trouve et modifie ses reglages sur place.
 - Export du Dashboard : ajoute Ma semaine (une photo par personnage) et le fil d'activite de TibiSuite, pour les nouvelles cartes du site et de Tibi Companion. Ajout sans changement de format.

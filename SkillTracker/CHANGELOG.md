@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.1.5.45
+- Prix des recoltes dans les infobulles des noeuds (minicarte et monde), via Auctionator ou TSM ; noeuds appris a la recolte.
+- Session de recolte : vue Recolte avec tri et filtre par extension, valeur au prix du moment, ligne d'etat pendant le farm.
+- Valeur des sacs et des banques (personnage et bataillon) : vue Valeur.
+- Apercu du module dans sa page du Centre TibiSuite et dans les infobulles de la barre (Dock, Panneau vivant, onglets, widgets).
+
 ## 7.1.5.44
 - Socle d'interface v16 : les options du module s'ouvrent dans le Centre TibiSuite (roue, Maj+clic droit, clic droit sur l'onglet, commande), le dernier reglage change peut etre annule, et la palette de commandes trouve et modifie ses reglages sur place.
 - La concentration pleine arrive aussi dans le fil d'activite de TibiSuite.

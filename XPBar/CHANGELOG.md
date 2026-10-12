@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.45
+- Aucun changement fonctionnel dans ce module : version alignee sur l'ensemble de la suite (voir TibiSuite 7.1.5.45).
+
 ## 7.1.5.44
 - Socle d'interface v16 : les options du module s'ouvrent dans le Centre TibiSuite (roue, Maj+clic droit, clic droit sur l'onglet, commande), le dernier reglage change peut etre annule, et la palette de commandes trouve et modifie ses reglages sur place.
 

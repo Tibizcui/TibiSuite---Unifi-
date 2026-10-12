@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.44
+-- TibiSuiteOptions v7.1.5.45
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -316,6 +316,13 @@ L.WN_38_16 = L.WN_38_16 or "Nouvelles cartes Légendaires, Leveling et Repaires 
 L.WN_43_0  = L.WN_43_0  or "Nouveau style de barre Dock : une rangée d'icônes discrète, le logo de chaque module souligné de sa couleur, badges en coin, loupe de recherche. Votre barre actuelle ne change pas : le style se choisit dans le Centre, page Barre et accès, ou avec /ts bar dock."
 L.WN_43_1  = L.WN_43_1  or "Nouveau style Panneau vivant : la barre devient un tableau de bord. Chaque module affiche son état du moment (hebdos restantes, Grand coffre, courriers qui expirent, concentration, coffres de Paragon, XP, or de la semaine...), et ce qui presse remonte en rouge."
 L.WN_43_2  = L.WN_43_2  or "Le changement de style est immédiat, sans rechargement. Le style voyage dans les profils TS1 et se choisit aussi dans l'installateur (/ts setup). Commandes : /ts bar classic, dock ou panel."
+L.WN_45_0  = L.WN_45_0  or "Collections : montures, mascottes et jouets de tous les donjons et raids, ce qui est encore faisable cette semaine, taux de drop estimés et comment les obtenir. Les montures apparaissent aussi dans la fiche de chaque instance."
+L.WN_45_1  = L.WN_45_1  or "Rares et boss mondiaux : chaque rare que tu tues est retenu avec son état (déjà tué ou de nouveau disponible), boss mondiaux et Repaires de la semaine, alerte quand un rare connu apparaît sur ta minicarte."
+L.WN_45_2  = L.WN_45_2  or "Nouveau tableau de bord : 12 tuiles chiffrées et un seul grand graphique, avec moyenne, record, projection de la période et un éclairage propre à chaque mesure. Hauts faits presque finis et bilan de session."
+L.WN_45_3  = L.WN_45_3  or "Récolte : prix de chaque nœud dans les infobulles (Auctionator ou TSM), session de récolte avec tri par extension, valeur de tes sacs et de tes banques."
+L.WN_45_4  = L.WN_45_4  or "Plafonds des monnaies (alerte avant de perdre, reste à gagner) et section Mythique+ dans la fiche des personnages."
+L.WN_45_5  = L.WN_45_5  or "Aperçus : chaque module montre l'essentiel dans sa page du Centre et dans les infobulles de la barre. Objectifs personnels de la semaine (page Objectifs, Ma semaine, Dashboard du site)."
+L.WN_45_6  = L.WN_45_6  or "Événement de la semaine dans Ma semaine, resets épinglés dans le fil d'activité, Maj + clic droit sur un module de la barre pour ses options. PostBox ne se rouvre plus tout seul au /reload."
 L.WN_44_0  = L.WN_44_0  or "Ma semaine : l'accueil du Centre devient ton tableau de bord. Comptes à rebours des resets, prochaine action à faire, une carte par module avec sa progression, ce qui presse en tête."
 L.WN_44_1  = L.WN_44_1  or "Palette de commandes (raccourci au choix, /ts k ou la loupe) : une commande, un réglage, une instance, une faction, tout se trouve en tapant. Filtres par catégorie (Tab), cases et curseurs modifiables sur place."
 L.WN_44_2  = L.WN_44_2  or "Fil d'activité et notifications : butin, paliers de Renom, courrier, semaine terminée, rappels. Un seul fil pour toute la suite, des notifications à l'écran que tu règles module par module."
@@ -396,6 +403,15 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.45"] = {
+    { key = "Dgn", title = "DgnTracker", text = L.WN_45_0, new = true },
+    { key = "Daily", title = "DailyTracker", text = L.WN_45_1, new = true },
+    { key = "Stats", title = "Stats", text = L.WN_45_2, new = true },
+    { key = "Skill", title = "SkillTracker", text = L.WN_45_3, new = true },
+    { key = "Weekly", title = "WeeklyCompass", text = L.WN_45_4, new = true },
+    { key = "Suite", title = "TibiSuite", text = L.WN_45_5, new = true },
+    { key = "Suite", title = "TibiSuite", text = L.WN_45_6, new = true },
+  },
   ["7.1.5.44"] = {
     { key = "Suite",   title = "TibiSuite", text = L.WN_44_0, new = true },
     { key = "Suite",   title = "TibiSuite", text = L.WN_44_1, new = true },

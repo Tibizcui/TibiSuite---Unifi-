@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.1.5.45
+- Plafonds des monnaies : alerte quand une monnaie approche de son plafond de stock, reste a gagner avant le plafond de la saison.
+- Section Mythique+ dans la fiche : cote, meilleure cle par donjon, meilleure cle et courses de la semaine.
+- Apercu du module dans sa page du Centre TibiSuite et dans les infobulles de la barre (Dock, Panneau vivant, onglets, widgets).
+
 ## 7.1.5.44
 - Socle d'interface v16 : les options du module s'ouvrent dans le Centre TibiSuite (roue, Maj+clic droit, clic droit sur l'onglet, commande), le dernier reglage change peut etre annule, et la palette de commandes trouve et modifie ses reglages sur place.
 
