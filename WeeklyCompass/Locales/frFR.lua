@@ -191,4 +191,7 @@ ns:AddLocale("frFR", {
     SHEET_MODIFIED_TIP    = "Les talents actifs ne correspondent plus au build enregistré (modifications non sauvegardées).",
     SHEET_TALENT_CLICK    = "Clic : copier le build",
     SHEET_NO_TALENTS      = "Talents pas encore relevés",
+    SHEET_MPLUS           = "Mythique+",
+    SHEET_MP_KEY          = "Clé en poche",
+    SHEET_MP_WEEK         = "Meilleure clé de la semaine",
 })

@@ -2728,6 +2728,41 @@ function RenTrackerAPI.GetStatus()
   return { text = string.format(SL.ST_REPWEEK_FMT or "%d", left), progress = (total - left) / total }
 end
 
+-- Apercu du Centre TibiSuite (overviewFn, 7.1.5.45) : coffres de Paragon,
+-- hebdos de reputation, puis les factions les plus proches de leur prochain
+-- palier (extension affichee, paliers maximum sans Paragon exclus).
+function RenTrackerAPI.GetOverview()
+  local SL = _G.TibiSuiteL or {}
+  local out = { lines = {}, empty = SL.OV_REP_EMPTY }
+  local lines = out.lines
+  local para = 0
+  for _ in pairs(paragonPending) do para = para + 1 end
+  if para > 0 then lines[#lines + 1] = { text = string.format(SL.OV_REP_PARAGON_FMT or "%d", para), urgent = true } end
+  local ok, left, total = pcall(RenTrackerAPI.GetWeeklyRemaining)
+  if ok and total and total > 0 then
+    lines[#lines + 1] = { text = SL.OV_REP_WEEK, value = (total - left) .. " / " .. total, progress = (total - left) / total }
+  end
+  local near = {}
+  for _, fac in ipairs(GetActiveFactions()) do
+    if fac.id then
+      local okD, d = pcall(GetRenownData, fac.id, fac)
+      if okD and d and d.found and not d.capped and (d.pct or 0) < 1 then
+        local maxedNoParagon = d.system == "renown" and d.rank and d.cap and d.rank >= d.cap and not d.paragon
+        if not maxedNoParagon then near[#near + 1] = { fac = fac, d = d } end
+      end
+    end
+  end
+  table.sort(near, function(a, b) return (a.d.pct or 0) > (b.d.pct or 0) end)
+  for i = 1, math.min(3, #near) do
+    local e = near[i]
+    local c = e.d.color
+    lines[#lines + 1] = { text = e.fac.name or "?",
+      value = tostring(e.d.label or "") .. "  " .. math.floor((e.d.pct or 0) * 100) .. " %",
+      progress = e.d.pct, color = c and { c.r, c.g, c.b } or nil }
+  end
+  return out
+end
+
 -- Renvoie left, total (quetes hebdo de reputation restantes / comptees).
 function RenTrackerAPI.GetWeeklyRemaining()
   local units = {}

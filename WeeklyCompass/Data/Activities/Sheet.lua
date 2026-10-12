@@ -46,7 +46,9 @@ local module = {
     events   = { "PLAYER_EQUIPMENT_CHANGED", "PLAYER_AVG_ITEM_LEVEL_UPDATE",
                  "PLAYER_SPECIALIZATION_CHANGED", "CURRENCY_DISPLAY_UPDATE",
                  -- Talents : changement de talent, de build ou de configuration.
-                 "TRAIT_CONFIG_UPDATED", "ACTIVE_COMBAT_CONFIG_CHANGED", "TRAIT_CONFIG_LIST_UPDATED" },
+                 "TRAIT_CONFIG_UPDATED", "ACTIVE_COMBAT_CONFIG_CHANGED", "TRAIT_CONFIG_LIST_UPDATED",
+                 -- Mythique+ (7.1.5.45) : cle terminee, donnees de saison recues.
+                 "CHALLENGE_MODE_COMPLETED", "CHALLENGE_MODE_MAPS_UPDATE" },
 }
 
 function module.IsAvailable()
@@ -289,6 +291,72 @@ local function collectCurrencies()
     return out
 end
 
+-- Mythique+ de la saison (7.1.5.45) : cote, meilleure cle par donjon
+-- (dans les temps ou non), meilleure cle de la semaine, cle en poche.
+-- Lecture seule ; rien n'est invente : une valeur absente reste absente.
+local function collectMPlus()
+    local CM, MP = C_ChallengeMode, C_MythicPlus
+    if not (CM and MP) then return nil end
+    local out = { runs = {} }
+    if type(CM.GetOverallDungeonScore) == "function" then
+        local ok, s = pcall(CM.GetOverallDungeonScore)
+        if ok and tonumber(s) and tonumber(s) > 0 then out.score = tonumber(s) end
+    end
+    local okM, maps = false, nil
+    if type(CM.GetMapTable) == "function" then okM, maps = pcall(CM.GetMapTable) end
+    if okM and type(maps) == "table" then
+        for _, mapID in ipairs(maps) do
+            local name
+            if type(CM.GetMapUIInfo) == "function" then
+                local okN, n = pcall(CM.GetMapUIInfo, mapID); if okN then name = n end
+            end
+            local intime, overtime
+            if type(MP.GetSeasonBestForMap) == "function" then
+                local okB, a, b = pcall(MP.GetSeasonBestForMap, mapID)
+                if okB then intime, overtime = a, b end
+            end
+            local best, timed = nil, false
+            if type(intime) == "table" and intime.level then best, timed = intime, true end
+            if type(overtime) == "table" and overtime.level and (not best or overtime.level > best.level) then best, timed = overtime, false end
+            -- Attention au piege « x and false or nil » (vaut toujours nil).
+            local run = { map = mapID, name = name or ("#" .. mapID) }
+            if best then run.level, run.timed, run.score = best.level, timed, tonumber(best.dungeonScore) end
+            out.runs[#out.runs + 1] = run
+        end
+        table.sort(out.runs, function(a, b)
+            if (a.level or 0) ~= (b.level or 0) then return (a.level or 0) > (b.level or 0) end
+            return tostring(a.name) < tostring(b.name)
+        end)
+    end
+    if type(MP.GetRunHistory) == "function" then
+        local okH, hist = pcall(MP.GetRunHistory, false, true)
+        if okH and type(hist) == "table" then
+            local best, n = 0, 0
+            for _, r in ipairs(hist) do
+                if r.thisWeek ~= false then
+                    n = n + 1
+                    if (r.level or 0) > best then best = r.level end
+                end
+            end
+            out.weekRuns, out.weekBest = n, (best > 0) and best or nil
+        end
+    end
+    local okK, kMap = pcall(function() return MP.GetOwnedKeystoneChallengeMapID and MP.GetOwnedKeystoneChallengeMapID() end)
+    local okL, kLvl = pcall(function() return MP.GetOwnedKeystoneLevel and MP.GetOwnedKeystoneLevel() end)
+    if okK and okL and kMap and tonumber(kLvl) and tonumber(kLvl) > 0 then
+        local kName
+        if type(CM.GetMapUIInfo) == "function" then local okN, n = pcall(CM.GetMapUIInfo, kMap); if okN then kName = n end end
+        out.key = { map = kMap, level = tonumber(kLvl), name = kName }
+    end
+    if not out.score and not out.key and not out.weekBest then
+        local any = false
+        for _, r in ipairs(out.runs) do if r.level then any = true end end
+        if not any then return nil end
+    end
+    return out
+end
+ns.CollectMPlus = collectMPlus
+
 function module.Poll(emit)
     local slots, set = collectGear()
     if not next(slots) then return false end   -- inventaire pas encore charge : garder l'existant
@@ -304,6 +372,7 @@ function module.Poll(emit)
         set = set,
         stats = collectStats(),
         currencies = collectCurrencies(),
+        mplus = collectMPlus(),
         talents = collectTalents(),
     })
 end

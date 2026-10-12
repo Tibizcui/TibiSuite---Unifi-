@@ -60,7 +60,45 @@ if HasCore() and IsEnabledByCore() then
       return { text = string.format(SL.ST_GOLD_FMT or "%s", TS.FmtGold(net)),
                color = net >= 0 and { 1, 0.843, 0 } or { 0.85, 0.45, 0.45 } }
     end,
+    -- Apercu du Centre (7.1.5.45) : la semaine du perso connecte.
+    overviewFn = function()
+      local SL, TS = _G.TibiSuiteL or {}, _G.TibiSuite
+      local out = { lines = {}, empty = SL.OV_STATS_EMPTY }
+      if not (SX.Aggregate and SX.WeeklyGoldRange and SX.CurrentCharKey and TS) then return out end
+      local key = SX.CurrentCharKey()
+      if not key or not StatsDB or not StatsDB[key] then return out end
+      local from, to = SX.WeeklyGoldRange()
+      local ok, agg = pcall(SX.Aggregate, key, from, to)
+      if not ok or type(agg) ~= "table" then return out end
+      local net = (agg.goldGain or 0) - (agg.goldSpent or 0)
+      local lines = out.lines
+      lines[#lines + 1] = { text = SL.OV_STATS_GOLD, value = TS.FmtGold and TS.FmtGold(net) or tostring(net),
+        color = net >= 0 and { 1, 0.843, 0 } or { 0.85, 0.45, 0.45 } }
+      if (agg.quests or 0) > 0 then lines[#lines + 1] = { text = SL.OV_STATS_QUESTS, value = tostring(agg.quests) } end
+      local dg = (agg.dungeons or 0) + (agg.mplusCount or 0)
+      if dg > 0 then lines[#lines + 1] = { text = SL.OV_STATS_DUNGEONS, value = tostring(dg) } end
+      if (agg.delves or 0) > 0 then lines[#lines + 1] = { text = SL.OV_STATS_DELVES, value = tostring(agg.delves) } end
+      local near = SX.NearAchievements and SX.NearAchievements()
+      if near and near[1] and #lines < 5 then
+        lines[#lines + 1] = { text = near[1].name, value = math.floor(near[1].pct * 100) .. " %", progress = near[1].pct,
+          color = { 1, 0.843, 0 } }
+      end
+      if (agg.played or 0) > 0 and TS.FmtDuration and #lines < 5 then
+        lines[#lines + 1] = { text = SL.OV_STATS_PLAYED, value = TS.FmtDuration(agg.played) }
+      end
+      return out
+    end,
   })
+end
+
+-- Or net de la semaine (cuivre), tout le compte : lu par les objectifs
+-- personnels de TibiSuite (Ma semaine, 7.1.5.45).
+function Stats_WeeklyNet()
+  if not (SX.WeeklyGoldRange and SX.AggregateAccount) then return nil end
+  local from, to = SX.WeeklyGoldRange()
+  local ok, agg = pcall(SX.AggregateAccount, from, to)
+  if not ok or type(agg) ~= "table" then return nil end
+  return (agg.goldGain or 0) - (agg.goldSpent or 0)
 end
 
 -- Stats n'a pas de bouton minimap propre pour l'instant (fenetre ouverte

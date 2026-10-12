@@ -73,6 +73,9 @@ data\Access_enUS.lua
 ## Donnees lues dans le jeu (noms traduits, coordonnees, verrous, M+, gouffres)
 Live.lua
 
+## Collections (7.1.5.45). NOUVEAU FICHIER : redemarrage complet du client.
+Collections.lua
+
 ## Interface principale
 DgnTracker.lua
 DgnTracker_Suite.lua

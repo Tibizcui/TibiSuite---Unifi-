@@ -134,6 +134,19 @@ if HasCore() and IsEnabledByCore() then
     onOpen         = function() if _G.RepBar_Toggle then _G.RepBar_Toggle() end end,
     onOptions      = function() if _G.RepBar_OpenOptions then _G.RepBar_OpenOptions() end end,
     searchProvider = nil,
+    -- Apercu du Centre (7.1.5.45) : la faction suivie par le jeu.
+    overviewFn     = function()
+      local SL = _G.TibiSuiteL or {}
+      local out = { lines = {}, empty = SL.OV_RB_NONE }
+      if not (C_Reputation and C_Reputation.GetWatchedFactionData) then return out end
+      local ok, d = pcall(C_Reputation.GetWatchedFactionData)
+      if not ok or not d or not d.name or (d.factionID or 0) == 0 then return out end
+      local lo, hi, cur = d.currentReactionThreshold or 0, d.nextReactionThreshold or 0, d.currentStanding or 0
+      local pct = (hi > lo) and math.max(0, math.min(1, (cur - lo) / (hi - lo))) or nil
+      out.lines[1] = { text = SL.OV_RB_WATCH, value = d.name }
+      if pct then out.lines[2] = { text = d.name, value = math.floor(pct * 100) .. " %", progress = pct } end
+      return out
+    end,
   })
 elseif not HasCore() then
   BuildStandaloneMinimapButton()

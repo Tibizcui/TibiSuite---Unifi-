@@ -736,6 +736,9 @@ function SX.Aggregate(charKey, from, to)
       agg.bgWonGained = agg.bgWonGained + (d.bgWonGained or 0)
       agg.arenaPlayedGained = agg.arenaPlayedGained + (d.arenaPlayedGained or 0)
       agg.arenaWonGained = agg.arenaWonGained + (d.arenaWonGained or 0)
+      agg.achPoints = (agg.achPoints or 0) + (d.achPoints or 0)
+      agg.sessions = (agg.sessions or 0) + (d.sessions or 0)
+      agg.sessionTime = (agg.sessionTime or 0) + (d.sessionTime or 0)
       if d.mplus then
         for _, run in ipairs(d.mplus) do
           agg.mplusCount = agg.mplusCount + 1
@@ -751,6 +754,17 @@ function SX.Aggregate(charKey, from, to)
       FlattenDayLog(d, "playtimeLog", agg.playtimeLog)
       FlattenDayLog(d, "profLog", agg.profLog)
       FlattenDayLog(d, "pvpLog", agg.pvpLog)
+    end
+  end
+  -- Session en cours (7.1.5.45) : comptee dans sa journee de depart tant
+  -- qu'elle n'est pas close (elle sera ecrite dans la journee a la prochaine
+  -- connexion, cf. SessionClose).
+  local s = rec.liveSession
+  if type(s) == "table" and not s.ended and s.start and s.start >= from and s.start <= to then
+    local dur = (s.last or s.start) - s.start
+    if dur >= 60 then
+      agg.sessions = (agg.sessions or 0) + 1
+      agg.sessionTime = (agg.sessionTime or 0) + dur
     end
   end
   return agg
@@ -782,6 +796,9 @@ function SX.AggregateAccount(from, to)
     agg.bgWonGained = agg.bgWonGained + a.bgWonGained
     agg.arenaPlayedGained = agg.arenaPlayedGained + a.arenaPlayedGained
     agg.arenaWonGained = agg.arenaWonGained + a.arenaWonGained
+    agg.achPoints = (agg.achPoints or 0) + (a.achPoints or 0)
+    agg.sessions = (agg.sessions or 0) + (a.sessions or 0)
+    agg.sessionTime = (agg.sessionTime or 0) + (a.sessionTime or 0)
     for _, run in ipairs(a.mplusList) do agg.mplusList[#agg.mplusList + 1] = run end
     for _, e in ipairs(a.questLog) do agg.questLog[#agg.questLog + 1] = e end
     for _, e in ipairs(a.dungeonLog) do agg.dungeonLog[#agg.dungeonLog + 1] = e end
@@ -816,8 +833,43 @@ function SX.MetricValue(agg, metric)
   elseif metric == "bgWonGained" then return agg.bgWonGained
   elseif metric == "arenaPlayedGained" then return agg.arenaPlayedGained
   elseif metric == "arenaWonGained" then return agg.arenaWonGained
+  elseif metric == "achPoints" then return agg.achPoints or 0
+  elseif metric == "sessions" then return agg.sessions or 0
+  elseif metric == "delveBest" then
+    local best = 0
+    for _, e in ipairs(agg.delveLog or {}) do
+      local t = tonumber(e.tier)
+      if t and t > best then best = t end
+    end
+    return best
+  elseif metric == "repFactions" or metric == "profCount" then
+    local log, field = agg.repLog, "faction"
+    if metric == "profCount" then log, field = agg.profLog, "profession" end
+    local seen, n = {}, 0
+    for _, e in ipairs(log or {}) do
+      local k = e[field]
+      if k and not seen[k] then seen[k] = true; n = n + 1 end
+    end
+    return n
   end
   return 0
+end
+
+-- Debut de l'historique des compteurs ajoutes en 7.1.5.45 (points de hauts
+-- faits, sessions) : rec.histSince, pose a la premiere connexion. Pour le
+-- compte, le plus ancien des personnages.
+function SX.HistorySince(charKey)
+  if charKey == "__account__" then
+    local best
+    for _, key in ipairs(SX.GetCharKeys()) do
+      local r = StatsDB[key]
+      local t = type(r) == "table" and r.histSince
+      if t and (not best or t < best) then best = t end
+    end
+    return best
+  end
+  local r = StatsDB[charKey]
+  return type(r) == "table" and r.histSince or nil
 end
 
 -- Serie de `count` points se terminant a la periode courante, granularite
@@ -1585,6 +1637,14 @@ end
 local function OnAchievementEarned(achievementID)
   local rec = SX.EnsureChar(SX.CurrentCharKey())
   SX.RefreshAchievementPoints(rec)
+  -- 7.1.5.45 : points gagnes ce jour-la (carte Hauts faits).
+  if achievementID and GetAchievementInfo then
+    local ok, _, _, points, _, _, _, _, _, _, _, _, isGuild = pcall(GetAchievementInfo, achievementID)
+    if ok and type(points) == "number" and points > 0 and not isGuild then
+      local d = SX.EnsureDay(rec, SX.TodayKey())
+      d.achPoints = (d.achPoints or 0) + points
+    end
+  end
   RecordTorghastAchievement(rec, achievementID)
 end
 
@@ -2289,4 +2349,190 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
   elseif event == "SKILL_LINES_CHANGED" then
     OnSkillLinesChanged()
   end
+end)
+
+-- ============================================================================
+-- HAUTS FAITS PRESQUE FINIS (7.1.5.45, feuille de route lot 6)
+-- ----------------------------------------------------------------------------
+-- Parcourt les hauts faits (hors statistiques, guilde, tours de force a 0
+-- point) et garde ceux a 80 % ou plus, avec les criteres restants. Le
+-- parcours est decoupe (une categorie par image) pour ne jamais figer le
+-- jeu ; resultat garde en memoire 10 minutes. SX.NearAchievements() renvoie
+-- la derniere liste connue (ou nil) et lance un parcours si elle est vieille.
+--   { { id, name, icon, points, pct, done, total, remaining = { textes } } }
+-- ============================================================================
+local achCache, achAt, achRunning = nil, 0, false
+local ACH_MIN, ACH_KEEP = 0.8, 5
+
+local function AchProgress(id)
+  local n = GetAchievementNumCriteria and GetAchievementNumCriteria(id) or 0
+  if n == 0 then return nil end
+  local done, remaining = 0, {}
+  if n == 1 then
+    local text, _, completed, qty, req = GetAchievementCriteriaInfo(id, 1)
+    if completed then return nil end
+    if not req or req <= 1 then return nil end   -- tout ou rien : pas de progression
+    return (qty or 0) / req, qty or 0, req, { (text and text ~= "") and text or nil }
+  end
+  for i = 1, n do
+    local text, _, completed = GetAchievementCriteriaInfo(id, i)
+    if completed then done = done + 1 elseif #remaining < 3 and text and text ~= "" then remaining[#remaining + 1] = text end
+  end
+  return done / n, done, n, remaining
+end
+
+function SX.ScanAchievements(onDone)
+  if achRunning or not (GetCategoryList and GetCategoryNumAchievements and GetAchievementInfo) then return end
+  achRunning = true
+  local okC, cats = pcall(GetCategoryList)
+  if not okC or type(cats) ~= "table" then achRunning = false; return end
+  local found, ci = {}, 0
+  local function step()
+    ci = ci + 1
+    local cat = cats[ci]
+    if not cat then
+      table.sort(found, function(a, b) return a.pct > b.pct end)
+      while #found > ACH_KEEP do table.remove(found) end
+      achCache, achAt, achRunning = found, GetTime(), false
+      if onDone then pcall(onDone, found) end
+      if SX.RefreshDashboard then pcall(SX.RefreshDashboard) end
+      return
+    end
+    local okN, total = pcall(GetCategoryNumAchievements, cat, true)
+    for i = 1, (okN and tonumber(total) or 0) do
+      local ok, id, name, points, completed, _, _, _, _, _, icon, _, isGuild, _, _, isStatistic = pcall(GetAchievementInfo, cat, i)
+      if ok and id and not completed and not isGuild and not isStatistic and (points or 0) > 0 then
+        local okP, pct, d, t, rem = pcall(AchProgress, id)
+        if okP and pct and pct >= ACH_MIN and pct < 1 then
+          found[#found + 1] = { id = id, name = name, icon = icon, points = points, pct = pct, done = d, total = t, remaining = rem }
+        end
+      end
+    end
+    C_Timer.After(0, step)
+  end
+  step()
+end
+
+function SX.NearAchievements()
+  if (not achCache or GetTime() - achAt > 600) and not achRunning then SX.ScanAchievements() end
+  return achCache
+end
+
+-- Ouvre le haut fait dans la fenetre de Blizzard.
+function SX.OpenAchievement(id)
+  if not AchievementFrame and UIParentLoadAddOn then pcall(UIParentLoadAddOn, "Blizzard_AchievementUI") end
+  if OpenAchievementFrameToAchievement then pcall(OpenAchievementFrameToAchievement, id) end
+end
+
+-- ============================================================================
+-- BILAN DE SESSION (7.1.5.45, feuille de route lot 6)
+-- ----------------------------------------------------------------------------
+-- Une session = du login a la deconnexion ; un /reload (moins de 5 min
+-- d'ecart) la prolonge. Gardee dans le personnage : rec.liveSession, puis
+-- rec.lastSession. A la connexion suivante, la session precedente (10 min
+-- au moins) est resumee dans le fil d'activite de TibiSuite.
+-- Compteurs = difference des journees de Stats depuis le debut de session
+-- (fonctionne a cheval sur minuit) ; or = difference de GetMoney().
+-- ============================================================================
+local SESSION_GAP, SESSION_MIN = 300, 600
+
+local function DayStart(ts)
+  local d = date("*t", ts)
+  d.hour, d.min, d.sec = 0, 0, 0
+  return time(d)
+end
+
+local function Counters(key, from, to)
+  local ok, a = pcall(SX.Aggregate, key, from, to)
+  if not ok or type(a) ~= "table" then return {} end
+  return { quests = a.quests or 0, dungeons = (a.dungeons or 0) + (a.mplusCount or 0), delves = a.delves or 0,
+           raids = a.raids or 0, rep = a.repGained or 0 }
+end
+
+-- Etat d'une session : duree, or, compteurs depuis son debut.
+function SX.SessionNow(s, key)
+  if type(s) ~= "table" then return nil end
+  local now = s.ended or time()
+  local cur = Counters(key, DayStart(s.start), now)
+  local out = { start = s.start, dur = math.max(0, (s.last or now) - s.start),
+                gold = (s.moneyEnd or (GetMoney and GetMoney()) or 0) - (s.money or 0) }
+  for k, v in pairs(cur) do out[k] = math.max(0, v - ((s.base or {})[k] or 0)) end
+  if _G.SkillTracker_GatheredSince then
+    local okG, n = pcall(SkillTracker_GatheredSince, s.start)
+    if okG then out.gathered = n end
+  end
+  return out
+end
+
+function SX.SessionText(r)
+  local L = SX.L
+  local TS = _G.TibiSuite
+  local dur = (TS and TS.FmtDuration) and TS.FmtDuration(r.dur) or (math.floor(r.dur / 60) .. " min")
+  local gold = (TS and TS.FmtGold) and (TS.FmtGold(r.gold) .. " " .. L["SESSION_GOLD_UNIT"]) or tostring(math.floor(r.gold / 10000))
+  local parts = { dur, gold }
+  if (r.quests or 0) > 0 then parts[#parts + 1] = string.format(L["SESSION_QUESTS_FMT"], r.quests) end
+  if (r.dungeons or 0) > 0 then parts[#parts + 1] = string.format(L["SESSION_DUNGEONS_FMT"], r.dungeons) end
+  if (r.delves or 0) > 0 then parts[#parts + 1] = string.format(L["SESSION_DELVES_FMT"], r.delves) end
+  if (r.raids or 0) > 0 then parts[#parts + 1] = string.format(L["SESSION_RAIDS_FMT"], r.raids) end
+  if (r.gathered or 0) > 0 then parts[#parts + 1] = string.format(L["SESSION_GATHER_FMT"], r.gathered) end
+  return table.concat(parts, "  ·  ")
+end
+
+local function SessionStart(rec, key)
+  local now = time()
+  local d0 = DayStart(now)
+  rec.liveSession = { start = now, last = now, money = GetMoney and GetMoney() or 0,
+                      base = Counters(key, d0, now) }
+end
+
+local function SessionTick(final)
+  local key = SX.CurrentCharKey and SX.CurrentCharKey()
+  local rec = key and StatsDB and StatsDB[key]
+  local s = rec and rec.liveSession
+  if not s then return end
+  s.last = time()
+  s.moneyEnd = GetMoney and GetMoney() or s.moneyEnd
+end
+SX.SessionTick = SessionTick
+
+local sessionFrame = CreateFrame("Frame")
+sessionFrame:RegisterEvent("PLAYER_LOGIN")
+sessionFrame:RegisterEvent("PLAYER_LOGOUT")
+sessionFrame:SetScript("OnEvent", function(_, event)
+  if event == "PLAYER_LOGOUT" then pcall(SessionTick, true); return end
+  C_Timer.After(3, function()
+    local key = SX.CurrentCharKey and SX.CurrentCharKey()
+    local rec = key and StatsDB and StatsDB[key]
+    if type(rec) ~= "table" then return end
+    rec.histSince = rec.histSince or time()
+    local s = rec.liveSession
+    local now = time()
+    if s and now - (s.last or 0) <= SESSION_GAP then
+      -- /reload ou deconnexion breve : la session continue.
+    else
+      -- Compteurs de la carte Session (7.1.5.45) : toute session d'une
+      -- minute au moins, ecrite dans sa journee de depart.
+      if s and s.start and (s.last or s.start) - s.start >= 60 then
+        local okD, d = pcall(SX.EnsureDay, rec, SX.DayKey(s.start))
+        if okD and d then
+          d.sessions = (d.sessions or 0) + 1
+          d.sessionTime = (d.sessionTime or 0) + ((s.last or s.start) - s.start)
+        end
+      end
+      if s and (s.last or s.start) - s.start >= SESSION_MIN then
+        s.ended = s.last
+        local okR, r = pcall(SX.SessionNow, s, key)
+        if okR and r then
+          rec.lastSession = r
+          local TS = _G.TibiSuite
+          if TS and TS.Notify then
+            TS.Notify("Stats", string.format(SX.L["SESSION_NOTIFY_FMT"], date("%d/%m %H:%M", s.start), SX.SessionText(r)),
+              { toast = false })
+          end
+        end
+      end
+      SessionStart(rec, key)
+    end
+    C_Timer.NewTicker(60, function() pcall(SessionTick) end)
+  end)
 end)

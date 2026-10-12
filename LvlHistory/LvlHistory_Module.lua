@@ -122,6 +122,43 @@ if HasCore() and IsEnabledByCore() then
       end
       return { text = string.format(SL.ST_LVL_FMT or "%d %d", lvl, math.floor(pct * 100)), progress = pct }
     end,
+    -- Apercu du Centre (7.1.5.45) : niveau, temps avant le suivant, XP/h,
+    -- XP reposee, session en cours. Rien au niveau maximum.
+    overviewFn = function()
+      local SL, TS = _G.TibiSuiteL or {}, _G.TibiSuite
+      local out = { lines = {}, empty = SL.OV_LVL_MAX }
+      local maxXP = UnitXPMax and UnitXPMax("player") or 0
+      local cur, lvl = UnitXP("player") or 0, UnitLevel("player") or 0
+      local cap = GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion()
+      if maxXP <= 0 or (cap and lvl >= cap) or (IsXPUserDisabled and IsXPUserDisabled()) then return out end
+      local lines = out.lines
+      local pct = cur / maxXP
+      lines[#lines + 1] = { text = string.format(SL.OV_LVL_LEVEL_FMT or "%d", lvl), value = math.floor(pct * 100) .. " %",
+        progress = pct, target = 6 }
+      local s
+      if _G.LvlHistoryAPI and LvlHistoryAPI.GetSession then
+        local ok, v = pcall(LvlHistoryAPI.GetSession); if ok then s = v end
+      end
+      local xph = s and (tonumber(s.liveXPH) or tonumber(s.xph)) or 0
+      if xph > 0 and TS and TS.FmtDuration then
+        lines[#lines + 1] = { text = SL.OV_LVL_ETA, value = TS.FmtDuration((maxXP - cur) / xph * 3600), target = 1 }
+        local n = math.floor(xph)
+        lines[#lines + 1] = { text = SL.OV_LVL_XPH, value = (BreakUpLargeNumbers and BreakUpLargeNumbers(n)) or tostring(n), target = 1 }
+      end
+      local rested = GetXPExhaustion and GetXPExhaustion() or 0
+      if rested and rested > 0 then
+        lines[#lines + 1] = { text = SL.OV_LVL_RESTED, value = math.floor(math.min(1.5, rested / maxXP) * 100) .. " %",
+          color = { 0.31, 0.62, 1 } }
+      end
+      if s and ((s.quests or 0) + (s.dungeons or 0)) > 0 then
+        lines[#lines + 1] = { text = SL.OV_LVL_SESSION, value = string.format(SL.OV_LVL_SESSION_FMT or "%d %d", s.quests or 0, s.dungeons or 0), target = 1 }
+      end
+      return out
+    end,
+    openTo = function(tab)
+      if _G.LvlHistoryAPI and LvlHistoryAPI.Open and tonumber(tab) then LvlHistoryAPI.Open(tonumber(tab)); return true end
+      return false
+    end,
   })
 end
 

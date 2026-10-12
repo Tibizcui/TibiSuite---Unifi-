@@ -42,6 +42,7 @@ Core.lua
 Concentration.lua
 Knowledge.lua
 Recipes.lua
+Gathering.lua
 UI.lua
 ## Glue TibiSuite : inscription comme onglet du catalogue unifie
 SkillTracker_Module.lua

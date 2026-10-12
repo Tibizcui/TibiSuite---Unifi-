@@ -36,8 +36,8 @@ local TAB_H     = 28
 local TAB_GAP   = 2
 
 -- Vues virtuelles (en tete de colonne) puis extensions
-local VIRTUAL  = {"Season","Nearby","Favs"}
-local IS_VIRTUAL = { Season=true, Nearby=true, Favs=true }
+local VIRTUAL  = {"Season","Nearby","Favs","Coll"}
+local IS_VIRTUAL = { Season=true, Nearby=true, Favs=true, Coll=true }
 local EXT_ROW1 = {"Midnight","TheWarWithin","Dragonflight","Shadowlands","BattleForAzeroth","Legion"}
 local EXT_ROW2 = {"WarlordsOfDraenor","MistsOfPandaria","Cataclysme","WrathOfTheLichKing","TheBurningCrusade","Vanilla"}
 
@@ -47,12 +47,14 @@ local EXT_LABELS = {
   WarlordsOfDraenor="WoD", MistsOfPandaria="MoP", Cataclysme="CATA",
   WrathOfTheLichKing="WotLK", TheBurningCrusade="TBC", Vanilla="VAN",
   Season=T("VT_SEASON", "Saison"), Nearby=T("VT_NEAR", "Près de moi"), Favs=T("VT_FAVS", "Favoris"),
+  Coll=T("VT_COLL", "Collections"),
 }
 -- Alias de /dg <mot> vers une vue ou une extension
 local SLASH_ALIAS = {
   saison="Season", season="Season", mplus="Season", ["m+"]="Season",
   proche="Nearby", near="Nearby", nearby="Nearby", ici="Nearby", here="Nearby",
   fav="Favs", favs="Favs", favoris="Favs", favorites="Favs",
+  collections="Coll", coll="Coll", collection="Coll", montures="Coll", mounts="Coll",
   mid="Midnight", tww="TheWarWithin", df="Dragonflight", sl="Shadowlands", bfa="BattleForAzeroth",
   leg="Legion", legion="Legion", wod="WarlordsOfDraenor", mop="MistsOfPandaria", cata="Cataclysme",
   cataclysm="Cataclysme", wotlk="WrathOfTheLichKing", wrath="WrathOfTheLichKing", tbc="TheBurningCrusade",
@@ -66,7 +68,7 @@ local EXT_FULLNAMES = {
   Cataclysme=T("EXT_CATA", "Cataclysme (4.0)"), WrathOfTheLichKing="Wrath of the Lich King (3.0)",
   TheBurningCrusade="The Burning Crusade (2.0)", Vanilla="Vanilla (1.0)",
   Season=T("VT_SEASON_FULL", "Saison en cours"), Nearby=T("VT_NEAR_FULL", "Près de moi"),
-  Favs=T("VT_FAVS_FULL", "Mes favoris"),
+  Favs=T("VT_FAVS_FULL", "Mes favoris"), Coll=T("VT_COLL_FULL", "Collections à farmer"),
 }
 local EXT_TAB_COLORS = {
   Midnight={r=0.58,g=0.30,b=0.95}, TheWarWithin={r=0.55,g=0.75,b=0.95},
@@ -76,6 +78,7 @@ local EXT_TAB_COLORS = {
   Cataclysme={r=0.95,g=0.35,b=0.10}, WrathOfTheLichKing={r=0.65,g=0.85,b=1.00},
   TheBurningCrusade={r=0.20,g=0.75,b=0.28}, Vanilla={r=0.80,g=0.72,b=0.55},
   Season={r=1.00,g=0.82,b=0.20}, Nearby={r=0.35,g=0.85,b=0.55}, Favs={r=1.00,g=0.45,b=0.60},
+  Coll={r=0.85,g=0.55,b=1.00},
 }
 
 -- Couleurs officielles WoW par type
@@ -261,6 +264,9 @@ local function SourceList(extKey)
   elseif extKey == "Nearby" then
     local list, mapID = Live.Nearby()
     return list, mapID and Live.MapName(mapID) or nil
+  elseif extKey == "Coll" then
+    local sum = DgnTrackerColl and DgnTrackerColl.Summary and DgnTrackerColl.Summary()
+    return {}, sum and string.format(T("COLL_SUB_FMT", "%d monture(s), %d mascotte(s), %d jouet(s) faisables cette semaine"), sum.mount, sum.pet, sum.toy) or nil
   elseif extKey == "Favs" then
     local out = {}
     local favs = DgnTrackerDB.favs or {}
@@ -318,6 +324,13 @@ local function Badges(inst)
     end
   end
   if i.bountiful then b[#b + 1] = "|cFFFFD700" .. T("BADGE_BOUNTIFUL", "Abondant") .. "|r" end
+  local CollB = _G.DgnTrackerColl
+  local ms = CollB and CollB.ForInstance and CollB.ForInstance(i.jid or inst.jid)
+  if ms then
+    local n = 0
+    for _, m in ipairs(ms) do if m.state == "avail" then n = n + 1 end end
+    if n > 0 then b[#b + 1] = "|TInterface\\Icons\\Ability_Mount_RidingHorse:12:12|t |cFFD9A6FF" .. n .. "|r" end
+  end
   if inst.detected then b[#b + 1] = "|cFF7FB2B2" .. T("BADGE_DETECTED", "détecté") .. "|r" end
   -- Repaire (12.1) : badge blanc LairLens + difficultes faites cette semaine
   -- (lues via LairLensAPI si le module est charge, sinon badge seul).
@@ -452,6 +465,8 @@ local function BuildUI()
         GameTooltip:AddLine(T("VT_NEAR_TT", "Les instances de la zone où vous êtes, de la plus proche à la plus lointaine."),0.75,0.75,0.75,true)
       elseif extKey == "Favs" then
         GameTooltip:AddLine(T("VT_FAVS_TT", "Maj+clic sur une instance pour l'ajouter ou la retirer."),0.75,0.75,0.75,true)
+      elseif extKey == "Coll" then
+        GameTooltip:AddLine(T("VT_COLL_TT", "Montures, mascottes et jouets du butin des donjons et raids, et ce qui reste faisable cette semaine."),0.75,0.75,0.75,true)
       else
         local ed = DgnTrackerData[extKey]
         if ed and ed.instances then
@@ -744,6 +759,313 @@ local function BuildUI()
   end
 
   -- ================================================================
+  -- VUE COLLECTIONS (7.1.5.45, moteur dans Collections.lua)
+  -- Montures, mascottes et jouets du butin, par extension puis instance,
+  -- avec l'etat de la semaine. Pools propres (masques dans les autres vues).
+  -- ================================================================
+  local Coll = DgnTrackerColl
+  local KIND_LABEL = { mount = T("COLL_MOUNT", "Monture"), pet = T("COLL_PET", "Mascotte"), toy = T("COLL_TOY", "Jouet") }
+  local KIND_ORDER = { "all", "mount", "pet", "toy" }
+  local KIND_TAB = { all = T("COLL_ALL", "Tout"), mount = T("COLL_MOUNTS", "Montures"), pet = T("COLL_PETS", "Mascottes"), toy = T("COLL_TOYS", "Jouets") }
+  local COLL_COL = { r = 0.85, g = 0.55, b = 1.00 }
+  mainFrame.collHead, mainFrame.collRow, mainFrame.collKindBtns = {}, {}, {}
+
+  local function CollFlag(key, default)
+    local v = DgnTrackerDB["coll_" .. key]
+    if v == nil then return default end
+    return v
+  end
+
+  -- Boutons de type (a la place des onglets internes) + deux bascules.
+  for i, kind in ipairs(KIND_ORDER) do
+    local b = CreateFrame("Button", nil, mainFrame, "BackdropTemplate")
+    b:SetSize(74, innerTabH)
+    b:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", CX + (i - 1) * 78, innerTabY)
+    b:SetBackdrop({ bgFile = "Interface\\ChatFrame\\ChatFrameBackground", edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+      tile = true, tileSize = 8, edgeSize = 4, insets = { left = 1, right = 1, top = 1, bottom = 1 } })
+    b.txt = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    b.txt:SetPoint("CENTER")
+    b.kind = kind
+    b:SetScript("OnClick", function(s)
+      DgnTrackerDB.coll_kind = s.kind
+      mainFrame:RefreshContent()
+      if mainFrame.scrollFrame then mainFrame.scrollFrame:SetVerticalScroll(0) end
+    end)
+    b:Hide()
+    mainFrame.collKindBtns[i] = b
+  end
+
+  local function AcquireCollHead(i)
+    local h = mainFrame.collHead[i]
+    if h then return h end
+    h = CreateFrame("Button", nil, scrollChild, "BackdropTemplate")
+    h:SetBackdrop(BACKDROP)
+    h:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    h.fs = h:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    h.fs:SetPoint("LEFT", 8, 0); h.fs:SetJustifyH("LEFT"); h.fs:SetWordWrap(false)
+    h.right = h:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    h.right:SetPoint("RIGHT", -8, 0); h.right:SetJustifyH("RIGHT")
+    h:SetScript("OnClick", function(s, button)
+      if s.toggle then
+        DgnTrackerDB["coll_" .. s.toggle] = not CollFlag(s.toggle, s.toggleDefault)
+        mainFrame:RefreshContent()
+        return
+      end
+      if s.tierKey then
+        DgnTrackerDB.coll_open = DgnTrackerDB.coll_open or {}
+        DgnTrackerDB.coll_open[s.tierKey] = not s.tierOpen
+        mainFrame:RefreshContent()
+        return
+      end
+      if not s.jid then return end
+      local q = { jid = s.jid, name = s.instName, type = s.raid and "raid" or "dungeon" }
+      local inst = Live.Find(q)
+      if button == "RightButton" then
+        if inst then DgnSetWaypoint(inst) end
+      elseif inst then
+        DgnTracker_OpenInstance(inst)
+      end
+    end)
+    h:SetScript("OnEnter", function(s)
+      if s.tierKey then
+        GameTooltip:SetOwner(s, "ANCHOR_BOTTOMRIGHT")
+        GameTooltip:AddLine(s.tierKey, 1, 0.84, 0)
+        GameTooltip:AddLine("|cFFFFD700" .. T("LEFT_CLICK_LABEL", "Clic gauche") .. "|r : " .. (s.tierOpen and T("CLOSE_WORD", "fermer") or T("COLL_UNFOLD", "déplier")), 0.7, 0.7, 0.7)
+        GameTooltip:Show()
+        return
+      end
+      if not s.jid then return end
+      GameTooltip:SetOwner(s, "ANCHOR_BOTTOMRIGHT")
+      GameTooltip:AddLine(s.instName or "", 1, 0.84, 0)
+      GameTooltip:AddLine("|cFFFFD700" .. T("LEFT_CLICK_LABEL", "Clic gauche") .. "|r : " .. T("COLL_OPEN_INST", "ouvrir la fiche de l'instance"), 0.7, 0.7, 0.7)
+      GameTooltip:AddLine("|cFFFFD700" .. T("RIGHT_CLICK_LABEL", "Clic droit") .. "|r : " .. T("SET_WAYPOINT_HINT", "poser un point de route (waypoint)"), 0.7, 0.7, 0.7)
+      GameTooltip:Show()
+    end)
+    h:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    mainFrame.collHead[i] = h
+    return h
+  end
+
+  local function AcquireCollRow(i)
+    local r = mainFrame.collRow[i]
+    if r then return r end
+    r = CreateFrame("Button", nil, scrollChild, "BackdropTemplate")
+    r:SetBackdrop(BACKDROP)
+    r.icon = r:CreateTexture(nil, "ARTWORK")
+    r.icon:SetSize(24, 24); r.icon:SetPoint("LEFT", 6, 0)
+    r.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    r.nameFS = r:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    r.nameFS:SetPoint("TOPLEFT", 38, -4); r.nameFS:SetJustifyH("LEFT"); r.nameFS:SetWordWrap(false)
+    r.subFS = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    r.subFS:SetPoint("TOPLEFT", 38, -18); r.subFS:SetJustifyH("LEFT"); r.subFS:SetWordWrap(false)
+    r.stateFS = r:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    r.stateFS:SetPoint("RIGHT", -8, 0); r.stateFS:SetJustifyH("RIGHT")
+    r:SetScript("OnEnter", function(s)
+      if not s.itemID then return end
+      GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+      GameTooltip:SetItemByID(s.itemID)
+      if s.rateTxt or s.rateNote then
+        GameTooltip:AddLine(" ")
+        if s.rateTxt then
+          GameTooltip:AddLine(string.format(T("COLL_RATE_TT", "Taux estimé : %s"), s.rateTxt), 1, 0.84, 0)
+        end
+        if s.rateNote then GameTooltip:AddLine(s.rateNote, 0.9, 0.75, 0.4, true) end
+        GameTooltip:AddLine(T("COLL_RATE_SRC", "Estimation communautaire (missingmounts.com, Wowhead), jamais officielle."), 0.6, 0.6, 0.6, true)
+      end
+      -- Comment l'obtenir (7.1.5.45) : notre lecture + la source du jeu.
+      if s.rec and Coll and Coll.HowTo then
+        local lines, src = Coll.HowTo(s.rec, s.instName)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(T("COLL_HOW_TITLE", "Comment l'obtenir"), 0.85, 0.65, 1)
+        for _, l in ipairs(lines) do GameTooltip:AddLine(l, 0.9, 0.9, 0.9, true) end
+        if src then GameTooltip:AddLine(src, 0.75, 0.75, 0.8, true) end
+      end
+      GameTooltip:AddLine(" ")
+      GameTooltip:AddLine("|cFFFFD700" .. T("SHIFT_CLICK_LABEL", "Maj+clic") .. "|r : " .. T("COLL_LINK_HINT", "lien dans la discussion"), 0.7, 0.7, 0.7)
+      GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    r:SetScript("OnClick", function(s)
+      if s.itemID and IsShiftKeyDown() and Coll then
+        local link = Coll.ItemLink(s.itemID)
+        if link then Coll.LinkToChat(link)
+        else
+          -- Objet pas encore charge : on reessaie des son arrivee.
+          C_Timer.After(0.5, function()
+            local l2 = Coll.ItemLink(s.itemID)
+            if l2 then Coll.LinkToChat(l2) end
+          end)
+        end
+      end
+    end)
+    mainFrame.collRow[i] = r
+    return r
+  end
+
+  mainFrame.HideColl = function(self)
+    for _, h in ipairs(self.collHead) do h:Hide() end
+    for _, r in ipairs(self.collRow) do r:Hide() end
+    for _, b in ipairs(self.collKindBtns) do b:Hide() end
+  end
+
+  mainFrame.RenderColl = function(self)
+    for _, h in ipairs(self.headerPool) do h:Hide() end
+    for _, d in ipairs(self.detailPool) do d:Hide() end
+    for _, itb in ipairs(self.innerTabBtns) do itb:Hide() end
+    if self.emptyLbl then self.emptyLbl:Hide() end
+    wipe(self.rowY)
+    local kindSel = DgnTrackerDB.coll_kind or "all"
+    for _, b in ipairs(self.collKindBtns) do
+      local on = b.kind == kindSel
+      local c = COLL_COL
+      b:SetBackdropColor(c.r * (on and 0.35 or 0.08), c.g * (on and 0.35 or 0.08), c.b * (on and 0.35 or 0.08), 1)
+      b:SetBackdropBorderColor(c.r * (on and 1 or 0.35), c.g * (on and 1 or 0.35), c.b * (on and 1 or 0.35), on and 1 or 0.55)
+      b.txt:SetText((on and "|cFFFFFFFF" or "|cFFBB99DD") .. KIND_TAB[b.kind] .. "|r")
+      b:Show()
+    end
+
+    local rowW = scrollChild:GetWidth() - 6
+    local curY, hIdx, rIdx = 0, 0, 0
+    local function head(text, right, opts)
+      hIdx = hIdx + 1
+      local h = AcquireCollHead(hIdx)
+      h:ClearAllPoints(); h:SetPoint("TOPLEFT", 0, -curY)
+      local hh = opts and opts.h or 24
+      h:SetSize(rowW, hh)
+      local c = opts and opts.col or COLL_COL
+      local k = opts and opts.dim or 0.08
+      h:SetBackdropColor(c.r * k, c.g * k, c.b * k, 0.95)
+      h:SetBackdropBorderColor(c.r * 0.45, c.g * 0.45, c.b * 0.45, (opts and opts.flat) and 0 or 0.7)
+      h.fs:SetFontObject((opts and opts.small) and "GameFontNormalSmall" or "GameFontNormal")
+      h.fs:SetWidth(rowW - 160)
+      h.fs:SetText(text or "")
+      h.right:SetText(right or "")
+      h.jid, h.instName, h.raid = opts and opts.jid, opts and opts.instName, opts and opts.raid
+      h.toggle, h.toggleDefault = opts and opts.toggle, opts and opts.toggleDefault
+      h.tierKey, h.tierOpen = opts and opts.tierKey, opts and opts.tierOpen
+      h:Show()
+      curY = curY + hh + 3
+      return h
+    end
+
+    -- Catalogue absent ou en construction
+    local cat = Coll and Coll.Catalog()
+    if Coll and not cat and not Coll.IsBuilding() then
+      local ok, why = Coll.Start()
+      if not ok then
+        head("|cFFFF8844" .. (why == "open" and T("COLL_EJ_OPEN", "Ferme le journal des aventures : le catalogue se construit à partir de lui.")
+          or T("COLL_NO_API", "Journal des aventures illisible sur ce client.")) .. "|r", nil, { small = true, flat = true, h = 30 })
+      end
+    end
+    if not Coll then
+      head("|cFFFF8844" .. T("COLL_NOENGINE", "Moteur des collections absent : redémarre complètement le jeu (nouveau fichier).") .. "|r", nil, { small = true, flat = true, h = 30 })
+    elseif Coll.IsBuilding() then
+      local st = Coll.state
+      local what = st.phase == "scan" and T("COLL_BUILD_SCAN", "Lecture du journal des aventures") or T("COLL_BUILD_LOAD", "Chargement des objets")
+      head(string.format("|cFFFFD700%s|r  |cFFCCCCCC%d / %d|r", what, st.done or 0, st.total or 0), nil, { flat = true })
+      head("|cFF999999" .. T("COLL_BUILD_NOTE", "Première ouverture : le catalogue des montures, mascottes et jouets se construit une fois par version du jeu (moins d'une minute, le jeu reste fluide).") .. "|r", nil, { small = true, flat = true, h = 36 })
+    elseif cat then
+      local hideOwned = CollFlag("hideOwned", true)
+      local weekOnly = CollFlag("weekOnly", false)
+      local function box(on) return on and "|TInterface\\Buttons\\UI-CheckBox-Check:14:14|t" or "|TInterface\\Buttons\\UI-CheckBox-Up:14:14|t" end
+      head(box(hideOwned) .. " " .. T("COLL_HIDE_OWNED", "Masquer ce que j'ai déjà"), nil, { small = true, flat = true, h = 20, toggle = "hideOwned", toggleDefault = true })
+      head(box(weekOnly) .. " " .. T("COLL_WEEK_ONLY", "Seulement ce qui est faisable cette semaine"), nil, { small = true, flat = true, h = 20, toggle = "weekOnly", toggleDefault = false })
+      curY = curY + 4
+      local tiers = Coll.List({ kind = kindSel, hideOwned = hideOwned, weekOnly = weekOnly, search = self.searchText })
+      if #tiers == 0 then
+        head("|cFF888888" .. T("COLL_EMPTY", "Rien à afficher avec ces filtres.") .. "|r", nil, { small = true, flat = true })
+      end
+      DgnTrackerDB.coll_open = DgnTrackerDB.coll_open or {}
+      local searching = (self.searchText or "") ~= ""
+      for gi, g in ipairs(tiers) do
+        local tkey = tostring(g.tierName)
+        local open = DgnTrackerDB.coll_open[tkey]
+        if open == nil then open = (gi == 1) end
+        if searching then open = true end
+        local nItems, nAvail = 0, 0
+        for _, e in ipairs(g.list) do
+          for _, it in ipairs(e.items) do
+            nItems = nItems + 1
+            if it.state == "avail" then nAvail = nAvail + 1 end
+          end
+        end
+        head(string.format("|cFFE0C080%s %s|r", open and "-" or "+", tkey),
+          (nAvail > 0 and ("|cFF88DD88" .. string.format(T("COLL_AVAIL_FMT", "%d faisable(s) cette semaine"), nAvail) .. "|r  ") or "")
+          .. "|cFF888888" .. string.format(T("COLL_ITEMS_FMT", "%d objet(s)"), nItems) .. "|r",
+          { dim = 0.05, col = COLL_COL, tierKey = tkey, tierOpen = open })
+        for _, e in ipairs(open and g.list or {}) do
+          local nAvail = 0
+          for _, it in ipairs(e.items) do if it.state == "avail" then nAvail = nAvail + 1 end end
+          local tc = TYPE_COLORS[e.inst.raid and "raid" or "dungeon"]
+          head((e.inst.raid and "|cFF33DD55" or "|cFF66BBFF") .. tostring(e.inst.name) .. "|r",
+            nAvail > 0 and ("|cFF88DD88" .. string.format(T("COLL_AVAIL_FMT", "%d faisable(s) cette semaine"), nAvail) .. "|r") or nil,
+            { jid = e.jid, instName = e.inst.name, raid = e.inst.raid, col = tc, dim = 0.10 })
+          for _, it in ipairs(e.items) do
+            rIdx = rIdx + 1
+            local row = AcquireCollRow(rIdx)
+            row:ClearAllPoints(); row:SetPoint("TOPLEFT", 12, -curY)
+            row:SetSize(rowW - 12, 34)
+            row:SetBackdropColor(0.04, 0.03, 0.06, 0.95)
+            row:SetBackdropBorderColor(0.35, 0.28, 0.45, 0.6)
+            local dn, dic = Coll.Display(it.id, it.r)
+            row.icon:SetTexture(dic or 134400)
+            row.icon:SetDesaturated(it.state == "owned" or it.state == "done")
+            row.nameFS:SetWidth(rowW - 210)
+            row.subFS:SetWidth(rowW - 210)
+            row.nameFS:SetText((it.state == "owned" and "|cFF888888" or "|cFFFFFFFF") .. tostring(dn or ("#" .. it.id)) .. "|r")
+            local diffs = {}
+            for _, d in ipairs(it.open or it.r.d or {}) do diffs[#diffs + 1] = Coll.DiffName(d) end
+            local rateTxt, _, rateNote = Coll.Rate(it.r)
+            row.rateNote, row.rateTxt = rateNote, rateTxt
+            row.subFS:SetText("|cFFBB99DD" .. (KIND_LABEL[it.r.k] or "") .. "|r"
+              .. (rateTxt and ("  |cFFFFD700" .. rateTxt .. "|r") or "")
+              .. (it.r.en and ("  |cFF999999" .. it.r.en .. "|r") or "")
+              .. ((#diffs > 0) and ("  |cFF777777" .. table.concat(diffs, " / ") .. "|r") or ""))
+            local st
+            if it.state == "avail" then st = "|cFF4DCC72" .. T("COLL_ST_AVAIL", "Faisable") .. "|r"
+            elseif it.state == "done" then
+              st = "|cFF999999" .. T("COLL_ST_DONE", "Boss tué cette semaine") .. "|r"
+              if it.reset then st = st .. "\n|cFF777777" .. string.format(T("RESET_IN_FMT", "reset dans %s"), FmtDelay(it.reset)) .. "|r" end
+            elseif it.state == "tw" then st = "|cFF66AAFF" .. T("COLL_ST_TW", "Marcheurs du temps") .. "|r"
+            else st = "|cFF888888" .. T("COLL_ST_OWNED", "Obtenu") .. "|r" end
+            row.stateFS:SetText(st)
+            row.itemID = it.id
+            row.rec, row.instName = it.r, e.inst.name
+            row:Show()
+            curY = curY + 36
+          end
+          curY = curY + 2
+        end
+        curY = curY + 4
+      end
+    end
+
+    for i = hIdx + 1, #self.collHead do self.collHead[i]:Hide() end
+    for i = rIdx + 1, #self.collRow do self.collRow[i]:Hide() end
+    scrollChild:SetHeight(math.max(curY + 10, 100))
+    local minH = math.max(COL_CONTENT_H + 70, 400)
+    local ui = GetUI()
+    local newH
+    if ui and ui.FitHeight then
+      newH = ui.FitHeight(self, math.min(curY, 700), { chrome = 120, min = minH, margin = 80 })
+    else
+      newH = math.max(minH, math.min(curY + 120, 820))
+      self:SetHeight(newH)
+    end
+    self.tabColBg:SetHeight(newH - 64)
+  end
+
+  -- Rafraichissement regroupe pendant la construction du catalogue.
+  if Coll and Coll.SetOnChange then
+    local pendingR = false
+    Coll.SetOnChange(function()
+      if pendingR or not mainFrame:IsShown() or DgnTrackerDB.extension ~= "Coll" then return end
+      pendingR = true
+      C_Timer.After(0.3, function() pendingR = false; if mainFrame:IsShown() then mainFrame:RefreshContent() end end)
+    end)
+  end
+
+  -- ================================================================
   -- REFRESH CONTENT
   -- ================================================================
   mainFrame.RefreshContent = function(self)
@@ -772,12 +1094,18 @@ local function BuildUI()
       end
       local n = 0
       if eb.extKey == "Favs" then n = CountFavs()
+      elseif eb.extKey == "Coll" then
+        local sum = DgnTrackerColl and DgnTrackerColl.Catalog and DgnTrackerColl.Catalog() and DgnTrackerColl.Summary()
+        n = sum and sum.mount or 0
       elseif not IS_VIRTUAL[eb.extKey] then
         local ed = DgnTrackerData[eb.extKey]
         n = ed and ed.instances and #ed.instances or 0
       end
       eb.cntLbl:SetText(n>0 and string.format("|cFF888888%d|r",n) or "")
     end
+
+    if extKey == "Coll" then self:RenderColl(); return end
+    self:HideColl()
 
     -- ── Onglets internes : selon les types presents ───────────────
     local tabs = TabsFor(source)
@@ -991,6 +1319,32 @@ local function BuildUI()
         if bosses and #bosses > 0 then
           extra[#extra + 1] = hdrCol .. string.format(T("BOSSES_FMT", "Boss (%d) :"), #bosses) .. "|r |cFFCCCCCC" .. table.concat(bosses, ", ") .. "|r"
         end
+        -- Montures de l'instance (7.1.5.45) : taux estime, boss, difficultes
+        -- et etat de la semaine, lus dans le catalogue des Collections.
+        local CollE = _G.DgnTrackerColl
+        local mounts = CollE and CollE.ForInstance and CollE.ForInstance(info.jid or inst.jid)
+        if mounts and #mounts > 0 then
+          local lines = {}
+          for _, m in ipairs(mounts) do
+            local rate = CollE.Rate(m.r)
+            local diffs = {}
+            for _, d in ipairs(m.open or m.r.d or {}) do diffs[#diffs + 1] = CollE.DiffName(d) end
+            local st
+            if m.state == "avail" then st = "|cFF4DCC72" .. T("COLL_ST_AVAIL", "Faisable") .. "|r"
+            elseif m.state == "done" then st = "|cFF999999" .. T("COLL_ST_DONE", "Boss tué cette semaine") .. "|r"
+            elseif m.state == "tw" then st = "|cFF66AAFF" .. T("COLL_ST_TW", "Marcheurs du temps") .. "|r"
+            else st = "|cFF888888" .. T("COLL_ST_OWNED", "Obtenu") .. "|r" end
+            local name = (CollE.Display and select(1, CollE.Display(m.id, m.r))) or m.r.n or ("#" .. m.id)
+            lines[#lines + 1] = "  |cFFFFFFFF" .. tostring(name) .. "|r"
+              .. (rate and ("  |cFFFFD700" .. rate .. "|r") or "")
+              .. (m.r.en and ("  |cFF999999" .. m.r.en .. "|r") or "")
+              .. ((#diffs > 0) and ("  |cFF777777" .. table.concat(diffs, " / ") .. "|r") or "")
+              .. "  " .. st
+          end
+          extra[#extra + 1] = hdrCol .. string.format(T("INST_MOUNTS_FMT", "Montures (%d) :"), #mounts) .. "|r\n" .. table.concat(lines, "\n")
+        elseif CollE and CollE.Catalog and not CollE.Catalog() and (info.jid or inst.jid) then
+          extra[#extra + 1] = "|cFF888888" .. T("INST_MOUNTS_HINT", "Montures : ouvre une fois l'onglet Collections pour les lister ici.") .. "|r"
+        end
         if info.cmid then
           local mp = Live.MPlusFor(info.cmid)
           if mp and mp.level then
@@ -1096,6 +1450,15 @@ function DgnTracker_Toggle()
   else
     ShowMain()
   end
+end
+
+-- Ouvre la fenetre sur une vue ou une extension (ex. "Coll", "Season").
+function DgnTracker_OpenView(key)
+  if not mainFrame then return false end
+  DgnTrackerDB.extension = key
+  ShowMain()
+  if mainFrame.scrollFrame then mainFrame.scrollFrame:SetVerticalScroll(0) end
+  return true
 end
 
 -- Ouvre la fenetre directement sur une instance (dans son extension), depliee.
@@ -1316,6 +1679,23 @@ SlashCmdList["DGNTRACKER"] = function(msg)
       print("  |cFF888888" .. T("CHECK_NOTE", "Les points de route suivent déjà la position du jeu. Faites /reload et envoyez WTF\\...\\SavedVariables\\DgnTracker.lua à Tibiscui pour corriger les fiches.") .. "|r")
     end
     if mainFrame:IsShown() then mainFrame:RefreshContent() end
+    return
+  elseif msg=="collections rebuild" or msg=="coll rebuild" then
+    if DgnTrackerColl then
+      local ok, why = DgnTrackerColl.Start(true)
+      if ok then Chat(T("COLL_REBUILD", "reconstruction du catalogue des collections lancée.")) GoTo("Coll")
+      elseif why == "open" then Chat(T("COLL_EJ_OPEN", "Ferme le journal des aventures : le catalogue se construit à partir de lui.")) end
+    end
+    return
+  elseif msg=="loot" then
+    local ok, why = Live.LootProbe(function() Chat("sonde des collections terminée. Tape |cFFFFD700/dg loot report|r.") end)
+    if ok then Chat("sonde des collections lancée (quelques secondes, le jeu reste fluide)...")
+    elseif why == "open" then Chat("ferme d'abord le journal des aventures, puis relance /dg loot.")
+    elseif why == "running" then Chat("sonde des collections déjà en cours.")
+    else Chat("journal des aventures illisible sur ce client.") end
+    return
+  elseif msg=="loot report" then
+    Live.LootProbeReport(Chat)
     return
   elseif msg=="probe clear" or msg=="sonde clear" then
     DgnTrackerDB.probe = nil

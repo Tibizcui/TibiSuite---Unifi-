@@ -1106,6 +1106,29 @@ SlashCmdList["WEEKLYCOMPASS"] = function(msg)
             print(("  - %s [%s]%s%s"):format(e.label or e.key, e.status, p, r))
         end
 
+    elseif msg == "mplus" or msg == "m+" then
+        -- Sonde Mythique+ : ce que le client renvoie vraiment (cle en poche
+        -- jamais confirmee en jeu). Resultat imprime et garde dans
+        -- WeeklyCompassDB.mplusProbe.
+        local MP, CM = C_MythicPlus, C_ChallengeMode
+        local function call(t, f, ...) if t and type(t[f]) == "function" then local ok, a, b = pcall(t[f], ...); if ok then return a, b end end end
+        local p = { at = time() }
+        p.keyMap = call(MP, "GetOwnedKeystoneChallengeMapID")
+        p.keyLevel = call(MP, "GetOwnedKeystoneLevel")
+        p.score = call(CM, "GetOverallDungeonScore")
+        local maps = call(CM, "GetMapTable")
+        p.maps = type(maps) == "table" and #maps or nil
+        local hist = call(MP, "GetRunHistory", false, true)
+        p.runs = type(hist) == "table" and #hist or nil
+        local m = ns.CollectMPlus and ns.CollectMPlus()
+        p.collected = m and { score = m.score, weekBest = m.weekBest, weekRuns = m.weekRuns,
+            key = m.key and (m.key.level .. " " .. tostring(m.key.name)) or nil, dungeons = m.runs and #m.runs or 0 } or nil
+        local g = ns.DB:GetGlobal()
+        if g then g.mplusProbe = p end
+        print("|cff0affbeWeeklyCompass|r M+ : cle " .. tostring(p.keyLevel) .. " (carte " .. tostring(p.keyMap) .. "), cote "
+            .. tostring(p.score) .. ", donjons " .. tostring(p.maps) .. ", courses " .. tostring(p.runs)
+            .. (m and m.weekBest and (", meilleure de la semaine +" .. m.weekBest) or ""))
+
     elseif msg == "debug" then
         local g = ns.DB:GetGlobal()
         if g then

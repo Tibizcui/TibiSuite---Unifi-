@@ -93,6 +93,7 @@ if HasCore() and IsEnabledByCore() then
     onOpen         = function() Standby_Toggle() end,
     onOptions      = function() Standby_OpenOptions() end,
     searchProvider = SB.SearchProvider,   -- Bridge.lua
+    overviewFn     = function() if SB.Overview then return SB.Overview() end end,
   })
 elseif not HasCore() then
   local f = CreateFrame("Frame")

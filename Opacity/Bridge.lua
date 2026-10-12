@@ -18,6 +18,25 @@ local T = OP.T
 local function Pct(v) return math.floor((v or 0) * 100 + 0.5) .. " %" end
 
 -- ============================================================================
+-- Apercu du Centre TibiSuite (overviewFn, 7.1.5.45) : profil, curseur
+-- maitre, contexte en cours.
+-- ============================================================================
+function OP.Overview()
+  local SL = _G.TibiSuiteL or {}
+  local out = { lines = {} }
+  local prof = OP.Profile and OP.Profile()
+  if not prof then return out end
+  local lines = out.lines
+  lines[#lines + 1] = { text = SL.OV_OPA_PROFILE, value = (OP.CurrentProfileName and OP.CurrentProfileName()) or "-" }
+  lines[#lines + 1] = { text = SL.OV_OPA_MASTER, value = (OP.IsRunning and not OP.IsRunning()) and SL.OV_OPA_OFF or Pct(prof.master),
+    progress = prof.master }
+  local ctx = OP.activeContext
+  lines[#lines + 1] = { text = SL.OV_OPA_CTX,
+    value = ctx and T("CTX_" .. tostring(ctx):upper(), tostring(ctx)) or SL.OV_OPA_NONE }
+  return out
+end
+
+-- ============================================================================
 -- OpacityAPI
 -- ============================================================================
 OpacityAPI = OpacityAPI or {}

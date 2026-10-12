@@ -1195,7 +1195,8 @@ local function BuildWizard()
     local impMsg = Text(imp, "GameFontHighlightSmall", "", COL.WARN)
     impMsg:SetPoint("TOPLEFT", 12, -58)
     impGo:SetScript("OnClick", function()
-      local prof, err = TibiSuite.DecodeProfile and TibiSuite.DecodeProfile(eb:GetText())
+      local prof, err
+      if TibiSuite.DecodeProfile then prof, err = TibiSuite.DecodeProfile(eb:GetText()) end
       if not prof then
         impMsg:SetTextColor(COL.WARN[1], COL.WARN[2], COL.WARN[3])
         impMsg:SetText(L["PROFILE_ERR_" .. tostring(err)] or L.PROFILE_ERR_format)

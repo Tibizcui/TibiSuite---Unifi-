@@ -161,6 +161,67 @@ end
 function PostBox_Status() return A.Status() end
 
 -- ============================================================================
+-- APERCU DU CENTRE TIBISUITE (overviewFn, 7.1.5.45) : courriers qui expirent
+-- par personnage (meme horizon que l'alerte), or en attente dans les boites,
+-- contre-remboursements, nouveau courrier. Instantanes de la derniere visite.
+-- ============================================================================
+function A.Overview()
+  local SL, TS = _G.TibiSuiteL or {}, _G.TibiSuite
+  local out = { lines = {}, empty = SL.OV_POST_EMPTY }
+  if not PostBoxDB or not PostBoxDB.inboxes or not next(PostBoxDB.inboxes) then return out end
+  local lines = out.lines
+  local now = time()
+  local horizon = (PostBoxDB.altAlertDays or 3) * 86400
+  local soon = {}
+  local gold, cod, oldest = 0, 0, nil
+  for key, snap in pairs(PostBoxDB.inboxes) do
+    local n, nearest = 0, nil
+    for _, x in ipairs(snap.exp or {}) do
+      if x.at > now and x.at - now <= horizon then
+        n = n + 1
+        if not nearest or x.at < nearest then nearest = x.at end
+      end
+    end
+    if n > 0 then soon[#soon + 1] = { key = key, n = n, at = nearest } end
+    gold = gold + (snap.gold or 0)
+    for _, inc in ipairs(snap.incoming or {}) do gold = gold + (inc.g or 0) end
+    cod = cod + (snap.cod or 0)
+    if (snap.t or 0) > 0 and (not oldest or snap.t < oldest) then oldest = snap.t end
+  end
+  table.sort(soon, function(a, b) return a.at < b.at end)
+  for i = 1, math.min(2, #soon) do
+    local e = soon[i]
+    local name = (TS and TS.SafeName) and TS.SafeName(P.SplitKey(e.key) or e.key) or e.key
+    lines[#lines + 1] = { text = string.format(SL.OV_POST_EXP_FMT or "%s %d", name, e.n),
+      value = string.format(SL.OV_POST_IN_FMT or "%s", FmtLeft(e.at - now)), urgent = true, target = "alts" }
+  end
+  if gold > 0 and TS and TS.FmtGold then
+    local g = TS.FmtGold(gold):gsub("^%+", "")
+    lines[#lines + 1] = { text = SL.OV_POST_GOLD, value = g, color = { 1, 0.82, 0 }, target = "alts" }
+  end
+  if cod > 0 then lines[#lines + 1] = { text = string.format(SL.OV_POST_COD_FMT or "%d", cod), target = "alts" } end
+  if HasNewMail and HasNewMail() then
+    lines[#lines + 1] = { text = SL.OV_POST_NEW }
+  else
+    local snap = PostBoxDB.inboxes[P.CharKey() or ""]
+    if snap and (snap.count or 0) > 0 then
+      lines[#lines + 1] = { text = string.format(SL.OV_POST_COUNT_FMT or "%d", snap.count) }
+    end
+  end
+  out.at = oldest
+  return out
+end
+function PostBox_Overview() return A.Overview() end
+
+-- Ouvre la vue de tous les personnages.
+function PostBox_OpenAlts()
+  A.BuildUI()
+  local f = _G.PostBoxAltsFrame
+  if f and not f:IsShown() then f:Show(); A.Refresh() end
+  return true
+end
+
+-- ============================================================================
 -- FENETRE
 -- ============================================================================
 local COLS = { 160, 70, 100, 50, 40, 90, 70 }

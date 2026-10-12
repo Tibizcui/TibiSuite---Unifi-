@@ -227,6 +227,37 @@ D("CTR_WID_TIP",       "Aussi : la punaise des cartes de Ma semaine, le clic dro
 D("CTR_WID_PINNED",    "À L'ÉCRAN")
 D("CTR_WID_TT_PIN",    "Épingler à l'écran")
 D("CTR_WID_TT_UNPIN",  "Désépingler de l'écran")
+D("CTR_GOALS",         "Objectifs")
+D("CTR_GOALS_DESC",    "Tes propres objectifs, à cocher ou mesurés tout seuls (récolte, or, module). Ils apparaissent dans Ma semaine, la prochaine action, le fil d'activité et le Dashboard.")
+D("CTR_GOALS_HEAD",    "MES OBJECTIFS")
+D("CTR_GOALS_SHORT",   "Objectif")
+D("CTR_GOAL_NEW",      "NOUVEL OBJECTIF")
+D("CTR_GOAL_NAME",     "Intitulé (vide = automatique pour récolte, or, module)...")
+D("CTR_GOAL_KIND_FMT", "Type : %s")
+D("CTR_GOAL_K_MANUAL", "à cocher")
+D("CTR_GOAL_K_GATHER", "récolter un objet")
+D("CTR_GOAL_K_GOLD",   "gagner de l'or cette semaine")
+D("CTR_GOAL_K_MODULE", "finir un module")
+D("CTR_GOAL_TARGET",   "Quantité...")
+D("CTR_GOAL_ITEM",     "Objet : nom, ou Maj + clic sur l'objet...")
+D("CTR_GOAL_MOD_FMT",  "Module : %s")
+D("CTR_GOAL_WEEKLY",   "Chaque semaine")
+D("CTR_GOAL_PERM",     "Permanent")
+D("CTR_GOAL_ADD",      "Ajouter")
+D("CTR_GOAL_DELETE",   "Supprimer")
+D("CTR_GOAL_CHECK",    "Fait")
+D("CTR_GOAL_UNCHECK",  "À refaire")
+D("CTR_GOAL_NONE",     "Aucun objectif pour l'instant. Exemples : « Farmer 200 Champifleurs », « Gagner 20 000 po », « Finir les hebdos de DailyTracker ».")
+D("CTR_GOAL_ITEM_BAD", "Objet introuvable : Maj + clic sur l'objet dans tes sacs, ou son nom exact.")
+D("CTR_GOAL_MOD_BAD",  "Aucun module avec une ligne d'état n'est actif.")
+D("CTR_GOAL_NAME_BAD", "Donne un intitulé à l'objectif.")
+D("CTR_GOAL_AUTO_GATHER", "Récolter %d %s")
+D("CTR_GOAL_AUTO_GOLD",   "Gagner %d po cette semaine")
+D("CTR_GOAL_AUTO_MODULE", "Finir %s")
+D("CTR_GOAL_TT",       "Clic : cocher, ou ouvrir le module concerné. Clic droit : gérer les objectifs.")
+D("CTR_WEEK_EVENT",    "ÉVÉNEMENT DE LA SEMAINE")
+D("CTR_WEEK_EVENT_NONE", "Aucun événement aujourd'hui")
+D("CTR_WEEK_EVENT_ENDS", "fin dans %s")
 D("CTR_SOCLE",         "socle v")
 D("CTR_UNAVAIL",       "Centre indisponible (socle v13 requis).")
 D("CTR_SET_DESC",     "Tous les réglages de la suite et de ses modules sont réunis dans le Centre TibiSuite.")
@@ -245,6 +276,7 @@ local PAGE_FOOT   = 36                     -- boutons de page
 local GENERAL = {
   { id = "home",   label = "CTR_HOME"   },
   { id = "activity", label = "CTR_ACTIVITY" },
+  { id = "goals",    label = "CTR_GOALS" },
   { id = "bar",    label = "CTR_BAR"    },
   { id = "widgets", label = "CTR_WIDGETS" },
   { id = "display", label = "CTR_DISPLAY" },
@@ -556,13 +588,30 @@ function TibiSuite.GetNextAction()
       end
     end
   end
+  if TibiSuite.GetGoals and TibiSuite.GoalProgress then
+    -- Le Centre n'est peut-etre pas construit : couleur partagee de la suite.
+    local A = TibiSuite.ACCENT or { 0.769, 0.122, 0.231 }
+    for i, g in ipairs(TibiSuite.GetGoals()) do
+      local _, _, done, val = TibiSuite.GoalProgress(g)
+      local score = 150 + i
+      if not done and (not bestScore or score < bestScore) then
+        local key = (g.kind == "module" and g.module) or (g.kind == "gather" and "Skill") or (g.kind == "gold" and "Stats") or "Suite"
+        best, bestScore = { key = key, goal = g, urgent = false, text = g.text .. "  (" .. tostring(val) .. ")",
+          mod = { key = "Suite", addonName = L.CTR_GOALS_SHORT, col = { r = A[1], g = A[2], b = A[3] } } }, score
+      end
+    end
+  end
   return best
 end
 
 -- Ouvre le module de la prochaine action, sinon Ma semaine.
 function TibiSuite.RunNextAction()
   local na = TibiSuite.GetNextAction()
-  if na then TibiSuite.OpenModule(na.key) else TibiSuite.OpenCentre("home") end
+  if na and na.goal then
+    if na.key == "Suite" then TibiSuite.OpenCentre("goals")
+    elseif na.goal.kind == "gather" then TibiSuite.OpenModuleTo("Skill", "farm")
+    else TibiSuite.OpenModule(na.key) end
+  elseif na then TibiSuite.OpenModule(na.key) else TibiSuite.OpenCentre("home") end
 end
 
 local function MakeStatusCard(parent)
@@ -618,6 +667,15 @@ local function MakeStatusCard(parent)
   hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.04)
   c:SetScript("OnMouseUp", function(s, btn)
     if not s.mod then return end
+    local gl = s.mod.goal
+    if gl then
+      if btn == "RightButton" then Select("goals"); return end
+      if gl.kind == "manual" then TibiSuite.ToggleGoal(gl.id); if pages.home then RefreshHome(pages.home) end
+      elseif gl.kind == "gather" then frame:Hide(); TibiSuite.OpenModuleTo("Skill", "farm")
+      elseif gl.kind == "gold" then frame:Hide(); TibiSuite.OpenModule("Stats")
+      elseif gl.module then frame:Hide(); TibiSuite.OpenModule(gl.module) end
+      return
+    end
     if btn == "RightButton" then Select(s.mod.key)
     elseif IsShiftKeyDown() and TibiSuite.ToggleWidget then
       TibiSuite.ToggleWidget(s.mod.key)
@@ -630,8 +688,12 @@ local function MakeStatusCard(parent)
     local mc = ModCol(s.mod)
     GameTooltip:AddLine(s.mod.addonName, mc[1], mc[2], mc[3])
     if s.stText and s.stText ~= "" then GameTooltip:AddLine(s.stText, 1, 1, 1, true) end
-    GameTooltip:AddLine(L.CTR_WEEK_CARD_TT, 0.6, 0.6, 0.65, true)
-    if TibiSuite.ToggleWidget then GameTooltip:AddLine(L.CTR_WEEK_PIN_TT, 0.6, 0.6, 0.65, true) end
+    if s.mod.goal then
+      GameTooltip:AddLine(L.CTR_GOAL_TT, 0.6, 0.6, 0.65, true)
+    else
+      GameTooltip:AddLine(L.CTR_WEEK_CARD_TT, 0.6, 0.6, 0.65, true)
+      if TibiSuite.ToggleWidget then GameTooltip:AddLine(L.CTR_WEEK_PIN_TT, 0.6, 0.6, 0.65, true) end
+    end
     GameTooltip:Show()
   end)
   c:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -649,7 +711,7 @@ local function BuildHome(p)
 
   -- Tuiles du haut
   p.tiles = {}
-  for i, lbl in ipairs({ L.CTR_WEEK_DAILY, L.CTR_WEEK_WEEKLY, L.CTR_WEEK_URGENT }) do
+  for i, lbl in ipairs({ L.CTR_WEEK_DAILY, L.CTR_WEEK_WEEKLY, L.CTR_WEEK_URGENT, L.CTR_WEEK_EVENT }) do
     local t = K.Card(c)
     t:SetHeight(58)
     local l = K.Label(t, lbl); l:SetPoint("TOPLEFT", 12, -10)
@@ -678,7 +740,7 @@ local function BuildHome(p)
 
   -- Groupes de cartes (memes groupes que le Panneau vivant, sans la rangee
   -- Interface : ces modules n'ont pas de ligne d'etat).
-  p.groups = {}
+  p.groups = { { head = K.Label(c, L.CTR_GOALS_HEAD), keys = {}, cards = {}, goals = true } }
   for gi, g in ipairs(TibiSuite.PANEL_GROUPS or {}) do
     if not g.icons then
       local head = K.Label(c, L[g.label] or g.label)
@@ -726,7 +788,7 @@ local function LayoutHome(p)
   local w = DockW()
   local c = p.child
   c:SetWidth(w)
-  local tw = math.floor((w - 20) / 3)
+  local tw = math.floor((w - 10 * (#p.tiles - 1)) / #p.tiles)
   for i, t in ipairs(p.tiles) do
     t:SetWidth(tw)
     t:ClearAllPoints(); t:SetPoint("TOPLEFT", (i - 1) * (tw + 10), -2)
@@ -792,6 +854,16 @@ function RefreshHome(p)
   for _, mod in ipairs(TibiSuite.GetCatalog()) do cat[mod.key] = mod end
   for _, g in ipairs(p.groups) do
     local list = {}
+    if g.goals and TibiSuite.GetGoals then
+      local secs = ResetIn("week")
+      for _, gl in ipairs(TibiSuite.GetGoals()) do
+        local cur, t, done, val = TibiSuite.GoalProgress(gl)
+        list[#list + 1] = { mod = { key = "goal:" .. gl.id, addonName = gl.text, goal = gl,
+            col = { r = ACC[1], g = ACC[2], b = ACC[3] } },
+          st = { text = val, progress = t > 0 and math.min(1, cur / t) or 0,
+            urgent = (not done) and gl.weekly and secs and secs < 86400 or nil } }
+      end
+    end
     for _, key in ipairs(g.keys) do
       local mod = cat[key]
       local st = mod and TibiSuite.GetModuleStatus and TibiSuite.GetModuleStatus(key)
@@ -808,7 +880,7 @@ function RefreshHome(p)
       local mod, st = e.mod, e.st
       local mc = ModCol(mod)
       card.mod, card.stText, card.stProgress = mod, st.text, st.progress
-      if card.pin then card.pin:Paint(false) end
+      if card.pin then card.pin:Paint(false); card.pin:SetShown(not mod.goal and TibiSuite.ToggleWidget ~= nil) end
       card.bar:SetColorTexture(mc[1], mc[2], mc[3], 1)
       card.ico:SetTexture(K.MODULE_LOGO and K.MODULE_LOGO[mod.key] or K.LOGO)
       card.name:SetText(mod.addonName)
@@ -838,6 +910,31 @@ function RefreshHome(p)
     for i = #list + 1, #g.cards do g.cards[i]:Hide() end
   end
   p.tiles[3].value:SetText(urgent > 0 and (K.HX.WARN .. urgent .. "|r") or (K.HX.OK .. L.CTR_WEEK_NONE .. "|r"))
+  -- Evenement de la semaine (calendrier) : titre, et fin au survol.
+  local et = p.tiles[4]
+  if et then
+    local evs = TibiSuite.GetWeekEvents and TibiSuite.GetWeekEvents() or {}
+    et.value:SetFontObject("GameFontHighlight")
+    et.value:SetWidth((et:GetWidth() or 150) - 20); et.value:SetWordWrap(false)
+    et.value:SetText(evs[1] and evs[1].title or (K.HX.DIM .. L.CTR_WEEK_EVENT_NONE .. "|r"))
+    et.events = evs
+    if not et.hooked then
+      et.hooked = true
+      et:EnableMouse(true)
+      et:SetScript("OnEnter", function(s)
+        if not (s.events and s.events[1]) then return end
+        GameTooltip:SetOwner(s, "ANCHOR_BOTTOM")
+        for _, e in ipairs(s.events) do
+          GameTooltip:AddLine(e.title, 1, 0.82, 0)
+          if e.endsAt and e.endsAt > time() then
+            GameTooltip:AddLine(string.format(L.CTR_WEEK_EVENT_ENDS, TibiSuite.FmtDuration(e.endsAt - time())), 0.8, 0.8, 0.85)
+          end
+        end
+        GameTooltip:Show()
+      end)
+      et:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+  end
 
   -- Prochaine action
   local na = TibiSuite.GetNextAction()
@@ -900,8 +997,37 @@ local function BuildActivity(p)
   p.chipsHost = CreateFrame("Frame", nil, p)
   p.chipsHost:SetPoint("TOPLEFT", 0, 0); p.chipsHost:SetPoint("TOPRIGHT", -24, 0); p.chipsHost:SetHeight(24)
   p.chips = {}
+  -- Resets epingles en haut du fil : comptes a rebours en direct.
+  p.pins = {}
+  for i, lbl in ipairs({ L.CTR_WEEK_DAILY, L.CTR_WEEK_WEEKLY }) do
+    local t = CreateFrame("Frame", nil, p)
+    t:SetHeight(34)
+    t.bg = t:CreateTexture(nil, "BACKGROUND"); t.bg:SetAllPoints(); t.bg:SetColorTexture(1, 1, 1, 0.04)
+    t.bar = t:CreateTexture(nil, "ARTWORK"); t.bar:SetPoint("TOPLEFT"); t.bar:SetPoint("BOTTOMLEFT"); t.bar:SetWidth(3)
+    t.bar:SetColorTexture(ACC[1], ACC[2], ACC[3], 1)
+    t.lbl = K.Label(t, lbl); t.lbl:SetPoint("LEFT", 12, 0)
+    t.val = K.Text(t, "GameFontHighlightLarge", "", K.COL.TXT); t.val:SetPoint("RIGHT", -12, 0)
+    p.pins[i] = t
+  end
+  p.pins[1]:SetPoint("TOPLEFT", 0, -32)
+  p.pins[1]:SetPoint("RIGHT", p, "CENTER", -17, 0)
+  p.pins[2]:SetPoint("TOPRIGHT", -24, -32)
+  p.pins[2]:SetPoint("LEFT", p, "CENTER", -7, 0)
+  local function pinTick()
+    local d, wk = ResetIn("day"), ResetIn("week")
+    p.pins[1].val:SetText(d and TibiSuite.FmtDuration(d) or "-")
+    p.pins[2].val:SetText(wk and TibiSuite.FmtDuration(wk) or "-")
+    for _, t in ipairs(p.pins) do t.bar:SetColorTexture(ACC[1], ACC[2], ACC[3], 1) end
+  end
+  p.pinTick = pinTick
+  p:SetScript("OnShow", function(s)
+    pinTick()
+    if s.ticker then s.ticker:Cancel() end
+    s.ticker = C_Timer.NewTicker(30, function() if s:IsVisible() then pinTick() end end)
+  end)
+  p:SetScript("OnHide", function(s) if s.ticker then s.ticker:Cancel(); s.ticker = nil end end)
   local sc = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
-  sc:SetPoint("TOPLEFT", 0, -34); sc:SetPoint("BOTTOMRIGHT", -24, 0)
+  sc:SetPoint("TOPLEFT", 0, -76); sc:SetPoint("BOTTOMRIGHT", -24, 0)
   if UI.SkinScrollBar then UI.SkinScrollBar(sc, ACC) end
   local c = CreateFrame("Frame", nil, sc)
   c:SetSize(DockW(), 10)
@@ -932,6 +1058,7 @@ end
 
 local function RefreshActivity(p)
   if not p.child then return end
+  if p.pinTick then p.pinTick() end
   local feed = TibiSuite.GetFeed and TibiSuite.GetFeed() or {}
   local w = DockW()
   p.child:SetWidth(w)
@@ -1389,6 +1516,194 @@ function RefreshProfiles(p)
   c:SetHeight(-y + 10)
 end
 
+-- ── Objectifs personnels (7.1.5.45) ────────────────────────────────
+local RefreshGoals
+local GOAL_KINDS = { "manual", "gather", "gold", "module" }
+local GOAL_KIND_LBL = { manual = "CTR_GOAL_K_MANUAL", gather = "CTR_GOAL_K_GATHER", gold = "CTR_GOAL_K_GOLD", module = "CTR_GOAL_K_MODULE" }
+
+local function GoalEdit(parent, w, ph, numeric)
+  local e = CreateFrame("EditBox", nil, parent, "BackdropTemplate")
+  e:SetSize(w, 26)
+  e:SetBackdrop(K.FLAT)
+  e:SetBackdropColor(1, 1, 1, 0.05)
+  e:SetBackdropBorderColor(1, 1, 1, 0.14)
+  e:SetFontObject("GameFontHighlightSmall")
+  e:SetTextInsets(8, 8, 0, 0)
+  e:SetAutoFocus(false)
+  if numeric then e:SetNumeric(true); e:SetMaxLetters(9) else e:SetMaxLetters(60) end
+  local t = K.Text(e, "GameFontDisableSmall", ph, K.COL.DIM); t:SetPoint("LEFT", 9, 0)
+  e:SetScript("OnTextChanged", function(s) t:SetShown(s:GetText() == "") end)
+  e:SetScript("OnEscapePressed", function(s) s:ClearFocus() end)
+  e:SetScript("OnEnterPressed", function(s) s:ClearFocus() end)
+  return e
+end
+
+-- Objet saisi : lien (Maj + clic), numero ou nom d'un objet connu du client.
+local function ResolveItem(text)
+  text = tostring(text or "")
+  local id = tonumber(text:match("item:(%d+)")) or tonumber(text)
+  local get = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+  if not id and text ~= "" and get then
+    local ok, _, link = pcall(get, text)
+    if ok and link then id = tonumber(link:match("item:(%d+)")) end
+  end
+  if not id then return nil end
+  local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)
+  return id, name or text:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|H.-|h", ""):gsub("|h", ""):gsub("|r", "")
+end
+
+local function BuildGoals(p)
+  local sc = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
+  sc:SetPoint("TOPLEFT", 0, 0); sc:SetPoint("BOTTOMRIGHT", -24, 0)
+  if UI.SkinScrollBar then UI.SkinScrollBar(sc, ACC) end
+  local c = CreateFrame("Frame", nil, sc)
+  c:SetSize(DockW(), 10)
+  sc:SetScrollChild(c)
+  p.scroll, p.child = sc, c
+  p.form = { kind = "manual", weekly = true }
+  p.h1 = K.Label(c, L.CTR_GOAL_NEW)
+  p.name = GoalEdit(c, 300, L.CTR_GOAL_NAME)
+  p.kindBtn = K.Btn(c, 260, 26, "")
+  p.kindBtn:SetScript("OnClick", function()
+    local i = 1
+    for j, k in ipairs(GOAL_KINDS) do if k == p.form.kind then i = j end end
+    p.form.kind = GOAL_KINDS[i % #GOAL_KINDS + 1]
+    RefreshGoals(p)
+  end)
+  p.target = GoalEdit(c, 140, L.CTR_GOAL_TARGET, true)
+  p.item = GoalEdit(c, 300, L.CTR_GOAL_ITEM)
+  p.modBtn = K.Btn(c, 260, 26, "")
+  p.modBtn:SetScript("OnClick", function()
+    local mods = TibiSuite.PinnableModules and TibiSuite.PinnableModules() or {}
+    if #mods == 0 then return end
+    local i = 0
+    for j, m in ipairs(mods) do if m.key == p.form.module then i = j end end
+    p.form.module = mods[i % #mods + 1].key
+    RefreshGoals(p)
+  end)
+  p.weekBtn = K.Btn(c, 160, 26, "")
+  p.weekBtn:SetScript("OnClick", function() p.form.weekly = not p.form.weekly; RefreshGoals(p) end)
+  p.msg = K.Text(c, "GameFontHighlightSmall", "", K.COL.WARN)
+  p.add = K.Btn(c, 160, 26, L.CTR_GOAL_ADD, "pri")
+  p.add:SetScript("OnClick", function()
+    local f = p.form
+    local spec = { text = p.name:GetText(), kind = f.kind, weekly = (f.kind == "gold") or f.weekly }
+    if f.kind == "gather" then
+      local id, nm = ResolveItem(p.item:GetText())
+      if not id then p.msg:SetText(L.CTR_GOAL_ITEM_BAD); return end
+      spec.item, spec.itemName = id, nm
+      spec.target = tonumber(p.target:GetText()) or 1
+      if spec.text == "" then spec.text = string.format(L.CTR_GOAL_AUTO_GATHER, spec.target, nm or ("#" .. id)) end
+    elseif f.kind == "gold" then
+      spec.target = tonumber(p.target:GetText()) or 1
+      if spec.text == "" then spec.text = string.format(L.CTR_GOAL_AUTO_GOLD, spec.target) end
+    elseif f.kind == "module" then
+      if not f.module then p.msg:SetText(L.CTR_GOAL_MOD_BAD); return end
+      spec.module = f.module
+      if spec.text == "" then
+        local m
+        for _, x in ipairs(TibiSuite.GetCatalog()) do if x.key == f.module then m = x end end
+        spec.text = string.format(L.CTR_GOAL_AUTO_MODULE, m and m.addonName or f.module)
+      end
+    end
+    if spec.text == "" then p.msg:SetText(L.CTR_GOAL_NAME_BAD); return end
+    p.msg:SetText("")
+    TibiSuite.AddGoal(spec)
+    p.name:SetText(""); p.target:SetText(""); p.item:SetText("")
+    RefreshGoals(p)
+  end)
+  p.h2 = K.Label(c, L.CTR_GOALS_HEAD)
+  p.none = K.Text(c, "GameFontHighlightSmall", L.CTR_GOAL_NONE, K.COL.DIM)
+  p.rows = {}
+  -- Maj + clic sur un objet (sacs, butin, metier) : son lien va dans le champ.
+  if hooksecurefunc and ChatEdit_InsertLink then
+    hooksecurefunc("ChatEdit_InsertLink", function(link)
+      if p.item and p.item:IsVisible() and p.item:HasFocus() and type(link) == "string" then p.item:SetText(link) end
+    end)
+  end
+end
+
+local function GoalRow(p, i)
+  local r = p.rows[i]
+  if r then return r end
+  r = CreateFrame("Frame", nil, p.child)
+  r:SetHeight(32)
+  r.bg = r:CreateTexture(nil, "BACKGROUND"); r.bg:SetAllPoints(); r.bg:SetColorTexture(1, 1, 1, 0.035)
+  r.bar = r:CreateTexture(nil, "ARTWORK"); r.bar:SetPoint("TOPLEFT"); r.bar:SetPoint("BOTTOMLEFT"); r.bar:SetWidth(3)
+  r.txt = K.Text(r, "GameFontHighlight", "", K.COL.TXT); r.txt:SetPoint("LEFT", 12, 2)
+  r.txt:SetJustifyH("LEFT"); r.txt:SetWordWrap(false)
+  r.sub = K.Text(r, "GameFontDisableSmall", "", K.COL.DIM); r.sub:SetPoint("TOPLEFT", r.txt, "BOTTOMLEFT", 0, -1)
+  r.pbg = r:CreateTexture(nil, "ARTWORK"); r.pbg:SetPoint("BOTTOMLEFT", 12, 2); r.pbg:SetHeight(2)
+  r.pbg:SetColorTexture(1, 1, 1, 0.07)
+  r.pfill = r:CreateTexture(nil, "ARTWORK", nil, 1); r.pfill:SetPoint("TOPLEFT", r.pbg); r.pfill:SetPoint("BOTTOMLEFT", r.pbg)
+  r.b1 = K.Btn(r, 96, 22, ""); r.b1:SetPoint("RIGHT", -106, 0)
+  r.b2 = K.Btn(r, 96, 22, L.CTR_GOAL_DELETE); r.b2:SetPoint("RIGHT", -4, 0)
+  p.rows[i] = r
+  return r
+end
+
+function RefreshGoals(p)
+  if not (p and p.child) then return end
+  local w = DockW()
+  local c = p.child
+  c:SetWidth(w)
+  local f = p.form
+  local y = -2
+  p.h1:ClearAllPoints(); p.h1:SetPoint("TOPLEFT", 2, y - 4); y = y - 24
+  p.name:ClearAllPoints(); p.name:SetPoint("TOPLEFT", 0, y); p.name:SetWidth(math.min(420, w - 10)); y = y - 34
+  p.kindBtn._label:SetText(string.format(L.CTR_GOAL_KIND_FMT, L[GOAL_KIND_LBL[f.kind]]))
+  p.kindBtn:ClearAllPoints(); p.kindBtn:SetPoint("TOPLEFT", 0, y)
+  p.weekBtn._label:SetText((f.kind == "gold" or f.weekly) and L.CTR_GOAL_WEEKLY or L.CTR_GOAL_PERM)
+  p.weekBtn:ClearAllPoints(); p.weekBtn:SetPoint("LEFT", p.kindBtn, "RIGHT", 10, 0)
+  y = y - 34
+  p.target:Hide(); p.item:Hide(); p.modBtn:Hide()
+  if f.kind == "gather" then
+    p.item:ClearAllPoints(); p.item:SetPoint("TOPLEFT", 0, y); p.item:SetWidth(math.min(420, w - 160)); p.item:Show()
+    p.target:ClearAllPoints(); p.target:SetPoint("LEFT", p.item, "RIGHT", 10, 0); p.target:Show()
+    y = y - 34
+  elseif f.kind == "gold" then
+    p.target:ClearAllPoints(); p.target:SetPoint("TOPLEFT", 0, y); p.target:Show()
+    y = y - 34
+  elseif f.kind == "module" then
+    local mods = TibiSuite.PinnableModules and TibiSuite.PinnableModules() or {}
+    if not f.module and mods[1] then f.module = mods[1].key end
+    local nm = f.module
+    for _, m in ipairs(mods) do if m.key == f.module then nm = Hex(ModCol(m)) .. m.addonName .. "|r" end end
+    p.modBtn._label:SetText(string.format(L.CTR_GOAL_MOD_FMT, nm or "-"))
+    p.modBtn:ClearAllPoints(); p.modBtn:SetPoint("TOPLEFT", 0, y); p.modBtn:Show()
+    y = y - 34
+  end
+  p.add:ClearAllPoints(); p.add:SetPoint("TOPLEFT", 0, y)
+  p.msg:ClearAllPoints(); p.msg:SetPoint("LEFT", p.add, "RIGHT", 12, 0)
+  y = y - 44
+
+  p.h2:ClearAllPoints(); p.h2:SetPoint("TOPLEFT", 2, y - 4); y = y - 24
+  for _, r in ipairs(p.rows) do r:Hide() end
+  local goals = TibiSuite.GetGoals and TibiSuite.GetGoals() or {}
+  p.none:SetShown(#goals == 0)
+  if #goals == 0 then p.none:ClearAllPoints(); p.none:SetPoint("TOPLEFT", 4, y); p.none:SetWidth(w - 8); y = y - 30 end
+  for i, g in ipairs(goals) do
+    local r = GoalRow(p, i)
+    local cur, t, done, val = TibiSuite.GoalProgress(g)
+    r:SetWidth(w); r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y)
+    local col = done and K.COL.OK or ACC
+    r.bar:SetColorTexture(col[1], col[2], col[3], 1)
+    r.txt:SetText((done and ((K.ICON_OK or "") .. " ") or "") .. g.text); r.txt:SetWidth(w - 240)
+    r.sub:SetText(L[GOAL_KIND_LBL[g.kind] or "CTR_GOAL_K_MANUAL"] .. "  ·  " .. (g.weekly and L.CTR_GOAL_WEEKLY or L.CTR_GOAL_PERM) .. "  ·  " .. tostring(val))
+    r.pbg:SetWidth(math.max(1, w - 240))
+    r.pfill:SetWidth(math.max(1, (w - 240) * math.min(1, t > 0 and cur / t or 0)))
+    r.pfill:SetColorTexture(col[1], col[2], col[3], 1)
+    if g.kind == "manual" then
+      r.b1._label:SetText(done and L.CTR_GOAL_UNCHECK or L.CTR_GOAL_CHECK); r.b1:Show()
+      r.b1:SetScript("OnClick", function() TibiSuite.ToggleGoal(g.id); RefreshGoals(p) end)
+    else r.b1:Hide() end
+    r.b2:SetScript("OnClick", function() TibiSuite.RemoveGoal(g.id); RefreshGoals(p) end)
+    r:Show()
+    y = y - 36
+  end
+  c:SetHeight(-y + 10)
+end
+
 -- ── Widgets ────────────────────────────────────────────────────────
 local RefreshWidgetsPage
 local TILE_H = 104
@@ -1480,6 +1795,103 @@ function RefreshWidgetsPage(p)
   c:SetHeight(-y)
 end
 
+-- ── Apercu en haut de la page d'un module (7.1.5.45) ───────────────
+-- Les options du module sont ancrees dans p.optHost, place sous l'apercu :
+-- aucune evolution du socle n'est necessaire. Pas d'apercu = optHost occupe
+-- toute la page, comme avant.
+local OV_ROW = 30
+
+local function OvRow(p, i)
+  local r = p.ov.rows[i]
+  if r then return r end
+  r = CreateFrame("Button", nil, p.ov)
+  r:SetHeight(OV_ROW - 2)
+  r.bg = r:CreateTexture(nil, "BACKGROUND"); r.bg:SetAllPoints(); r.bg:SetColorTexture(1, 1, 1, 0.035)
+  r.bar = r:CreateTexture(nil, "ARTWORK"); r.bar:SetPoint("TOPLEFT"); r.bar:SetPoint("BOTTOMLEFT"); r.bar:SetWidth(3)
+  r.edge = r:CreateTexture(nil, "OVERLAY"); r.edge:SetPoint("TOPLEFT", 3, 0); r.edge:SetPoint("TOPRIGHT"); r.edge:SetHeight(1)
+  r.txt = K.Text(r, "GameFontHighlight", "", K.COL.TXT); r.txt:SetPoint("LEFT", 12, 1)
+  r.txt:SetJustifyH("LEFT"); r.txt:SetWordWrap(false)
+  r.val = K.Text(r, "GameFontNormal", "", K.COL.TXT); r.val:SetPoint("RIGHT", -10, 1); r.val:SetJustifyH("RIGHT")
+  r.txt:SetPoint("RIGHT", r.val, "LEFT", -12, 0)
+  r.pbg = r:CreateTexture(nil, "ARTWORK"); r.pbg:SetPoint("BOTTOMLEFT", 12, 3); r.pbg:SetPoint("BOTTOMRIGHT", -10, 3)
+  r.pbg:SetHeight(2); r.pbg:SetColorTexture(1, 1, 1, 0.07)
+  r.pfill = r:CreateTexture(nil, "ARTWORK", nil, 1); r.pfill:SetPoint("TOPLEFT", r.pbg); r.pfill:SetPoint("BOTTOMLEFT", r.pbg)
+  local hl = r:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.04)
+  r:SetScript("OnClick", function(s)
+    if not s.modKey then return end
+    frame:Hide()
+    TibiSuite.OpenModuleTo(s.modKey, s.target)
+  end)
+  p.ov.rows[i] = r
+  return r
+end
+
+local function LayoutOverview(p, mod)
+  if not p.ov then
+    p.ov = CreateFrame("Frame", nil, p)
+    p.ov:SetPoint("TOPLEFT", 0, 0); p.ov:SetPoint("TOPRIGHT", -24, 0)
+    p.ov.head = K.Label(p.ov, L.OV_TITLE or "APERCU"); p.ov.head:SetPoint("TOPLEFT", 2, -2)
+    p.ov.at = K.Text(p.ov, "GameFontDisableSmall", "", K.COL.DIM); p.ov.at:SetPoint("TOPRIGHT", -2, -2)
+    p.ov.empty = K.Text(p.ov, "GameFontHighlightSmall", "", K.COL.MUT)
+    p.ov.sep = p.ov:CreateTexture(nil, "ARTWORK"); p.ov.sep:SetHeight(1)
+    p.ov.sep:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
+    p.ov.sep:SetPoint("BOTTOMLEFT"); p.ov.sep:SetPoint("BOTTOMRIGHT")
+    p.ov.rows = {}
+    p.optHost = CreateFrame("Frame", nil, p)
+  end
+  local ov = TibiSuite.GetModuleOverview and TibiSuite.GetModuleOverview(mod.key, true)
+  local h = 0
+  for _, r in ipairs(p.ov.rows) do r:Hide() end
+  if ov then
+    local mc = ModCol(mod)
+    local y = -22
+    p.ov.at:SetText(ov.at and string.format(L.OV_AT_FMT or "%s", date("%d/%m %H:%M", ov.at)) or "")
+    p.ov.empty:SetShown(#ov.lines == 0)
+    if #ov.lines == 0 then
+      p.ov.empty:SetText(ov.empty or "")
+      p.ov.empty:ClearAllPoints(); p.ov.empty:SetPoint("TOPLEFT", 4, y); p.ov.empty:SetPoint("RIGHT", -4, 0)
+      p.ov.empty:SetJustifyH("LEFT")
+      y = y - math.max(16, p.ov.empty:GetStringHeight() or 14) - 6
+    end
+    for i, ln in ipairs(ov.lines) do
+      local r = OvRow(p, i)
+      r.modKey, r.target = mod.key, ln.target
+      r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y); r:SetPoint("TOPRIGHT", 0, y)
+      r.bar:SetColorTexture(mc[1], mc[2], mc[3], 1)
+      r.txt:SetText(tostring(ln.text))
+      local c = ln.urgent and K.COL.WARN or (ln.color or K.COL.TXT)
+      r.txt:SetTextColor(c[1] or 1, c[2] or 1, c[3] or 1)
+      r.val:SetText(ln.value and tostring(ln.value) or "")
+      if ln.urgent then
+        r.edge:SetColorTexture(K.COL.WARN[1], K.COL.WARN[2], K.COL.WARN[3], 0.9); r.edge:Show()
+        r.val:SetTextColor(K.COL.WARN[1], K.COL.WARN[2], K.COL.WARN[3])
+      else
+        r.edge:Hide(); r.val:SetTextColor(K.COL.TXT[1], K.COL.TXT[2], K.COL.TXT[3])
+      end
+      if ln.progress then
+        r.pbg:Show(); r.pfill:Show()
+        local done = ln.progress >= 1
+        local fc = done and K.COL.OK or mc
+        r.pfill:SetColorTexture(fc[1], fc[2], fc[3], 1)
+        r.pfill:SetWidth(math.max(1, (DockW() - 22) * ln.progress))
+      else
+        r.pbg:Hide(); r.pfill:Hide()
+      end
+      r:Show()
+      y = y - OV_ROW
+    end
+    h = -y + 10
+    p.ov:SetHeight(h - 4)
+    p.ov:Show()
+  else
+    p.ov:Hide()
+  end
+  p.optHost:ClearAllPoints()
+  p.optHost:SetPoint("TOPLEFT", 0, -h)
+  p.optHost:SetPoint("BOTTOMRIGHT", 0, 0)
+  return p.optHost
+end
+
 -- Bouton Annuler du pied de fenetre : visible tant qu'il y a quelque chose a annuler.
 local function RefreshUndo()
   if not undoBtn then return end
@@ -1562,6 +1974,13 @@ function Select(id)
     SetHeader(K.LOGO, L.CTR_BAR, ACC, L.CTR_BAR_DESC)
     p:Show()
     docked = BuildBarPanel(); docked:Dock(p, DockW())
+    return
+  elseif id == "goals" then
+    local p = Page("goals")
+    if not p.child then BuildGoals(p) end
+    SetHeader(K.LOGO, L.CTR_GOALS, ACC, L.CTR_GOALS_DESC)
+    p:Show()
+    RefreshGoals(p)
     return
   elseif id == "widgets" then
     local p = Page("widgets")
@@ -1652,8 +2071,10 @@ function Select(id)
   else
     local p = Page(mod.key)
     p:Show()
+    local host = LayoutOverview(p, mod)
     local panel = GrabPanel(mod.key, ModuleOpener(mod))
-    if panel then docked = panel; panel:Dock(p, DockW()) else ShowNote(L.CTR_NOTE_NOPANEL) end
+    if panel then docked = panel; panel:Dock(host, DockW())
+    elseif not (p.ov and p.ov:IsShown()) then ShowNote(L.CTR_NOTE_NOPANEL) end
   end
 end
 
@@ -1862,6 +2283,21 @@ local function Build()
     end
   end
   if TibiSuite.OnWidgetsChanged then TibiSuite.OnWidgetsChanged(refreshWid) end
+  if TibiSuite.OnGoalsChanged then
+    TibiSuite.OnGoalsChanged(function()
+      local hp = pages.home
+      if hp and hp.child and hp:IsVisible() then RefreshHome(hp) end
+      local gp = pages.goals
+      if gp and gp.child and gp:IsVisible() then RefreshGoals(gp) end
+    end)
+  end
+  if TibiSuite.OnStatusChanged then
+    TibiSuite.OnStatusChanged(function()
+      local mod = byKey[current]
+      local pg = mod and pages[current]
+      if pg and pg.ov and pg:IsVisible() then LayoutOverview(pg, mod) end
+    end)
+  end
   if TibiSuite.OnStatusChanged then TibiSuite.OnStatusChanged(refreshWid) end
   if TibiSuite.OnRestorePointsChanged then TibiSuite.OnRestorePointsChanged(refreshProf) end
 

@@ -220,6 +220,38 @@ end
 WeeklyCompassAPI = WeeklyCompassAPI or {}
 WeeklyCompassAPI.version = 1
 
+-- Plafonds des monnaies de la saison (ns.SheetCurrencies, 7.1.5.45) :
+--   near   = stock a 90 % ou plus du plafond de stock : depense avant de perdre ;
+--   capped = plafond de la saison (qui monte chaque semaine) deja atteint :
+--            inutile d'en farmer avant le prochain reset ;
+--   room   = ce qu'il reste a gagner avant ce plafond (information : ce qui
+--            n'est pas gagne cette semaine reste disponible la suivante).
+-- Renvoie { { id, name, icon, qty, max, earned, state, room } }.
+function WeeklyCompassAPI.GetCurrencyCaps()
+    local out = {}
+    local api = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo
+    if type(api) ~= "function" then return out end
+    for _, id in ipairs(ns.SheetCurrencies or {}) do
+        local ok, info = pcall(api, id)
+        if ok and type(info) == "table" and type(info.name) == "string" and info.name ~= "" then
+            local qty = tonumber(info.quantity) or 0
+            local max = tonumber(info.maxQuantity) or 0
+            local earned = tonumber(info.totalEarned) or 0
+            local e = { id = id, name = info.name, icon = info.iconFileID, qty = qty, max = max, earned = earned }
+            if max > 0 then
+                if info.useTotalEarnedForMaxQty then
+                    e.room = math.max(0, max - earned)
+                    if e.room == 0 then e.state = "capped" end
+                elseif qty >= max * 0.9 then
+                    e.state = "near"
+                end
+            end
+            out[#out + 1] = e
+        end
+    end
+    return out
+end
+
 -- Ligne d'etat du Panneau vivant de TibiSuite (statusFn, lue par le core) :
 -- recompense du Grand coffre a recuperer (urgent), sinon emplacements
 -- debloques cette semaine sur les lignes que la fenetre de Blizzard affiche
@@ -231,6 +263,12 @@ function WeeklyCompassAPI.GetStatus()
     if type(W.HasAvailableRewards) == "function" then
         local ok, pending = pcall(W.HasAvailableRewards)
         if ok and pending then return { text = SL.ST_VAULT_CLAIM, urgent = true } end
+    end
+    local okC, caps = pcall(WeeklyCompassAPI.GetCurrencyCaps)
+    if okC then
+        for _, c in ipairs(caps) do
+            if c.state == "near" then return { text = string.format(SL.ST_CAP_NEAR_FMT or "%s", c.name), urgent = true } end
+        end
     end
     if type(W.GetActivities) ~= "function" then return nil end
     local ok, acts = pcall(W.GetActivities)
@@ -246,6 +284,90 @@ function WeeklyCompassAPI.GetStatus()
     end
     if total == 0 then return nil end
     return { text = string.format(SL.ST_VAULT_FMT or "%d/%d", done, total), progress = done / total }
+end
+
+-- Apercu du Centre TibiSuite (overviewFn, lu par le core, 7.1.5.45) :
+-- recompense a recuperer, les trois lignes du Grand coffre (seuils atteints
+-- sur le nombre de seuils de la ligne), autres personnages avec un coffre.
+function WeeklyCompassAPI.GetOverview()
+    local SL = _G.TibiSuiteL or {}
+    local W = C_WeeklyRewards
+    local out = { lines = {}, empty = SL.OV_WC_EMPTY }
+    if not W then return out end
+    local lines = out.lines
+    if type(W.HasAvailableRewards) == "function" then
+        local ok, pending = pcall(W.HasAvailableRewards)
+        if ok and pending then lines[#lines + 1] = { text = SL.OV_WC_CLAIM, urgent = true, target = "week" } end
+    end
+    if type(W.GetActivities) == "function" then
+        local ok, acts = pcall(W.GetActivities)
+        local E = Enum and Enum.WeeklyRewardChestThresholdType
+        if ok and type(acts) == "table" and E then
+            local rows = {
+                { t = E.Raid, label = SL.OV_WC_RAID },
+                { t = E.Activities, label = SL.OV_WC_DUNGEON },
+                { t = E.World, label = SL.OV_WC_WORLD },
+            }
+            for _, row in ipairs(rows) do
+                local done, total = 0, 0
+                for _, a in ipairs(acts) do
+                    if a.type == row.t and (a.threshold or 0) > 0 then
+                        total = total + 1
+                        if (a.progress or 0) >= a.threshold then done = done + 1 end
+                    end
+                end
+                if total > 0 and row.label then
+                    lines[#lines + 1] = { text = row.label, value = done .. " / " .. total, progress = done / total, target = "week" }
+                end
+            end
+        end
+    end
+    if ns.CollectMPlus and #lines < 4 then
+        local okM, m = pcall(ns.CollectMPlus)
+        if okM and m and (m.score or m.key or m.weekBest) then
+            local parts = {}
+            if m.weekBest then parts[#parts + 1] = string.format(SL.OV_MP_WEEK_FMT or "%d", m.weekBest) end
+            if m.key then parts[#parts + 1] = string.format(SL.OV_MP_KEY_FMT or "%d %s", m.key.level, tostring(m.key.name or "")) end
+            lines[#lines + 1] = { text = m.score and string.format(SL.OV_MP_SCORE_FMT or "%d", math.floor(m.score)) or (SL.OV_MP or "M+"),
+                value = table.concat(parts, "  ·  "), target = "chars" }
+        end
+    end
+    local okC, caps = pcall(WeeklyCompassAPI.GetCurrencyCaps)
+    if okC then
+        local fmt = function(v) return (BreakUpLargeNumbers and BreakUpLargeNumbers(v)) or tostring(v) end
+        local near, rest = {}, {}
+        for _, c in ipairs(caps) do
+            if c.state == "near" then near[#near + 1] = c
+            elseif c.state == "capped" or (c.room and c.room > 0) then rest[#rest + 1] = c end
+        end
+        for _, c in ipairs(near) do
+            if #lines < 4 then lines[#lines + 1] = { text = string.format(SL.OV_CAP_NEAR_FMT or "%s", c.name),
+                value = fmt(c.qty) .. " / " .. fmt(c.max), progress = c.qty / c.max, urgent = true, target = "chars" } end
+        end
+        -- Le plus haut ecu (dernier de la liste) : ce qu'il reste a gagner.
+        local c = rest[#rest]
+        if c and #lines < 4 then
+            lines[#lines + 1] = { text = c.name,
+                value = (c.state == "capped") and SL.OV_CAP_CAPPED or string.format(SL.OV_CAP_ROOM_FMT or "%s", fmt(c.room)),
+                progress = c.max > 0 and math.min(1, c.earned / c.max) or nil, target = "chars" }
+        end
+    end
+    local okA, alts = pcall(WeeklyCompassAPI.GetAlts)
+    if okA and type(alts) == "table" then
+        local n = 0
+        for _, a in ipairs(alts) do if a.claim and not a.current then n = n + 1 end end
+        if n > 0 then lines[#lines + 1] = { text = string.format(SL.OV_WC_ALTS_FMT or "%d", n), target = "chars" } end
+    end
+    return out
+end
+
+-- Ouvre la fenetre sur un onglet ("week" ou "chars").
+function WeeklyCompassAPI.OpenTab(tab)
+    local g = ns.DB:GetGlobal()
+    if g and (tab == "week" or tab == "chars") then g.tab = tab end
+    local f = _G.WeeklyCompassFrame
+    if f and f:IsShown() then ns.UI:Refresh() else ns.UI:Toggle() end
+    return true
 end
 
 -- Renvoie { { key, name, realm, class, current, claim, inferred, ilvl }, ... }

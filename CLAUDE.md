@@ -231,6 +231,137 @@ engrenage, logo). Lot 7 : `TibiSuite.ExportSuite()` / `TibiSuiteDB.weekSnap`,
 lus par `Stats/Export.lua` (`chars[k].week`, `data.suite`) ; cartes « Ma semaine »
 et « Fil d'activité » du Dashboard (site + copie de Companion).
 
+**Aperçus des modules (7.1.5.45, non testés en jeu).** Contrat facultatif de
+`RegisterModule` : `overviewFn()` -> `{ lines = { {text, value, progress,
+urgent, color, target} } (5 max), empty, at }` et `openTo(target)` (renvoyer
+false = pas su viser, le core ouvre simplement). Core :
+`TibiSuite.GetModuleOverview(key, fresh)` (pcall, mémoire 3 s sauf `fresh`),
+`HasOverview`, `OpenModuleTo(key, target)`, `AddOverviewToTooltip(tt, key)`
+(3 lignes, 1 en combat). Centre : aperçu en haut de la page du module, options
+ancrées dans `p.optHost` dessous (pas d'évolution du socle). Infobulles Dock,
+Panneau, onglets Classique et widgets. Branchés : WeeklyCompass
+(`WeeklyCompassAPI.GetOverview/OpenTab`), RenTracker (`RenTrackerAPI.GetOverview`),
+DgnTracker (glue, `DgnTrackerAPI.OpenInstance`), PostBox (`PostBox_Overview`,
+`PostBox_OpenAlts`), DailyTracker, SkillTracker, LegTracker (`*_Overview`),
+LvlHistory (glue, `LvlHistoryAPI.Open(tab)`), LairLens (glue, `OpenInfo`),
+Stats (glue), Opacity (`OP.Overview`), Standby (`SB.Overview`), RepBar (glue).
+Textes `TibiSuiteL.OV_*` (FR dans le core, EN dans enUS). Fil d'activité :
+resets quotidien et hebdo épinglés en haut (compte à rebours, 30 s).
+
+**Prix des récoltes, lot A (SkillTracker, 7.1.5.45, non testé en jeu).**
+`SkillTracker/Gathering.lua` (nouveau fichier => redémarrage complet) :
+`ST.Prices.Vendor(id)` (GetItemInfo), `ST.Prices.AH(id)` via Auctionator
+(`Auctionator.API.v1.GetAuctionPriceByItemID/GetAuctionAgeByItemID`, appelant
+"SkillTracker") ou TSM (`TSM_API.GetCustomPriceValue` dbmarket, dbminbuyout,
+dbrecent), réglage `ST.settings.priceSource` (nil = auto, "auctionator", "tsm"),
+`Providers/HasProvider/MissingText/StatusText` (invite à installer l'un des
+deux). Sonde `/skt probe` (`report`, `clear`) : infobulles de la minicarte et
+du monde (texte, propriétaire, `issecretvalue`, `GetTooltipData` type/guid,
+objectID tiré du GUID GameObject) dans `SkillTrackerDB.probe`. Section « Prix
+des récoltes » dans les options. Lots B (table des nœuds + infobulles) et C
+(mémoire des prix sans Auctionator/TSM) à faire après le retour de la sonde.
+Résultat de la sonde (2026-10-11) : aucun identifiant de nœud, seulement le
+nom ; type 21 = minicarte (plusieurs noms possibles, séparés par des retours),
+type 4 = objet du monde (2e ligne = métier). **Lot B fait** : table de départ
+FR + EN courte (`SEED`), apprentissage à la récolte (`UNIT_SPELLCAST_SENT`
+cible + `LOOT_READY`, butin d'un GameObject, classe 7) dans
+`SkillTrackerDB.nodes[langue][nom normalisé]`, l'appris passe devant la table ;
+`TooltipDataProcessor.AddTooltipPostCall` types 4 et 21 ; réglages
+`priceMinimap/priceWorld/priceLearn` ; `ST.NodeItems`, `ST.ForgetNodes`.
+**Session de récolte (feuille de route lot 1, non testée en jeu)** : même
+butin que l'apprentissage, `SkillTrackerDB.farm = { cur, sessions (20), total }`,
+fin après 10 min sans récolte ou `/skt farm`, `ST.FarmActive/FarmToggle/
+FarmClose/ItemsValue/UnitPrice` (valeur au prix du moment, HV sinon vendeur),
+vue « Récolte » (`metierView = "farm"`, `farmScope cur|hist|all`, `farmSort
+name|qty|value|ext`, `farmExtFilter`), la ligne d'état passe à la session
+pendant le farm (`TibiSuiteL.ST_FARM_FMT`), `SkillTracker_OpenView(v)` pour
+`openTo`. Comptage limité aux sous-classes 4, 7, 9, 10 (gemmes, métaux,
+plantes, éléments) ; po/h seulement après 5 min (`ST.FarmRate`).
+**Valeur des sacs et banques (lot 2, non testé en jeu)** :
+`SkillTrackerDB.wealth = { chars[Nom-Royaume] = { class, bags, bank },
+warband }`, relevés `{ at, items, bound }` (sacs à `BAG_UPDATE_DELAYED`,
+banques à `BANKFRAME_OPENED`, onglets `Enum.BagIndex.CharacterBankTab_*` /
+`AccountBankTab_*`), `ST.SnapValue` (vendable HV sinon vendeur, lié au
+vendeur), `ST.WealthTop`, vue « Valeur » (`metierView = "wealth"`).
+Piège Lua rencontré : `local a, b = x and f()` ne garde que la 1re valeur.
+**Objectifs personnels (lot 3, non testés en jeu)** : `TibiSuiteDB.goals`
+(`id, text, kind manual|gather|gold|module, target, item, module, weekly,
+done/doneWeek, notified`), `TibiSuite.GetGoals/AddGoal/RemoveGoal/ToggleGoal/
+GoalProgress/CheckGoals/OnGoalsChanged`, semaine = heure du prochain reset
+(`GoalWeekId`). Sources : `SkillTracker_GatheredSince(since, itemID)`,
+`Stats_WeeklyNet()` (compte), `GetModuleStatus(key).progress`. Centre : page
+« Objectifs », groupe « MES OBJECTIFS » en tête de Ma semaine, prochaine action
+(score 150 + rang, après l'urgent et le « À faire »), fil d'activité à
+l'atteinte. Export `data.suite.goals` + bloc « Mes objectifs » du Dashboard
+(site et Companion).
+**Plafonds et événement (lot 4, non testés en jeu)** :
+`WeeklyCompassAPI.GetCurrencyCaps()` sur `ns.SheetCurrencies` (near = stock ≥
+90 % du plafond, urgent dans la ligne d'état ; capped = plafond de saison
+atteint, `useTotalEarnedForMaxQty` ; room = reste à gagner), lignes dans
+l'aperçu. `TibiSuite.GetWeekEvents()` (calendrier, type HOLIDAY, 2 au plus,
+mémoire 60 s), 4e tuile « Événement de la semaine » de Ma semaine.
+**Mythique+ (lot 5, non testé en jeu)** : `ns.CollectMPlus()` (WeeklyCompass,
+`Data/Activities/Sheet.lua`) = cote, meilleure clé par donjon de la saison
+(`GetSeasonBestForMap`, dans les temps ou non), meilleure clé et nombre de
+courses de la semaine (`GetRunHistory`), clé en poche ; stocké dans la fiche
+(`sheet.mplus`), section « Mythique+ » de la fiche, ligne dans l'aperçu.
+Sonde `/wc mplus` (`WeeklyCompassDB.mplusProbe`).
+**Hauts faits et session (lot 6, Stats, non testés en jeu)** :
+`SX.ScanAchievements/NearAchievements` (parcours une catégorie par image,
+≥ 80 %, 5 gardés, mémoire 10 min, hors guilde, statistiques et 0 point),
+`SX.OpenAchievement`. Session : `rec.liveSession` dans l'entrée du personnage
+(jamais une clé de premier niveau de StatsDB : elle serait prise pour un
+personnage), reload < 5 min = même session, bilan de la précédente (≥ 10 min)
+dans le fil à la connexion, `rec.lastSession`, `SX.SessionNow/SessionText`.
+3e rangée de tuiles de Stats (« Hauts faits », « Session ») avec détails. Les 6 tuiles du bas sont
+des cartes histogrammes (même taille et grille que les cartes du haut, 1re
+rangée à côté de la dernière carte) : métriques `delveBest`, `repFactions`,
+`profCount`, `achPoints` (`d.achPoints`, ACHIEVEMENT_EARNED) et `sessions`
+(`d.sessions/sessionTime` écrits à la clôture, session en cours comptée par
+`SX.Aggregate`), `SX.HistorySince` (`rec.histSince`). **Depuis, vue d'ensemble = tableau de
+bord (piste A)** : `BuildKPI` = 12 tuiles chiffrées en 3 rangées (`KPI_ROWS`
+Activité / Contenu / Progression, `KPI_DEF` key -> metric, hist, tile) avec
+mini-courbe, évolution « à date égale » (période en cours jusqu'à maintenant
+contre la même durée de la précédente), tuile vide estompée ; clic =
+`view.focus`, un seul grand graphique dessous (Historique = vue détail
+existante, Tableau détaillé = `view.summaryExpanded`). Les anciennes cartes /
+tuiles ne s'affichent plus en vue d'ensemble. `SX.KpiTiles()` = accès de test.
+DgnTracker : taux de drop estimés des montures (`RATES` par mountID dans
+Collections.lua, `C.Rate`, sources missingmounts/Wowhead relevées le 2026-10-12,
+rien d'affiché si non documenté).
+**Rares et boss mondiaux (lot 7, DailyTracker, non testés en jeu)** :
+`DailyTracker/Rares.lua` (nouveau fichier => redémarrage complet), `NS.Rares`.
+Sonde `/dt probe` (report, off, clear) dans `DailyTracker_Suite.lua`. Rares
+appris au kill (cible rare/rareelite morte, différence de
+`GetAllCompletedQuestIDs` 3 s après ou au butin, 6 quêtes max sinon bruit) :
+`DailyTrackerDB.rares[npcID] = {name,map,x,y,q={[qid]=true|"rep"},kills}` ;
+« rep » = quête vue redevenir à faire (`chars[k].rareQ`), seules les « rep »
+comptent dès qu'il y en a une. Vignettes `VignetteKill*` (pas de quête de
+récompense). Boss mondial = quête du monde tagID 289 / worldQuestType 18 sur
+les cartes de Midnight, mémorisée pour la semaine (`DailyTrackerDB.wb`,
+`chars[k].wb`), liste du journal (`EJBosses`) ; le type 289 couvre aussi les Repaires : `R.KindOf(title)` = "wb" si le titre contient un nom du journal, sinon "lair" (rubrique à part, hors compteurs). Vue « Rares » (`view="rares"`,
+`/dt rares`, `DailyTracker_OpenRares`, `openTo("rares")`), « Boss x/y » dans
+Personnages, lignes d'aperçu `OV_DAILY_WB/RARES`, alerte au fil
+(`rareAlert`, `rareToast`, nil = actif). **Collections (lot 8, DgnTracker, non testées en jeu)** :
+`DgnTracker/Collections.lua` (nouveau fichier => redémarrage complet),
+`DgnTrackerColl`. Catalogue construit à la 1re ouverture de la vue, une fois
+par version du jeu + langue (`DgnTrackerDB.coll = {build, locale, inst[jid] =
+{name, tier, tierName, raid, map, items[itemID] = {k, n, ic, m, s, e, en, d}}}`) :
+journal d'aventure tous paliers, objets à slot vide seulement, chargement
+`C_Item.RequestLoadItemDataByID` + `ITEM_DATA_LOAD_RESULT` (pas
+GET_ITEM_INFO_RECEIVED) puis classement mount/pet/toy. État en direct :
+`owned`, `tw` (24/33 seulement), `done` (boss tué dans toutes les difficultés,
+`GetSavedInstanceEncounterInfo` par nom de boss, carte = 10e retour
+d'`EJ_GetInstanceInfo` = 14e de `GetSavedInstanceInfo`), `avail`. Vue
+virtuelle `Coll` (`/dg collections`, `rebuild`, `DgnTracker_OpenView`,
+`openTo("coll")`), lignes d'aperçu `OV_DGN_COLL*`, fil à NEW_MOUNT/PET/TOY_ADDED.
+Sonde `/dg loot` (+ report) dans Live.lua. Récap hebdo de DailyTracker en
+notification flottante à la vraie connexion (`NS.initialLogin`) ; PostBox ne
+rouvre plus une fenêtre ouverte par la boîte aux lettres (`openByMail`).
+Croix de fermeture ajoutée à
+`PostBoxMainFrame` (les autres fenêtres en avaient déjà une). Maj + clic droit sur un
+module de la barre = options directes (clic droit = menu).
+
 **Menu Échap (validé en jeu, y compris en combat).** `GameMenuFrame:AddButton`
 dans un post-hook de `InitButtons` posé **au chargement du fichier**, donc avant
 ceux d'EllesmereUI/ElvUI : leur passe d'habillage stylise notre bouton toute

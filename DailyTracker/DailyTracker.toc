@@ -46,6 +46,9 @@ Locales.lua
 data\Midnight.lua
 data\TheWarWithin.lua
 
+## Rares et boss mondiaux (7.1.5.45). NOUVEAU FICHIER : redemarrage complet.
+Rares.lua
+
 ## Interface principale
 DailyTracker.lua
 ## Glue historique conserve tel quel : options flottantes + recherche globale

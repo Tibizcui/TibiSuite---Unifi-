@@ -48,7 +48,7 @@ L.SEARCH_PLACEHOLDER        = L.SEARCH_PLACEHOLDER        or "Rechercher..."
 L.SEARCH_PLACEHOLDER_GLOBAL = L.SEARCH_PLACEHOLDER_GLOBAL or "Recherche globale..."
 -- Vignettes de module
 L.TT_TAB_OPEN         = L.TT_TAB_OPEN         or "Clic gauche : ouvrir / fermer"
-L.TT_TAB_OPTIONS      = L.TT_TAB_OPTIONS      or "Clic droit : options du module"
+L.TT_TAB_OPTIONS      = L.TT_TAB_OPTIONS      or "Clic droit : menu   Maj + clic droit : options"
 L.TT_TAB_NOTINSTALLED = L.TT_TAB_NOTINSTALLED or "Non installé"
 L.TT_TAB_DOWNLOAD     = L.TT_TAB_DOWNLOAD     or "Clic : voir le lien de téléchargement"
 L.TT_TAB_DISABLED     = L.TT_TAB_DISABLED     or "Module désactivé. Clic gauche : l'activer"
@@ -98,6 +98,81 @@ L.DUR_DH             = L.DUR_DH             or "%d j %d h"
 L.DUR_HM             = L.DUR_HM             or "%d h %d min"
 L.DUR_M              = L.DUR_M              or "%d min"
 L.STREAM_NAME        = L.STREAM_NAME        or "Personnage"
+L.ST_FARM_FMT        = L.ST_FARM_FMT        or "Récolte · %d nœuds · %s po"
+L.ST_CAP_NEAR_FMT    = L.ST_CAP_NEAR_FMT    or "%s presque au plafond"
+L.OV_MP              = L.OV_MP              or "Mythique+"
+L.OV_MP_SCORE_FMT    = L.OV_MP_SCORE_FMT    or "Mythique+ : cote %d"
+L.OV_MP_WEEK_FMT     = L.OV_MP_WEEK_FMT     or "semaine +%d"
+L.OV_MP_KEY_FMT      = L.OV_MP_KEY_FMT      or "clé +%d %s"
+L.OV_CAP_NEAR_FMT    = L.OV_CAP_NEAR_FMT    or "%s : presque au plafond, dépense-les"
+L.OV_CAP_ROOM_FMT    = L.OV_CAP_ROOM_FMT    or "encore %s à gagner"
+L.OV_CAP_CAPPED      = L.OV_CAP_CAPPED      or "plafond atteint pour cette semaine"
+L.ST_FARM_RATE_FMT   = L.ST_FARM_RATE_FMT   or "%d nœuds · %s po · %s po/h"
+L.OV_TITLE = L.OV_TITLE or "APERÇU"
+L.OV_AT_FMT = L.OV_AT_FMT or "Données du %s"
+L.OV_TT_CLICK = L.OV_TT_CLICK or "Clic : ouvrir   Clic droit : menu"
+L.OV_WC_CLAIM = L.OV_WC_CLAIM or "Récompense du Grand coffre à récupérer"
+L.OV_WC_RAID = L.OV_WC_RAID or "Grand coffre : raids"
+L.OV_WC_DUNGEON = L.OV_WC_DUNGEON or "Grand coffre : donjons"
+L.OV_WC_WORLD = L.OV_WC_WORLD or "Grand coffre : monde et Gouffres"
+L.OV_WC_ALTS_FMT = L.OV_WC_ALTS_FMT or "%d autre(s) personnage(s) avec un coffre à récupérer"
+L.OV_WC_EMPTY = L.OV_WC_EMPTY or "Le Grand coffre de la semaine n'est pas encore lisible. Ouvre la fenêtre du Grand coffre une fois."
+L.OV_REP_PARAGON_FMT = L.OV_REP_PARAGON_FMT or "%d coffre(s) de Paragon à récupérer"
+L.OV_REP_WEEK = L.OV_REP_WEEK or "Hebdos de réputation"
+L.OV_REP_EMPTY = L.OV_REP_EMPTY or "Aucune réputation en cours pour l'extension affichée."
+L.OV_DGN_BOSS_FMT = L.OV_DGN_BOSS_FMT or "%d/%d boss"
+L.OV_DGN_MORE_FMT = L.OV_DGN_MORE_FMT or "+ %d autre(s) verrou(s)"
+L.OV_DGN_EMPTY = L.OV_DGN_EMPTY or "Aucun verrou en cours sur ce personnage."
+L.OV_DGN_COLL = L.OV_DGN_COLL or "Collections faisables cette semaine"
+L.OV_DGN_COLL_FMT = L.OV_DGN_COLL_FMT or "%d mont. / %d masc. / %d jouets"
+L.OV_DGN_COLL_TOP_FMT = L.OV_DGN_COLL_TOP_FMT or "%d monture(s)"
+L.OV_POST_EXP_FMT = L.OV_POST_EXP_FMT or "%s : %d courrier(s) qui expirent"
+L.OV_POST_IN_FMT = L.OV_POST_IN_FMT or "dans %s"
+L.OV_POST_GOLD = L.OV_POST_GOLD or "Or en attente dans tes boîtes"
+L.OV_POST_COD_FMT = L.OV_POST_COD_FMT or "%d contre-remboursement(s) en attente"
+L.OV_POST_NEW = L.OV_POST_NEW or "Nouveau courrier sur ce personnage"
+L.OV_POST_COUNT_FMT = L.OV_POST_COUNT_FMT or "%d courrier(s) dans la boîte"
+L.OV_POST_EMPTY = L.OV_POST_EMPTY or "Aucune boîte connue. Ouvre une boîte aux lettres pour remplir l'aperçu."
+L.OV_DAILY_WEEK = L.OV_DAILY_WEEK or "Hebdos de la semaine"
+L.OV_DAILY_DAY = L.OV_DAILY_DAY or "Quotidiennes du jour"
+L.OV_DAILY_EMPTY = L.OV_DAILY_EMPTY or "Aucune activité suivie pour ce personnage."
+L.OV_DAILY_WB = L.OV_DAILY_WB or "Boss mondiaux de la semaine"
+L.OV_DAILY_RARES = L.OV_DAILY_RARES or "Rares tués, de nouveau disponibles"
+L.OV_SKILL_FULL = L.OV_SKILL_FULL or "Pleine"
+L.OV_SKILL_IN_FMT = L.OV_SKILL_IN_FMT or "pleine dans %s"
+L.OV_SKILL_KNOW_FMT = L.OV_SKILL_KNOW_FMT or "Connaissances : %s"
+L.OV_SKILL_EMPTY = L.OV_SKILL_EMPTY or "Aucun métier lu. Ouvre la fenêtre de ton métier une fois."
+L.OV_LEG_TOTAL = L.OV_LEG_TOTAL or "Légendaires obtenus"
+L.OV_LEG_STEP_FMT = L.OV_LEG_STEP_FMT or "Étape %d/%d"
+L.OV_LEG_INPROG = L.OV_LEG_INPROG or "En cours"
+L.OV_LEG_EMPTY = L.OV_LEG_EMPTY or "Les légendaires n'ont pas encore été lus (scan au chargement)."
+L.OV_LVL_LEVEL_FMT = L.OV_LVL_LEVEL_FMT or "Niveau %d"
+L.OV_LVL_ETA = L.OV_LVL_ETA or "Niveau suivant dans"
+L.OV_LVL_XPH = L.OV_LVL_XPH or "XP par heure (session)"
+L.OV_LVL_RESTED = L.OV_LVL_RESTED or "XP reposée"
+L.OV_LVL_SESSION = L.OV_LVL_SESSION or "Session en cours"
+L.OV_LVL_SESSION_FMT = L.OV_LVL_SESSION_FMT or "%d quêtes, %d donjons"
+L.OV_LVL_MAX = L.OV_LVL_MAX or "Niveau maximum atteint : rien à suivre ici."
+L.OV_LAIR_DONE = L.OV_LAIR_DONE or "Fait"
+L.OV_LAIR_TODO = L.OV_LAIR_TODO or "À faire"
+L.OV_LAIR_EMPTY = L.OV_LAIR_EMPTY or "Aucune donnée de Repaire pour l'instant."
+L.OV_STATS_GOLD = L.OV_STATS_GOLD or "Or net de la semaine"
+L.OV_STATS_QUESTS = L.OV_STATS_QUESTS or "Quêtes de la semaine"
+L.OV_STATS_DUNGEONS = L.OV_STATS_DUNGEONS or "Donjons et M+ de la semaine"
+L.OV_STATS_DELVES = L.OV_STATS_DELVES or "Gouffres de la semaine"
+L.OV_STATS_PLAYED = L.OV_STATS_PLAYED or "Temps de jeu de la semaine"
+L.OV_STATS_EMPTY = L.OV_STATS_EMPTY or "Pas encore de données pour cette semaine."
+L.OV_OPA_PROFILE = L.OV_OPA_PROFILE or "Profil actif"
+L.OV_OPA_MASTER = L.OV_OPA_MASTER or "Curseur maître"
+L.OV_OPA_CTX = L.OV_OPA_CTX or "Contexte en cours"
+L.OV_OPA_NONE = L.OV_OPA_NONE or "aucun"
+L.OV_OPA_OFF = L.OV_OPA_OFF or "En pause"
+L.OV_SB_COUNT = L.OV_SB_COUNT or "Absences sur ce personnage"
+L.OV_SB_TOTAL = L.OV_SB_TOTAL or "Temps total en absence"
+L.OV_SB_LAST = L.OV_SB_LAST or "Dernière absence"
+L.OV_SB_EMPTY = L.OV_SB_EMPTY or "Aucune absence enregistrée sur ce personnage."
+L.OV_RB_WATCH = L.OV_RB_WATCH or "Faction suivie"
+L.OV_RB_NONE = L.OV_RB_NONE or "Aucune faction suivie. Choisis-en une dans la fenêtre de réputation."
 L.STREAM_GOLD        = L.STREAM_GOLD        or "***"
 L.STREAM_TOAST_ON    = L.STREAM_TOAST_ON    or "Mode streaming activé : nom et or masqués"
 L.STREAM_TOAST_OFF   = L.STREAM_TOAST_OFF   or "Mode streaming désactivé"
@@ -1166,6 +1241,9 @@ local function BuildBar()
       GameTooltip:SetPoint("TOPLEFT", s, "BOTTOMLEFT", 0, -6)
       if C_AddOns.IsAddOnLoaded(capturedMod.addonName) then
         GameTooltip:AddLine("|cFFFFD700" .. capturedMod.addonName .. "|r")
+        if TibiSuite.AddOverviewToTooltip and TibiSuite.AddOverviewToTooltip(GameTooltip, capturedMod.key) then
+          GameTooltip:AddLine(" ")
+        end
         GameTooltip:AddLine(L.TT_TAB_OPEN, 0.80, 0.80, 0.90)
         GameTooltip:AddLine(L.TT_TAB_OPTIONS, 0.80, 0.80, 0.90)
       else
@@ -1182,7 +1260,8 @@ local function BuildBar()
     btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     btn:SetScript("OnClick", function(self, button)
       if button == "RightButton" then
-        if not (TibiSuite.ShowModuleMenu and TibiSuite.ShowModuleMenu(self, capturedMod)) then
+        -- Maj + clic droit : directement les options ; clic droit seul : le menu.
+        if IsShiftKeyDown() or not (TibiSuite.ShowModuleMenu and TibiSuite.ShowModuleMenu(self, capturedMod)) then
           OpenModuleOptions(capturedMod)
         end
       else
@@ -1443,6 +1522,80 @@ function TibiSuite.GetModuleStatus(key)
   end
 end
 
+-- ================================================================
+-- APERCUS DES MODULES (7.1.5.45)
+-- ----------------------------------------------------------------
+-- Contrat facultatif de RegisterModule, a cote de statusFn :
+--   overviewFn() -> { lines = { { text, value, progress (0..1), urgent,
+--                     color = {r,g,b}, target } } (5 au plus),
+--                     empty = "texte si aucune ligne", at = horodatage
+--                     si la donnee vient d'une sauvegarde }  ou nil
+--   openTo(target) : ouvre le module a l'endroit vise (onglet, instance...)
+-- Appele sous pcall. Affiche en haut de la page du module dans le Centre et
+-- dans l'infobulle des modules de la barre (3 premieres lignes).
+-- ================================================================
+local ovCache = {}
+function TibiSuite.HasOverview(key)
+  local reg = TibiSuite.registered and TibiSuite.registered[key]
+  return reg and type(reg.overviewFn) == "function" or false
+end
+
+-- fresh = true : ignore la memoire de 3 s (page du Centre). Sans, les
+-- infobulles relisent au plus toutes les 3 s.
+function TibiSuite.GetModuleOverview(key, fresh)
+  local mod
+  for _, m in ipairs(MODULES) do if m.key == key then mod = m; break end end
+  if not (mod and C_AddOns.IsAddOnLoaded(mod.addonName)) then return nil end
+  local reg = TibiSuite.registered and TibiSuite.registered[key]
+  if not (reg and type(reg.overviewFn) == "function") then return nil end
+  local c = ovCache[key]
+  if not fresh and c and GetTime() - c.t < 3 then return c.v end
+  local ok, ov = pcall(reg.overviewFn)
+  if not ok or type(ov) ~= "table" then ov = nil end
+  if ov then
+    local lines = {}
+    for _, ln in ipairs(ov.lines or {}) do
+      if type(ln) == "table" and ln.text and #lines < 5 then
+        if ln.progress then ln.progress = math.max(0, math.min(1, tonumber(ln.progress) or 0)) end
+        lines[#lines + 1] = ln
+      end
+    end
+    ov.lines = lines
+  end
+  ovCache[key] = { t = GetTime(), v = ov }
+  return ov
+end
+
+-- Ouvre le module, a l'endroit vise si le module sait le faire.
+function TibiSuite.OpenModuleTo(key, target)
+  local reg = TibiSuite.registered and TibiSuite.registered[key]
+  if target ~= nil and reg and type(reg.openTo) == "function" then
+    local ok, done = pcall(reg.openTo, target)
+    if ok and done ~= false then return end
+  end
+  TibiSuite.OpenModule(key)
+end
+
+-- Infobulle d'un module de la barre : titre deja pose par l'appelant, on
+-- ajoute ses premieres lignes d'apercu (1 seule en combat).
+function TibiSuite.AddOverviewToTooltip(tt, key)
+  local ov = TibiSuite.GetModuleOverview(key)
+  if not (ov and ov.lines and #ov.lines > 0) then return false end
+  local max = (InCombatLockdown and InCombatLockdown()) and 1 or 3
+  tt:AddLine(" ")
+  for i, ln in ipairs(ov.lines) do
+    if i > max then break end
+    local r, g, b = 0.85, 0.85, 0.88
+    if ln.urgent then r, g, b = 1, 0.604, 0.235 elseif ln.color then r, g, b = ln.color[1] or r, ln.color[2] or g, ln.color[3] or b end
+    if ln.value and ln.value ~= "" then
+      tt:AddDoubleLine(tostring(ln.text), tostring(ln.value), r, g, b, 1, 1, 1)
+    else
+      tt:AddLine(tostring(ln.text), r, g, b, true)
+    end
+  end
+  return true
+end
+
 -- Texte du badge d'un module : compte pose par SetTabBadge, sinon « ! » si
 -- son badgeFn (catalogue) repond vrai, sinon nil.
 local function BadgeText(mod)
@@ -1471,11 +1624,14 @@ local function ShowModTooltip(owner, mod)
   local c = mod.col
   if C_AddOns.IsAddOnLoaded(mod.addonName) then
     GameTooltip:AddLine(mod.addonName, c.r, c.g, c.b)
-    local st = GetModuleStatus(mod)
+    -- Apercu du module (3 lignes, 1 en combat), sinon sa ligne d'etat.
+    local hasOv = TibiSuite.AddOverviewToTooltip and TibiSuite.AddOverviewToTooltip(GameTooltip, mod.key)
+    local st = (not hasOv) and GetModuleStatus(mod)
     if st and st.text then
       if st.urgent then GameTooltip:AddLine(st.text, 1.0, 0.45, 0.45, true)
       else GameTooltip:AddLine(st.text, 0.90, 0.90, 0.90, true) end
     end
+    if hasOv then GameTooltip:AddLine(" ") end
     GameTooltip:AddLine(L.TT_TAB_OPEN, 0.55, 0.55, 0.60)
     GameTooltip:AddLine(L.TT_TAB_OPTIONS, 0.55, 0.55, 0.60)
   elseif TibiSuite.ModuleExists(mod.addonName) then
@@ -1536,7 +1692,8 @@ end
 -- client le permet (MenuUtil), sinon les options comme avant.
 local function OnModClick(mod, button, owner)
   if button == "RightButton" then
-    if not (TibiSuite.ShowModuleMenu and TibiSuite.ShowModuleMenu(owner, mod)) then OpenModuleOptions(mod) end
+    -- Maj + clic droit : directement les options ; clic droit seul : le menu.
+    if IsShiftKeyDown() or not (TibiSuite.ShowModuleMenu and TibiSuite.ShowModuleMenu(owner, mod)) then OpenModuleOptions(mod) end
   else OnTabClick(mod) end
 end
 

@@ -273,6 +273,28 @@ if HasCore() and IsEnabledByCore() then
             if done == total then return { text = SL.ST_LAIR_DONE, progress = 1 } end
             return { text = string.format(SL.ST_LAIR_FMT or "%d/%d", done, total), progress = done / total }
         end,
+        -- Apercu du Centre (7.1.5.45) : les quatre difficultes de la semaine.
+        overviewFn     = function()
+            local SL = _G.TibiSuiteL or {}
+            local out = { lines = {}, empty = SL.OV_LAIR_EMPTY }
+            local api = _G.LairLensAPI
+            if not (api and api.GetWeek) then return out end
+            local ok, w = pcall(api.GetWeek)
+            if not ok or type(w) ~= "table" then return out end
+            local name = api.GetLairName and api.GetLairName()
+            for _, d in ipairs({ "world", "normal", "heroic", "mythic" }) do
+                local label = api.GetDifficultyLabel and api.GetDifficultyLabel(d) or d
+                local txt = (name and name ~= "") and (label .. "  |cFF8F8C98" .. name .. "|r") or label
+                out.lines[#out.lines + 1] = { text = txt, value = w[d] and SL.OV_LAIR_DONE or SL.OV_LAIR_TODO,
+                    progress = w[d] and 1 or 0, target = "info" }
+            end
+            return out
+        end,
+        openTo         = function(t)
+            local api = _G.LairLensAPI
+            if t == "info" and api and api.OpenInfo then api.OpenInfo(); return true end
+            return false
+        end,
     })
 elseif not HasCore() then
     BuildStandaloneMinimapButton()

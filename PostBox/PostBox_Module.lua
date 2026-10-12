@@ -160,6 +160,7 @@ local function OnMailboxShown()
   P.SetMailboxOpen(true)
   TradeBlockOn()
   P.OpenWindow()
+  PostBoxDB.openByMail = true
   P.RefreshCache(true)
   if P.BlackBook and P.BlackBook.OnMailShow then P.BlackBook.OnMailShow() end
   -- Ramassage auto : on laisse le temps au serveur de remplir la boite.
@@ -178,7 +179,16 @@ mailEvtFrame:RegisterEvent("MAIL_INBOX_UPDATE")
 mailEvtFrame:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_HIDE")
 mailEvtFrame:RegisterEvent("PLAYER_LOGOUT")
 mailEvtFrame:SetScript("OnEvent", function(_, event, arg1)
-  if event == "PLAYER_LOGOUT" then TradeBlockOff() return end
+  if event == "PLAYER_LOGOUT" then
+    TradeBlockOff()
+    -- Etat reel de la fenetre au depart (deconnexion ou /reload) : Echap
+    -- (UISpecialFrames) la masque sans passer par PostBox_Toggle, l'indicateur
+    -- « ouverte » restait vrai et la fenetre revenait a chaque /reload. Pas
+    -- de crochet OnHide (piege de taint avec UISpecialFrames).
+    local f = _G.PostBoxMainFrame
+    PostBoxDB.open = (f and f:IsShown() and not PostBoxDB.openByMail) and true or false
+    return
+  end
   if not P.enabled then return end
   if event == "MAIL_SHOW" then
     OnMailboxShown()
@@ -238,6 +248,8 @@ local function Init()
       onOptions      = function() PostBox_OpenOptions() end,
       searchProvider = P.SearchProvider,
       statusFn       = function() if _G.PostBox_Status then return _G.PostBox_Status() end end,
+      overviewFn     = function() if _G.PostBox_Overview then return _G.PostBox_Overview() end end,
+      openTo         = function(t) if t == "alts" and _G.PostBox_OpenAlts then return _G.PostBox_OpenAlts() end return false end,
     })
   else
     BuildStandaloneMinimapButton()
@@ -270,8 +282,11 @@ local function Init()
     if P.Alts and P.Alts.LoginAlert then pcall(P.Alts.LoginAlert) end
   end)
 
-  -- Fenetre laissee ouverte avant le /reload : on la rouvre (comportement
-  -- historique conserve).
+  -- Fenetre laissee ouverte avant le /reload : on la rouvre, seulement si
+  -- c'est le joueur qui l'avait ouverte. Ouverte par la boite aux lettres,
+  -- elle restait marquee ouverte quand la fermeture n'etait pas vue
+  -- (deconnexion devant la boite) et revenait a chaque connexion.
+  if PostBoxDB.openByMail then PostBoxDB.open = false; PostBoxDB.openByMail = nil end
   if PostBoxDB.open and not P.mailboxOpen then
     P.BuildUI()
     if not _G.PostBoxMainFrame:IsShown() then PostBox_Toggle() end

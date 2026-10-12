@@ -835,6 +835,11 @@ local function BuildUI()
     if ToggleTodo then ToggleTodo() end
     mainFrame:RefreshContent()
   end, L.TODO_TITLE, L.LIST_TAB_TIP)
+  mainFrame._raresBtn = MakeSideTab(nExt+3, L.TAB_RARES, {r=0.95,g=0.45,b=0.40}, function()
+    DailyTrackerDB.view = (DailyTrackerDB.view=="rares") and nil or "rares"
+    mainFrame._scrollOffset = 0
+    mainFrame:RefreshContent()
+  end, L.RARES_TITLE, L.RARES_TAB_TIP)
 
   local sepVert = mainFrame:CreateTexture(nil,"ARTWORK")
   sepVert:SetTexture("Interface\\BUTTONS\\WHITE8X8")
@@ -1116,6 +1121,52 @@ local function BuildUI()
     return row
   end
 
+  -- Vue Rares (7.1.5.45) : titre de bloc / note, et ligne d'un rare ou
+  -- d'un boss (nom, zone + coordonnees, etat a droite).
+  local function MakeRareHead()
+    local h = CreateFrame("Frame",nil,mainFrame.questContent)
+    h.fs = h:CreateFontString(nil,"OVERLAY","GameFontNormal")
+    h.fs:SetPoint("TOPLEFT",h,"TOPLEFT",0,0)
+    h.fs:SetJustifyH("LEFT") ; h.fs:SetWordWrap(true)
+    return h
+  end
+  local function MakeRareRow()
+    local row = CreateFrame("Button",nil,mainFrame.questContent,"BackdropTemplate")
+    row:SetBackdrop(BD_EDGE6)
+    row:RegisterForClicks("AnyUp")
+    row.nameFS = row:CreateFontString(nil,"OVERLAY","GameFontNormal")
+    row.nameFS:SetPoint("TOPLEFT",row,"TOPLEFT",10,-5) ; row.nameFS:SetJustifyH("LEFT")
+    row.nameFS:SetWordWrap(false)
+    row.subFS = row:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+    row.subFS:SetPoint("TOPLEFT",row,"TOPLEFT",10,-20) ; row.subFS:SetJustifyH("LEFT")
+    row.subFS:SetWordWrap(false)
+    row.stateFS = row:CreateFontString(nil,"OVERLAY","GameFontNormalSmall")
+    row.stateFS:SetPoint("RIGHT",row,"RIGHT",-10,0) ; row.stateFS:SetJustifyH("RIGHT")
+    row:SetScript("OnEnter",function(s)
+      s:SetBackdropBorderColor(0.086,0.769,0.988,0.9)
+      GameTooltip:SetOwner(s,"ANCHOR_RIGHT")
+      GameTooltip:AddLine(s._title or "",1,1,1)
+      if s._tip then GameTooltip:AddLine(s._tip,0.8,0.8,0.8,true) end
+      if s._map and s._x then GameTooltip:AddLine(L.RARES_HINT_WP,0.6,0.85,1) end
+      if s._npc then GameTooltip:AddLine(L.RARES_HINT_FORGET,0.6,0.6,0.6) end
+      GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave",function(s)
+      GameTooltip:Hide()
+      s:SetBackdropBorderColor(0.45,0.35,0.18,0.6)
+    end)
+    row:SetScript("OnClick",function(s, button)
+      if button=="RightButton" and IsShiftKeyDown() and s._npc and NS.Rares then
+        GameTooltip:Hide()
+        NS.Rares.Forget(s._npc)
+        mainFrame:RefreshContent()
+      elseif button=="LeftButton" and s._map and s._x then
+        PlaceWaypoint(s._map, string.format("%.1f, %.1f", s._x, s._y), s._title)
+      end
+    end)
+    return row
+  end
+
   local WIDGET_FACTORY = {
     sep         = MakeSep,
     groupHeader = MakeGroupHeader,
@@ -1123,6 +1174,8 @@ local function BuildUI()
     questHeader = MakeQuestHeader,
     questRow    = MakeQuestRow,
     altRow      = MakeAltRow,
+    rareHead    = MakeRareHead,
+    rareRow     = MakeRareRow,
   }
 
   mainFrame._pools    = {}
@@ -1394,7 +1447,10 @@ local function BuildUI()
       else row.seenFS:SetText("|cFF777777"..string.format(L.ALTS_SEEN, FormatDuration(time()-(c.seen or time()))).."|r") end
 
       local wCol = (wd>=wt and wt>0) and "|cFF4DCC72" or "|cFF4D99FF"
+      local bD, bT = 0, 0
+      if NS.Rares and NS.Rares.CharBosses then bD, bT = NS.Rares.CharBosses(c) end
       row.lineFS:SetText(string.format("%s"..L.ALTS_WEEKLY.."|r   |cFF4DCC4D"..L.ALTS_DAILY.."|r", wCol, wd, wt, dd, dt)
+        ..((bT > 0) and ("   "..((bD >= bT) and "|cFF4DCC72" or "|cFFFF8844")..string.format(L.ALTS_WB, bD, bT).."|r") or "")
         ..(wStale and ("   |cFFCC8844"..L.ALTS_STALE.."|r") or ""))
       local pct = wt>0 and wd/wt or 0
       row.barFill:SetWidth(math.max(1, math.floor(90*pct)))
@@ -1406,6 +1462,129 @@ local function BuildUI()
     end
 
     ApplyScrollLayout(self, qScrollY, y, viewportW)
+  end
+
+  -- Vue « Rares et boss mondiaux » (7.1.5.45, moteur dans Rares.lua) :
+  -- boss de la semaine, rares presents sur la minicarte, rares appris.
+  local function RenderRares(self)
+    local Rr = NS.Rares
+    self._questHeader:ClearAllPoints()
+    self._questHeader:SetPoint("TOPLEFT",CX,-Y_GROUPS)
+    self._questHeader:SetText("|cFFFFD700"..L.RARES_TITLE.."|r")
+    self._counter:SetText("")
+    self._legend:ClearAllPoints()
+    self._legend:SetPoint("TOPLEFT",CX,-(Y_GROUPS+16))
+    self._legend:SetText("|cFF888888"..L.RARES_SUB.."|r")
+    self._resetInfo:ClearAllPoints()
+    self._resetInfo:SetPoint("TOPRIGHT",-MARGIN_R,-(Y_GROUPS+16))
+    self._resetInfo:SetText(FormatResetInfo())
+    if self._altsEmpty then self._altsEmpty:Hide() end
+
+    local qScrollY = Y_GROUPS + 32
+    local newW = 560
+    self:SetWidth(newW)
+    FitLegend(self)
+    local sbW = newW - CX - MARGIN_R - 4
+    local viewportW = sbW - 12 - SB_W
+    self.scrollBg:ClearAllPoints()
+    self.scrollBg:SetPoint("TOPLEFT",CX,-qScrollY)
+    self.scrollBg:SetWidth(sbW)
+
+    local y = 6
+    local function head(text, small)
+      local h = AcquireWidget("rareHead")
+      h:SetPoint("TOPLEFT",self.questContent,"TOPLEFT",6,-y)
+      h.fs:SetFontObject(small and "GameFontNormalSmall" or "GameFontNormal")
+      h.fs:SetWidth(viewportW-16)
+      h.fs:SetText(text)
+      local hh = math.ceil(h.fs:GetStringHeight() or 14)
+      h:SetSize(viewportW-12, hh)
+      y = y + hh + 6
+    end
+    local function row(title, sub, state, tip, map, x, yy, npc)
+      local r = AcquireWidget("rareRow")
+      r:SetPoint("TOPLEFT",self.questContent,"TOPLEFT",2,-y)
+      r:SetSize(viewportW, 34)
+      r:SetBackdropColor(0.05,0.04,0.03,0.95)
+      r:SetBackdropBorderColor(0.45,0.35,0.18,0.6)
+      r.nameFS:SetWidth(viewportW-130)
+      r.subFS:SetWidth(viewportW-130)
+      r.nameFS:SetText(title)
+      r.subFS:SetText("|cFF999999"..(sub or "").."|r")
+      r.stateFS:SetText(state or "")
+      r._title, r._tip, r._map, r._x, r._y, r._npc = title, tip, map, x, yy, npc
+      y = y + 36
+    end
+    local function coords(x, yy) return (x and yy) and string.format("%.1f, %.1f", x, yy) or nil end
+    local function stateText(killed)
+      if killed == true then return "|cFF888888"..L.RARES_KILLED.."|r" end
+      if killed == false then return "|cFF4DCC72"..L.RARES_AVAIL.."|r" end
+      return "|cFFFFCC00"..L.RARES_UNKNOWN.."|r"
+    end
+
+    if not Rr then
+      head("|cFF888888"..L.RARES_NOENGINE.."|r", true)
+      ApplyScrollLayout(self, qScrollY, y + 8, viewportW)
+      return
+    end
+    pcall(Rr.CheckRepeat) ; pcall(Rr.ScanBosses) ; pcall(Rr.ScanVignettes)
+
+    -- 1. Boss mondiaux de la semaine
+    head("|cFF16C4FC"..L.RARES_WB.."|r")
+    local okB, bosses = pcall(Rr.GetBosses)
+    bosses = okB and bosses or {}
+    local function bossRow(b)
+      local sub = b.zone
+      if b.ends and b.ends > time() then sub = sub.."  -  "..string.format(L.RARES_LEFT, FormatDuration(b.ends - time())) end
+      row("|cFFFFD700"..b.title.."|r", sub,
+        b.done and ("|cFF4DCC72"..L.RARES_DONE.."|r") or ("|cFFFF8844"..L.RARES_TODO.."|r"))
+    end
+    -- Boss mondiaux (noms du journal) d'abord, Repaires ensuite.
+    local wbs, lairs = {}, {}
+    for _, b in ipairs(bosses) do
+      if b.kind == "lair" then lairs[#lairs + 1] = b else wbs[#wbs + 1] = b end
+    end
+    if #wbs == 0 then head("|cFF888888"..L.RARES_WB_NONE.."|r", true) end
+    for _, b in ipairs(wbs) do bossRow(b) end
+    local okE, ej = pcall(Rr.EJBosses)
+    if okE and type(ej) == "table" and #ej > 0 then
+      head("|cFF888888"..string.format(L.RARES_WB_ALL, table.concat(ej, ", ")).."|r", true)
+    end
+    if #lairs > 0 then
+      y = y + 4
+      head("|cFFDDC080"..L.RARES_LAIRS.."|r", true)
+      for _, b in ipairs(lairs) do bossRow(b) end
+    end
+    y = y + 6
+
+    -- 2. Rares presents sur la minicarte
+    head("|cFF16C4FC"..L.RARES_NEARBY.."|r")
+    local vis = Rr.GetVisible() or {}
+    if #vis == 0 then head("|cFF888888"..L.RARES_NEARBY_NONE.."|r", true) end
+    for _, v in ipairs(vis) do
+      row(v.name or "?", coords(v.x, v.y), stateText(v.learned and v.killed or nil), nil, v.map, v.x, v.y)
+    end
+    y = y + 6
+
+    -- 3. Rares appris, par zone (zone courante en tete, disponibles d'abord)
+    local okL, groups = pcall(Rr.GetLearned)
+    groups = okL and groups or {}
+    local n = 0
+    for _, g in ipairs(groups) do n = n + #g.list end
+    head("|cFF16C4FC"..L.RARES_LEARNED.."|r  |cFF888888("..n..")|r")
+    if n == 0 then head("|cFF888888"..L.RARES_LEARNED_NONE.."|r", true) end
+    for _, g in ipairs(groups) do
+      head("|cFFDDC080"..g.zone.."|r", true)
+      for _, e in ipairs(g.list) do
+        local r = e.r
+        local sub = coords(r.x, r.y) or ""
+        if (r.kills or 0) > 0 then sub = sub..((sub ~= "") and "  -  " or "")..string.format(L.RARES_KILLS, r.kills) end
+        local tip = (not e.sure) and L.RARES_UNSURE or nil
+        row(r.name or "?", sub, stateText(e.killed), tip, r.map, r.x, r.y, e.npc)
+      end
+    end
+
+    ApplyScrollLayout(self, qScrollY, y + 8, viewportW)
   end
 
   -- ============================================================
@@ -1421,6 +1600,7 @@ local function BuildUI()
     local filter  = DailyTrackerDB.filter or "all"
     local hideDone= DailyTrackerDB.hideCompleted and true or false
     local altsView= (DailyTrackerDB.view=="alts")
+    local raresView= (DailyTrackerDB.view=="rares")
 
     self._titleStr:SetText(ACCENT_HEX.."DailyTracker|r")
 
@@ -1440,8 +1620,9 @@ local function BuildUI()
       allOpen and L.COLLAPSE_ALL or L.EXPAND_ALL))
 
     -- Onglets de gauche
-    for _, eb in ipairs(self.extBtns or {}) do SetTabState(eb, (not altsView) and eb.extKey==extKey) end
+    for _, eb in ipairs(self.extBtns or {}) do SetTabState(eb, (not altsView) and (not raresView) and eb.extKey==extKey) end
     SetTabState(self._altsBtn, altsView)
+    SetTabState(self._raresBtn, raresView)
     SetTabState(self._listBtn, DailyTrackerDB.todo and DailyTrackerDB.todo.shown)
 
     -- Highlight filtres type
@@ -1471,6 +1652,7 @@ local function BuildUI()
     end
 
     if altsView then RenderAlts(self); return end
+    if raresView then RenderRares(self); return end
     if self._altsEmpty then self._altsEmpty:Hide() end
 
     -- Groupes
@@ -2058,6 +2240,41 @@ function DailyTracker_Status()
            urgent = secs > 0 and secs < 86400 }
 end
 
+-- Apercu du Centre TibiSuite (overviewFn, 7.1.5.45) : hebdos de la semaine,
+-- les trois premieres activites restantes, quotidiennes du jour.
+function DailyTracker_Overview()
+  local SL = _G.TibiSuiteL or {}
+  local out = { lines = {}, empty = SL.OV_DAILY_EMPTY }
+  if not MY_KEY then return out end
+  local lines = out.lines
+  local d, total = GetExtStats(CURRENT_EXT, "weekly")
+  if total and total > 0 then
+    local secs = SecUntilWeeklyReset()
+    lines[#lines + 1] = { text = SL.OV_DAILY_WEEK, value = d .. " / " .. total, progress = d / total,
+      urgent = (d < total) and secs > 0 and secs < 86400 or nil }
+  end
+  local sum = NS.Rares and NS.Rares.Summary and select(2, pcall(NS.Rares.Summary))
+  if type(sum) == "table" then
+    if sum.bossTotal > 0 then
+      lines[#lines + 1] = { text = SL.OV_DAILY_WB, value = sum.bossDone .. " / " .. sum.bossTotal,
+        progress = sum.bossDone / sum.bossTotal, target = "rares" }
+    end
+    if sum.known > 0 then
+      lines[#lines + 1] = { text = SL.OV_DAILY_RARES, value = sum.avail .. " / " .. sum.known, target = "rares" }
+    end
+  end
+  local rem = GetRemaining(CURRENT_EXT, false)
+  for i = 1, math.min(5 - #lines - 1, #rem) do
+    local e = rem[i]
+    lines[#lines + 1] = { text = DisplayName(e.q) or "?", value = e.fac and e.fac.name or nil }
+  end
+  local dd, dt = GetExtStats(CURRENT_EXT, "daily")
+  if dt and dt > 0 and #lines < 5 then
+    lines[#lines + 1] = { text = SL.OV_DAILY_DAY, value = dd .. " / " .. dt, progress = dd / dt }
+  end
+  return out
+end
+
 -- Rappel avant le reset hebdo : une seule fois par reset et par personnage.
 -- verbose=true (bouton « Verifier maintenant ») : repond toujours, meme
 -- quand il n'y a rien a rappeler, pour que le test ne paraisse pas muet.
@@ -2269,6 +2486,12 @@ SlashCmdList["DAILYTRACKER"]=function(msg)
     ToggleTodo()
     if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
     return
+  elseif msg=="probe" or msg:match("^probe ") then
+    if DailyTracker_RareProbe then DailyTracker_RareProbe(msg:match("^probe%s+(.+)$")) end
+    return
+  elseif msg=="rares" or msg=="rare" then
+    if DailyTracker_OpenRares then DailyTracker_OpenRares() end
+    return
   elseif msg=="alts" then
     if not mainFrame then return end
     DailyTrackerDB.view = "alts"
@@ -2296,6 +2519,7 @@ end
 
 -- API interne pour DailyTracker_Suite.lua (options, recherche)
 NS.DisplayName = DisplayName
+NS.RequestRefresh = function() RequestRefresh() end
 NS.RefreshAll = function()
   InvalidateCache()
   if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
@@ -2362,12 +2586,18 @@ evFrame:SetScript("OnEvent",function(_,event,arg1,arg2)
       local mode = "full"
       if HasCore() then mode = (TibiSuiteDB and TibiSuiteDB.loginMsg) or "one" end
       InvalidateCache()
-      if mode=="full" then
+      -- Recap des hebdos (7.1.5.45) : en suite, notification flottante du
+      -- core (comme le rappel du reset quotidien), a la connexion seulement
+      -- (pas a chaque /reload), quel que soit le reglage des messages ; en
+      -- autonome, ligne dans la discussion comme avant.
+      local d, t = GetExtStats(CURRENT_EXT, "weekly")
+      local recap = (t - d > 0) and string.format(L.RECAP, t - d, FormatDuration(SecUntilWeeklyReset())) or nil
+      if HasCore() and TibiSuite.Notify then
+        if recap and NS.initialLogin then TibiSuite.Notify("Daily", recap, { sound = false }) end
+        if mode=="full" then print(string.format(L.LOGIN_MSG, VERSION)) end
+      elseif mode=="full" then
         print(string.format(L.LOGIN_MSG, VERSION))
-        local d, t = GetExtStats(CURRENT_EXT, "weekly")
-        if t - d > 0 then
-          print(ACCENT_HEX.."DailyTracker|r "..string.format(L.RECAP, t - d, FormatDuration(SecUntilWeeklyReset())))
-        end
+        if recap then print(ACCENT_HEX.."DailyTracker|r "..recap) end
       end
       RequestBackground()
     end)
@@ -2403,6 +2633,15 @@ function DailyTracker_Toggle()
   ToggleMain()
 end
 
+-- Ouvre directement la vue Rares et boss mondiaux (/dt rares, apercu).
+function DailyTracker_OpenRares()
+  if not mainFrame then return end
+  DailyTrackerDB.view = "rares"
+  mainFrame._scrollOffset = 0
+  mainFrame:Show(); DailyTrackerDB.open = true
+  mainFrame:RefreshContent()
+end
+
 -- ================================================================
 -- API PUBLIQUE (Standby) - lecture seule, depuis 7.1.5.40
 -- Lue par la tuile « A faire ce soir » de Standby. Meme calcul que la liste
@@ -2417,3 +2656,13 @@ function DailyTrackerAPI.GetRemaining()
   local all = #GetRemaining(CURRENT_EXT, true)
   return weekly, all - weekly
 end
+
+-- Connexion reelle (pas un /reload) : seul cas ou le recap des hebdos part
+-- en notification flottante. PLAYER_ENTERING_WORLD arrive avant le delai de
+-- 3 s du message de connexion.
+local _loginFrame = CreateFrame("Frame")
+_loginFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+_loginFrame:SetScript("OnEvent", function(self, _, isInitialLogin)
+  NS.initialLogin = isInitialLogin and true or false
+  self:UnregisterAllEvents()
+end)

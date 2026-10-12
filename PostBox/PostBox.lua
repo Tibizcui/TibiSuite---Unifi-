@@ -1117,6 +1117,9 @@ function PostBox_Toggle()
     f:Hide(); PostBoxDB.open = false
   else
     f:Show(); PostBoxDB.open = true
+    -- Ouverture a la main : a rouvrir apres un /reload. OnMailboxShown remet
+    -- openByMail juste apres, quand c'est la boite aux lettres qui ouvre.
+    PostBoxDB.openByMail = nil
     P.RefreshCache(false)
   end
 end
@@ -1573,6 +1576,15 @@ function P.BuildUI()
   if UI then UI.SkinFrame(pv, ACCENT, UI.C.PANEL) end
   f.preview = pv
 
+  -- Croix de fermeture (7.1.5.45) : au-dessus du volet apercu, dans son coin
+  -- haut-droit (le volet couvre tout le cote droit de la fenetre).
+  local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+  close:SetSize(24, 24)
+  close:SetPoint("TOPRIGHT", f, "TOPRIGHT", -9, -9)
+  close:SetFrameLevel(pv:GetFrameLevel() + 10)
+  close:SetScript("OnClick", function() if f:IsShown() then PostBox_Toggle() end end)
+  f.closeBtn = close
+
   local placeholder = pv:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
   placeholder:SetPoint("CENTER", 0, 0)
   placeholder:SetWidth(PREVIEW_W - 40)
@@ -1587,7 +1599,7 @@ function P.BuildUI()
 
   local senderText = readingPane:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   senderText:SetPoint("TOPLEFT", 14, -14)
-  senderText:SetPoint("TOPRIGHT", -14, -14)
+  senderText:SetPoint("TOPRIGHT", -36, -14)
   senderText:SetJustifyH("LEFT")
   pv.senderText = senderText
 

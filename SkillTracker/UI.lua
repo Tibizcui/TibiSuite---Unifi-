@@ -143,6 +143,7 @@ end
 local function acquireBar()
   local w = table.remove(pools.bar)
   if not w then w = MakeBar(content, 300, 16) end
+  w._txt:SetJustifyH("CENTER")   -- la vue Recolte aligne a gauche
   w:EnableMouse(false)
   w:SetScript("OnMouseUp", nil)
   w:SetScript("OnEnter", nil)
@@ -295,10 +296,11 @@ end
 -- ================================================================
 -- BASCULE DE VUE
 -- ================================================================
-local METIER_VIEWS = { "current", "all", "account", "conc", "week", "recipes" }
+local METIER_VIEWS = { "current", "all", "account", "conc", "week", "recipes", "farm", "wealth" }
 local VIEW_LABEL = {
   current = "METIER_VIEW_CURRENT", all = "METIER_VIEW_ALL", account = "METIER_VIEW_ACCOUNT",
   conc = "METIER_VIEW_CONC", week = "METIER_VIEW_WEEK", recipes = "METIER_VIEW_RECIPES",
+  farm = "METIER_VIEW_FARM", wealth = "METIER_VIEW_WEALTH",
 }
 
 local function placeMetierViewSwitch()
@@ -311,6 +313,7 @@ local function placeMetierViewSwitch()
       local n = ST.ConcFullCount()
       if n > 0 then text = text .. " (" .. n .. ")" end
     end
+    if v == "farm" and ST.FarmActive and ST.FarmActive() then text = text .. " |cFF00FF98*|r" end
     items[#items + 1] = {
       text = text, color = ACC, state = (v == sel) and "on" or "off",
       onClick = function() ST.settings.metierView = v; ST.RefreshUI() end,
@@ -985,6 +988,239 @@ local function renderTodo(allChars)
 end
 
 -- ================================================================
+-- VUE "RECOLTE" : session en cours, historique, cumul depuis toujours.
+-- Tri par objet / quantite / valeur / extension, filtre par extension.
+-- Donnees : SkillTrackerDB.farm (Gathering.lua).
+-- ================================================================
+local farmPick           -- index de la session d'historique ouverte (nil = liste)
+
+local function ItemMeta(id)
+  local get = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+  local name, _, quality, _, _, _, _, _, _, icon, _, _, _, _, expac
+  if get then name, _, quality, _, _, _, _, _, _, icon, _, _, _, _, expac = get(id) end
+  if not name and C_Item and C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, id) end
+  local qc = quality and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality]
+  -- Rang de qualite des composants (1 a 3 depuis Dragonflight) : icone du jeu
+  -- apres le nom, pour distinguer deux rangs du meme objet.
+  if name and C_TradeSkillUI and C_TradeSkillUI.GetItemReagentQualityByItemInfo and CreateAtlasMarkup then
+    local ok, tier = pcall(C_TradeSkillUI.GetItemReagentQualityByItemInfo, id)
+    if ok and type(tier) == "number" and tier > 0 then
+      name = name .. " " .. CreateAtlasMarkup("Professions-Icon-Quality-Tier" .. tier .. "-Small", 14, 14)
+    end
+  end
+  return name or ("#" .. id), icon, qc and { qc.r, qc.g, qc.b } or { 0.9, 0.9, 0.9 }, type(expac) == "number" and expac or nil
+end
+
+local function renderFarmItems(items)
+  local FT = ST.FarmText
+  local rows, buckets, seen = {}, {}, {}
+  for id, q in pairs(items or {}) do
+    id = tonumber(id)
+    local name, icon, qc, expac = ItemMeta(id)
+    local unit, src = ST.UnitPrice(id)
+    rows[#rows + 1] = { id = id, q = q, name = name, icon = icon, qc = qc, expac = expac,
+                        unit = unit, src = src, value = (unit or 0) * q }
+    local b = expac or "other"
+    if not seen[b] then seen[b] = true; buckets[#buckets + 1] = b end
+  end
+  if #rows == 0 then placeNote(FT.none, 8) return end
+  table.sort(buckets, function(a, b) return ((a == "other") and -1 or a) > ((b == "other") and -1 or b) end)
+
+  -- Filtre par extension (aucune selection = tout).
+  ST.settings.farmExtFilter = ST.settings.farmExtFilter or {}
+  local extSel = ST.settings.farmExtFilter
+  for b in pairs(extSel) do if not seen[b] then extSel[b] = nil end end
+  if #buckets > 1 then
+    placeNote("|cFFAAAAAA" .. FT.extFilter .. "|r", 6)
+    placeExtFilterChips(buckets, extSel)
+  end
+  local anySel = next(extSel) ~= nil
+
+  -- Tri.
+  local sort = ST.settings.farmSort or "value"
+  placeNote("|cFFAAAAAA" .. FT.sortBy .. "|r", 6)
+  local sitems = {}
+  for _, o in ipairs({ { "name", FT.sortName }, { "qty", FT.sortQty }, { "value", FT.sortValue }, { "ext", FT.sortExt } }) do
+    sitems[#sitems + 1] = { text = o[2], color = ACC, state = (sort == o[1]) and "on" or "off",
+      onClick = function() ST.settings.farmSort = o[1]; ST.RefreshUI() end }
+  end
+  placeChips(sitems, 4, 44, 110)
+  line(2)
+
+  local shown = {}
+  for _, r in ipairs(rows) do
+    if (not anySel) or extSel[r.expac or "other"] then shown[#shown + 1] = r end
+  end
+  table.sort(shown, function(a, b)
+    if sort == "name" then return a.name < b.name end
+    if sort == "qty" then if a.q ~= b.q then return a.q > b.q end return a.name < b.name end
+    if sort == "ext" then
+      local ea, eb = a.expac or -1, b.expac or -1
+      if ea ~= eb then return ea > eb end
+    end
+    if a.value ~= b.value then return a.value > b.value end
+    return a.name < b.name
+  end)
+
+  local topValue, sumValue, sumQty = 0, 0, 0
+  for _, r in ipairs(shown) do
+    if r.value > topValue then topValue = r.value end
+    sumValue, sumQty = sumValue + r.value, sumQty + r.q
+  end
+  placeNote("|cFFFFD100" .. string.format(FT.totalFmt, sumQty, ST.Prices.Money(sumValue)) .. "|r", 6)
+
+  local lastBucket
+  for _, r in ipairs(shown) do
+    -- En tri par extension : un intertitre par extension.
+    if sort == "ext" and (r.expac or "other") ~= lastBucket then
+      lastBucket = r.expac or "other"
+      local _, full, c = ST.BucketMeta(lastBucket)
+      placeNote(hex(c) .. full .. "|r", 8)
+    end
+    local _, _, ec = ST.BucketMeta(r.expac or "other")
+    local w = placeBar(r.value, math.max(1, topValue), nil, 8, nil, function(tt)
+      pcall(tt.SetItemByID, tt, r.id)
+      tt:AddLine(" ")
+      local srcTxt = (r.src == "vendor") and FT.vendor or (r.src or "-")
+      tt:AddLine(string.format(FT.unitFmt, ST.Prices.Money(r.unit), srcTxt), 0.85, 0.85, 0.9)
+    end)
+    PaintBar(w, ec, 0.55)
+    w._txt:SetJustifyH("LEFT")
+    w._txt:SetText((r.icon and ("|T" .. r.icon .. ":14:14|t ") or "") .. hex(r.qc) .. r.name .. "|r  |cFFDDDDDDx" .. r.q .. "|r"
+      .. "   |cFFFFD100" .. ST.Prices.Money(r.value) .. "|r")
+  end
+end
+
+local function renderFarm()
+  local FT = ST.FarmText
+  if not (FT and ST.FarmDB) then placeNote(L.NO_DATA, 8) return end
+  if ST.FarmCleanup and not ST.runtime.farmCleaned then ST.runtime.farmCleaned = true; pcall(ST.FarmCleanup) end
+  if ST.settings.farm == false then placeNote(FT.opt .. " : " .. L.FILTER_NONE, 8) return end
+  local db = ST.FarmDB()
+  local scope = ST.settings.farmScope or "cur"
+  local items = {}
+  for _, o in ipairs({ { "cur", FT.scopeCur }, { "hist", FT.scopeHist }, { "all", FT.scopeAll } }) do
+    items[#items + 1] = { text = o[2], color = ACC, state = (scope == o[1]) and "on" or "off",
+      onClick = function() ST.settings.farmScope = o[1]; farmPick = nil; ST.RefreshUI() end }
+  end
+  placeChips(items, 4, 60, 140)
+  line(2)
+
+  if scope == "cur" then
+    local s = ST.FarmActive()
+    local btn = placeHeader(accHex() .. (s and FT.stop or FT.start) .. "|r", 4)
+    btn:SetScript("OnClick", function() ST.FarmToggle() end)
+    if not s then placeNote(FT.idle, 8) return end
+    local v = ST.ItemsValue(s.items)
+    local dur = ST.FarmDuration(s)
+    placeNote("|cFF00FF98" .. FT.active .. "|r  |cFF888888" .. ST.FormatDuration(dur)
+      .. (ST.FarmTopZone(s) and ("  ·  " .. ST.FarmTopZone(s)) or "") .. "|r", 6)
+    local rate = ST.FarmRate(s, v)
+    placeNote(string.format(FT.statsFmt, s.nodes or 0, ST.Prices.Money(v), rate and ST.Prices.Money(rate) or "-"), 6)
+    renderFarmItems(s.items)
+  elseif scope == "hist" then
+    if #db.sessions == 0 then placeNote(FT.noHist, 8) return end
+    if farmPick and db.sessions[farmPick] then
+      local s = db.sessions[farmPick]
+      local back = placeHeader(accHex() .. FT.back .. "|r", 4)
+      back:SetScript("OnClick", function() farmPick = nil; ST.RefreshUI() end)
+      local v = ST.ItemsValue(s.items)
+      local dur = ST.FarmDuration(s)
+      placeNote("|cFFDDDDDD" .. date("%d/%m %H:%M", s.start) .. "|r  |cFF888888" .. ST.FormatDuration(dur)
+        .. (s.zone and ("  ·  " .. s.zone) or "") .. "|r", 6)
+      local rate = ST.FarmRate(s, v)
+      placeNote(string.format(FT.statsFmt, s.nodes or 0, ST.Prices.Money(v), rate and ST.Prices.Money(rate) or "-"), 6)
+      renderFarmItems(s.items)
+      return
+    end
+    for i, s in ipairs(db.sessions) do
+      local v = ST.ItemsValue(s.items)
+      local dur = ST.FarmDuration(s)
+      local row = placeHeader("|cFFDDDDDD" .. date("%d/%m %H:%M", s.start) .. "|r  |cFF888888" .. ST.FormatDuration(dur)
+        .. (s.zone and ("  ·  " .. s.zone) or "") .. "|r", 4)
+      local idx = i
+      row:SetScript("OnClick", function() farmPick = idx; ST.RefreshUI() end)
+      local rate = ST.FarmRate(s, v)
+      placeNote(string.format(FT.statsFmt, s.nodes or 0, ST.Prices.Money(v), rate and ST.Prices.Money(rate) or "-"), 12)
+    end
+  else
+    renderFarmItems(db.total)
+    line(4)
+    local rb = placeHeader("|cFF999999" .. FT.reset .. "|r", 4)
+    rb:SetScript("OnClick", function()
+      if _G.TibiSuite and TibiSuite.ShowConfirm then TibiSuite.ShowConfirm(FT.reset .. " ?", function() ST.FarmResetTotal() end)
+      else ST.FarmResetTotal() end
+    end)
+  end
+  placeNote("|cFF777777" .. FT.priceNote .. "|r", 6)
+end
+
+-- ================================================================
+-- VUE "VALEUR" : sacs et banques de chaque personnage + banque de
+-- bataillon, objets les plus precieux du compte (Gathering.lua).
+-- ================================================================
+local function renderWealth()
+  local WT = ST.WealthText
+  if not (WT and ST.WealthDB) then placeNote(L.NO_DATA, 8) return end
+  local w = ST.WealthDB()
+  local function ago(t) return t and string.format(WT.agoFmt, ST.FormatDuration(math.max(60, time() - t))) or "-" end
+  local rows, total = {}, 0
+  for key, c in pairs(w.chars) do
+    local vb, vk = ST.SnapValue(c.bags), ST.SnapValue(c.bank)
+    rows[#rows + 1] = { key = key, c = c, vb = vb, vk = vk, v = vb + vk }
+    total = total + vb + vk
+  end
+  local vw = ST.SnapValue(w.warband)
+  total = total + vw
+  if #rows == 0 and not w.warband then placeNote(WT.none, 8) return end
+  table.sort(rows, function(a, b) return a.v > b.v end)
+  placeHeader(accHex() .. WT.account .. "|r   |cFFFFD100" .. ST.Prices.Money(total) .. "|r", 4)
+  local top = 1
+  for _, r in ipairs(rows) do if r.v > top then top = r.v end end
+  if vw > top then top = vw end
+  for _, r in ipairs(rows) do
+    local name = r.key:match("^([^%-]+)") or r.key
+    local cc = ClassColor(r.c.class)
+    local wbar = placeBar(r.v, top, nil, 8, nil, function(tt)
+      tt:AddLine(hex(cc) .. r.key .. "|r")
+      tt:AddDoubleLine(WT.bags, ST.Prices.Money(r.vb), 0.85, 0.85, 0.9, 1, 1, 1)
+      tt:AddDoubleLine(WT.bank, r.c.bank and ST.Prices.Money(r.vk) or WT.never, 0.85, 0.85, 0.9, 1, 1, 1)
+      tt:AddLine(string.format(WT.seenFmt, ago(r.c.bags and r.c.bags.at)), 0.6, 0.6, 0.65)
+      if r.c.bank then tt:AddLine(WT.bank .. " : " .. string.format(WT.seenFmt, ago(r.c.bank.at)), 0.6, 0.6, 0.65) end
+    end)
+    PaintBar(wbar, cc, 0.45)
+    wbar._txt:SetJustifyH("LEFT")
+    wbar._txt:SetText(hex(cc) .. name .. "|r   |cFFFFD100" .. ST.Prices.Money(r.v) .. "|r"
+      .. (r.c.bank and "" or ("  |cFF888888(" .. WT.never .. ")|r")))
+  end
+  if w.warband then
+    local wbar = placeBar(vw, top, nil, 8, nil, function(tt)
+      tt:AddLine(WT.warband, ACC[1], ACC[2], ACC[3])
+      tt:AddLine(string.format(WT.seenFmt, ago(w.warband.at)), 0.6, 0.6, 0.65)
+    end)
+    PaintBar(wbar, { 0.30, 0.62, 1.0 }, 0.45)
+    wbar._txt:SetJustifyH("LEFT")
+    wbar._txt:SetText("|cFF4D9EFF" .. WT.warband .. "|r   |cFFFFD100" .. ST.Prices.Money(vw) .. "|r")
+  end
+  line(4)
+  local list = ST.WealthTop(10)
+  if #list > 0 then
+    placeNote("|cFFAAAAAA" .. WT.top .. "|r", 6)
+    local tv = list[1].value
+    for _, e in ipairs(list) do
+      local name, icon, qc, expac = ItemMeta(e.id)
+      local _, _, ec = ST.BucketMeta(expac or "other")
+      local wb = placeBar(e.value, math.max(1, tv), nil, 8, nil, function(tt) pcall(tt.SetItemByID, tt, e.id) end)
+      PaintBar(wb, ec, 0.5)
+      wb._txt:SetJustifyH("LEFT")
+      wb._txt:SetText((icon and ("|T" .. icon .. ":14:14|t ") or "") .. hex(qc) .. name .. "|r  |cFFDDDDDDx" .. e.q .. "|r"
+        .. "   |cFFFFD100" .. ST.Prices.Money(e.value) .. "|r")
+    end
+  end
+  placeNote("|cFF777777" .. WT.note .. "|r", 6)
+end
+
+-- ================================================================
 -- RAFRAICHISSEMENT
 -- ================================================================
 function ST.RefreshUI()
@@ -1006,6 +1242,8 @@ function ST.RefreshUI()
   elseif v == "conc" then renderConc()
   elseif v == "week" then renderWeek(chars)
   elseif v == "recipes" then renderRecipes()
+  elseif v == "farm" then renderFarm()
+  elseif v == "wealth" then renderWealth()
   end
 
   -- La liste "A finir" accompagne les vues de progression, pas Concentration / Semaine.
@@ -1352,6 +1590,43 @@ local function BuildOptions()
   end)
 
   optPanel:Button(L.OPT_RESCAN, function() ST.RequestScan(0.1) end)
+
+  -- Prix des recoltes (7.1.5.45, lot A) : etat d'Auctionator / TSM, source
+  -- choisie, invitation a installer l'un des deux s'il manque, sonde.
+  if ST.Prices and ST.GatherText then
+    local G = ST.GatherText
+    optPanel:Section(G.section)
+    optPanel:Note(G.note)
+    optPanel:Note(ST.Prices.StatusText())
+    if not ST.Prices.HasProvider() then
+      optPanel:Note(ST.Prices.MissingText())
+      optPanel:SelectableText(G.urlAuc, ST.PRICE_URLS.auctionator)
+      optPanel:SelectableText(G.urlTSM, ST.PRICE_URLS.tsm)
+    end
+    optPanel:Check(G.minimap, function() return ST.settings.priceMinimap ~= false end,
+      function(v) ST.settings.priceMinimap = v end)
+    optPanel:Check(G.world, function() return ST.settings.priceWorld ~= false end,
+      function(v) ST.settings.priceWorld = v end)
+    optPanel:Check(G.learn, function() return ST.settings.priceLearn ~= false end,
+      function(v) ST.settings.priceLearn = v end)
+    if ST.WealthText then
+      optPanel:Check(ST.WealthText.opt, function() return ST.settings.wealth ~= false end,
+        function(v) ST.settings.wealth = v end)
+    end
+    if ST.FarmText then
+      optPanel:Check(ST.FarmText.opt, function() return ST.settings.farm ~= false end,
+        function(v) ST.settings.farm = v; if not v and ST.FarmClose then ST.FarmClose(true) end end)
+    end
+    for _, o in ipairs({ { "auto", G.sourceAuto }, { "auctionator", G.sourceAuc }, { "tsm", G.sourceTSM } }) do
+      optPanel:Check(o[2], function() return (ST.settings.priceSource or "auto") == o[1] end,
+        function() ST.settings.priceSource = (o[1] ~= "auto") and o[1] or nil; optPanel:Refresh() end)
+    end
+    optPanel:Button(G.forget, function()
+      ST.ForgetNodes(); print(ST.TAG .. " " .. G.forgot)
+    end)
+    optPanel:Button(G.probe, function() ST.ProbeCommand() end)
+    optPanel:Button(G.report, function() ST.ProbeReport() end)
+  end
 
   optPanel:Section(L.OPT_DATA)
   optPanel:Note(L.MULTIACC_NOTE)

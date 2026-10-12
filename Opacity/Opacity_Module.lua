@@ -101,6 +101,7 @@ if HasCore() and IsEnabledByCore() then
     onOpen         = function() Opacity_Toggle() end,
     onOptions      = function() Opacity_OpenOptions() end,
     searchProvider = OP.SearchProvider,   -- Bridge.lua
+    overviewFn     = function() if OP.Overview then return OP.Overview() end end,
   })
 elseif not HasCore() then
   -- Le bouton lit OpacityDB : on attend le login (SavedVariables chargees).

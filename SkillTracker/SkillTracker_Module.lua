@@ -67,6 +67,8 @@ if HasCore() and IsEnabledByCore() then
     onOpen    = function() if _G.SkillTracker_Toggle then _G.SkillTracker_Toggle() end end,
     onOptions = function() if _G.SkillTracker_OpenOptions then _G.SkillTracker_OpenOptions() end end,
     statusFn  = function() if _G.SkillTracker_Status then return _G.SkillTracker_Status() end end,
+    overviewFn = function() if _G.SkillTracker_Overview then return _G.SkillTracker_Overview() end end,
+    openTo     = function(t) if _G.SkillTracker_OpenView then return _G.SkillTracker_OpenView(t) end return false end,
   })
 end
 

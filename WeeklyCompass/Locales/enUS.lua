@@ -196,4 +196,7 @@ ns:AddLocale("enUS", {
     SHEET_MODIFIED_TIP    = "The active talents no longer match the saved build (changes not saved).",
     SHEET_TALENT_CLICK    = "Click: copy the build",
     SHEET_NO_TALENTS      = "Talents not read yet",
+    SHEET_MPLUS           = "Mythic+",
+    SHEET_MP_KEY          = "Keystone in your bags",
+    SHEET_MP_WEEK         = "Best key this week",
 })

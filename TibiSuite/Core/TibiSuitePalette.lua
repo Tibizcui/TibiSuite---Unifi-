@@ -61,6 +61,7 @@ D("PAL_C_REMIND",    "Rappels")
 D("PAL_C_SETUP_FMT", "Profil de suite : %s")
 D("PAL_C_CONTRAST",  "Contraste élevé : activer / couper")
 D("PAL_C_CVD",       "Couleurs pour daltoniens : activer / couper")
+D("PAL_C_GOALS",     "Mes objectifs (ajouter, cocher)")
 D("PAL_SUITE",       "TibiSuite")
 D("PAL_KW_STYLE",    "classique dock panneau vivant apparence")
 
@@ -166,6 +167,7 @@ local function Commands()
   if L.CTR_WIDGETS then
     add(L.CTR_WIDGETS,  function() O("widgets") end, "widgets epingler epingle ecran cartes", nil, nil, "nav")
   end
+  add(L.PAL_C_GOALS, function() O("goals") end, "objectif objectifs but semaine ajouter cocher", nil, nil, "nav", true)
   add(L.PAL_C_PROFILES, function() O("profiles") end, "profil profils restauration restaurer point automatique specialisation personnage", nil, nil, "nav")
   add(L.PAL_C_DISPLAY,  function() O("display") end, "lisibilite taille texte contraste daltonien daltonisme accessibilite", nil, nil, "nav")
   add(L.PAL_C_REMIND,   function() O("reminders") end, "rappels rappel reset calendrier note alarme", nil, nil, "nav")

@@ -95,6 +95,55 @@ if HasCore() and IsEnabledByCore() then
       local SL = _G.TibiSuiteL or {}
       return { text = string.format(SL.ST_LOCK_FMT or "%d", n) }
     end,
+    -- Apercu du Centre (7.1.5.45) : verrous en cours, reset le plus proche
+    -- d'abord ; un clic ouvre la fiche de l'instance.
+    overviewFn = function()
+      local SL, TS = _G.TibiSuiteL or {}, _G.TibiSuite
+      local out = { lines = {}, empty = SL.OV_DGN_EMPTY }
+      -- Collections faisables cette semaine (7.1.5.45) : une ligne de total,
+      -- puis l'instance qui en offre le plus (deja entamee en tete).
+      local C = _G.DgnTrackerColl
+      local okS, sum = false, nil
+      if C and C.Catalog and C.Catalog() then okS, sum = pcall(C.Summary) end
+      if okS and type(sum) == "table" and (sum.mount + sum.pet + sum.toy) > 0 then
+        out.lines[#out.lines + 1] = { text = SL.OV_DGN_COLL or "Collections", target = "coll",
+          value = string.format(SL.OV_DGN_COLL_FMT or "%d / %d / %d", sum.mount, sum.pet, sum.toy) }
+        local top = sum.top[1]
+        if top then
+          out.lines[#out.lines + 1] = { text = top.name, target = "coll",
+            value = string.format(SL.OV_DGN_COLL_TOP_FMT or "%d", top.mounts) }
+        end
+      end
+      if not (GetNumSavedInstances and GetSavedInstanceInfo) then return out end
+      local list = {}
+      for i = 1, GetNumSavedInstances() or 0 do
+        local name, _, reset, _, locked, _, _, isRaid, _, diffName, numEnc, encProg = GetSavedInstanceInfo(i)
+        if name and locked and (reset or 0) > 0 then
+          list[#list + 1] = { name = name, reset = reset, raid = isRaid, diff = diffName, n = numEnc or 0, done = encProg or 0 }
+        end
+      end
+      table.sort(list, function(a, b) return a.reset < b.reset end)
+      local maxL = 4 - #out.lines
+      for i, e in ipairs(list) do
+        if i > math.max(1, maxL) then
+          out.lines[#out.lines + 1] = { text = string.format(SL.OV_DGN_MORE_FMT or "%d", #list - (i - 1)) }
+          break
+        end
+        local txt = e.name .. (e.diff and e.diff ~= "" and ("  |cFF8F8C98" .. e.diff .. "|r") or "")
+        local val = (e.n > 0 and string.format(SL.OV_DGN_BOSS_FMT or "%d/%d", e.done, e.n) or "")
+          .. (TS and TS.FmtDuration and ("   " .. TS.FmtDuration(e.reset)) or "")
+        out.lines[#out.lines + 1] = { text = txt, value = val, progress = e.n > 0 and e.done / e.n or nil,
+          target = { name = e.name, type = e.raid and "raid" or "dungeon" } }
+      end
+      return out
+    end,
+    openTo = function(target)
+      if target == "coll" and _G.DgnTracker_OpenView then _G.DgnTracker_OpenView("Coll"); return true end
+      if type(target) == "table" and _G.DgnTrackerAPI and DgnTrackerAPI.OpenInstance then
+        return DgnTrackerAPI.OpenInstance(target) and true or false
+      end
+      return false
+    end,
   })
 elseif GetUI() and GetUI().RegisterSearch then
   -- Repli : suite absente mais socle present. _Suite.lua a normalement deja

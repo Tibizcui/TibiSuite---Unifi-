@@ -895,6 +895,8 @@ local SECTION_ACCENTS = {
   delves = OVERLAY_COLORS.delves,
   reputations = OVERLAY_COLORS.repGained,
   professions = OVERLAY_COLORS.profGained,
+  achievements = { 1.000, 0.843, 0.000 },
+  session = { 0.486, 0.620, 1.000 },
 }
 
 local function CardLabel(metric)
@@ -1297,6 +1299,13 @@ local PVP_BRACKET_LABEL_KEYS = {
 -- (OVERLAY_COLORS).
 local function SetChip(fs, label, value, valueColor)
   valueColor = valueColor or UI.C.GOLD
+  if type(value) == "number" and BreakUpLargeNumbers and value >= 1000 then value = BreakUpLargeNumbers(value) end
+  -- Valeurs du moment dans une carte du bas (7.1.5.45) : une seule ligne.
+  if fs._inline then
+    fs:SetText(UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. label .. "|r "
+      .. UI.Hex(valueColor[1], valueColor[2], valueColor[3]) .. tostring(value) .. "|r")
+    return
+  end
   fs:SetText(UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. label .. "|r\n"
     .. UI.Hex(valueColor[1], valueColor[2], valueColor[3]) .. tostring(value) .. "|r")
 end
@@ -1320,7 +1329,7 @@ end
 -- TUILES RESUME
 -- ----------------------------------------------------------------------------
 local summaryTiles
-local SUMMARY_TILE_H = 96
+local SUMMARY_TILE_H = 190
 
 -- Bouton (pas juste un Frame) : ces tuiles sont desormais cliquables pour
 -- deplier/replier leur detail (cf. BuildSummaryTiles, view.summaryExpanded)
@@ -1348,14 +1357,39 @@ local function BuildTile(parent, title, accent, icon)
   -- deplie/replie de CETTE tuile precise).
   tile.expandIcon = tile:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   tile.expandIcon:SetPoint("TOPRIGHT", -14, -12)
+  tile.expandIcon:Hide()
+  -- Meme anatomie que les cartes du haut (7.1.5.45) : bouton Detail a
+  -- droite, grand chiffre de la periode + evolution, valeurs du moment sur
+  -- une ligne, ligne de contexte, puis l'histogramme de la periode.
+  tile.detailsBtn = UI.MakeButton(tile, 74, 20, L["CARD_DETAILS_BUTTON"])
+  tile.detailsBtn:SetPoint("TOPRIGHT", -10, -10)
+  tile.detailsBtn:SetScript("OnClick", function() tile:Click() end)
+  tile.title:SetWordWrap(false)
+  tile.value = tile:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  tile.value:SetPoint("TOPLEFT", 14, -34)
+  tile.delta = tile:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  tile.delta:SetPoint("LEFT", tile.value, "RIGHT", 10, 0)
+  tile.caption = tile:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  tile.caption:SetPoint("LEFT", tile.delta, "RIGHT", 10, 0)
+  tile.caption:SetTextColor(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3])
+  tile.caption:SetWordWrap(false)
+  tile.caption:SetJustifyH("LEFT")
   tile.stats = {}
   for i = 1, 3 do
     tile.stats[i] = tile:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    tile.stats[i]:SetJustifyH("LEFT")
+    tile.stats[i]:SetWordWrap(false)
+    tile.stats[i]._inline = true
   end
   tile.sub = tile:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  tile.sub:SetPoint("BOTTOMLEFT", 14, 12)
-  tile.sub:SetPoint("BOTTOMRIGHT", -14, 12)
+  tile.sub:SetPoint("TOPLEFT", 14, -76)
+  tile.sub:SetPoint("TOPRIGHT", -14, -76)
   tile.sub:SetJustifyH("LEFT")
+  tile.sub:SetWordWrap(false)
+  tile.chart = CreateFrame("Frame", nil, tile)
+  tile.chart:SetPoint("BOTTOMLEFT", 14, 14)
+  tile.chart:SetPoint("BOTTOMRIGHT", -14, 14)
+  tile.chart:SetHeight(84)
 
   -- Zone invisible superposee a la ligne "sub" : donne l'infobulle native du
   -- haut fait au survol et l'ouvre au clic quand tile.subHit.achievementID
@@ -1391,9 +1425,11 @@ end
 -- l'afficher en permanence - repond aussi a "les cartes ne font rien" et
 -- "carte en double" (Reputations/Metiers avaient une tuile ET un tableau
 -- toujours visible en dessous, sans lien entre les deux).
+-- 7.1.5.45 : meme taille et meme grille (4 colonnes) que les cartes du haut ;
+-- la 1re rangee complete la derniere ligne des cartes si elle a de la place.
 local SUMMARY_ROWS = {
-  { "pvp", "delves" },
-  { "reputations", "professions" },
+  { "pvp", "delves", "reputations" },
+  { "professions", "achievements", "session" },
 }
 
 -- Positionne UNE seule ligne de tuiles (rowKeys, ex. SUMMARY_ROWS[1]) a la
@@ -1405,13 +1441,15 @@ local SUMMARY_ROWS = {
 -- apres la ligne 2, quel que soit ce qui y etait deplie). Les donnees
 -- (chips/sub) de TOUTES les tuiles sont recalculees a chaque appel (simple
 -- et bon marche, pas de raison de les separer par ligne).
-local function BuildSummaryTiles(content, top, rowKeys)
+local function BuildSummaryTiles(content, top, rowKeys, startCol)
   if not summaryTiles then
     summaryTiles = {
       pvp = BuildTile(content, L["PVP_SECTION_TITLE"], SECTION_ACCENTS.pvp, "Interface\\Icons\\INV_BannerPVP_02"),
       delves = BuildTile(content, L["DELVES_TORGHAST_SECTION_TITLE"], SECTION_ACCENTS.delves, CARD_ICONS.delves),
       reputations = BuildTile(content, L["REPUTATION_SECTION_TITLE"], SECTION_ACCENTS.reputations, CARD_ICONS.repGained),
       professions = BuildTile(content, L["PROFESSIONS_SECTION_TITLE"], SECTION_ACCENTS.professions, CARD_ICONS.profGained),
+      achievements = BuildTile(content, L["ACH_SECTION_TITLE"], SECTION_ACCENTS.achievements, "Interface\\Icons\\Achievement_Quests_Completed_08"),
+      session = BuildTile(content, L["SESSION_SECTION_TITLE"], SECTION_ACCENTS.session, CARD_ICONS.played),
     }
     for key, tile in pairs(summaryTiles) do
       tile:SetScript("OnClick", function()
@@ -1421,13 +1459,15 @@ local function BuildSummaryTiles(content, top, rowKeys)
     end
   end
 
-  local gap = 14
-  local tileW = (content:GetWidth() - gap) / 2
+  local gap = 16
+  local tileW = (content:GetWidth() - (CARD_GRID_COLS - 1) * gap) / CARD_GRID_COLS
+  startCol = startCol or 0
   -- Grise legerement les tuiles repliees des qu'AU MOINS une est depliee -
   -- demande utilisateur du 2026-09-13, met en valeur la section active sans
   -- masquer completement les autres (toujours cliquables, juste attenuees).
+  -- Plus de grisage des tuiles repliees (7.1.5.45) : meme allure que les
+  -- cartes du haut, la tuile ouverte se reconnait a son bouton « Replier ».
   local anyExpanded = false
-  for _, v in pairs(view.summaryExpanded) do if v then anyExpanded = true break end end
   for c, key in ipairs(rowKeys) do
       local tile = summaryTiles[key]
       local sectionAccent = SECTION_ACCENTS[key] or ACCENT
@@ -1442,21 +1482,22 @@ local function BuildSummaryTiles(content, top, rowKeys)
       local dimmed = anyExpanded and not expanded
       local borderColor = dimmed and UI.C.MUTED or sectionAccent
       tile:ClearAllPoints()
-      tile:SetPoint("TOPLEFT", content, "TOPLEFT", (c - 1) * (tileW + gap), top)
+      tile:SetPoint("TOPLEFT", content, "TOPLEFT", (startCol + c - 1) * (tileW + gap), top)
       tile:SetSize(tileW, SUMMARY_TILE_H)
       tile:SetAlpha(dimmed and 0.6 or 1)
       UI.SkinFrame(tile, borderColor, UI.C.PANEL)
       tile.title:SetTextColor(borderColor[1], borderColor[2], borderColor[3])
       if tile.icon then tile.icon:SetDesaturated(dimmed) end
-      tile.expandIcon:SetText(expanded
-        and (UI.Hex(sectionAccent[1], sectionAccent[2], sectionAccent[3]) .. "- " .. L["SUMMARY_COLLAPSE"] .. "|r")
-        or (UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. "+ " .. L["SUMMARY_EXPAND"] .. "|r"))
-      local statW = (tileW - 28) / 3
+      tile.detailsBtn._label:SetText(expanded and L["SUMMARY_COLLAPSE"] or L["CARD_DETAILS_BUTTON"])
+      tile.title:SetWidth(math.max(20, tileW - 34 - 92))
+      local thirdW = (tileW - 28) / 3
       for s = 1, 3 do
         tile.stats[s]:ClearAllPoints()
-        tile.stats[s]:SetPoint("TOPLEFT", 14 + (s - 1) * statW, -34)
-        tile.stats[s]:SetWidth(statW)
+        tile.stats[s]:SetPoint("TOPLEFT", 14 + (s - 1) * thirdW, -60)
+        tile.stats[s]:SetWidth(thirdW - 6)
       end
+      tile.caption:SetWidth(math.max(40, tileW - 150))
+      tile._w = tileW
       tile:Show()
   end
 
@@ -1545,11 +1586,885 @@ local function BuildSummaryTiles(content, top, rowKeys)
     summaryTiles.professions.sub:SetText("")
   end
 
+  -- Hauts faits presque finis (compte) et session du personnage connecte.
+  local near = SX.NearAchievements and SX.NearAchievements()
+  local accA = SECTION_ACCENTS.achievements
+  SetChip(summaryTiles.achievements.stats[1], L["ACH_POINTS"], (rec and rec.achievementPoints) or "-", accA)
+  SetChip(summaryTiles.achievements.stats[2], L["ACH_NEAR"], near and #near or "...", accA)
+  SetChip(summaryTiles.achievements.stats[3], L["ACH_BEST"], (near and near[1]) and (math.floor(near[1].pct * 100) .. " %") or "-", accA)
+  summaryTiles.achievements.sub:SetText((near and near[1]) and (UI.Hex(accA[1], accA[2], accA[3]) .. near[1].name .. "|r") or "")
+  local sKey = SX.CurrentCharKey and SX.CurrentCharKey()
+  local sRec = sKey and StatsDB[sKey]
+  local sNow = sRec and sRec.liveSession and SX.SessionNow and SX.SessionNow(sRec.liveSession, sKey)
+  local accS = SECTION_ACCENTS.session
+  local TS = _G.TibiSuite
+  SetChip(summaryTiles.session.stats[1], L["SESSION_DURATION"], sNow and ((TS and TS.FmtDuration) and TS.FmtDuration(sNow.dur) or math.floor(sNow.dur / 60)) or "-", accS)
+  SetChip(summaryTiles.session.stats[2], L["SESSION_GOLD"], sNow and ((TS and TS.FmtGold) and TS.FmtGold(sNow.gold) or math.floor(sNow.gold / 10000)) or "-", accS)
+  SetChip(summaryTiles.session.stats[3], L["SESSION_QUESTS"], sNow and sNow.quests or "-", accS)
+  summaryTiles.session.sub:SetText(sNow and "" or L["SESSION_NONE"])
+
+  -- Histogrammes (7.1.5.45) : meme periode, meme granularite et meme nombre
+  -- de barres que les cartes du haut ; grand chiffre = periode en cours,
+  -- evolution par rapport a la precedente. Personnage principal seulement.
+  local granularity = (view.period == "day") and "day" or (view.period == "week" and "week" or (view.period == "month" and "week" or "month"))
+  local bucketCount = (view.period == "day") and 7 or (view.period == "week" and 8 or (view.period == "month" and 5 or 12))
+  local from, to = CurrentRange(0)
+  local pFrom, pTo = CurrentRange(-1)
+  local agg = SX.AggregateFor(view.char, from, to)
+  local prevAgg = SX.AggregateFor(view.char, pFrom, pTo)
+  local since = SX.HistorySince and SX.HistorySince(view.char)
+  local TILE_METRICS = {
+    pvp = { metric = "pvpKillsGained", cap = "TILECAP_PVP" },
+    delves = { metric = "delveBest", cap = "TILECAP_DELVES" },
+    reputations = { metric = "repFactions", cap = "TILECAP_REP" },
+    professions = { metric = "profCount", cap = "TILECAP_PROF" },
+    achievements = { metric = "achPoints", cap = "TILECAP_ACH", recent = true },
+    session = { metric = "sessions", cap = "TILECAP_SESSION", recent = true },
+  }
+  for _, key in ipairs(rowKeys) do
+    local tile, spec = summaryTiles[key], TILE_METRICS[key]
+    local acc = SECTION_ACCENTS[key] or ACCENT
+    local val = SX.MetricValue(agg, spec.metric)
+    local prevVal = SX.MetricValue(prevAgg, spec.metric)
+    tile.value:SetText((val >= 1000 and BreakUpLargeNumbers) and BreakUpLargeNumbers(val) or tostring(math.floor(val + 0.5)))
+    tile.value:SetTextColor(acc[1], acc[2], acc[3])
+    if val ~= 0 or prevVal ~= 0 then
+      local pct = (prevVal ~= 0) and math.abs((val - prevVal) / math.abs(prevVal) * 100) or 100
+      tile.delta:SetText((val >= prevVal and "|cFF66D98A+|r" or "|cFFE56B6B-|r") .. " " .. string.format("%.0f%%", pct))
+    else
+      tile.delta:SetText("")
+    end
+    local cap = L[spec.cap]
+    if key == "session" and (agg.sessions or 0) > 0 then
+      local avg = math.floor((agg.sessionTime or 0) / agg.sessions)
+      local TSx = _G.TibiSuite
+      cap = cap .. "  ·  " .. string.format(L["TILECAP_SESSION_AVG"], (TSx and TSx.FmtDuration) and TSx.FmtDuration(avg) or (math.floor(avg / 60) .. " min"))
+    end
+    local series = SX.BuildSeries(view.char, spec.metric, granularity, bucketCount)
+    if spec.recent and since and series[1] and since > series[1].from then
+      cap = cap .. "  ·  " .. string.format(L["TILECAP_SINCE"], date("%d/%m", since))
+    end
+    tile.caption:SetText(cap)
+    local function fmtP(p) return tostring(math.floor((p.value or 0) + 0.5)) end
+    RenderChart(tile.chart, series, "bar", acc, nil, nil, true,
+      function(p) return p.label .. "\n" .. UI.Hex(acc[1], acc[2], acc[3]) .. fmtP(p) .. "|r" end,
+      function(p) return UI.Hex(acc[1], acc[2], acc[3]) .. fmtP(p) .. "|r" end, nil, false)
+  end
   return SUMMARY_TILE_H
+end
+
+-- ============================================================================
+-- TABLEAU DE BORD (7.1.5.45, piste A) : 12 tuiles chiffrees en 3 rangees
+-- (Activite, Contenu, Progression), chacune avec sa mini-courbe, puis UN
+-- seul grand graphique : celui de la tuile choisie (clic). Remplace la
+-- grille de 15 histogrammes de meme poids. Evolution « a date egale » :
+-- la periode en cours jusqu'a maintenant contre la meme duree au debut de
+-- la periode precedente (plus de -93 % chaque lundi matin).
+-- Une seule agregation par barre pour toutes les mesures (pas 12 x N).
+-- ============================================================================
+local KPI_ROWS = {
+  { label = "KPI_ROW_ACTIVITY", keys = { "played", "quests", "worldQuests", "gold" } },
+  { label = "KPI_ROW_CONTENT", keys = { "dungeons", "raids", "delves", "pvp" } },
+  { label = "KPI_ROW_PROGRESS", keys = { "repGained", "profGained", "achievements", "session" } },
+}
+-- metric = mesure de SX.MetricValue ; hist = vue « Historique » existante ;
+-- tile = cle du tableau de detail (view.summaryExpanded) sous le graphique.
+local KPI_DEF = {
+  played = { metric = "played", hist = "played" },
+  quests = { metric = "quests", hist = "quests" },
+  worldQuests = { metric = "worldQuests", hist = "worldQuests" },
+  gold = { metric = "gold", hist = "gold" },
+  dungeons = { metric = "dungeons", hist = "dungeons" },
+  raids = { metric = "raids", hist = "raids" },
+  delves = { metric = "delves", hist = "delves", tile = "delves" },
+  pvp = { metric = "pvpKillsGained", hist = "__pvp__", tile = "pvp" },
+  repGained = { metric = "repGained", hist = "repGained", tile = "reputations" },
+  profGained = { metric = "profGained", hist = "profGained", tile = "professions" },
+  achievements = { metric = "achPoints", tile = "achievements" },
+  session = { metric = "sessions", tile = "session" },
+}
+local KPI_EXTRA = { "repFactions", "profCount", "delveBest" }
+
+local function KpiAccent(key)
+  if key == "pvp" or key == "achievements" or key == "session" then return SECTION_ACCENTS[key] or ACCENT end
+  return OVERLAY_COLORS[key] or ACCENT
+end
+local function KpiLabel(key)
+  if key == "pvp" then return L["PVP_SECTION_TITLE"] end
+  if key == "achievements" then return L["ACH_SECTION_TITLE"] end
+  if key == "session" then return L["SESSION_SECTION_TITLE"] end
+  return CardLabel(key)
+end
+local function KpiIcon(key)
+  if key == "pvp" then return "Interface\\Icons\\INV_BannerPVP_02" end
+  if key == "achievements" then return "Interface\\Icons\\Achievement_Quests_Completed_08" end
+  if key == "session" then return CARD_ICONS.played end
+  return CARD_ICONS[key]
+end
+local function KpiFmt(key, v)
+  local m = KPI_DEF[key].metric
+  if m == "gold" or m == "played" then return fmtMetric(m, v) end
+  v = math.floor((v or 0) + 0.5)
+  if v >= 1000 and BreakUpLargeNumbers then return BreakUpLargeNumbers(v) end
+  return tostring(v)
+end
+
+local kpi = { tiles = {}, heads = {}, vals = {} }
+
+local function KpiTile(parent, key)
+  local t = kpi.tiles[key]
+  if t then return t end
+  local acc = KpiAccent(key)
+  t = CreateFrame("Button", nil, parent, "BackdropTemplate")
+  UI.SkinFrame(t, acc, UI.C.PANEL)
+  t.icon = t:CreateTexture(nil, "ARTWORK")
+  t.icon:SetSize(14, 14); t.icon:SetPoint("TOPLEFT", 10, -9)
+  t.icon:SetTexture(KpiIcon(key))
+  t.title = t:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  t.title:SetPoint("LEFT", t.icon, "RIGHT", 6, 0)
+  t.title:SetJustifyH("LEFT"); t.title:SetWordWrap(false)
+  t.value = t:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  t.value:SetPoint("TOPLEFT", 10, -28)
+  t.delta = t:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  t.delta:SetPoint("LEFT", t.value, "RIGHT", 8, 0)
+  t.sub = t:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  t.sub:SetPoint("TOPLEFT", 10, -50)
+  t.sub:SetJustifyH("LEFT"); t.sub:SetWordWrap(false)
+  t.bars = {}
+  t.key = key
+  t:SetScript("OnClick", function(s)
+    view.focus = s.key
+    SX.RefreshDashboard()
+  end)
+  t:SetScript("OnEnter", function(s)
+    GameTooltip:SetOwner(s, "ANCHOR_BOTTOM")
+    GameTooltip:AddLine(KpiLabel(s.key), acc[1], acc[2], acc[3])
+    if s._cur then
+      GameTooltip:AddDoubleLine(L["KPI_TT_NOW"], KpiFmt(s.key, s._cur), 0.8, 0.8, 0.8, 1, 1, 1)
+      GameTooltip:AddDoubleLine(L["KPI_TT_PREV_SAME"], KpiFmt(s.key, s._prevSame), 0.8, 0.8, 0.8, 1, 1, 1)
+      GameTooltip:AddDoubleLine(L["KPI_TT_PREV_FULL"], KpiFmt(s.key, s._prevFull), 0.8, 0.8, 0.8, 1, 1, 1)
+    end
+    GameTooltip:AddLine(" ")
+    GameTooltip:AddLine(L["KPI_TT_CLICK"], 0.6, 0.6, 0.6)
+    GameTooltip:Show()
+  end)
+  t:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  kpi.tiles[key] = t
+  return t
+end
+
+local function KpiSpark(t, vals, acc, w)
+  local n = #vals
+  local top = 0
+  for _, v in ipairs(vals) do if v > top then top = v end end
+  local gap = 3
+  local bw = math.max(2, (w - (n - 1) * gap) / math.max(1, n))
+  for i = 1, math.max(n, #t.bars) do
+    local b = t.bars[i]
+    if i <= n then
+      if not b then b = t:CreateTexture(nil, "ARTWORK"); t.bars[i] = b end
+      local v = vals[i]
+      local h = (top > 0 and v > 0) and math.max(2, 20 * v / top) or 1
+      b:ClearAllPoints()
+      b:SetPoint("BOTTOMLEFT", t, "BOTTOMLEFT", 10 + (i - 1) * (bw + gap), 8)
+      b:SetSize(bw, h)
+      b:SetColorTexture(acc[1], acc[2], acc[3], (i == n) and 0.95 or ((v > 0) and 0.45 or 0.15))
+      b:Show()
+    elseif b then b:Hide() end
+  end
+end
+
+-- Valeurs par barre (meme decoupage que les anciennes cartes) : une
+-- agregation par barre, toutes les mesures lues dedans.
+local function KpiBuckets(charKey, granularity, count)
+  local pts = SX.BuildSeries(charKey, "played", granularity, count)
+  local out = {}
+  for i, p in ipairs(pts) do
+    local agg = SX.AggregateFor(charKey, p.from, p.to)
+    local v = { label = p.label, from = p.from, to = p.to }
+    for key, def in pairs(KPI_DEF) do v[key] = SX.MetricValue(agg, def.metric) end
+    out[i] = v
+  end
+  return out
+end
+
+-- Volet « eclairage » du grand graphique : une lecture propre a chaque
+-- mesure, tiree des journaux existants de Stats (rien de nouveau stocke).
+-- -> { title, rows = { { label, v, text, hl } }, foot }
+local function DaysIn(from, to, fn)
+  local keys = (view.char == "__account__") and SX.GetCharKeys() or { view.char }
+  for _, k in ipairs(keys) do
+    local r = StatsDB[k]
+    if type(r) == "table" and type(r.days) == "table" then
+      for dk, d in pairs(r.days) do
+        local t = SX.ParseDayKey(dk)
+        if t and t >= from and t <= to then fn(t, d) end
+      end
+    end
+  end
+end
+
+local function TopOf(map, fmt, maxN)
+  local rows = {}
+  for k, v in pairs(map) do if v > 0 then rows[#rows + 1] = { label = tostring(k), v = v } end end
+  table.sort(rows, function(a, b) return a.v > b.v end)
+  while #rows > (maxN or 5) do table.remove(rows) end
+  for _, r in ipairs(rows) do r.text = fmt and fmt(r.v) or tostring(math.floor(r.v + 0.5)) end
+  if rows[1] then rows[1].hl = true end
+  return rows
+end
+
+local function KpiInsight(key, from, now)
+  local kv = kpi.vals[key] or {}
+  local a = (kv.from and SX.AggregateFor(view.char, kv.from, kv.to)) or {}
+  local function num(v) return tostring(math.floor((v or 0) + 0.5)) end
+  local function rowsOf(list)
+    local best
+    for _, r in ipairs(list) do r.text = r.text or num(r.v); if not best or r.v > best.v then best = r end end
+    if best and best.v > 0 then best.hl = true end
+    return list
+  end
+  if key == "played" then
+    local WD, WDF = { strsplit(",", L["KPI_WD_SHORT"]) }, { strsplit(",", L["KPI_WD_FULL"]) }
+    local sums = { 0, 0, 0, 0, 0, 0, 0 }
+    DaysIn(from, now, function(t, d)
+      local w = tonumber(date("%w", t)) or 1
+      local i = (w == 0) and 7 or w
+      sums[i] = sums[i] + (d.played or 0)
+    end)
+    local rows, best = {}, 1
+    for i = 1, 7 do
+      rows[i] = { label = WD[i] or tostring(i), v = sums[i], text = fmtMetric("played", sums[i]) }
+      if sums[i] > sums[best] then best = i end
+    end
+    if sums[best] > 0 then rows[best].hl = true end
+    return { title = L["KPI_INS_WHEN"], rows = rows,
+      foot = sums[best] > 0 and string.format(L["KPI_INS_BESTDAY_FMT"], WDF[best] or "") or nil }
+  elseif key == "gold" then
+    local g, s = a.goldGain or 0, a.goldSpent or 0
+    return { title = L["KPI_INS_GOLD"], rows = {
+      { label = L["KPI_INS_GAINS"], v = g, text = fmtMetric("gold", g), hl = true },
+      { label = L["KPI_INS_SPENT"], v = s, text = fmtMetric("gold", s) },
+      { label = L["KPI_INS_NET"], v = math.max(0, g - s), text = fmtMetric("gold", g - s) } } }
+  elseif key == "quests" or key == "worldQuests" then
+    return { title = L["KPI_INS_QUESTS"], rows = rowsOf({
+      { label = L["CARD_QUESTS"], v = a.quests or 0 }, { label = L["CARD_WORLD_QUESTS"], v = a.worldQuests or 0 } }) }
+  elseif key == "dungeons" then
+    local best = 0
+    for _, run in ipairs(a.mplusList or {}) do if (tonumber(run.level) or 0) > best then best = tonumber(run.level) end end
+    return { title = L["KPI_INS_DUNGEONS"], rows = rowsOf({
+      { label = L["DUNGEONS_NORMAL"], v = a.dungeons or 0 }, { label = L["DUNGEONS_MPLUS"], v = a.mplusCount or 0 } }),
+      foot = best > 0 and string.format(L["KPI_INS_BESTKEY_FMT"], best) or nil }
+  elseif key == "raids" then
+    local m = {}
+    for _, e in ipairs(a.raidLog or {}) do if e.name then m[e.name] = (m[e.name] or 0) + 1 end end
+    return { title = L["KPI_INS_RAIDS"], rows = TopOf(m) }
+  elseif key == "delves" then
+    local m = {}
+    for _, e in ipairs(a.delveLog or {}) do
+      local t = tonumber(e.tier)
+      if t then local k = string.format(L["KPI_INS_TIER_FMT"], t); m[k] = (m[k] or 0) + 1 end
+    end
+    return { title = L["KPI_INS_DELVES"], rows = TopOf(m, nil, 6) }
+  elseif key == "pvp" then
+    return { title = L["KPI_INS_PVP"], rows = rowsOf({
+      { label = L["KPI_INS_BG_PLAYED"], v = a.bgPlayedGained or 0 }, { label = L["KPI_INS_BG_WON"], v = a.bgWonGained or 0 },
+      { label = L["KPI_INS_AR_PLAYED"], v = a.arenaPlayedGained or 0 }, { label = L["KPI_INS_AR_WON"], v = a.arenaWonGained or 0 } }) }
+  elseif key == "repGained" then
+    local m = {}
+    for _, e in ipairs(a.repLog or {}) do if e.faction then m[e.faction] = (m[e.faction] or 0) + (tonumber(e.amount) or 0) end end
+    return { title = L["KPI_INS_REP"], rows = TopOf(m, function(v) return BreakUpLargeNumbers and BreakUpLargeNumbers(math.floor(v)) or num(v) end) }
+  elseif key == "profGained" then
+    local m = {}
+    for _, e in ipairs(a.profLog or {}) do if e.profession then m[e.profession] = (m[e.profession] or 0) + (tonumber(e.amount) or 0) end end
+    return { title = L["KPI_INS_PROF"], rows = TopOf(m) }
+  elseif key == "achievements" then
+    local rows = {}
+    for i, e in ipairs((SX.NearAchievements and SX.NearAchievements()) or {}) do
+      if i > 5 then break end
+      rows[#rows + 1] = { label = e.name, v = e.pct * 100, text = string.format("%d %%", math.floor(e.pct * 100)) }
+    end
+    if rows[1] then rows[1].hl = true end
+    return { title = L["KPI_INS_ACH"], rows = rows }
+  elseif key == "session" then
+    local TSx = _G.TibiSuite
+    local function dur(s) return (TSx and TSx.FmtDuration) and TSx.FmtDuration(s) or (math.floor(s / 60) .. " min") end
+    local ck = SX.CurrentCharKey and SX.CurrentCharKey()
+    local r = ck and StatsDB[ck]
+    local rows = {}
+    local live = r and r.liveSession and SX.SessionNow and SX.SessionNow(r.liveSession, ck)
+    if live then rows[#rows + 1] = { label = L["KPI_INS_SES_NOW"], v = live.dur, text = dur(live.dur), hl = true } end
+    if r and type(r.lastSession) == "table" and r.lastSession.dur then
+      rows[#rows + 1] = { label = L["KPI_INS_SES_LAST"], v = r.lastSession.dur, text = dur(r.lastSession.dur) }
+    end
+    if (a.sessions or 0) > 0 then
+      local avgS = (a.sessionTime or 0) / a.sessions
+      rows[#rows + 1] = { label = L["KPI_INS_SES_AVG"], v = avgS, text = dur(avgS) }
+    end
+    return { title = L["KPI_INS_SESSION"], rows = rows }
+  end
+  return { title = "", rows = {} }
+end
+
+-- Construit le tableau de bord ; renvoie la hauteur utilisee.
+local function BuildKPI(content)
+  local W = content:GetWidth()
+  local gap, tileH, headH = 12, 92, 16
+  local tileW = (W - 3 * gap) / 4
+  local granularity = (view.period == "day") and "day" or (view.period == "week" and "week" or (view.period == "month" and "week" or "month"))
+  local bucketCount = (view.period == "day") and 7 or (view.period == "week" and 8 or (view.period == "month" and 5 or 12))
+  local buckets = KpiBuckets(view.char, granularity, bucketCount)
+
+  -- Periode en cours jusqu'a maintenant, et meme duree au debut de la
+  -- precedente (l'Or garde sa semaine calee sur le reset).
+  local now = time()
+  local function ranges(key)
+    local from, to, pFrom, pTo
+    if key == "gold" then from, to = GoldRangeFor(0); pFrom, pTo = GoldRangeFor(-1)
+    else from, to = CurrentRange(0); pFrom, pTo = CurrentRange(-1) end
+    local elapsed = math.max(0, math.min(now, to) - from)
+    return from, to, pFrom, pTo, pFrom + elapsed
+  end
+  local aggCache = {}
+  local function agg(a, b)
+    local k = a .. ":" .. b
+    if not aggCache[k] then aggCache[k] = SX.AggregateFor(view.char, a, b) end
+    return aggCache[k]
+  end
+
+  view.focus = view.focus or "played"
+  local rec = (view.char ~= "__account__") and StatsDB[view.char]
+  local y = 6
+  for ri, row in ipairs(KPI_ROWS) do
+    local h = kpi.heads[ri]
+    if not h then h = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); kpi.heads[ri] = h end
+    h:ClearAllPoints(); h:SetPoint("TOPLEFT", content, "TOPLEFT", 2, -y)
+    h:SetText(string.upper(L[row.label]))
+    h:Show()
+    y = y + headH
+    for ci, key in ipairs(row.keys) do
+      local t = KpiTile(content, key)
+      local acc = KpiAccent(key)
+      local def = KPI_DEF[key]
+      t:ClearAllPoints()
+      t:SetPoint("TOPLEFT", content, "TOPLEFT", (ci - 1) * (tileW + gap), -y)
+      t:SetSize(tileW, tileH)
+      local from, to, pFrom, pTo, pSame = ranges(key)
+      local cur = SX.MetricValue(agg(from, to), def.metric)
+      local prevSame = SX.MetricValue(agg(pFrom, pSame), def.metric)
+      local prevFull = SX.MetricValue(agg(pFrom, pTo), def.metric)
+      t._cur, t._prevSame, t._prevFull = cur, prevSame, prevFull
+      kpi.vals[key] = { cur = cur, prevSame = prevSame, prevFull = prevFull, from = from, to = to }
+      local vals, any = {}, (cur ~= 0 or prevFull ~= 0)
+      for i, b in ipairs(buckets) do vals[i] = math.max(0, b[key] or 0); if vals[i] > 0 then any = true end end
+      local selected = (view.focus == key)
+      local muted = not any
+      UI.SkinFrame(t, selected and acc or (muted and UI.C.MUTED or { acc[1] * 0.55, acc[2] * 0.55, acc[3] * 0.55 }), UI.C.PANEL)
+      if selected and t.SetBackdropColor then t:SetBackdropColor(acc[1] * 0.16, acc[2] * 0.16, acc[3] * 0.16, 0.98) end
+      t:SetAlpha(muted and 0.55 or 1)
+      t.icon:SetDesaturated(muted)
+      t.title:SetText(KpiLabel(key))
+      t.title:SetWidth(tileW - 40)
+      t.title:SetTextColor(acc[1], acc[2], acc[3])
+      t.value:SetText(KpiFmt(key, cur))
+      if muted then t.value:SetTextColor(0.55, 0.55, 0.6) else t.value:SetTextColor(acc[1], acc[2], acc[3]) end
+      if cur ~= 0 or prevSame ~= 0 then
+        if prevSame ~= 0 then
+          local pct = (cur - prevSame) / math.abs(prevSame) * 100
+          t.delta:SetText((pct >= 0 and "|cFF66D98A+" or "|cFFE56B6B-") .. string.format("%.0f%%", math.abs(pct)) .. "|r")
+        else
+          t.delta:SetText("|cFF66D98A+|r")
+        end
+      else
+        t.delta:SetText("")
+      end
+      -- Ligne d'information sous le chiffre (etat du moment, compact).
+      local sub = ""
+      local aCur = agg(from, to)
+      if key == "dungeons" then
+        sub = string.format(L["KPI_SUB_DUNGEONS"], aCur.dungeons or 0, aCur.mplusCount or 0)
+      elseif key == "delves" then
+        local best = SX.MetricValue(aCur, "delveBest")
+        if best > 0 then sub = string.format(L["KPI_SUB_BEST_TIER"], best)
+        elseif rec and rec.delveHighestTier then sub = L["DELVES_TIER"] .. " " .. rec.delveHighestTier end
+      elseif key == "repGained" then
+        local n = SX.MetricValue(aCur, "repFactions")
+        if n > 0 then sub = string.format(L["KPI_SUB_FACTIONS"], n) end
+      elseif key == "profGained" then
+        local n = SX.MetricValue(aCur, "profCount")
+        if n > 0 then sub = string.format(L["KPI_SUB_PROFS"], n) end
+      elseif key == "session" and (aCur.sessions or 0) > 0 then
+        local avg = math.floor((aCur.sessionTime or 0) / aCur.sessions)
+        local TSx = _G.TibiSuite
+        sub = string.format(L["TILECAP_SESSION_AVG"], (TSx and TSx.FmtDuration) and TSx.FmtDuration(avg) or (math.floor(avg / 60) .. " min"))
+      elseif key == "achievements" then
+        local near = SX.NearAchievements and SX.NearAchievements()
+        if near and #near > 0 then sub = string.format(L["KPI_SUB_NEAR"], #near) end
+      elseif key == "pvp" then
+        local pv = rec and rec.pvp
+        if pv and pv.honor then sub = L["PVP_HONOR"] .. " " .. tostring(pv.honor) end
+      end
+      t.sub:SetText(sub)
+      t.sub:SetWidth(tileW - 20)
+      KpiSpark(t, vals, acc, tileW - 20)
+      t:Show()
+    end
+    y = y + tileH + 10
+  end
+
+  -- Grand graphique premium (7.1.5.45) : medaillon + titre, bandeau de 4
+  -- chiffres cles, barres fines sur grille (moyenne en pointille, projection
+  -- de la periode en cours), volet « eclairage » propre a chaque mesure,
+  -- phrase de bilan, filigrane de l'icone de la mesure.
+  local fkey = KPI_DEF[view.focus] and view.focus or "played"
+  local fdef = KPI_DEF[fkey]
+  local facc = KpiAccent(fkey)
+  local FH = 336
+  local f = kpi.focus
+  if not f then
+    f = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    f.mark = f:CreateTexture(nil, "BACKGROUND", nil, 2)
+    f.mark:SetSize(132, 132)
+    f.mark:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 34)
+    f.mark:SetDesaturated(true)
+    f.mark:SetAlpha(0.07)
+    f.icon = f:CreateTexture(nil, "ARTWORK")
+    f.icon:SetSize(44, 44)
+    f.icon:SetPoint("TOPLEFT", 14, -12)
+    if f.icon.SetMask then pcall(f.icon.SetMask, f.icon, "Interface\\CharacterFrame\\TempPortraitAlphaMask") end
+    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.title:SetPoint("TOPLEFT", 68, -16)
+    f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.hint:SetPoint("TOPLEFT", 68, -38)
+    f.histBtn = UI.MakeButton(f, 110, 20, L["KPI_HISTORY"])
+    f.histBtn:SetPoint("TOPRIGHT", -10, -12)
+    f.tableBtn = UI.MakeButton(f, 130, 20, L["KPI_TABLE"])
+    f.tex, f.fsl, f.hits = {}, {}, {}
+    kpi.focus = f
+  end
+  f:ClearAllPoints()
+  f:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -y)
+  f:SetSize(W, FH)
+  UI.SkinFrame(f, facc, UI.C.PANEL)
+  f.icon:SetTexture(KpiIcon(fkey))
+  f.mark:SetTexture(KpiIcon(fkey))
+  f.title:SetText(UI.Hex(facc[1], facc[2], facc[3]) .. KpiLabel(fkey) .. "|r")
+  local unit = (granularity == "day") and L["KPI_U_DAYS"] or (granularity == "week" and L["KPI_U_WEEKS"] or L["KPI_U_MONTHS"])
+  f.hint:SetText(string.format(L["KPI_SPAN_FMT"], bucketCount, unit) .. "  -  " .. L["KPI_FOCUS_HINT"])
+  f.histBtn:SetShown(fdef.hist ~= nil)
+  f.histBtn:SetScript("OnClick", function()
+    view.detailMetric = fdef.hist
+    view.detailGranularity = (view.period == "day") and "day" or view.detailGranularity
+    SX.RefreshDashboard()
+  end)
+  f.tableBtn:SetShown(fdef.tile ~= nil)
+  f.tableBtn:ClearAllPoints()
+  if fdef.hist then f.tableBtn:SetPoint("RIGHT", f.histBtn, "LEFT", -6, 0) else f.tableBtn:SetPoint("TOPRIGHT", -10, -12) end
+  if fdef.tile then
+    f.tableBtn._label:SetText(view.summaryExpanded[fdef.tile] and L["SUMMARY_COLLAPSE"] or L["KPI_TABLE"])
+    f.tableBtn:SetScript("OnClick", function()
+      view.summaryExpanded[fdef.tile] = not view.summaryExpanded[fdef.tile]
+      SX.RefreshDashboard()
+    end)
+  end
+
+  -- Pools de dessin (textures, textes, zones de survol), remis a zero.
+  local ti, li, hi = 0, 0, 0
+  local function Tex()
+    ti = ti + 1
+    local t = f.tex[ti]
+    if not t then t = f:CreateTexture(nil, "ARTWORK"); f.tex[ti] = t end
+    t:ClearAllPoints(); t:SetAlpha(1); t:Show()
+    return t
+  end
+  local function Txt(font)
+    li = li + 1
+    local s = f.fsl[li]
+    if not s then s = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"); f.fsl[li] = s end
+    s:ClearAllPoints(); s:SetFontObject(font or "GameFontHighlightSmall"); s:SetTextColor(1, 1, 1)
+    s:SetJustifyH("LEFT"); s:SetWidth(0); s:SetWordWrap(false); s:Show()
+    return s
+  end
+  local function Hit()
+    hi = hi + 1
+    local b = f.hits[hi]
+    if not b then
+      b = CreateFrame("Frame", nil, f)
+      b:EnableMouse(true)
+      b:SetScript("OnEnter", function(s)
+        GameTooltip:SetOwner(s, "ANCHOR_TOP")
+        GameTooltip:AddLine(s.l1 or "", 1, 1, 1)
+        if s.l2 then GameTooltip:AddLine(s.l2, 1, 0.82, 0) end
+        if s.l3 then GameTooltip:AddLine(s.l3, 0.75, 0.75, 0.8) end
+        GameTooltip:Show()
+      end)
+      b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+      f.hits[hi] = b
+    end
+    b:ClearAllPoints(); b:Show()
+    return b
+  end
+  local function Bar(t, x, yBottom, w, h, c, a)
+    t:SetPoint("BOTTOMLEFT", f, "TOPLEFT", x, yBottom)
+    t:SetSize(math.max(1, w), math.max(1, h))
+    t:SetColorTexture(1, 1, 1, 1)
+    local ok = CreateColor and pcall(t.SetGradient, t, "VERTICAL",
+      CreateColor(c[1] * 0.55, c[2] * 0.55, c[3] * 0.55, a), CreateColor(c[1], c[2], c[3], a))
+    if not ok then t:SetColorTexture(c[1], c[2], c[3], a) end
+  end
+  local MUT = UI.C.MUTED
+
+  -- Chiffres de reference.
+  local vals = {}
+  for i, b in ipairs(buckets) do vals[i] = b[fkey] or 0 end
+  local n = #vals
+  local kv = kpi.vals[fkey] or {}
+  local cur, prevFull = kv.cur or vals[n] or 0, kv.prevFull or 0
+  local sumPast, nPast = 0, 0
+  for i = 1, n - 1 do sumPast = sumPast + vals[i]; nPast = nPast + 1 end
+  local avg = nPast > 0 and sumPast / nPast or 0
+  local recV, recI = nil, nil
+  for i, v in ipairs(vals) do if not recV or v > recV then recV, recI = v, i end end
+  local frac
+  if kv.from and kv.to and kv.to > kv.from then frac = (math.min(now, kv.to) - kv.from) / (kv.to - kv.from) end
+  local inProgress = frac and frac > 0.02 and frac < 0.98
+  local proj = (inProgress and cur > 0) and cur / frac or nil
+  -- Projection de la derniere barre (sa propre duree).
+  local lastB = buckets[n]
+  local projB
+  if lastB and lastB.to > lastB.from and vals[n] > 0 then
+    local fb = (math.min(now, lastB.to) - lastB.from) / (lastB.to - lastB.from)
+    if fb > 0.02 and fb < 0.98 then projB = vals[n] / fb end
+  end
+
+  -- Bandeau de chiffres cles.
+  local chips = {
+    { L["KPI_CHIP_NOW"], KpiFmt(fkey, cur), true },
+    { string.format(L["KPI_CHIP_AVG_FMT"], (granularity == "day") and L["KPI_U_DAY"] or (granularity == "week" and L["KPI_U_WEEK"] or L["KPI_U_MONTH"])), KpiFmt(fkey, avg) },
+    { recI and string.format(L["KPI_CHIP_REC_FMT"], buckets[recI].label) or L["KPI_CHIP_REC"], KpiFmt(fkey, recV or 0) },
+  }
+  if proj then chips[4] = { L["KPI_CHIP_PROJ"], "~" .. KpiFmt(fkey, proj), false, true }
+  else
+    local tot = 0
+    for _, v in ipairs(vals) do tot = tot + v end
+    chips[4] = { string.format(L["KPI_CHIP_TOTAL_FMT"], n, unit), KpiFmt(fkey, tot) }
+  end
+  local cw = (W - 28 - 3 * 8) / 4
+  for i, c in ipairs(chips) do
+    local x = 14 + (i - 1) * (cw + 8)
+    local bg = Tex()
+    bg:SetPoint("TOPLEFT", f, "TOPLEFT", x, -66)
+    bg:SetSize(cw, 40)
+    if c[3] then bg:SetColorTexture(facc[1], facc[2], facc[3], 0.14)
+    elseif c[4] then bg:SetColorTexture(0.30, 0.85, 0.60, 0.10)
+    else bg:SetColorTexture(1, 1, 1, 0.04) end
+    local l = Txt("GameFontDisableSmall")
+    l:SetPoint("TOPLEFT", f, "TOPLEFT", x + 10, -71); l:SetWidth(cw - 20); l:SetText(c[1])
+    local v = Txt("GameFontNormal")
+    v:SetPoint("TOPLEFT", f, "TOPLEFT", x + 10, -87); v:SetWidth(cw - 20)
+    v:SetText(c[2])
+    if c[3] then v:SetTextColor(facc[1], facc[2], facc[3]) elseif c[4] then v:SetTextColor(0.45, 0.9, 0.65) end
+  end
+
+  -- Graphique : grille, barres fines, projection, moyenne, etiquettes.
+  local x0, x1 = 54, math.floor(W * 0.64)
+  local yB, plotH = -290, 156
+  local series2v
+  if view.compareChar then
+    series2v = {}
+    for i, b in ipairs(KpiBuckets(view.compareChar, granularity, bucketCount)) do series2v[i] = b[fkey] or 0 end
+  end
+  local top = math.max(recV or 0, projB or 0, avg, 0)
+  if series2v then for _, v in ipairs(series2v) do if v > top then top = v end end end
+  local minV = 0
+  for _, v in ipairs(vals) do if v < minV then minV = v end end
+  if top <= 0 then top = 1 end
+  local function Y(v) return yB + plotH * math.max(0, v) / top end
+  for gi = 0, 3 do
+    local gv = top * gi / 3
+    local g = Tex()
+    g:SetPoint("BOTTOMLEFT", f, "TOPLEFT", x0, Y(gv))
+    g:SetSize(x1 - x0, 1)
+    g:SetColorTexture(1, 1, 1, gi == 0 and 0.18 or 0.06)
+    if gi > 0 then
+      local gl = Txt("GameFontDisableSmall")
+      gl:SetPoint("RIGHT", f, "TOPLEFT", x0 - 6, Y(gv))
+      gl:SetJustifyH("RIGHT")
+      gl:SetText(KpiFmt(fkey, gv))
+    end
+  end
+  local slot = (x1 - x0) / math.max(1, n)
+  local bw = math.max(6, math.min(34, slot * 0.42))
+  local cColor = view.compareChar and SeriesColor(view.compareChar, SX.COMPARE_ACCENT) or nil
+  local pColor = view.compareChar and SeriesColor(view.char, ACCENT) or facc
+  local step = (n > 8) and 2 or 1
+  for i, v in ipairs(vals) do
+    local cx = x0 + (i - 0.5) * slot
+    local isCur = (i == n)
+    local w1 = series2v and (bw / 2 - 1) or bw
+    Bar(Tex(), cx - bw / 2, yB, w1, plotH * math.max(0, v) / top, pColor, isCur and 1 or 0.42)
+    if series2v then
+      Bar(Tex(), cx + 1, yB, w1, plotH * math.max(0, series2v[i] or 0) / top, cColor, isCur and 1 or 0.42)
+    end
+    if (i - 1) % step == 0 or isCur then
+      local xl = Txt("GameFontDisableSmall")
+      xl:SetPoint("TOP", f, "TOPLEFT", cx, yB - 4)
+      xl:SetText(isCur and (UI.Hex(facc[1], facc[2], facc[3]) .. buckets[i].label .. "|r") or buckets[i].label)
+    end
+    if (i == recI and v > 0) or (isCur and v > 0) then
+      local vl = Txt("GameFontHighlightSmall")
+      vl:SetPoint("BOTTOM", f, "TOPLEFT", cx, Y(v) + 3)
+      vl:SetText(UI.Hex(facc[1], facc[2], facc[3]) .. KpiFmt(fkey, v) .. "|r")
+    end
+    local h = Hit()
+    h:SetPoint("BOTTOMLEFT", f, "TOPLEFT", x0 + (i - 1) * slot, yB)
+    h:SetSize(slot, plotH)
+    h.l1 = buckets[i].label
+    h.l2 = KpiLabel(fkey) .. " : " .. KpiFmt(fkey, v)
+    h.l3 = (series2v and (CharDisplayName(view.compareChar) .. " : " .. KpiFmt(fkey, series2v[i] or 0))) or nil
+  end
+  if projB and projB > vals[n] then
+    local cx = x0 + (n - 0.5) * slot
+    local g = Tex()
+    g:SetPoint("BOTTOMLEFT", f, "TOPLEFT", cx - bw / 2, Y(vals[n]))
+    g:SetSize(bw, math.max(1, Y(projB) - Y(vals[n])))
+    g:SetColorTexture(0.30, 0.85, 0.60, 0.13)
+    local tl = Tex()
+    tl:SetPoint("BOTTOMLEFT", f, "TOPLEFT", cx - bw / 2, Y(projB))
+    tl:SetSize(bw, 1)
+    tl:SetColorTexture(0.30, 0.85, 0.60, 0.85)
+    local pl = Txt("GameFontHighlightSmall")
+    pl:SetPoint("BOTTOM", f, "TOPLEFT", cx, Y(projB) + 3)
+    pl:SetText("|cFF73E6A6~" .. KpiFmt(fkey, projB) .. "|r")
+  end
+  if avg > 0 then
+    local ay = Y(avg)
+    local xx = x0
+    while xx < x1 do
+      local d = Tex()
+      d:SetPoint("BOTTOMLEFT", f, "TOPLEFT", xx, ay)
+      d:SetSize(math.min(6, x1 - xx), 1)
+      d:SetColorTexture(1, 0.78, 0.25, 0.75)
+      xx = xx + 10
+    end
+    local al = Txt("GameFontDisableSmall")
+    al:SetPoint("BOTTOMRIGHT", f, "TOPLEFT", x1, ay + 3)
+    al:SetJustifyH("RIGHT")
+    al:SetText("|cFFE6B84D" .. string.format(L["KPI_AVG_LINE_FMT"], KpiFmt(fkey, avg)) .. "|r")
+  end
+
+  -- Volet « eclairage » propre a la mesure.
+  local ins = KpiInsight(fkey, buckets[1] and buckets[1].from or now, now)
+  local xi, xr = x1 + 28, W - 14
+  local iy = -122
+  local it = Txt("GameFontNormal")
+  it:SetPoint("TOPLEFT", f, "TOPLEFT", xi, iy)
+  it:SetText(UI.Hex(facc[1], facc[2], facc[3]) .. (ins.title or "") .. "|r")
+  iy = iy - 22
+  local rmax = 0
+  for _, r in ipairs(ins.rows or {}) do if (r.v or 0) > rmax then rmax = r.v end end
+  if #(ins.rows or {}) == 0 then
+    local e = Txt("GameFontDisableSmall")
+    e:SetPoint("TOPLEFT", f, "TOPLEFT", xi, iy); e:SetWidth(xr - xi); e:SetWordWrap(true)
+    e:SetText(L["KPI_INS_EMPTY"])
+  end
+  local lw = 78
+  for ri, r in ipairs(ins.rows or {}) do
+    if ri > 7 then break end
+    local lab = Txt("GameFontHighlightSmall")
+    lab:SetPoint("TOPLEFT", f, "TOPLEFT", xi, iy); lab:SetWidth(lw); lab:SetText(r.label or "")
+    lab:SetTextColor(MUT[1] + 0.2, MUT[2] + 0.2, MUT[3] + 0.2)
+    local bx, bwid = xi + lw + 4, (xr - 56) - (xi + lw + 4)
+    local bg = Tex()
+    bg:SetPoint("TOPLEFT", f, "TOPLEFT", bx, iy - 2); bg:SetSize(math.max(4, bwid), 10)
+    bg:SetColorTexture(1, 1, 1, 0.05)
+    if (r.v or 0) > 0 and rmax > 0 then
+      local fill = Tex()
+      fill:SetPoint("TOPLEFT", f, "TOPLEFT", bx, iy - 2)
+      fill:SetSize(math.max(2, bwid * r.v / rmax), 10)
+      fill:SetColorTexture(facc[1], facc[2], facc[3], r.hl and 0.85 or 0.4)
+    end
+    local val = Txt("GameFontHighlightSmall")
+    val:SetPoint("TOPRIGHT", f, "TOPLEFT", xr, iy); val:SetJustifyH("RIGHT")
+    val:SetText(r.text or "")
+    iy = iy - 20
+  end
+  if ins.foot then
+    local ft = Txt("GameFontHighlightSmall")
+    ft:SetPoint("TOPLEFT", f, "TOPLEFT", xi, iy - 4); ft:SetWidth(xr - xi); ft:SetWordWrap(true)
+    ft:SetText(UI.Hex(facc[1], facc[2], facc[3]) .. ins.foot .. "|r")
+  end
+
+  -- Phrase de bilan.
+  local s
+  if cur == 0 and prevFull == 0 then s = L["KPI_SUM_NONE"]
+  else
+    local pre = inProgress and string.format(L["KPI_SUM_PROGRESS_FMT"], math.floor(frac * 100 + 0.5)) or ""
+    if recI == n and cur > 0 and n > 1 and (vals[n] or 0) > 0 then
+      s = pre .. string.format(L["KPI_SUM_RECORD_FMT"], n, unit)
+    elseif prevFull > 0 then
+      local ref = proj or cur
+      local r = ref / prevFull
+      if r >= 1.15 then s = pre .. string.format(L["KPI_SUM_ABOVE_FMT"], KpiFmt(fkey, ref), KpiFmt(fkey, prevFull))
+      elseif r <= 0.85 then s = pre .. string.format(L["KPI_SUM_BELOW_FMT"], KpiFmt(fkey, ref), KpiFmt(fkey, prevFull))
+      else s = pre .. L["KPI_SUM_SAME"] end
+    else
+      s = pre .. L["KPI_SUM_FIRST"]
+    end
+  end
+  local sl = Txt("GameFontHighlightSmall")
+  sl:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 14, 12); sl:SetWidth(W - 28)
+  sl:SetText("|cFFB8B8C0" .. s .. "|r")
+
+  for i = ti + 1, #f.tex do f.tex[i]:Hide() end
+  for i = li + 1, #f.fsl do f.fsl[i]:Hide() end
+  for i = hi + 1, #f.hits do f.hits[i]:Hide() end
+  f:Show()
+  y = y + FH + 12
+  return y
+end
+
+-- Acces de test (faux client) : tuiles du tableau de bord.
+function SX.KpiTiles() return kpi.tiles end
+
+local function HideKPI()
+  for _, t in pairs(kpi.tiles) do t:Hide() end
+  for _, h in ipairs(kpi.heads) do h:Hide() end
+  if kpi.focus then kpi.focus:Hide() end
 end
 
 local function HideSummaryTiles()
   if summaryTiles then for _, tile in pairs(summaryTiles) do tile:Hide() end end
+end
+
+-- ----------------------------------------------------------------------------
+-- HAUTS FAITS PRESQUE FINIS et SESSION (7.1.5.45) : details des tuiles de la
+-- 3e rangee. Donnees : SX.NearAchievements(), SX.SessionNow() (Core.lua).
+-- ----------------------------------------------------------------------------
+local achDetailPanel, sessionDetailPanel
+local ACH_ROWS = 5
+
+local function BuildAchievementDetail(content, top)
+  if not view.summaryExpanded.achievements then
+    if achDetailPanel then achDetailPanel:Hide() end
+    return 0
+  end
+  local acc = SECTION_ACCENTS.achievements
+  if not achDetailPanel then
+    local f = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    UI.SkinFrame(f, acc, UI.C.PANEL)
+    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    f.title:SetPoint("TOPLEFT", 14, -12)
+    f.title:SetText(L["ACH_NEAR_TITLE"])
+    f.title:SetTextColor(acc[1], acc[2], acc[3])
+    f.note = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    f.note:SetPoint("TOPLEFT", 14, -38)
+    f.rows = {}
+    for i = 1, ACH_ROWS do
+      local r = CreateFrame("Button", nil, f)
+      r:SetHeight(40)
+      r.icon = r:CreateTexture(nil, "ARTWORK"); r.icon:SetSize(28, 28); r.icon:SetPoint("LEFT", 0, 0)
+      r.name = r:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); r.name:SetPoint("TOPLEFT", 36, -3)
+      r.name:SetJustifyH("LEFT")
+      r.pct = r:CreateFontString(nil, "OVERLAY", "GameFontNormal"); r.pct:SetPoint("TOPRIGHT", 0, -3)
+      r.rest = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); r.rest:SetPoint("TOPLEFT", r.name, "BOTTOMLEFT", 0, -3)
+      r.rest:SetJustifyH("LEFT"); r.rest:SetWordWrap(false)
+      r.bg = r:CreateTexture(nil, "ARTWORK"); r.bg:SetPoint("BOTTOMLEFT", 36, 0); r.bg:SetPoint("BOTTOMRIGHT", 0, 0); r.bg:SetHeight(3)
+      r.bg:SetColorTexture(1, 1, 1, 0.08)
+      r.fill = r:CreateTexture(nil, "OVERLAY"); r.fill:SetPoint("TOPLEFT", r.bg); r.fill:SetPoint("BOTTOMLEFT", r.bg)
+      r.fill:SetColorTexture(acc[1], acc[2], acc[3], 1)
+      local hl = r:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.04)
+      r:SetScript("OnClick", function(s)
+        if not s.id then return end
+        if IsShiftKeyDown() and GetAchievementLink and ChatEdit_InsertLink then ChatEdit_InsertLink(GetAchievementLink(s.id))
+        else SX.OpenAchievement(s.id) end
+      end)
+      r:SetScript("OnEnter", function(s)
+        if not s.id then return end
+        GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+        if GameTooltip.SetAchievementByID then pcall(GameTooltip.SetAchievementByID, GameTooltip, s.id) else GameTooltip:AddLine(s.name:GetText()) end
+        GameTooltip:AddLine(L["ACH_CLICK"], 0.6, 0.6, 0.65)
+        GameTooltip:Show()
+      end)
+      r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+      f.rows[i] = r
+    end
+    achDetailPanel = f
+  end
+  local f = achDetailPanel
+  f:ClearAllPoints()
+  f:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
+  local w = content:GetWidth()
+  f:SetWidth(w)
+  local list = SX.NearAchievements()
+  for _, r in ipairs(f.rows) do r:Hide() end
+  local y = -38
+  if not list then
+    f.note:SetText(L["ACH_SCANNING"]); f.note:Show(); y = y - 24
+  elseif #list == 0 then
+    f.note:SetText(L["ACH_NONE"]); f.note:Show(); y = y - 24
+  else
+    f.note:Hide()
+    for i, a in ipairs(list) do
+      local r = f.rows[i]
+      if not r then break end
+      r.id = a.id
+      r:ClearAllPoints(); r:SetPoint("TOPLEFT", 14, y); r:SetPoint("RIGHT", f, "RIGHT", -14, 0)
+      r.icon:SetTexture(a.icon)
+      r.name:SetText(a.name or "?")
+      r.name:SetWidth(w - 160)
+      r.pct:SetText(UI.Hex(acc[1], acc[2], acc[3]) .. math.floor(a.pct * 100) .. " %|r  |cff8a8a8a" .. a.done .. "/" .. a.total .. "|r")
+      local rest = (a.remaining and #a.remaining > 0) and (L["ACH_LEFT"] .. table.concat(a.remaining, ", ")) or ""
+      r.rest:SetText(rest); r.rest:SetWidth(w - 80)
+      r.fill:SetWidth(math.max(1, (w - 64) * a.pct))
+      r:Show()
+      y = y - 46
+    end
+  end
+  local h = -y + 10
+  f:SetHeight(h)
+  f:Show()
+  return h
+end
+
+local function BuildSessionDetail(content, top)
+  if not view.summaryExpanded.session then
+    if sessionDetailPanel then sessionDetailPanel:Hide() end
+    return 0
+  end
+  local acc = SECTION_ACCENTS.session
+  if not sessionDetailPanel then
+    local f = CreateFrame("Frame", nil, content, "BackdropTemplate")
+    UI.SkinFrame(f, acc, UI.C.PANEL)
+    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    f.title:SetPoint("TOPLEFT", 14, -12)
+    f.title:SetText(L["SESSION_TITLE"])
+    f.title:SetTextColor(acc[1], acc[2], acc[3])
+    f.cur = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); f.cur:SetPoint("TOPLEFT", 14, -38); f.cur:SetJustifyH("LEFT")
+    f.lastT = f:CreateFontString(nil, "OVERLAY", "GameFontNormal"); f.lastT:SetPoint("TOPLEFT", 14, -68)
+    f.last = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight"); f.last:SetPoint("TOPLEFT", 14, -88); f.last:SetJustifyH("LEFT")
+    f.note = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall"); f.note:SetPoint("TOPLEFT", 14, -114)
+    f.note:SetJustifyH("LEFT")
+    sessionDetailPanel = f
+  end
+  local f = sessionDetailPanel
+  f:ClearAllPoints()
+  f:SetPoint("TOPLEFT", content, "TOPLEFT", 0, top)
+  local w = content:GetWidth()
+  f:SetWidth(w)
+  local key = SX.CurrentCharKey()
+  local rec = key and StatsDB[key]
+  local now = rec and rec.liveSession and SX.SessionNow(rec.liveSession, key)
+  f.cur:SetWidth(w - 28); f.last:SetWidth(w - 28); f.note:SetWidth(w - 28)
+  f.cur:SetText(now and (L["SESSION_CURRENT"] .. "  " .. SX.SessionText(now)) or L["SESSION_NONE"])
+  local last = rec and rec.lastSession
+  f.lastT:SetText(L["SESSION_LAST"] .. (last and ("  |cff8a8a8a" .. date("%d/%m %H:%M", last.start) .. "|r") or ""))
+  f.lastT:SetTextColor(acc[1], acc[2], acc[3])
+  f.last:SetText(last and SX.SessionText(last) or L["SESSION_NO_LAST"])
+  f.note:SetText(L["SESSION_NOTE"])
+  f:SetHeight(140)
+  f:Show()
+  return 140
 end
 
 -- ----------------------------------------------------------------------------
@@ -3311,6 +4226,7 @@ end
 
 local function HideOverview()
   for _, card in pairs(cards) do card:Hide() end
+  HideKPI()
   HideSummaryTiles()
   HidePvPDetail()
   HideDelveDetail()
@@ -3593,33 +4509,17 @@ function SX.RefreshDashboard()
     HideOverlayDetail()
     HidePvPChartDetail()
     HideEventListDetail()
-    BuildOverview(mainFrame.content)
-    local gridRows = math.ceil(#CARD_METRICS / CARD_GRID_COLS)
-    local gridDepth = gridRows * 190 + (gridRows - 1) * 16 + 10
-    local depth = gridDepth + 6
-
-    -- Ligne 1 (PVP, Gouffres+Tourments) : le detail deplie d'une tuile
-    -- apparait desormais juste apres SA PROPRE ligne, pas apres les 2 lignes
-    -- de tuiles - demande utilisateur du 2026-09-13 ("remonter PVP avant
-    -- reputation et metiers"). Le gap de 16 n'est ajoute qu'apres une
-    -- section reellement visible (hauteur > 0), pas de trou vide pour une
-    -- section repliee.
-    local row1Height = BuildSummaryTiles(mainFrame.content, -depth, SUMMARY_ROWS[1])
-    depth = depth + row1Height + 16
-    local pvpHeight = BuildPvPDetail(mainFrame.content, -depth)
-    if pvpHeight > 0 then depth = depth + pvpHeight + 16 end
-    local delveHeight = BuildDelveDetail(mainFrame.content, -depth)
-    if delveHeight > 0 then depth = depth + delveHeight + 16 end
-    local torghastDetailHeight = BuildTorghastDetail(mainFrame.content, -depth)
-    if torghastDetailHeight > 0 then depth = depth + torghastDetailHeight + 16 end
-
-    -- Ligne 2 (Reputations, Metiers), meme principe.
-    local row2Height = BuildSummaryTiles(mainFrame.content, -depth, SUMMARY_ROWS[2])
-    depth = depth + row2Height + 16
-    local reputationDetailHeight = BuildReputationDetail(mainFrame.content, -depth)
-    if reputationDetailHeight > 0 then depth = depth + reputationDetailHeight + 16 end
-    local professionDetailHeight = BuildProfessionDetail(mainFrame.content, -depth)
-    if professionDetailHeight > 0 then depth = depth + professionDetailHeight + 16 end
+    -- Tableau de bord (7.1.5.45) : tuiles chiffrees + un grand graphique,
+    -- puis les tableaux de detail deplies (meme ordre qu'avant). Les
+    -- anciennes cartes et tuiles ne s'affichent plus dans cette vue.
+    for _, card in pairs(cards) do card:Hide() end
+    HideSummaryTiles()
+    local depth = BuildKPI(mainFrame.content)
+    for _, fn in ipairs({ BuildPvPDetail, BuildDelveDetail, BuildTorghastDetail, BuildReputationDetail,
+                          BuildProfessionDetail, BuildAchievementDetail, BuildSessionDetail }) do
+      local h = fn(mainFrame.content, -depth)
+      if h and h > 0 then depth = depth + h + 16 end
+    end
 
     mainFrame.content:SetHeight(depth + 10)
   end

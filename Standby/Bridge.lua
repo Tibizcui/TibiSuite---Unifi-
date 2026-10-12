@@ -14,6 +14,23 @@ local ADDON, SB = ...
 local T = SB.T
 
 -- ============================================================================
+-- Apercu du Centre TibiSuite (overviewFn, 7.1.5.45) : absences du perso.
+-- ============================================================================
+function SB.Overview()
+  local SL, TS = _G.TibiSuiteL or {}, _G.TibiSuite
+  local out = { lines = {}, empty = SL.OV_SB_EMPTY }
+  local t = SB.Totals and SB.Totals()
+  if not t or (t.count or 0) == 0 then return out end
+  local fmt = TS and TS.FmtDuration or tostring
+  out.lines[1] = { text = SL.OV_SB_COUNT, value = tostring(t.count) }
+  out.lines[2] = { text = SL.OV_SB_TOTAL, value = fmt(t.total or 0) }
+  if type(t.last) == "table" and t.last.at then
+    out.lines[3] = { text = SL.OV_SB_LAST, value = date("%d/%m %H:%M", t.last.at) .. "  (" .. fmt(t.last.dur or 0) .. ")" }
+  end
+  return out
+end
+
+-- ============================================================================
 -- StandbyAPI
 -- ============================================================================
 StandbyAPI = StandbyAPI or {}

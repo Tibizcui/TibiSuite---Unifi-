@@ -107,7 +107,8 @@ local function Build(key)
     GameTooltip:SetOwner(s, "ANCHOR_BOTTOM")
     local c = ModCol(mod)
     GameTooltip:AddLine(mod and mod.addonName or s.key, c[1], c[2], c[3])
-    if s.stText and s.stText ~= "" then GameTooltip:AddLine(s.stText, 1, 1, 1, true) end
+    local hasOv = TibiSuite.AddOverviewToTooltip and TibiSuite.AddOverviewToTooltip(GameTooltip, s.key)
+    if not hasOv and s.stText and s.stText ~= "" then GameTooltip:AddLine(s.stText, 1, 1, 1, true) end
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine(L.WID_TT_CLICK, 0.6, 0.6, 0.65)
     GameTooltip:AddLine(L.WID_TT_RCLICK, 0.6, 0.6, 0.65)

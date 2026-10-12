@@ -611,6 +611,45 @@ local function CountExtension(ext)
   return got, total, inProg
 end
 
+-- Apercu du Centre TibiSuite (overviewFn, 7.1.5.45) : total, legendaires en
+-- cours (etape ou composants), puis les extensions les plus recentes.
+function LegTracker_Overview()
+  local SL = _G.TibiSuiteL or {}
+  local out = { lines = {}, empty = SL.OV_LEG_EMPTY }
+  if not LegTrackerData or not LegTrackerData.Extensions then return out end
+  local lines = out.lines
+  local got, total, scanned = 0, 0, false
+  local prog = {}
+  for _, ext in ipairs(LegTrackerData.Extensions) do
+    local g, t = CountExtension(ext)
+    got, total = got + g, total + t
+    for _, item in ipairs(ext.items or {}) do
+      if item._status ~= nil then scanned = true end
+      if item._status == "IN_PROGRESS" and not item.placeholder and HasClass(item) then prog[#prog + 1] = item end
+    end
+  end
+  if not scanned or total == 0 then return out end
+  lines[#lines + 1] = { text = SL.OV_LEG_TOTAL, value = got .. " / " .. total, progress = got / total }
+  for i = 1, math.min(2, #prog) do
+    local item = prog[i]
+    local steps = item.quests and #item.quests or 0
+    local val, p = SL.OV_LEG_INPROG, nil
+    if item._step and steps > 1 then
+      val = string.format(SL.OV_LEG_STEP_FMT or "%d/%d", item._step, steps); p = (item._step - 1) / steps
+    elseif (item._tTotal or 0) > 0 then
+      val = (item._tDone or 0) .. " / " .. item._tTotal; p = (item._tDone or 0) / item._tTotal
+    end
+    lines[#lines + 1] = { text = DisplayName(item) or "?", value = val, progress = p, color = { 1, 0.43, 0.04 } }
+  end
+  local exts = LegTrackerData.Extensions
+  for i = #exts, 1, -1 do
+    if #lines >= 5 then break end
+    local g, t = CountExtension(exts[i])
+    if t > 0 then lines[#lines + 1] = { text = exts[i].label or "?", value = g .. " / " .. t, progress = g / t } end
+  end
+  return out
+end
+
 -- Ligne d'etat du Panneau vivant de TibiSuite (statusFn, lue par le core) :
 -- legendaires obtenus sur l'ensemble des extensions, selon le dernier scan
 -- (fait au login). Rien tant qu'aucun scan n'a eu lieu.

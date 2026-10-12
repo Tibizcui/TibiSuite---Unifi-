@@ -735,6 +735,269 @@ function Live.Probe()
 end
 
 -- ----------------------------------------------------------------
+-- SONDE DES COLLECTIONS (7.1.5.45, feuille de route lot 8)
+-- Outil de diagnostic, lecture seule. /dg loot : parcourt le journal
+-- d'aventure (tous les paliers, raids et donjons), une instance par image,
+-- et releve pour chaque difficulte valide les montures, mascottes et jouets
+-- du butin, avec leur etat (deja obtenu ou non), plus les apparences manquantes
+-- (compte seulement). Rend son etat au journal (palier, difficulte, filtre).
+-- Jamais pendant que le journal est ouvert. Resultat dans
+-- DgnTrackerDB.lootProbe ; /dg loot report le resume dans la discussion.
+-- Questions : le butin d'une instance se lit-il sans boss choisi ? les
+-- montures y figurent-elles (filtre remis a zero) ? les verrous donnent-ils
+-- les boss tues (GetSavedInstanceEncounterInfo) ?
+-- ----------------------------------------------------------------
+local LOOT_DIFFS = { 1, 2, 23, 3, 4, 5, 6, 9, 14, 15, 16, 17, 7, 33, 24 }
+local lootRunning = false
+
+local function Collectible(itemID)
+  if not itemID then return nil end
+  if C_MountJournal and C_MountJournal.GetMountFromItem then
+    local ok, mountID = pcall(C_MountJournal.GetMountFromItem, itemID)
+    if ok and mountID then
+      local okI, mname, _, _, _, _, _, _, _, _, _, collected = pcall(C_MountJournal.GetMountInfoByID, mountID)
+      return "mount", okI and mname or nil, okI and collected and true or false
+    end
+  end
+  if C_PetJournal and C_PetJournal.GetPetInfoByItemID then
+    local ok, pname, _, _, _, _, _, _, _, _, _, _, _, speciesID = pcall(C_PetJournal.GetPetInfoByItemID, itemID)
+    if ok and speciesID then
+      local okC, n = pcall(C_PetJournal.GetNumCollectedInfo, speciesID)
+      return "pet", pname, okC and (tonumber(n) or 0) > 0 or false
+    end
+  end
+  if C_ToyBox and C_ToyBox.GetToyInfo then
+    local ok, toyID, tname = pcall(C_ToyBox.GetToyInfo, itemID)
+    if ok and toyID then
+      return "toy", tname, PlayerHasToy and PlayerHasToy(itemID) and true or false
+    end
+  end
+  if C_TransmogCollection and C_TransmogCollection.GetItemInfo then
+    local ok, appID, sourceID = pcall(C_TransmogCollection.GetItemInfo, itemID)
+    if ok and sourceID then
+      local okH, has = pcall(C_TransmogCollection.PlayerHasTransmogItemModifiedAppearance, sourceID)
+      return "tmog", nil, okH and has and true or false
+    end
+  end
+  return nil
+end
+
+local function DiffName(d)
+  if GetDifficultyInfo then
+    local ok, n = pcall(GetDifficultyInfo, d)
+    if ok and n then return n end
+  end
+  return tostring(d)
+end
+
+function Live.LootProbe(onDone)
+  if lootRunning then return false, "running" end
+  if not (EJ_GetNumTiers and EJ_SelectTier and EJ_GetInstanceByIndex and EJ_SelectInstance and EJ_GetNumLoot
+          and C_EncounterJournal and C_EncounterJournal.GetLootInfoByIndex) then return false, "api" end
+  if EncounterJournal and EncounterJournal.IsShown and EncounterJournal:IsShown() then return false, "open" end
+  lootRunning = true
+  local t0 = debugprofilestop and debugprofilestop() or 0
+  local before = { tier = EJ_GetCurrentTier and EJ_GetCurrentTier(), diff = EJ_GetDifficulty and EJ_GetDifficulty() }
+  if EJ_GetLootFilter then before.class, before.spec = EJ_GetLootFilter() end
+
+  -- 1. Liste des instances, tous paliers confondus (dedoublonnees par jid).
+  local list, seen = {}, {}
+  local okT, nT = pcall(EJ_GetNumTiers)
+  for tier = 1, (okT and nT or 0) do
+    pcall(EJ_SelectTier, tier)
+    for _, isRaid in ipairs({ true, false }) do
+      for i = 1, 60 do
+        local ok, jid, name = pcall(EJ_GetInstanceByIndex, i, isRaid)
+        if not ok or not jid then break end
+        if not seen[jid] then
+          seen[jid] = true
+          list[#list + 1] = { jid = jid, name = name, tier = tier, raid = isRaid }
+        end
+      end
+    end
+  end
+
+  local out = { at = date and date("%Y-%m-%d %H:%M") or "", locale = GetLocale and GetLocale() or "",
+    tiers = okT and nT or 0, instances = #list, withLoot = 0, items = 0, noLink = 0,
+    mounts = {}, pets = {}, toys = {}, tmogMissing = 0, tmogOwned = 0, saved = {} }
+  local seenItem = {}
+  local candRecs, candIDs = {}, {}
+
+  local function restore()
+    pcall(function()
+      if EJ_ResetLootFilter then EJ_ResetLootFilter() end
+      if before.class and EJ_SetLootFilter then EJ_SetLootFilter(before.class, before.spec or 0) end
+      if before.tier then EJ_SelectTier(before.tier) end
+    end)
+  end
+
+  -- 2. Une instance par image.
+  local idx = 0
+  local function step()
+    idx = idx + 1
+    local e = list[idx]
+    if not e then
+      restore()
+      -- 3. Verrous : boss tues par instance verrouillee (3 premieres).
+      if GetNumSavedInstances and GetSavedInstanceEncounterInfo then
+        local okN, n = pcall(GetNumSavedInstances)
+        for i = 1, math.min(3, okN and n or 0) do
+          local ok, iname, _, _, diffID, locked, _, _, _, _, _, numEnc = pcall(GetSavedInstanceInfo, i)
+          if ok and iname then
+            local s = { name = iname, diff = diffID, locked = locked and true or false, enc = {} }
+            for b = 1, math.min(12, tonumber(numEnc) or 0) do
+              local okB, bname, _, killed = pcall(GetSavedInstanceEncounterInfo, i, b)
+              if okB and bname then s.enc[#s.enc + 1] = bname .. (killed and "=tue" or "=vivant") end
+            end
+            out.saved[#out.saved + 1] = s
+          end
+        end
+      end
+      out.ms = math.floor(((debugprofilestop and debugprofilestop() or 0) - t0))
+      -- Phase 2 : chargement des objets candidats (4000 au plus), attente des
+      -- reponses (15 s au plus), puis reclassement. Temoin : Invincible (50818,
+      -- Citadelle de la Couronne de glace 25 heroique) avant / apres.
+      local ids = {}
+      for id in pairs(candIDs) do ids[#ids + 1] = id end
+      out.cand = #ids
+      local function probeMount(id)
+        local ok, m = pcall(C_MountJournal.GetMountFromItem, id)
+        return ok and m or nil
+      end
+      out.invBefore = tostring(probeMount(50818))
+      local want, got = {}, 0
+      local loadFn = C_Item and C_Item.RequestLoadItemDataByID
+      for i = 1, math.min(#ids, 4000) do
+        want[ids[i]] = true
+        if loadFn then pcall(loadFn, ids[i]) end
+      end
+      pcall(loadFn or function() end, 50818)
+      local waiter = CreateFrame("Frame")
+      waiter:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+      waiter:SetScript("OnEvent", function(_, _, id) if want[id] then want[id] = nil; got = got + 1 end end)
+      local waited, finished = 0, false
+      local function finish()
+        if finished then return end
+        finished = true
+        waiter:UnregisterAllEvents()
+        out.loaded = got
+        out.waited = waited
+        out.invAfter = tostring(probeMount(50818))
+        for _, rec in ipairs(candRecs) do
+          local kind, cname, have = Collectible(rec.item)
+          if kind == "mount" or kind == "pet" or kind == "toy" then
+            rec.name, rec.have, rec.late = cname or rec.name, have, true
+            local bucket = (kind == "mount" and out.mounts) or (kind == "pet" and out.pets) or out.toys
+            bucket[#bucket + 1] = rec
+            out.ft = out.ft or {}
+            out.ft[tostring(rec.ft)] = (out.ft[tostring(rec.ft)] or 0) + 1
+          end
+        end
+        if DgnTrackerDB then DgnTrackerDB.lootProbe = out end
+        lootRunning = false
+        if onDone then pcall(onDone, out) end
+      end
+      local function tick()
+        if finished then return end
+        waited = waited + 1
+        if not next(want) or waited >= 15 then finish() else C_Timer.After(1, tick) end
+      end
+      C_Timer.After(1, tick)
+      return
+    end
+    pcall(function()
+      EJ_SelectInstance(e.jid)
+      if EJ_ResetLootFilter then EJ_ResetLootFilter() end
+      if C_EncounterJournal.SetSlotFilter and Enum and Enum.ItemSlotFilterType then
+        pcall(C_EncounterJournal.SetSlotFilter, Enum.ItemSlotFilterType.NoFilter)
+      end
+      local any = false
+      for _, d in ipairs(LOOT_DIFFS) do
+        local valid = not EJ_IsValidInstanceDifficulty or EJ_IsValidInstanceDifficulty(d)
+        if valid then
+          EJ_SetDifficulty(d)
+          local n = EJ_GetNumLoot() or 0
+          if n > 0 then any = true end
+          for i = 1, n do
+            local info = C_EncounterJournal.GetLootInfoByIndex(i)
+            local itemID = type(info) == "table" and info.itemID
+            if itemID then
+              out.items = out.items + 1
+              if not info.link then out.noLink = out.noLink + 1 end
+              local kind, cname, have = Collectible(itemID)
+              local key = itemID .. ":" .. e.jid
+              if kind == "tmog" then
+                if not seenItem[key] then
+                  seenItem[key] = true
+                  if have then out.tmogOwned = out.tmogOwned + 1 else out.tmogMissing = out.tmogMissing + 1 end
+                end
+              elseif kind then
+                local bucket = (kind == "mount" and out.mounts) or (kind == "pet" and out.pets) or out.toys
+                local rec = seenItem[key]
+                if type(rec) ~= "table" then
+                  rec = { item = itemID, name = cname or info.name, inst = e.name, jid = e.jid, raid = e.raid,
+                          have = have, diffs = {}, enc = info.encounterID }
+                  seenItem[key] = rec
+                  bucket[#bucket + 1] = rec
+                end
+                rec.diffs[#rec.diffs + 1] = d
+              elseif info.slot == nil or info.slot == "" then
+                -- Non classe et hors equipement : objet peut-etre pas encore
+                -- charge (GetMountFromItem ne trouve rien sur un objet absent
+                -- du cache). Reclasse apres chargement (phase 2).
+                local rec = seenItem[key]
+                if type(rec) ~= "table" then
+                  rec = { item = itemID, name = info.name, inst = e.name, jid = e.jid, raid = e.raid,
+                          diffs = {}, enc = info.encounterID, ft = info.filterType }
+                  seenItem[key] = rec
+                  candRecs[#candRecs + 1] = rec
+                  candIDs[itemID] = true
+                end
+                rec.diffs[#rec.diffs + 1] = d
+              end
+            end
+          end
+        end
+      end
+      if any then out.withLoot = out.withLoot + 1 end
+    end)
+    C_Timer.After(0, step)
+  end
+  step()
+  return true
+end
+
+function Live.LootProbeReport(say)
+  local p = DgnTrackerDB and DgnTrackerDB.lootProbe
+  if not p then say("aucune sonde des collections : tape /dg loot."); return end
+  local function cnt(t) local n, miss = #t, 0; for _, r in ipairs(t) do if not r.have then miss = miss + 1 end end; return n, miss end
+  local nm, mm = cnt(p.mounts)
+  local np, mp = cnt(p.pets)
+  local nt, mt = cnt(p.toys)
+  say(string.format("collections : %d paliers, %d instances, %d avec butin, %d objets (%d sans lien), %d ms",
+    p.tiers or 0, p.instances or 0, p.withLoot or 0, p.items or 0, p.noLink or 0, p.ms or 0))
+  say(string.format("montures %d (manquantes %d), mascottes %d (%d), jouets %d (%d), apparences manquantes %d / obtenues %d",
+    nm, mm, np, mp, nt, mt, p.tmogMissing or 0, p.tmogOwned or 0))
+  local fts = {}
+  for k, v in pairs(p.ft or {}) do fts[#fts + 1] = k .. "=" .. v end
+  say(string.format("phase 2 : %s candidats hors equipement, %s charges en %s s ; Invincible avant %s, apres %s ; filtres %s",
+    tostring(p.cand), tostring(p.loaded), tostring(p.waited), tostring(p.invBefore), tostring(p.invAfter), table.concat(fts, ",")))
+  local shown = 0
+  for _, r in ipairs(p.mounts) do
+    if shown >= 8 then break end
+    shown = shown + 1
+    local d = {}
+    for _, x in ipairs(r.diffs) do d[#d + 1] = DiffName(x) end
+    say(string.format("  %s%s|r : %s (%s, boss %s)", r.have and "|cFF888888" or "|cFF88DD88", tostring(r.name),
+      tostring(r.inst), table.concat(d, "/"), tostring(r.enc)))
+  end
+  for _, s in ipairs(p.saved or {}) do
+    say(string.format("  verrou %s (%s) : %s", tostring(s.name), tostring(s.diff), table.concat(s.enc, ", ")))
+  end
+  if #(p.saved or {}) == 0 then say("  aucun verrou d'instance cette semaine") end
+end
+
+-- ----------------------------------------------------------------
 -- Evenements : on previent l'interface (Live.onChange), avec un petit delai
 -- pour regrouper les rafales.
 -- ----------------------------------------------------------------

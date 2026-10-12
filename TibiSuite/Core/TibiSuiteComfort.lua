@@ -348,7 +348,8 @@ function TibiSuite.ApplySetup(name, silent)
 end
 
 local function CharKey()
-  local n, r = UnitFullName and UnitFullName("player")
+  local n, r
+  if UnitFullName then n, r = UnitFullName("player") end
   n = n or (UnitName and UnitName("player")) or "?"
   r = r or (GetRealmName and GetRealmName()) or ""
   return n .. "-" .. tostring(r):gsub("[%s%-']", "")
@@ -539,6 +540,117 @@ end)
 TibiSuite._CheckResets, TibiSuite._CheckCalendar = CheckResets, CheckCalendar
 
 -- ================================================================
+-- 7. OBJECTIFS PERSONNELS DE LA SEMAINE (7.1.5.45, feuille de route lot 3)
+-- ----------------------------------------------------------------
+-- TibiSuiteDB.goals = { { id, text, kind, target, item, itemName, module,
+--   weekly (bool), created, done, doneWeek, notified } }
+-- kind : "manual" (a cocher), "gather" (recolter N d'un objet, SkillTracker),
+--        "gold" (gagner N po cette semaine, Stats, tout le compte),
+--        "module" (finir la ligne d'etat d'un module : progression 100 %).
+-- weekly = vrai : remis a zero a chaque reset hebdo (identifiant de semaine
+-- = heure du prochain reset). Objectif atteint => une ligne dans le fil.
+-- ================================================================
+D("GOAL_DONE_FMT",  "Objectif atteint : %s")
+D("GOAL_DONE",      "Fait")
+D("GOAL_TODO",      "À faire")
+
+local function WeekId()
+  local s = ResetIn("week")
+  return s and math.floor((time() + s) / 3600) or 0
+end
+TibiSuite.GoalWeekId = WeekId
+
+local function WeekStart()
+  local s = ResetIn("week")
+  return s and (time() + s - 7 * 86400) or (time() - 7 * 86400)
+end
+
+local goalListeners = {}
+function TibiSuite.OnGoalsChanged(fn) if type(fn) == "function" then goalListeners[#goalListeners + 1] = fn end end
+local function GoalsChanged() for _, fn in ipairs(goalListeners) do pcall(fn) end end
+
+function TibiSuite.GetGoals()
+  TibiSuiteDB.goals = TibiSuiteDB.goals or {}
+  return TibiSuiteDB.goals
+end
+
+-- Etat d'un objectif : cur, target, done, texte de valeur.
+function TibiSuite.GoalProgress(g)
+  local wk = WeekId()
+  if g.kind == "manual" then
+    local done = g.weekly and (g.doneWeek == wk) or (not g.weekly and g.done == true)
+    return done and 1 or 0, 1, done, done and L.GOAL_DONE or L.GOAL_TODO
+  elseif g.kind == "gather" then
+    local since = g.weekly and WeekStart() or (g.created or 0)
+    local cur = (_G.SkillTracker_GatheredSince and SkillTracker_GatheredSince(since, g.item)) or 0
+    local t = math.max(1, tonumber(g.target) or 1)
+    return math.min(cur, t), t, cur >= t, cur .. " / " .. t
+  elseif g.kind == "gold" then
+    local net = (_G.Stats_WeeklyNet and Stats_WeeklyNet()) or 0
+    local cur = math.max(0, math.floor(net / 10000))
+    local t = math.max(1, tonumber(g.target) or 1)
+    local fmt = function(v) return (BreakUpLargeNumbers and BreakUpLargeNumbers(v)) or tostring(v) end
+    local shown = (TibiSuite.IsStreaming and TibiSuite.IsStreaming()) and "***" or fmt(cur)
+    return math.min(cur, t), t, cur >= t, shown .. " / " .. fmt(t) .. " po"
+  elseif g.kind == "module" then
+    local st = g.module and TibiSuite.GetModuleStatus and TibiSuite.GetModuleStatus(g.module)
+    local p = st and tonumber(st.progress) or 0
+    return p, 1, p >= 1, st and st.text or "-"
+  end
+  return 0, 1, false, "-"
+end
+
+function TibiSuite.AddGoal(spec)
+  if type(spec) ~= "table" then return end
+  local text = tostring(spec.text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  if text == "" then return end
+  local list = TibiSuite.GetGoals()
+  local id = (TibiSuiteDB.goalSeq or 0) + 1
+  TibiSuiteDB.goalSeq = id
+  list[#list + 1] = { id = id, text = text:sub(1, 60), kind = spec.kind or "manual", target = tonumber(spec.target),
+    item = tonumber(spec.item), itemName = spec.itemName, module = spec.module,
+    weekly = spec.weekly ~= false, created = time() }
+  GoalsChanged()
+  return id
+end
+
+local function FindGoal(id)
+  for i, g in ipairs(TibiSuite.GetGoals()) do if g.id == id then return g, i end end
+end
+
+function TibiSuite.RemoveGoal(id)
+  local _, i = FindGoal(id)
+  if i then table.remove(TibiSuite.GetGoals(), i); GoalsChanged() end
+end
+
+-- Objectif a cocher : bascule fait / a faire.
+function TibiSuite.ToggleGoal(id)
+  local g = FindGoal(id)
+  if not g or g.kind ~= "manual" then return end
+  if g.weekly then g.doneWeek = (g.doneWeek == WeekId()) and nil or WeekId()
+  else g.done = not g.done end
+  GoalsChanged()
+  if TibiSuite.CheckGoals then TibiSuite.CheckGoals() end
+end
+
+-- Objectifs atteints depuis le dernier passage : une ligne dans le fil.
+function TibiSuite.CheckGoals()
+  local wk = WeekId()
+  for _, g in ipairs(TibiSuite.GetGoals()) do
+    local _, _, done = TibiSuite.GoalProgress(g)
+    local stamp = g.weekly and wk or 1
+    if done and g.notified ~= stamp then
+      g.notified = stamp
+      if TibiSuite.Notify then TibiSuite.Notify("Suite", string.format(L.GOAL_DONE_FMT, g.text), { sound = true }) end
+    elseif not done and g.notified == stamp and g.kind == "manual" then
+      g.notified = nil
+    end
+  end
+end
+
+if TibiSuite.OnStatusChanged then TibiSuite.OnStatusChanged(function() pcall(TibiSuite.CheckGoals) end) end
+
+-- ================================================================
 -- 6. MA SEMAINE ET FIL D'ACTIVITE HORS JEU (lot 7)
 -- ----------------------------------------------------------------
 -- Une photo des lignes d'etat est gardee PAR PERSONNAGE dans
@@ -568,7 +680,8 @@ end
 
 local function TakeWeekSnap()
   if not (TibiSuiteDB and TibiSuite.GetModuleStatus and TibiSuite.PANEL_GROUPS) then return end
-  local name, realm = UnitFullName and UnitFullName("player")
+  local name, realm
+  if UnitFullName then name, realm = UnitFullName("player") end
   if not realm or realm == "" then realm = GetRealmName and GetRealmName() end
   local key = SnapKey(name or (UnitName and UnitName("player")), realm)
   if not key then return end
@@ -634,10 +747,18 @@ function TibiSuite.ExportSuite()
       feed[#feed + 1] = { t = e.t, k = e.k, x = Bare(e.x), u = e.u and true or nil, c = e.c }
     end
   end
+  local goals = {}
+  for _, g in ipairs(TibiSuiteDB.goals or {}) do
+    local okG, cur, t, done, val = pcall(TibiSuite.GoalProgress, g)
+    if okG then
+      goals[#goals + 1] = { x = Bare(g.text), v = Bare(val), p = t > 0 and math.floor(cur / t * 100 + 0.5) / 100 or 0,
+        d = done and true or nil, w = g.weekly and true or nil, k = g.kind }
+    end
+  end
   return {
     v = 1, at = now, mods = mods,
     reset = { d = d and (now + d) or nil, w = w and (now + w) or nil },
-    feed = feed,
+    feed = feed, goals = goals,
     chars = TibiSuiteDB.weekSnap or {},
   }
 end
@@ -645,3 +766,42 @@ end
 local evOut = CreateFrame("Frame")
 evOut:RegisterEvent("PLAYER_LOGOUT")
 evOut:SetScript("OnEvent", function() pcall(TakeWeekSnap) end)
+
+-- ================================================================
+-- 8. EVENEMENT DE LA SEMAINE (7.1.5.45, feuille de route lot 4)
+-- ----------------------------------------------------------------
+-- Fetes et evenements bonus du jour lus dans le calendrier (type HOLIDAY),
+-- avec leur date de fin. Lecture seule, memoire d'une minute.
+-- TibiSuite.GetWeekEvents() -> { { title, endsAt } } (2 au plus, fin la
+-- plus proche d'abord).
+-- ================================================================
+local function Secret(v) return issecretvalue and issecretvalue(v) or false end
+local evCache, evAt = nil, 0
+local function CalTime(t)
+  if type(t) ~= "table" or not t.year then return nil end
+  return time({ year = t.year, month = t.month, day = t.monthDay, hour = t.hour or 0, min = t.minute or 0 })
+end
+function TibiSuite.GetWeekEvents()
+  if evCache and GetTime() - evAt < 60 then return evCache end
+  local out = {}
+  if C_Calendar and C_Calendar.GetNumDayEvents and C_DateAndTime and C_DateAndTime.GetCurrentCalendarTime then
+    if C_Calendar.OpenCalendar and not TibiSuite._calOpened then TibiSuite._calOpened = true; pcall(C_Calendar.OpenCalendar) end
+    local ok, today = pcall(C_DateAndTime.GetCurrentCalendarTime)
+    if ok and type(today) == "table" then
+      local okN, n = pcall(C_Calendar.GetNumDayEvents, 0, today.monthDay)
+      local seen = {}
+      for i = 1, (okN and n or 0) do
+        local okE, ev = pcall(C_Calendar.GetDayEvent, 0, today.monthDay, i)
+        if okE and type(ev) == "table" and ev.calendarType == "HOLIDAY" and type(ev.title) == "string"
+          and not Secret(ev.title) and not seen[ev.title] then
+          seen[ev.title] = true
+          out[#out + 1] = { title = ev.title, endsAt = CalTime(ev.endTime) }
+        end
+      end
+    end
+  end
+  table.sort(out, function(a, b) return (a.endsAt or math.huge) < (b.endsAt or math.huge) end)
+  while #out > 2 do table.remove(out) end
+  evCache, evAt = out, GetTime()
+  return out
+end

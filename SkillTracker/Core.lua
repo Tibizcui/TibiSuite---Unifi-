@@ -45,6 +45,13 @@ local DB_DEFAULTS = {
   recipes      = true,    -- enregistrer les recettes connues (Recipes.lua)
   recipeScope  = "current", -- "current" (extension en cours) / "all"
   recipeTooltip = true,   -- "Tes personnages savent le fabriquer" dans l'info-bulle des objets
+  priceMinimap = true,    -- prix sur les noeuds de la minicarte (Gathering.lua)
+  priceWorld   = true,    -- prix sur les noeuds dans le monde
+  priceLearn   = true,    -- apprendre ce que donne chaque noeud a la recolte
+  farm         = true,    -- suivre les sessions de recolte (Gathering.lua)
+  wealth       = true,    -- relever la valeur des sacs et des banques
+  farmScope    = "cur",   -- vue Recolte : "cur" / "hist" / "all"
+  farmSort     = "value", -- "name" / "qty" / "value" / "ext"
   mmAngle      = 210,
   accountTag   = nil,     -- libelle libre pour distinguer ses comptes a l'import
   metierView   = "current", -- "current" / "all" / "account" / "conc" / "week"
@@ -949,6 +956,16 @@ function SkillTracker_Status()
   if not ST.db or not ST.ConcList then return nil end
   local SL = _G.TibiSuiteL or {}
   local TS = _G.TibiSuite
+  -- Session de recolte en cours : elle passe devant (widget pendant le farm).
+  local farm = ST.FarmActive and ST.FarmActive()
+  if farm and (farm.nodes or 0) > 0 and TS and TS.FmtGold then
+    local v = ST.ItemsValue(farm.items)
+    local perH = ST.FarmRate and ST.FarmRate(farm, v)
+    local g = (TS.FmtGold(v):gsub("^%+", ""))
+    local text = perH and string.format(SL.ST_FARM_RATE_FMT or "%d %s %s", farm.nodes, g, (TS.FmtGold(perH):gsub("^%+", "")))
+      or string.format(SL.ST_FARM_FMT or "%d %s", farm.nodes, g)
+    return { text = text, color = { 1, 0.82, 0 } }
+  end
   local full, nextIn = 0, nil
   for _, e in ipairs(ST.ConcList()) do
     if e.pr.full then
@@ -979,6 +996,47 @@ function SkillTracker_Status()
     end
   end
   if not out.text and not out.progress then return nil end
+  return out
+end
+
+-- Apercu du Centre TibiSuite (overviewFn, 7.1.5.45) : les trois
+-- concentrations les plus pressantes (tous persos), puis les connaissances
+-- de la semaine du perso connecte, par metier principal.
+function SkillTracker_Overview()
+  local SL, TS = _G.TibiSuiteL or {}, _G.TibiSuite
+  local out = { lines = {}, empty = SL.OV_SKILL_EMPTY }
+  if not ST.db or not ST.ConcList then return out end
+  local lines = out.lines
+  local farm = ST.FarmActive and ST.FarmActive()
+  if farm and (farm.nodes or 0) > 0 and ST.FarmText then
+    local v = ST.ItemsValue(farm.items)
+    lines[#lines + 1] = { text = ST.FarmText.active, color = { 1, 0.82, 0 }, target = "farm",
+      value = string.format("%d · %s", farm.nodes, ST.Prices.Money(v)) }
+  end
+  for i, e in ipairs(ST.ConcList()) do
+    if #lines >= 3 then break end
+    local pr = e.pr
+    local who = (TS and TS.SafeName) and TS.SafeName(e.name) or e.name
+    local val
+    if pr.full then val = SL.OV_SKILL_FULL
+    elseif pr.fullIn and TS and TS.FmtDuration then val = string.format(SL.OV_SKILL_IN_FMT or "%s", TS.FmtDuration(pr.fullIn))
+    elseif pr.cur and pr.max then val = math.floor(pr.cur) .. " / " .. pr.max end
+    lines[#lines + 1] = { text = who .. "  |cFF8F8C98" .. (e.prof or "") .. "|r", value = val,
+      progress = (pr.max and pr.max > 0 and pr.cur) and math.min(1, pr.cur / pr.max) or nil,
+      color = pr.full and { 1, 0.82, 0 } or nil }
+  end
+  local rec = ST.CurrentRec()
+  if rec and ST.WeeklyCount then
+    for parent, prof in pairs(rec.professions or {}) do
+      if prof.isPrimary and #lines < 5 then
+        local a, b = ST.WeeklyCount(rec, parent)
+        if b > 0 then
+          lines[#lines + 1] = { text = string.format(SL.OV_SKILL_KNOW_FMT or "%s", prof.name or "?"),
+            value = a .. " / " .. b, progress = a / b }
+        end
+      end
+    end
+  end
   return out
 end
 
@@ -1015,6 +1073,15 @@ local function OpenView(v, query)
 end
 ST.OpenView = OpenView
 
+-- Point d'entree pour TibiSuite (apercu du Centre : clic sur une ligne).
+function SkillTracker_OpenView(v)
+  local ok = { farm = true, wealth = true, conc = true, week = true, recipes = true, current = true }
+  if not ok[v] then return false end
+  if v == "farm" and ST.settings then ST.settings.farmScope = "cur" end
+  OpenView(v)
+  return true
+end
+
 -- ================================================================
 -- COMMANDES SLASH  /skilltracker  /skt
 -- ================================================================
@@ -1037,6 +1104,10 @@ SlashCmdList["SKILLTRACKER"] = function(msg)
     OpenView("week")
   elseif msg == "recipe" or msg == "recette" or msg:match("^recipe%s") or msg:match("^recette%s") or msg:match("^r%s") then
     OpenView("recipes", msg:match("^%S+%s+(.+)$") or "")
+  elseif msg == "farm" or msg == "recolte" or msg == "récolte" then
+    if ST.FarmToggle then ST.FarmToggle() end
+  elseif msg == "probe" or msg == "sonde" or msg:match("^probe%s") or msg:match("^sonde%s") then
+    if ST.ProbeCommand then ST.ProbeCommand(msg:match("^%S+%s+(.+)$")) end
   elseif msg == "check" then
     if ST.RunQuestCheck then ST.RunQuestCheck() end
   elseif msg == "mark" then
@@ -1052,6 +1123,8 @@ SlashCmdList["SKILLTRACKER"] = function(msg)
     print("  |cFFFFD700/skt week|r : " .. L.SLASH_WEEK)
     print("  |cFFFFD700/skt recipe <...>|r : " .. L.SLASH_RECIPE)
     print("  |cFFFFD700/skt check|r : " .. L.SLASH_CHECK)
+    if ST.GatherText then print("  |cFFFFD700/skt probe|r : " .. ST.GatherText.slash) end
+    if ST.FarmText then print("  |cFFFFD700/skt farm|r : " .. ST.FarmText.slash) end
     print("  |cFFFFD700/skt mark|r, |cFFFFD700/skt diff|r : " .. L.SLASH_DIFF)
     print("  |cFFFFD700/skt dump|r, |cFFFFD700/skt kpdump|r : " .. L.SLASH_DUMP)
   else

@@ -544,7 +544,7 @@ function SX.CollectExportData()
       chars = chars,
       warband = warband,   -- banque de Bataillon (WeeklyCompass), commune au compte
       legendaries = collectLegendaries(),   -- LegTracker, commun au compte
-      suite = suite and { v = suite.v, at = suite.at, mods = suite.mods, reset = suite.reset, feed = suite.feed } or nil,
+      suite = suite and { v = suite.v, at = suite.at, mods = suite.mods, reset = suite.reset, feed = suite.feed, goals = suite.goals } or nil,
     },
   }
 end

@@ -185,6 +185,13 @@ if HasCore() and IsEnabledByCore() then
     statusFn       = function()
       if _G.WeeklyCompassAPI and WeeklyCompassAPI.GetStatus then return WeeklyCompassAPI.GetStatus() end
     end,
+    overviewFn     = function()
+      if _G.WeeklyCompassAPI and WeeklyCompassAPI.GetOverview then return WeeklyCompassAPI.GetOverview() end
+    end,
+    openTo         = function(tab)
+      if _G.WeeklyCompassAPI and WeeklyCompassAPI.OpenTab then return WeeklyCompassAPI.OpenTab(tab) end
+      return false
+    end,
   })
 elseif GetUI() and GetUI().RegisterSearch then
   -- Repli : suite absente mais socle present -> au moins la recherche marche.

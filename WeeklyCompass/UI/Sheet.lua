@@ -437,6 +437,10 @@ local function buildRight()
     ui.cur = {}
     for i = 1, 5 do ui.cur[i] = newPair(frame) end
 
+    ui.mpTitle = newSection(frame)
+    ui.mp = {}
+    for i = 1, 12 do ui.mp[i] = newPair(frame) end
+
     -- Metiers (colonne de gauche, sous l'equipement), lus dans SkillTracker.
     ui.profTitle = newSection(frame)
     ui.profs = {}
@@ -839,6 +843,36 @@ local function fillCurrencies(y, sheet)
     return y - math.min(#list, #ui.cur) * 16
 end
 
+-- Mythique+ (7.1.5.45) : cote, cle en poche, meilleure cle de la semaine,
+-- puis la meilleure cle de chaque donjon de la saison (vert = dans les temps).
+local function fillMPlus(y, sheet)
+    local m = sheet and sheet.mplus
+    for _, p in ipairs(ui.mp) do hidePair(p) end
+    if not m then ui.mpTitle.fs:Hide(); ui.mpTitle.line:Hide(); return y end
+    ui.mpTitle.fs:Show(); ui.mpTitle.line:Show()
+    local title = L["SHEET_MPLUS"] .. (m.score and ("   |cffffd100" .. math.floor(m.score) .. "|r") or "")
+    y = placeSection(ui.mpTitle, title, COL_R_X, y, COL_R_W)
+    local i = 0
+    local function row(left, right, rc)
+        i = i + 1
+        if not ui.mp[i] then return end
+        placePair(ui.mp[i], COL_R_X, y - (i - 1) * 16, COL_R_W, left, right, nil, rc)
+        ui.mp[i].right:SetWidth(90); ui.mp[i].left:SetWidth(COL_R_W - 90)
+    end
+    if m.key then row(L["SHEET_MP_KEY"], ("+%d %s"):format(m.key.level, tostring(m.key.name or "")), { 1, 0.82, 0 }) end
+    if m.weekBest or (m.weekRuns or 0) > 0 then
+        row(L["SHEET_MP_WEEK"], (m.weekBest and ("+" .. m.weekBest) or "-") .. (" |cff8a8a8a(%d)|r"):format(m.weekRuns or 0))
+    end
+    for _, r in ipairs(m.runs or {}) do
+        if r.level then
+            row(r.name, "+" .. r.level, r.timed and { 0.31, 0.82, 0.42 } or { 0.62, 0.62, 0.66 })
+        else
+            row("|cff8a8a8a" .. tostring(r.name) .. "|r", "-", { 0.45, 0.45, 0.5 })
+        end
+    end
+    return y - i * 16
+end
+
 -- Metiers : resume fourni par SkillTracker (API en lecture seule
 -- _G.SkillTrackerAPI, SkillTracker 7.1.5.35+). Concentration PROJETEE a
 -- l'instant avec la vitesse de recharge que SkillTracker a apprise ; rien
@@ -937,6 +971,7 @@ function Sheet:Refresh()
     y = fillVault(y, by, stale) - 6
     y = fillRaids(y, by) - 6
     y = fillCurrencies(y, sheet)
+    y = fillMPlus(y - 6, sheet)
     local bottom = math.min(leftBottom, y)
     frame:SetHeight(-bottom + PAD)
 
