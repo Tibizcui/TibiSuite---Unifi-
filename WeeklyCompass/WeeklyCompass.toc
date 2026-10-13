@@ -1,4 +1,4 @@
-## Interface: 120007, 120100
+## Interface: 120105, 120100, 120007
 ## Title: WeeklyCompass - Alts & Weekly
 ## Notes: Alt manager and weekly tracker: Great Vault, Delves, the Hunt, item level, gold, raid lockouts, gear and talents of every character.
 ## Notes-frFR: Gestionnaire d'alts et suivi hebdomadaire : Grand Coffre, Gouffres, Traque, niveau d'objet, or, raids verrouillés, équipement et talents de chaque personnage.
@@ -12,7 +12,7 @@
 ## Notes-ptBR: Gerenciador de alts e acompanhamento semanal: Grande Cofre, Imersões, Caçada, nível de item, ouro, vínculos de raide, equipamento e talentos de cada personagem.
 ## Notes-itIT: Gestore di alt e monitoraggio settimanale: Grande Forziere, Scorribande, Caccia, livello oggetti, oro, vincoli di incursione, equipaggiamento e talenti di ogni personaggio.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.1.5.46
+## Version: 7.1.5.47
 ## X-Curse-Project-ID: 1629524
 ## IconTexture: Interface\AddOns\WeeklyCompass\medias\TibiSuiteIcon
 

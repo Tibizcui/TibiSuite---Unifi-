@@ -113,7 +113,9 @@ end
 
 local function Money(c)
   if not c then return "-" end
-  if GetCoinTextureString then return GetCoinTextureString(math.floor(c)) end
+  -- 12.1.5 : C_CurrencyInfo en priorite, le global n'est plus qu'un alias.
+  local fn = (C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString) or _G.GetCoinTextureString
+  if fn then return fn(math.max(0, math.floor(c))) end
   return string.format("%d po %02d pa", math.floor(c / 10000), math.floor(c / 100) % 100)
 end
 Prices.Money = Money

@@ -44,7 +44,15 @@ local function AccentText(txt)
 end
 P.AccentText = AccentText
 
-local function Coin(c) return GetCoinTextureString(math.max(0, math.floor(c or 0))) end
+-- 12.1.5 : C_CurrencyInfo en priorite (le global n'est plus qu'un alias,
+-- voue a disparaitre avec les Blizzard_Deprecated*), repli texte sinon.
+-- Tout montant affiche par PostBox passe par ici (P.Coin).
+local function Coin(c)
+  c = math.max(0, math.floor(c or 0))
+  local fn = (C_CurrencyInfo and C_CurrencyInfo.GetCoinTextureString) or _G.GetCoinTextureString
+  if fn then return fn(c) end
+  return string.format("%dg %02ds %02dc", math.floor(c / 10000), math.floor(c / 100) % 100, c % 100)
+end
 P.Coin = Coin
 
 local function Debug(fmt, ...)

@@ -145,8 +145,8 @@ end
 -- SOUSTRACTIONS (net compte, net 7 jours, net par personnage) le peuvent.
 local function FmtSignedCoin(amount)
   amount = amount or 0
-  if amount < 0 then return "-" .. GetCoinTextureString(-amount) end
-  return GetCoinTextureString(amount)
+  if amount < 0 then return "-" .. P.Coin(-amount) end
+  return P.Coin(amount)
 end
 
 function S.Refresh()
@@ -159,18 +159,18 @@ function S.Refresh()
   -- Le "revenu net" ci-dessous est simplement ventes - achats.
   local netTotal = (st.auctionSold or 0) - (st.auctionBought or 0)
   local lines = {
-    string.format(L.STATS_GOLD_RECEIVED_FMT, GetCoinTextureString(st.goldReceived or 0)),
-    string.format(L.STATS_GOLD_SENT_FMT, GetCoinTextureString(st.goldSent or 0)),
-    string.format(L.STATS_AH_SOLD_FMT, GetCoinTextureString(st.auctionSold or 0)),
-    string.format(L.STATS_AH_BOUGHT_FMT, GetCoinTextureString(st.auctionBought or 0)),
-    string.format(L.STATS_AH_CUT_FMT, GetCoinTextureString(st.auctionCut or 0)),
+    string.format(L.STATS_GOLD_RECEIVED_FMT, P.Coin(st.goldReceived or 0)),
+    string.format(L.STATS_GOLD_SENT_FMT, P.Coin(st.goldSent or 0)),
+    string.format(L.STATS_AH_SOLD_FMT, P.Coin(st.auctionSold or 0)),
+    string.format(L.STATS_AH_BOUGHT_FMT, P.Coin(st.auctionBought or 0)),
+    string.format(L.STATS_AH_CUT_FMT, P.Coin(st.auctionCut or 0)),
     string.format(L.STATS_NET_FMT, FmtSignedCoin(netTotal)),
-    string.format(L.STATS_SESSION_RAKE_FMT, GetCoinTextureString(st.rakeSession or 0)),
+    string.format(L.STATS_SESSION_RAKE_FMT, P.Coin(st.rakeSession or 0)),
     " ",
     L.STATS_TOP_SENDERS,
   }
   for _, s in ipairs(TopSenders(5)) do
-    lines[#lines + 1] = string.format("  %s - %s", s.name, GetCoinTextureString(s.gold))
+    lines[#lines + 1] = string.format("  %s - %s", s.name, P.Coin(s.gold))
   end
   f.body:SetText(table.concat(lines, "\n"))
 
@@ -186,7 +186,7 @@ function S.Refresh()
     local h = vals[i] > 0 and math.max(2, (vals[i] / maxVal) * CHART_MAX_H) or 2
     f.bars[i]:SetHeight(h)
     f.dayLabels[i]:SetText(date("%d/%m", time() - (7 - i) * 86400))
-    f.valLabels[i]:SetText(vals[i] > 0 and GetCoinTextureString(vals[i]) or "")
+    f.valLabels[i]:SetText(vals[i] > 0 and P.Coin(vals[i]) or "")
   end
   local net7 = HistorySum(7, "auctionSold") - HistorySum(7, "auctionBought")
   f.histTitle:SetText(AccentText(L.STATS_HISTORY_TITLE) .. "   " .. string.format(L.STATS_NET_7D_FMT, FmtSignedCoin(net7)))

@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.47
+- Compatibilité avec la mise à jour 12.1.5 (interface 120105) : les 16 addons ne sont plus marqués obsolètes.
+- Quoi de neuf 7.1.5.47.
+
 ## 7.1.5.46
 - Quoi de neuf 7.1.5.46 : nom entier et infobulle des hauts faits presque finis dans le tableau de bord de Stats.
 - Version alignée sur Stats pour les 16 addons.

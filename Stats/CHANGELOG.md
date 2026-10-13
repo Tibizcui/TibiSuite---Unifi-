@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.47
+- Compatibilité avec la mise à jour 12.1.5 (interface 120105), sans autre changement pour ce module.
+
 ## 7.1.5.46
 - Tableau de bord, vue Hauts faits : la colonne « Presque finis » affiche le nom entier de chaque haut fait avec son icone, et l'infobulle complete du jeu au survol (description, criteres restants). Clic : ouvrir le haut fait ; Maj + clic : lien dans la discussion.
 

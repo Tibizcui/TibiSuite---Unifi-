@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.47
+- Compatibilité avec la mise à jour 12.1.5 (interface 120105).
+- Prix des récoltes et valeur des sacs affichés via C_CurrencyInfo.GetCoinTextureString.
+
 ## 7.1.5.46
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

@@ -46,7 +46,8 @@ end
 local function ItemName(id)
   local fn = (C_Item and C_Item.GetItemNameByID) or nil
   local n = fn and fn(id)
-  if not n and _G.GetItemInfo then n = GetItemInfo(id) end
+  local info = (C_Item and C_Item.GetItemInfo) or _G.GetItemInfo
+  if not n and info then n = info(id) end
   return n or ("item:" .. id)
 end
 
