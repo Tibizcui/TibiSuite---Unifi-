@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.46
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.1.5.45
 - Aucun changement fonctionnel dans ce module : version alignee sur l'ensemble de la suite (voir TibiSuite 7.1.5.45).
 

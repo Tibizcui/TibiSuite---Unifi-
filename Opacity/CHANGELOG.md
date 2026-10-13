@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.46
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.1.5.45
 - Apercu du module dans sa page du Centre TibiSuite et dans les infobulles de la barre (Dock, Panneau vivant, onglets, widgets).
 

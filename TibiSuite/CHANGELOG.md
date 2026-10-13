@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.46
+- Quoi de neuf 7.1.5.46 : nom entier et infobulle des hauts faits presque finis dans le tableau de bord de Stats.
+- Version alignée sur Stats pour les 16 addons.
+
 ## 7.1.5.45
 - Apercus des modules dans le Centre et les infobulles de la barre ; un clic sur une ligne ouvre le module au bon endroit.
 - Objectifs personnels de la semaine : page Objectifs, groupe en tete de Ma semaine, prochaine action, fil d'activite, export vers le Dashboard.

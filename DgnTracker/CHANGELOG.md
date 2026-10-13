@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.46
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.1.5.45
 - Vue Collections : montures, mascottes et jouets du butin de 213 instances (Classic a Midnight), etat de la semaine, extensions repliables, filtres.
 - Taux de drop estimes des montures (sources communautaires) et rubrique Comment l'obtenir dans l'infobulle.

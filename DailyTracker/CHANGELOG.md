@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.46
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.1.5.45
 - Vue Rares : chaque rare tue est retenu avec son etat (deja tue ou de nouveau disponible), rares presents sur la minicarte, boss mondiaux et Repaires de la semaine.
 - Boss mondiaux faits par personnage dans la vue Personnages ; alerte quand un rare connu apparait.

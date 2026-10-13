@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.46
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.1.5.45
 - Prix des recoltes dans les infobulles des noeuds (minicarte et monde), via Auctionator ou TSM ; noeuds appris a la recolte.
 - Session de recolte : vue Recolte avec tri et filtre par extension, valeur au prix du moment, ligne d'etat pendant le farm.

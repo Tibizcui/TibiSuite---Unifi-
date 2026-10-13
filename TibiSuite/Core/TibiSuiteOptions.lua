@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteOptions v7.1.5.45
+-- TibiSuiteOptions v7.1.5.46
 -- Auteur : Tibiscui - Kirin Tor
 -- Role   : Tout ce qui est « installation » de la suite :
 --          - panneau « Modules » (une case a cocher par module) ;
@@ -316,6 +316,7 @@ L.WN_38_16 = L.WN_38_16 or "Nouvelles cartes Légendaires, Leveling et Repaires 
 L.WN_43_0  = L.WN_43_0  or "Nouveau style de barre Dock : une rangée d'icônes discrète, le logo de chaque module souligné de sa couleur, badges en coin, loupe de recherche. Votre barre actuelle ne change pas : le style se choisit dans le Centre, page Barre et accès, ou avec /ts bar dock."
 L.WN_43_1  = L.WN_43_1  or "Nouveau style Panneau vivant : la barre devient un tableau de bord. Chaque module affiche son état du moment (hebdos restantes, Grand coffre, courriers qui expirent, concentration, coffres de Paragon, XP, or de la semaine...), et ce qui presse remonte en rouge."
 L.WN_43_2  = L.WN_43_2  or "Le changement de style est immédiat, sans rechargement. Le style voyage dans les profils TS1 et se choisit aussi dans l'installateur (/ts setup). Commandes : /ts bar classic, dock ou panel."
+L.WN_46_0  = L.WN_46_0  or "Tableau de bord Stats, vue Hauts faits : la liste des hauts faits presque finis affiche le nom entier et l'infobulle complète du jeu au survol (description, critères restants). Clic pour ouvrir le haut fait, Maj + clic pour son lien dans la discussion."
 L.WN_45_0  = L.WN_45_0  or "Collections : montures, mascottes et jouets de tous les donjons et raids, ce qui est encore faisable cette semaine, taux de drop estimés et comment les obtenir. Les montures apparaissent aussi dans la fiche de chaque instance."
 L.WN_45_1  = L.WN_45_1  or "Rares et boss mondiaux : chaque rare que tu tues est retenu avec son état (déjà tué ou de nouveau disponible), boss mondiaux et Repaires de la semaine, alerte quand un rare connu apparaît sur ta minicarte."
 L.WN_45_2  = L.WN_45_2  or "Nouveau tableau de bord : 12 tuiles chiffrées et un seul grand graphique, avec moyenne, record, projection de la période et un éclairage propre à chaque mesure. Hauts faits presque finis et bilan de session."
@@ -403,6 +404,9 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.46"] = {
+    { key = "Stats", title = "Stats", text = L.WN_46_0, new = true },
+  },
   ["7.1.5.45"] = {
     { key = "Dgn", title = "DgnTracker", text = L.WN_45_0, new = true },
     { key = "Daily", title = "DailyTracker", text = L.WN_45_1, new = true },

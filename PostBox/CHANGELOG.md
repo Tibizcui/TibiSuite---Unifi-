@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.46
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.1.5.45
 - Croix de fermeture sur la fenetre principale.
 - La fenetre ne se rouvre plus seule au /reload ou a la connexion apres une visite a la boite aux lettres.

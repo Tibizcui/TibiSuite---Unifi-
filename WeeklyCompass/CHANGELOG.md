@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.46
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.1.5.45
 - Plafonds des monnaies : alerte quand une monnaie approche de son plafond de stock, reste a gagner avant le plafond de la saison.
 - Section Mythique+ dans la fiche : cote, meilleure cle par donjon, meilleure cle et courses de la semaine.
