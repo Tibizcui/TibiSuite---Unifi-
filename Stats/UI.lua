@@ -1882,10 +1882,11 @@ local function KpiInsight(key, from, now)
     local rows = {}
     for i, e in ipairs((SX.NearAchievements and SX.NearAchievements()) or {}) do
       if i > 5 then break end
-      rows[#rows + 1] = { label = e.name, v = e.pct * 100, text = string.format("%d %%", math.floor(e.pct * 100)) }
+      rows[#rows + 1] = { label = e.name, v = e.pct * 100, text = string.format("%d %%", math.floor(e.pct * 100)), ach = e }
     end
     if rows[1] then rows[1].hl = true end
-    return { title = L["KPI_INS_ACH"], rows = rows }
+    -- wide : nom entier sur sa propre ligne, jauge dessous, infobulle du jeu au survol
+    return { title = L["KPI_INS_ACH"], rows = rows, wide = true }
   elseif key == "session" then
     local TSx = _G.TibiSuite
     local function dur(s) return (TSx and TSx.FmtDuration) and TSx.FmtDuration(s) or (math.floor(s / 60) .. " min") end
@@ -2268,9 +2269,65 @@ local function BuildKPI(content)
     e:SetPoint("TOPLEFT", f, "TOPLEFT", xi, iy); e:SetWidth(xr - xi); e:SetWordWrap(true)
     e:SetText(L["KPI_INS_EMPTY"])
   end
+  -- Zones de survol des hauts faits (pool propre au volet, masque a chaque rendu)
+  f.achBtns = f.achBtns or {}
+  for _, b in ipairs(f.achBtns) do b:Hide(); b.id = nil end
   local lw = 78
   for ri, r in ipairs(ins.rows or {}) do
     if ri > 7 then break end
+    if ins.wide then
+      -- Nom entier (icone + nom + pourcentage), jauge fine dessous
+      local b = f.achBtns[ri]
+      if not b then
+        b = CreateFrame("Button", nil, f)
+        b.icon = b:CreateTexture(nil, "ARTWORK"); b.icon:SetSize(16, 16); b.icon:SetPoint("TOPLEFT", 0, 0)
+        local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.05)
+        b:SetScript("OnClick", function(s)
+          if not s.id then return end
+          if IsShiftKeyDown() and GetAchievementLink and ChatEdit_InsertLink then ChatEdit_InsertLink(GetAchievementLink(s.id))
+          else SX.OpenAchievement(s.id) end
+        end)
+        b:SetScript("OnEnter", function(s)
+          if not s.id then return end
+          GameTooltip:SetOwner(s, "ANCHOR_LEFT")
+          local ok = GameTooltip.SetAchievementByID and pcall(GameTooltip.SetAchievementByID, GameTooltip, s.id)
+          if not ok then
+            GameTooltip:AddLine(s.name or "?", 1, 1, 1, true)
+            if s.rest and s.rest ~= "" then GameTooltip:AddLine(s.rest, 0.8, 0.8, 0.85, true) end
+          end
+          GameTooltip:AddLine(L["ACH_CLICK"], 0.6, 0.6, 0.65, true)
+          GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        f.achBtns[ri] = b
+      end
+      local a = r.ach or {}
+      b.id, b.name = a.id, a.name
+      b.rest = (a.remaining and #a.remaining > 0) and (L["ACH_LEFT"] .. table.concat(a.remaining, ", ")) or nil
+      b:ClearAllPoints()
+      b:SetPoint("TOPLEFT", f, "TOPLEFT", xi, iy + 2)
+      b:SetSize(xr - xi, 28)
+      b.icon:SetTexture(a.icon or 134400)
+      b:Show()
+      local lab = Txt("GameFontHighlightSmall")
+      lab:SetPoint("TOPLEFT", f, "TOPLEFT", xi + 20, iy)
+      lab:SetWidth((xr - 46) - (xi + 20))
+      lab:SetText(r.label or "")
+      local val = Txt("GameFontHighlightSmall")
+      val:SetPoint("TOPRIGHT", f, "TOPLEFT", xr, iy); val:SetJustifyH("RIGHT")
+      val:SetText(r.text or "")
+      local bx, bwid = xi + 20, xr - (xi + 20)
+      local bg = Tex()
+      bg:SetPoint("TOPLEFT", f, "TOPLEFT", bx, iy - 15); bg:SetSize(math.max(4, bwid), 5)
+      bg:SetColorTexture(1, 1, 1, 0.05)
+      if (r.v or 0) > 0 then
+        local fill = Tex()
+        fill:SetPoint("TOPLEFT", f, "TOPLEFT", bx, iy - 15)
+        fill:SetSize(math.max(2, bwid * math.min(1, r.v / 100)), 5)
+        fill:SetColorTexture(facc[1], facc[2], facc[3], r.hl and 0.85 or 0.45)
+      end
+      iy = iy - 32
+    else
     local lab = Txt("GameFontHighlightSmall")
     lab:SetPoint("TOPLEFT", f, "TOPLEFT", xi, iy); lab:SetWidth(lw); lab:SetText(r.label or "")
     lab:SetTextColor(MUT[1] + 0.2, MUT[2] + 0.2, MUT[3] + 0.2)
@@ -2288,6 +2345,7 @@ local function BuildKPI(content)
     val:SetPoint("TOPRIGHT", f, "TOPLEFT", xr, iy); val:SetJustifyH("RIGHT")
     val:SetText(r.text or "")
     iy = iy - 20
+    end
   end
   if ins.foot then
     local ft = Txt("GameFontHighlightSmall")

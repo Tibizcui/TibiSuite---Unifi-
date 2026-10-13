@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.46
+- Tableau de bord, vue Hauts faits : la colonne « Presque finis » affiche le nom entier de chaque haut fait avec son icone, et l'infobulle complete du jeu au survol (description, criteres restants). Clic : ouvrir le haut fait ; Maj + clic : lien dans la discussion.
+
 ## 7.1.5.45
 - Nouveau tableau de bord : 12 tuiles chiffrees (Activite, Contenu, Progression) avec mini-courbe et evolution a date egale, puis un grand graphique (chiffres cles, moyenne, record, projection, eclairage par mesure, phrase de bilan).
 - Hauts faits presque finis (80 % ou plus) et bilan de session dans le fil d'activite.
