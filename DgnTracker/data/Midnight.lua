@@ -16,7 +16,7 @@ DgnTrackerData["Midnight"] = {
   -- coordonnees exactes, et ajout des instances absentes de cette liste.
   -- detect : les instances trouvees en jeu mais absentes d'ici sont ajoutees.
   -- scanMaps : cartes a interroger en plus de celles des instances.
-  live=true, detect=true, scanMaps={2395, 2393, 2424, 2405, 2413, 2437, 2512, 2509},
+  live=true, detect=true, scanMaps={2395, 2393, 2424, 2405, 2413, 2437, 2512, 2509, 2613},
   instances = {
     -- DONJONS
     {name="Flèche de Coursevent", type="dungeon", zone="Bois des Chants Éternels", region="Quel'Thalas", sector="Bois des Chants Éternels",
@@ -142,6 +142,22 @@ DgnTrackerData["Midnight"] = {
      access={both="Entrez dans les Voûtes d'Atal'Utek par la Porte de l'Œil du Serpent (accès le plus direct au pont du raid), puis dirigez-vous vers le nord."},
      path="Voûtes d'Atal'Utek, nord. L'Abysse Venimeux, boss final Ula'tek. 8 boss. Ouvert le 18/08/2026 (Saison 2 Midnight).",
      tomtom={mapID=2509, x=47.23, y=22.86}},
+    -- PATCH 12.1.5 (2026-10-14). Coordonnees des guides (method.gg, icy-veins),
+    -- pas encore de jid : approx=true, la passe nom de Live.lua recale la
+    -- fiche sur l'entree donnee par le jeu. 2613 = carte des Voutes d'Atal'Utek
+    -- citee par les guides (Ventre), ajoutee a scanMaps ; a confirmer par /dg probe.
+    {name="Le Déliement de Kith'ix (1 boss - patch 12.1.5)", type="raid", current=true, approx=true,
+     zone="L'Île annelée", region="L'Île annelée", sector="Voûtes d'Atal'Utek - Ventre",
+     mapID=2613, coords={x=74.0,y=7.4},
+     access={both="Entrez dans les Voûtes d'Atal'Utek (n'importe laquelle des trois entrées), allez au fond jusqu'au Ventre, puis prenez l'escalier au nord-est (autrefois sous une mare de venin) et descendez jusqu'au portail au bout de la salle."},
+     path="Voûtes d'Atal'Utek, Ventre. Raid à boss unique Kith'ix : Histoire, Normal, Héroïque, Mythique flexible (15-25). Ouvert le 14/10/2026.",
+     tomtom={mapID=2613, x=74.0, y=7.4}},
+    {name="Labyrinthe de Kindo'jan (méga-gouffre - patch 12.1.5)", type="delve", approx=true,
+     zone="Bois des Chants Éternels", region="Quel'Thalas", sector="Ruines de Zeb'tela",
+     mapID=2395, coords={x=63.05,y=72.30},
+     access={both="Bois des Chants Éternels, sud-est, près de la frontière de Zul'Aman (ruines de Zeb'tela, nord du passage des Amani). Quête « Le Labyrinthe » auprès de Kul'amara la Féroce au débarcadère de Tokka, dans le guide de l'aventurier ou devant l'entrée."},
+     path="Méga-gouffre à neuf salles avec Valeera Sanguinar, boss Kindo'jan. Finir la salle rituelle ouvre les autres ; une aile suffit pour les récompenses (équipement mythique possible).",
+     tomtom={mapID=2395, x=63.05, y=72.30}},
     -- REPAIRE 12.1 (raid flex a un boss, 4 difficultes Monde/Normal/Heroique/
     -- Mythique). Nom francais vu en jeu (LvlHistoryDB). Coordonnees method.gg
     -- (une seule source : approx=true), jid lu par LairLens dans le journal.

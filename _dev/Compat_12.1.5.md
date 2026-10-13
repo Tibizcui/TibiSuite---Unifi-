@@ -150,3 +150,14 @@ Recherche faite sur tout le dépôt (hors `Libs/` et `.claude/worktrees`) :
 **Lot 3, facultatif**
 - `C_Intl.FormatNumber` / `FormatCurrency` pour les montants localisés.
 - Événement `WEATHER_CHANGED` / `C_Weather` pour Standby (ambiance).
+
+## Suivi (2026-10-14)
+
+- Lot 0 / 7.1.5.47 : validé en jeu, tout fonctionne.
+- MiniHub : pas de chevauchement avec les coordonnées de la minicarte, rien à faire.
+- DgnTracker : fiches « Le Déliement de Kith'ix » (carte 2613 des guides,
+  approx) et « Labyrinthe de Kindo'jan » (2395, 63.05 72.30, approx) ajoutées,
+  2613 dans `scanMaps`. Reste : `/dg probe` + `/dg check` près des entrées
+  pour confirmer cartes, coordonnées et `jid`.
+- WeeklyCompass : contrôle des plafonds après le reset du 21 octobre.
+- DailyTracker, invasion des Aqir : non testable par Tibiscui, mis de côté.
