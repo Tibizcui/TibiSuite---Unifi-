@@ -435,7 +435,8 @@ local function buildRight()
 
     ui.curTitle = newSection(frame)
     ui.cur = {}
-    for i = 1, 5 do ui.cur[i] = newPair(frame) end
+    -- 8 lignes : 5 ecus de saison + objets de saison (ns.SheetItems) + marge.
+    for i = 1, 8 do ui.cur[i] = newPair(frame) end
 
     ui.mpTitle = newSection(frame)
     ui.mp = {}
