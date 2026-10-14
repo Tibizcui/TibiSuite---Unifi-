@@ -142,22 +142,24 @@ DgnTrackerData["Midnight"] = {
      access={both="Entrez dans les Voûtes d'Atal'Utek par la Porte de l'Œil du Serpent (accès le plus direct au pont du raid), puis dirigez-vous vers le nord."},
      path="Voûtes d'Atal'Utek, nord. L'Abysse Venimeux, boss final Ula'tek. 8 boss. Ouvert le 18/08/2026 (Saison 2 Midnight).",
      tomtom={mapID=2509, x=47.23, y=22.86}},
-    -- PATCH 12.1.5 (2026-10-14). Coordonnees des guides (method.gg, icy-veins),
-    -- pas encore de jid : approx=true, la passe nom de Live.lua recale la
-    -- fiche sur l'entree donnee par le jeu. 2613 = carte des Voutes d'Atal'Utek
-    -- citee par les guides (Ventre), ajoutee a scanMaps ; a confirmer par /dg probe.
-    {name="Le Déliement de Kith'ix (1 boss - patch 12.1.5)", type="raid", current=true, approx=true,
+    -- PATCH 12.1.5 (2026-10-14). Positions relevees en jeu par Tibiscui
+    -- (C_Map.GetPlayerMapPosition) : le jeu ne publie aucune entree pour ces
+    -- deux instances (sonde /dg probe du 2026-10-14), Live.lua ne peut donc
+    -- pas les recaler. 2613 = niveau inferieur des Caveaux d'Atal'Utek
+    -- (Ventre), garde dans scanMaps au cas ou une entree y apparaitrait.
+    -- Pas encore de jid.
+    {name="Le Déliement de Kith'ix (1 boss - patch 12.1.5)", type="raid", current=true,
      zone="L'Île annelée", region="L'Île annelée", sector="Voûtes d'Atal'Utek - Ventre",
-     mapID=2613, coords={x=74.0,y=7.4},
-     access={both="Entrez dans les Voûtes d'Atal'Utek (n'importe laquelle des trois entrées), allez au fond jusqu'au Ventre, puis prenez l'escalier au nord-est (autrefois sous une mare de venin) et descendez jusqu'au portail au bout de la salle."},
+     mapID=2613, coords={x=73.1,y=9.4},
+     access={both="Entrez dans les Caveaux d'Atal'Utek par l'une des trois portes : Porte de l'Œil du serpent (accès nord, 43.8 44.2), Porte du Croc oriental (sud-est, 45.9 64.9) ou Porte du Croc occidental (ouest, 31.1 64.9). Allez au fond jusqu'au Ventre, prenez l'escalier au nord-est (autrefois sous une mare de venin) et descendez jusqu'au portail au bout de la salle (47.2 7.6 sur la carte des Caveaux)."},
      path="Voûtes d'Atal'Utek, Ventre. Raid à boss unique Kith'ix : Histoire, Normal, Héroïque, Mythique flexible (15-25). Ouvert le 14/10/2026.",
-     tomtom={mapID=2613, x=74.0, y=7.4}},
-    {name="Labyrinthe de Kindo'jan (méga-gouffre - patch 12.1.5)", type="delve", approx=true,
+     tomtom={mapID=2613, x=73.1, y=9.4}},
+    {name="Labyrinthe de Kindo'jan (méga-gouffre - patch 12.1.5)", type="delve",
      zone="Bois des Chants Éternels", region="Quel'Thalas", sector="Ruines de Zeb'tela",
-     mapID=2395, coords={x=63.05,y=72.30},
+     mapID=2395, coords={x=63.0,y=72.2},
      access={both="Bois des Chants Éternels, sud-est, près de la frontière de Zul'Aman (ruines de Zeb'tela, nord du passage des Amani). Quête « Le Labyrinthe » auprès de Kul'amara la Féroce au débarcadère de Tokka, dans le guide de l'aventurier ou devant l'entrée."},
      path="Méga-gouffre à neuf salles avec Valeera Sanguinar, boss Kindo'jan. Finir la salle rituelle ouvre les autres ; une aile suffit pour les récompenses (équipement mythique possible).",
-     tomtom={mapID=2395, x=63.05, y=72.30}},
+     tomtom={mapID=2395, x=63.0, y=72.2}},
     -- REPAIRE 12.1 (raid flex a un boss, 4 difficultes Monde/Normal/Heroique/
     -- Mythique). Nom francais vu en jeu (LvlHistoryDB). Coordonnees method.gg
     -- (une seule source : approx=true), jid lu par LairLens dans le journal.

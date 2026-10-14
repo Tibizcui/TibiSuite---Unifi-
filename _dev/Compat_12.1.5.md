@@ -155,9 +155,6 @@ Recherche faite sur tout le dépôt (hors `Libs/` et `.claude/worktrees`) :
 
 - Lot 0 / 7.1.5.47 : validé en jeu, tout fonctionne.
 - MiniHub : pas de chevauchement avec les coordonnées de la minicarte, rien à faire.
-- DgnTracker : fiches « Le Déliement de Kith'ix » (carte 2613 des guides,
-  approx) et « Labyrinthe de Kindo'jan » (2395, 63.05 72.30, approx) ajoutées,
-  2613 dans `scanMaps`. Reste : `/dg probe` + `/dg check` près des entrées
-  pour confirmer cartes, coordonnées et `jid`.
+- DgnTracker : fiches Kith'ix (2613, 73.1 9.4) et Kindo'jan (2395, 63.0 72.2) recalées sur relevés en jeu ; le jeu ne publie aucune entrée pour elles (sonde 02:02). Reste : jid du raid.
 - WeeklyCompass : contrôle des plafonds après le reset du 21 octobre.
 - DailyTracker, invasion des Aqir : non testable par Tibiscui, mis de côté.
