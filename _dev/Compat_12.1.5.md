@@ -155,6 +155,6 @@ Recherche faite sur tout le dépôt (hors `Libs/` et `.claude/worktrees`) :
 
 - Lot 0 / 7.1.5.47 : validé en jeu, tout fonctionne.
 - MiniHub : pas de chevauchement avec les coordonnées de la minicarte, rien à faire.
-- DgnTracker : fiches Kith'ix (2613, 73.1 9.4) et Kindo'jan (2395, 63.0 72.2) recalées sur relevés en jeu ; le jeu ne publie aucune entrée pour elles (sonde 02:02). Reste : jid du raid.
+- DgnTracker : fiches Kith'ix (2613, 73.1 9.4) et Kindo'jan (2395, 63.0 72.2) recalées sur relevés en jeu ; le jeu ne publie aucune entrée pour elles (sonde 02:02). Kith'ix absent du journal d'aventure (tous paliers, vérifié le 2026-10-14) : pas de jid possible pour l'instant. Grotte des Marées : jid 1317 ajouté.
 - WeeklyCompass : contrôle des plafonds après le reset du 21 octobre.
 - DailyTracker, invasion des Aqir : non testable par Tibiscui, mis de côté.
