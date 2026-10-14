@@ -335,7 +335,8 @@ local function collectItems(out)
             name = C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)
             icon = C_Item.GetItemIconByID and C_Item.GetItemIconByID(id)
         end
-        out[#out + 1] = { id = id, item = true, name = name or L[def.labelKey], icon = icon,
+        -- 134400 = point d'interrogation du jeu, tant que l'objet est inconnu (aligne la colonne)
+        out[#out + 1] = { id = id, item = true, name = name or L[def.labelKey], icon = icon or 134400,
                           quantity = qty, max = 0, earned = 0 }
     end
     return out
