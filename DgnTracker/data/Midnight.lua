@@ -166,7 +166,7 @@ DgnTrackerData["Midnight"] = {
     -- lair=true : badge "Repaire" + etat de la semaine via LairLensAPI.
     {name="La grotte des Marées (Repaire - 1 boss)", type="raid", lair=true, current=true, approx=true,
      zone="L'Île annelée", region="L'Île annelée", sector="Épave de Gral's Belly",
-     mapID=2512, coords={x=59.86,y=66.28},
+     mapID=2512, coords={x=59.86,y=66.28}, jid=1317,
      access={both="Depuis Zul'Aman, volez à l'est jusqu'à l'Île annelée, puis au sud de l'île. L'entrée est sous l'eau, dans l'épave de Gral's Belly : prenez une monture aquatique."},
      path="Île annelée, sud, sous l'eau. Repaire du boss Nymrissa Mande-vagues. Monde : recherche de groupe (5 à 40 joueurs). Normal, Héroïque et Mythique (15-25) : groupe, butin à tirer. Compte pour la Grande Chambre forte.",
      tomtom={mapID=2512, x=59.86, y=66.28}},
