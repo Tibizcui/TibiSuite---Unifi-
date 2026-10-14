@@ -77,12 +77,12 @@ DgnTrackerData["Midnight"] = {
      tomtom={mapID=2424, x=52.61, y=85.3}},
     -- GOUFFRES (11 au lancement, noms francais officiels)
     {name="L'enclave Ombreuse", type="delve", zone="Bois des Chants Éternels", region="Quel'Thalas", sector="Bois des Chants Éternels",
-     mapID=2395, coords={x=45.46,y=86}, poi=8438,
+     mapID=2395, coords={x=45.46,y=86}, poi=8438, pois={8437},
      access={both="Portail vers Lune-d'Argent. Volez vers le sud des Bois des Chants Éternels."},
      path="Bois des Chants Éternels, sud. Entrée dans une grotte difficile à repérer.",
      tomtom={mapID=2395, x=45.46, y=86}},
     {name="Calamité Universitaire", type="delve", zone="Lune-d'Argent", region="Quel'Thalas", sector="Lune-d'Argent (capitale)",
-     mapID=2393, coords={x=40.8,y=54.15}, poi=8426,
+     mapID=2393, coords={x=40.8,y=54.15}, poi=8426, pois={8425},
      access={both="Dans Lune-d'Argent, près de l'Université thalassienne (ouest de la ville)."},
      path="Lune-d'Argent. Calamité Universitaire. Cherchez l'icône Gouffre sur la carte de la ville.",
      tomtom={mapID=2393, x=40.8, y=54.15}},
@@ -92,12 +92,12 @@ DgnTrackerData["Midnight"] = {
      path="Lune-d'Argent. La Sombrevoie. Cherchez l'icône Gouffre sur la carte de la ville.",
      tomtom={mapID=2393, x=39.31, y=31.69}},
     {name="Place Parhélion", type="delve", zone="Île de Quel'Danas", region="Quel'Thalas", sector="Remparts du Puits de soleil",
-     mapID=2424, coords={x=46.39,y=40.61}, poi=8427,
+     mapID=2424, coords={x=46.39,y=40.61}, poi=8427, pois={8428},
      access={both="Île de Quel'Danas, sur les remparts du Puits de soleil."},
      path="Île de Quel'Danas, remparts du Puits de soleil. Place Parhélion.",
      tomtom={mapID=2424, x=46.39, y=40.61}},
     {name="Cryptes du Crépuscule", type="delve", zone="Zul'Aman", region="Quel'Thalas", sector="Zul'Aman",
-     mapID=2437, coords={x=25.41,y=84.4}, poi=8441,
+     mapID=2437, coords={x=25.41,y=84.4}, poi=8441, pois={8442},
      access={both="Portail vers Zul'Aman. Volez vers le sud-ouest de la zone."},
      path="Zul'Aman, sud-ouest. Entrée cachée dans des ruines trolls. Beaucoup de pièges à l'intérieur.",
      tomtom={mapID=2437, x=25.41, y=84.4}},
@@ -107,22 +107,22 @@ DgnTrackerData["Midnight"] = {
      path="Zul'Aman, sud-est. Atal'Aman. Cherchez l'icône Gouffre sur la carte.",
      tomtom={mapID=2437, x=24.8, y=52.95}},
     {name="La fosse de la Rancœur", type="delve", zone="Harandar", region="Harandar",
-     mapID=2413, coords={x=70.48,y=64.92}, poi=8433,
+     mapID=2413, coords={x=70.48,y=64.92}, poi=8433, pois={8434},
      access={both="Portail vers Harandar. Volez vers l'est de la zone."},
      path="Harandar, est. La fosse de la Rancœur. Cherchez l'icône Gouffre sur la carte.",
      tomtom={mapID=2413, x=70.48, y=64.92}},
     {name="Le golfe du Souvenir", type="delve", zone="Harandar", region="Harandar",
-     mapID=2413, coords={x=36.27,y=49.13}, poi=8435,
+     mapID=2413, coords={x=36.27,y=49.13}, poi=8435, pois={8436},
      access={both="Portail vers Harandar. Volez vers l'ouest de la zone."},
      path="Harandar, centre-ouest. Le golfe du Souvenir. Cherchez l'icône Gouffre sur la carte.",
      tomtom={mapID=2413, x=36.27, y=49.13}},
     {name="Sanctum des Tue-Soleil", type="delve", zone="Tempête du Vide", region="Tempête du Vide",
-     mapID=2405, coords={x=54.8,y=47.12}, poi=8429,
+     mapID=2405, coords={x=54.8,y=47.12}, poi=8429, pois={8430},
      access={both="Portail vers la Tempête du Vide, centre de la zone."},
      path="Tempête du Vide. Si vous ne trouvez pas l'entrée : volez vers le nord depuis le bord de la falaise puis plongez. Évitez les méduses bleues.",
      tomtom={mapID=2405, x=54.8, y=47.12}},
     {name="Halte de l'Ombre-Garde", type="delve", zone="Tempête du Vide", region="Tempête du Vide",
-     mapID=2405, coords={x=37.2,y=49}, poi=8432,
+     mapID=2405, coords={x=37.2,y=49}, poi=8432, pois={8431},
      access={both="Portail vers la Tempête du Vide, ouest de la zone."},
      path="Tempête du Vide, ouest. Cherchez le pont qui traverse une vallée : l'entrée est du côté est du pont.",
      tomtom={mapID=2405, x=37.2, y=49}},
@@ -142,24 +142,25 @@ DgnTrackerData["Midnight"] = {
      access={both="Entrez dans les Voûtes d'Atal'Utek par la Porte de l'Œil du Serpent (accès le plus direct au pont du raid), puis dirigez-vous vers le nord."},
      path="Voûtes d'Atal'Utek, nord. L'Abysse Venimeux, boss final Ula'tek. 8 boss. Ouvert le 18/08/2026 (Saison 2 Midnight).",
      tomtom={mapID=2509, x=47.23, y=22.86}},
-    -- PATCH 12.1.5 (2026-10-14). Positions relevees en jeu par Tibiscui
-    -- (C_Map.GetPlayerMapPosition) : le jeu ne publie aucune entree pour ces
-    -- deux instances (sonde /dg probe du 2026-10-14), Live.lua ne peut donc
-    -- pas les recaler. 2613 = niveau inferieur des Caveaux d'Atal'Utek
+    -- PATCH 12.1.5 (2026-10-14). Kith'ix : position relevee en jeu par
+    -- Tibiscui (C_Map.GetPlayerMapPosition), le jeu ne publie pas son entree
+    -- (sonde /dg probe apres deploiement) ; jid 1324 lu dans le journal
+    -- (paliers 12 et 13). 2613 = niveau inferieur des Caveaux d'Atal'Utek
     -- (Ventre), garde dans scanMaps au cas ou une entree y apparaitrait.
-    -- Pas encore de jid.
+    -- Kindo'jan : POI 9035 publie par le jeu (bois des Chants Eternels 2395 et
+    -- Zul'Aman 2437), position de la sonde.
     {name="Le Déliement de Kith'ix (1 boss - patch 12.1.5)", type="raid", current=true,
      zone="L'Île annelée", region="L'Île annelée", sector="Voûtes d'Atal'Utek - Ventre",
-     mapID=2613, coords={x=73.1,y=9.4},
+     mapID=2613, coords={x=73.1,y=9.4}, jid=1324,
      access={both="Entrez dans les Caveaux d'Atal'Utek par l'une des trois portes : Porte de l'Œil du serpent (accès nord, 43.8 44.2), Porte du Croc oriental (sud-est, 45.9 64.9) ou Porte du Croc occidental (ouest, 31.1 64.9). Allez au fond jusqu'au Ventre, prenez l'escalier au nord-est (autrefois sous une mare de venin) et descendez jusqu'au portail au bout de la salle (47.2 7.6 sur la carte des Caveaux)."},
      path="Voûtes d'Atal'Utek, Ventre. Raid à boss unique Kith'ix : Histoire, Normal, Héroïque, Mythique flexible (15-25). Ouvert le 14/10/2026.",
      tomtom={mapID=2613, x=73.1, y=9.4}},
     {name="Labyrinthe de Kindo'jan (méga-gouffre - patch 12.1.5)", type="delve",
      zone="Bois des Chants Éternels", region="Quel'Thalas", sector="Ruines de Zeb'tela",
-     mapID=2395, coords={x=63.0,y=72.2},
+     mapID=2395, coords={x=62.99,y=72.18}, poi=9035, altMaps={2437},
      access={both="Bois des Chants Éternels, sud-est, près de la frontière de Zul'Aman (ruines de Zeb'tela, nord du passage des Amani). Quête « Le Labyrinthe » auprès de Kul'amara la Féroce au débarcadère de Tokka, dans le guide de l'aventurier ou devant l'entrée."},
      path="Méga-gouffre à neuf salles avec Valeera Sanguinar, boss Kindo'jan. Finir la salle rituelle ouvre les autres ; une aile suffit pour les récompenses (équipement mythique possible).",
-     tomtom={mapID=2395, x=63.0, y=72.2}},
+     tomtom={mapID=2395, x=62.99, y=72.18}},
     -- REPAIRE 12.1 (raid flex a un boss, 4 difficultes Monde/Normal/Heroique/
     -- Mythique). Nom francais vu en jeu (LvlHistoryDB). Coordonnees method.gg
     -- (une seule source : approx=true), jid lu par LairLens dans le journal.
@@ -171,12 +172,12 @@ DgnTrackerData["Midnight"] = {
      path="Île annelée, sud, sous l'eau. Repaire du boss Nymrissa Mande-vagues. Monde : recherche de groupe (5 à 40 joueurs). Normal, Héroïque et Mythique (15-25) : groupe, butin à tirer. Compte pour la Grande Chambre forte.",
      tomtom={mapID=2512, x=59.86, y=66.28}},
     {name="Arène de la Gloire", type="delve", zone="L'Île annelée", region="L'Île annelée", sector="Île annelée - Est",
-     mapID=2512, coords={x=71.35,y=56.54}, poi=8764,
+     mapID=2512, coords={x=71.35,y=56.54}, poi=8764, pois={8763},
      access={both="L'Île annelée, côté est, au nord de l'Île de Gnarldor."},
      path="Île annelée, est. Tour bâtie autour d'une fosse de combat. Gouffre orienté arène (patch 12.1).",
      tomtom={mapID=2512, x=71.35, y=56.54}},
     {name="Île Torsadine", type="delve", zone="L'Île annelée", region="L'Île annelée", sector="Île annelée - Sud",
-     mapID=2512, coords={x=64.54,y=77.58}, poi=8760,
+     mapID=2512, coords={x=64.54,y=77.58}, poi=8760, pois={8761},
      access={both="L'Île annelée, pointe sud de l'île."},
      path="Île annelée, pointe sud. Gouffre en extérieur (patch 12.1).",
      tomtom={mapID=2512, x=64.54, y=77.58}},

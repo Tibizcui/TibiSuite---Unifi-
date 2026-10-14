@@ -83,6 +83,7 @@ function Live.Index()
         inst._ext = extKey
         if inst.jid then Live.knownJid[inst.jid] = true end
         if inst.poi then Live.knownPoi[inst.poi] = true end
+        for _, id in ipairs(inst.pois or {}) do Live.knownPoi[id] = true end
       end
     end
   end
@@ -273,14 +274,22 @@ function Live.ResolveExt(extKey, force)
 
   -- 1) passe Journal d'aventure : jid= dans data\ (identique dans toutes les
   -- langues, pose d'apres la sonde /dg probe). Le plus fiable.
+  -- pois = {...} : gouffre dont l'identifiant change avec la semaine
+  -- (version abondante / normale, ex. Calamite Universitaire 8426 / 8425).
+  local function poiHit(inst, id)
+    if not id then return false end
+    if inst.poi == id then return true end
+    for _, p in ipairs(inst.pois or {}) do if p == id then return true end end
+    return false
+  end
   for _, inst in ipairs(pending) do
-    if inst.jid or inst.poi then
+    if inst.jid or inst.poi or inst.pois then
       -- Une meme entree peut figurer sur plusieurs cartes (Calamite
       -- Universitaire : Lune-d'Argent ET Bois des Chants Eternels) : on
       -- prend d'abord celle de la carte de la fiche, sinon n'importe laquelle.
       local pick
       for _, e in ipairs(cands) do
-        if not e.used and ((inst.jid and e.jid == inst.jid) or (inst.poi and e.poi == inst.poi)) then
+        if not e.used and ((inst.jid and e.jid == inst.jid) or poiHit(inst, e.poi)) then
           if e.map == inst.mapID then pick = e; break end
           pick = pick or e
         end
