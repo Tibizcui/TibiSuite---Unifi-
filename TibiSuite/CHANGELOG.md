@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.48
+- Quoi de neuf 7.1.5.48 : nouveautés 12.1.5 de DgnTracker.
+- Version alignée sur DgnTracker pour les 16 addons.
+
 ## 7.1.5.47
 - Compatibilité avec la mise à jour 12.1.5 (interface 120105) : les 16 addons ne sont plus marqués obsolètes.
 - Quoi de neuf 7.1.5.47.

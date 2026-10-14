@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.48
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.1.5.47
 - Compatibilité avec la mise à jour 12.1.5 (interface 120105), sans autre changement pour ce module.
 

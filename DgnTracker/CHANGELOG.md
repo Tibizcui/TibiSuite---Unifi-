@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.1.5.48
+- Fiche « Le Déliement de Kith'ix » (raid à boss unique de la 12.1.5) : position donnée par le jeu, accès par les trois portes des Caveaux d'Atal'Utek, numéro de journal 1324 (verrouillage et collections).
+- Fiche « Labyrinthe de Kindo'jan » (méga-gouffre de la 12.1.5), reconnue par le jeu dans le bois des Chants éternels et à Zul'Aman.
+- Gouffres de Midnight : une fiche accepte les deux identifiants de carte (normal et abondant), qui alternent chaque semaine. Calamité Universitaire n'est plus déplacée à tort vers le bois des Chants éternels.
+- La grotte des Marées : numéro de journal 1317.
+
 ## 7.1.5.47
 - Compatibilité avec la mise à jour 12.1.5 (interface 120105), sans autre changement pour ce module.
 

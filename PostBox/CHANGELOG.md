@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.48
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.1.5.47
 - Compatibilité avec la mise à jour 12.1.5 (interface 120105).
 - Montants affichés via C_CurrencyInfo.GetCoinTextureString (le global est voué à disparaître), page Statistiques comprise ; nom des objets de la mule via C_Item.

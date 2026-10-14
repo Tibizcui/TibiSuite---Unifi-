@@ -142,19 +142,17 @@ DgnTrackerData["Midnight"] = {
      access={both="Entrez dans les Voûtes d'Atal'Utek par la Porte de l'Œil du Serpent (accès le plus direct au pont du raid), puis dirigez-vous vers le nord."},
      path="Voûtes d'Atal'Utek, nord. L'Abysse Venimeux, boss final Ula'tek. 8 boss. Ouvert le 18/08/2026 (Saison 2 Midnight).",
      tomtom={mapID=2509, x=47.23, y=22.86}},
-    -- PATCH 12.1.5 (2026-10-14). Kith'ix : position relevee en jeu par
-    -- Tibiscui (C_Map.GetPlayerMapPosition), le jeu ne publie pas son entree
-    -- (sonde /dg probe apres deploiement) ; jid 1324 lu dans le journal
-    -- (paliers 12 et 13). 2613 = niveau inferieur des Caveaux d'Atal'Utek
-    -- (Ventre), garde dans scanMaps au cas ou une entree y apparaitrait.
+    -- PATCH 12.1.5 (2026-10-14). Kith'ix : jid 1324 (journal, paliers 12 et
+    -- 13), entree publiee par le jeu sur la carte 2613 (niveau inferieur des
+    -- Caveaux d'Atal'Utek, Ventre, dans scanMaps) : position de /dg check.
     -- Kindo'jan : POI 9035 publie par le jeu (bois des Chants Eternels 2395 et
     -- Zul'Aman 2437), position de la sonde.
     {name="Le Déliement de Kith'ix (1 boss - patch 12.1.5)", type="raid", current=true,
      zone="L'Île annelée", region="L'Île annelée", sector="Voûtes d'Atal'Utek - Ventre",
-     mapID=2613, coords={x=73.1,y=9.4}, jid=1324,
+     mapID=2613, coords={x=74.3,y=5.9}, jid=1324,
      access={both="Entrez dans les Caveaux d'Atal'Utek par l'une des trois portes : Porte de l'Œil du serpent (accès nord, 43.8 44.2), Porte du Croc oriental (sud-est, 45.9 64.9) ou Porte du Croc occidental (ouest, 31.1 64.9). Allez au fond jusqu'au Ventre, prenez l'escalier au nord-est (autrefois sous une mare de venin) et descendez jusqu'au portail au bout de la salle (47.2 7.6 sur la carte des Caveaux)."},
      path="Voûtes d'Atal'Utek, Ventre. Raid à boss unique Kith'ix : Histoire, Normal, Héroïque, Mythique flexible (15-25). Ouvert le 14/10/2026.",
-     tomtom={mapID=2613, x=73.1, y=9.4}},
+     tomtom={mapID=2613, x=74.3, y=5.9}},
     {name="Labyrinthe de Kindo'jan (méga-gouffre - patch 12.1.5)", type="delve",
      zone="Bois des Chants Éternels", region="Quel'Thalas", sector="Ruines de Zeb'tela",
      mapID=2395, coords={x=62.99,y=72.18}, poi=9035, altMaps={2437},
