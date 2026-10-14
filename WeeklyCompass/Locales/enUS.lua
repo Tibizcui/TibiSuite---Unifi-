@@ -176,6 +176,7 @@ ns:AddLocale("enUS", {
     SHEET_NO_RAIDS        = "No raid locked",
     SHEET_MORE            = "+ %d more",
     SHEET_CURRENCIES      = "Season currencies",
+    SHEET_VENOMSTONE      = "Ascendant Venomstones",
     SHEET_PROFESSIONS     = "Professions",
     SHEET_CONC            = "Conc. %d/%d",
     SHEET_CONC_FULL       = "FULL",

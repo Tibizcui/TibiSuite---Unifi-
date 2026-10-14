@@ -45,6 +45,8 @@ local module = {
     scope    = "snapshot",
     events   = { "PLAYER_EQUIPMENT_CHANGED", "PLAYER_AVG_ITEM_LEVEL_UPDATE",
                  "PLAYER_SPECIALIZATION_CHANGED", "CURRENCY_DISPLAY_UPDATE",
+                 -- Objets de saison (ns.SheetItems) : comptes dans les sacs.
+                 "BAG_UPDATE_DELAYED",
                  -- Talents : changement de talent, de build ou de configuration.
                  "TRAIT_CONFIG_UPDATED", "ACTIVE_COMBAT_CONFIG_CHANGED", "TRAIT_CONFIG_LIST_UPDATED",
                  -- Mythique+ (7.1.5.45) : cle terminee, donnees de saison recues.
@@ -291,6 +293,54 @@ local function collectCurrencies()
     return out
 end
 
+-- Objets de saison (ns.SheetItems) : identifiant connu, sinon reconnu au nom
+-- dans les sacs (0 a 5, sac de composants compris) et memorise pour le compte.
+local function findInBags(names)
+    local C_C = C_Container
+    if not (C_C and C_C.GetContainerNumSlots and C_C.GetContainerItemInfo) then return nil end
+    for bag = 0, 5 do
+        local okN, n = pcall(C_C.GetContainerNumSlots, bag)
+        for slot = 1, (okN and n or 0) do
+            local ok, info = pcall(C_C.GetContainerItemInfo, bag, slot)
+            if ok and type(info) == "table" and info.itemID then
+                local nm = info.itemName
+                    or (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(info.itemID))
+                nm = type(nm) == "string" and nm:lower() or ""
+                for _, pat in ipairs(names) do
+                    if nm:find(pat, 1, true) then return info.itemID end
+                end
+            end
+        end
+    end
+    return nil
+end
+
+local function collectItems(out)
+    local db = WeeklyCompassDB
+    for _, def in ipairs(ns.SheetItems or {}) do
+        local known = db and db.sheetItemIDs
+        local id = def.id or (known and known[def.key])
+        if not id and def.names then
+            id = findInBags(def.names)
+            if id and db then
+                db.sheetItemIDs = db.sheetItemIDs or {}
+                db.sheetItemIDs[def.key] = id
+            end
+        end
+        local qty, name, icon = 0, nil, nil
+        if id and C_Item then
+            -- sacs, banque, banque de composants, banque de bataillon
+            local ok, n = pcall(C_Item.GetItemCount, id, true, false, true, true)
+            qty = ok and tonumber(n) or 0
+            name = C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)
+            icon = C_Item.GetItemIconByID and C_Item.GetItemIconByID(id)
+        end
+        out[#out + 1] = { id = id, item = true, name = name or L[def.labelKey], icon = icon,
+                          quantity = qty, max = 0, earned = 0 }
+    end
+    return out
+end
+
 -- Mythique+ de la saison (7.1.5.45) : cote, meilleure cle par donjon
 -- (dans les temps ou non), meilleure cle de la semaine, cle en poche.
 -- Lecture seule ; rien n'est invente : une valeur absente reste absente.
@@ -371,7 +421,7 @@ function module.Poll(emit)
         slots = slots,
         set = set,
         stats = collectStats(),
-        currencies = collectCurrencies(),
+        currencies = collectItems(collectCurrencies()),
         mplus = collectMPlus(),
         talents = collectTalents(),
     })

@@ -171,6 +171,7 @@ ns:AddLocale("frFR", {
     SHEET_NO_RAIDS        = "Aucun raid verrouillé",
     SHEET_MORE            = "+ %d autre(s)",
     SHEET_CURRENCIES      = "Monnaies de la saison",
+    SHEET_VENOMSTONE      = "Venithes ascendantes",
     SHEET_PROFESSIONS     = "Métiers",
     SHEET_CONC            = "Conc. %d/%d",
     SHEET_CONC_FULL       = "PLEINE",

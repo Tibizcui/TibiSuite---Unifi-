@@ -34,6 +34,20 @@ ns.ActivityManifest = {
 --   ce sont aussi les monnaies des Repaires Monde / Normal / Heroique / Mythique).
 ns.SheetCurrencies = { 3442, 3443, 3444, 3445, 3446 }
 
+-- Objets de saison comptes dans les sacs et banques, affiches a la suite des
+-- monnaies. id = nil : identifiant pas encore connu, l'objet est reconnu au
+-- nom (minuscules, recherche simple) dans les sacs puis memorise dans
+-- WeeklyCompassDB.sheetItemIDs[key]. Le libelle (labelKey) ne sert que tant
+-- que le jeu n'a pas donne le nom de l'objet.
+--   venomstone : venithes ascendantes (12.1.5), obtenables a partir de la
+--   semaine du 21/10/2026. Ce n'est pas une monnaie : le balayage des
+--   monnaies 3300-4500 du 14/10 ne trouve que 3511 « [DNT, Unused] Venomous
+--   Voidcore ». A remplacer par l'identifiant reel des qu'il est releve.
+ns.SheetItems = {
+    { key = "venomstone", id = nil, labelKey = "SHEET_VENOMSTONE",
+      names = { "venithe ascendante", "venithes ascendantes", "ascendant venomstone" } },
+}
+
 -- Sources des activites pilotees par la donnee (lues par Core/Sources.lua).
 --
 -- Aucun identifiant n'est devine : chacun a ete releve en jeu par la sonde
