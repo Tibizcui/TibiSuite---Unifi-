@@ -362,6 +362,24 @@ Croix de fermeture ajoutée à
 `PostBoxMainFrame` (les autres fenêtres en avaient déjà une). Maj + clic droit sur un
 module de la barre = options directes (clic droit = menu).
 
+**Conseiller (lots 0-2, prochaine version, non testés en jeu).** Plan dans
+`_dev/Conseiller.md`. Contrat facultatif `suggestFn()` -> liste, pending
+(`{ id, kind, text, tag, proximity, done, total, endsAt, group, note, open |
+target }`). Core (fin de `TibiSuiteComfort.lua`) : `GetSuggestions(n, fresh)`
+(note `100 * prox^1.5 * (0.4 + affinité) * fenêtre * groupe * poids`, 2 au plus
+par tag, mémoire 5 min), `GetAffinity` (lit `Stats_Affinity(28)`),
+`DismissSuggestion(id, jours)`, `RestoreSuggestions`, `OpenSuggestion`,
+`InvalidateSuggestions`, `OnSuggestionsChanged`, `/ts conseil [all|reset]`.
+Réglages `sugOn/sugHabits/sugNoGroup/sugKinds` (SET_KEYS), données
+`sugDismissed`. Stats : un seul parcours budgété (5 ms par image, reprise dans
+la catégorie, jamais en combat, complet toutes les 30 min, mise à jour ciblée à
+ACHIEVEMENT_EARNED / CRITERIA_UPDATE) sert `NearAchievements` et
+`SX.AdvisorSuggestions` ; tables d'ID racine -> tag et sous-catégorie ->
+extension relevées par la sonde `/stats probe adv`. Exclus : Tours de force,
+Héritage, Personnages, Logis ; 15301 Contenu d'extension = tag `feature`. Métas : on propose les enfants (note « Fait
+partie de »), chaînes : seule la première étape pas finie, événements : seulement
+en cours (enfants de 155 dont le titre est dans celui du calendrier). **Lot 3** (non testé en jeu) : champ `why` du contrat (raison du module). Fournisseurs : DgnTracker `DgnTrackerColl.Suggestions` (montures faisables, poids 0,75), DailyTracker `DailyTracker_Suggest` (boss mondiaux, rares de la zone), RenTracker `RenTrackerAPI.GetSuggestions` (factions à 50 % ou plus), WeeklyCompass `WeeklyCompassAPI.GetSuggestions` (prochain seuil du Grand coffre). **Lot 4** (non testé en jeu) : rubrique SUGGESTIONS de Ma semaine, page Centre `suggest` (panneau socle `TibiSuiteCentreSuggest`), `TibiSuite.ShowSuggestionMenu`, suggestion dans `GetNextAction` (score 180, `na.suggestion`), rubrique de la palette, `WHATSNEW["7.1.5.49"]`. Diagnostic : `Stats_AdvisorState()` (avancement, pause en combat, dernière erreur), affiché par `/ts conseil`. **Fenêtre des propositions** (`Core/TibiSuiteAdvisor.lua`, non testée en jeu) : `TibiSuite.ShowAdvisor(force)` / `ToggleAdvisor()`, 5 cartes, infobulle `AddSuggestionTooltip` (champ `steps()` du contrat : `{ {text, done, value} }`, branché dans les 5 fournisseurs), à la vraie connexion (pas /reload) une fois l'analyse finie, hors combat et instance, `TibiSuiteDB.advPopup` (nil = actif). Raccourci `TIBISUITE_ADVISOR` + capture dans Centre > Suggestions (`AddAdvisorKeyRow`, `SetAdvisorKey`).
+
 **Menu Échap (validé en jeu, y compris en combat).** `GameMenuFrame:AddButton`
 dans un post-hook de `InitButtons` posé **au chargement du fichier**, donc avant
 ceux d'EllesmereUI/ElvUI : leur passe d'habillage stylise notre bouton toute

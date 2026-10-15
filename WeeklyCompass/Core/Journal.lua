@@ -361,6 +361,60 @@ function WeeklyCompassAPI.GetOverview()
     return out
 end
 
+-- Conseiller de TibiSuite (lot 3) : pour chaque ligne du Grand coffre
+-- (raids, donjons, monde), le prochain emplacement pas encore debloque.
+-- Proximite = avancement vers ce seuil, 0,3 au moins (une ligne pas
+-- commencee reste visible pour qui joue ce contenu). Fin = reset hebdo.
+function WeeklyCompassAPI.GetSuggestions()
+    local W = C_WeeklyRewards
+    local E = Enum and Enum.WeeklyRewardChestThresholdType
+    if not (W and type(W.GetActivities) == "function" and E) then return nil end
+    local ok, acts = pcall(W.GetActivities)
+    if not ok or type(acts) ~= "table" then return nil end
+    local SL = _G.TibiSuiteL or {}
+    local reset
+    if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+        local okR, s = pcall(C_DateAndTime.GetSecondsUntilWeeklyReset)
+        if okR and type(s) == "number" and s > 0 then reset = time() + s end
+    end
+    local rows = {
+        { t = E.Raid, tag = "raid", group = true, label = SL.OV_WC_RAID, key = "raid" },
+        { t = E.Activities, tag = "dungeon", group = true, label = SL.OV_WC_DUNGEON, key = "dungeon" },
+        { t = E.World, tag = "delve", group = false, label = SL.OV_WC_WORLD, key = "world" },
+    }
+    local out = {}
+    for _, row in ipairs(rows) do
+        local nx
+        for _, a in ipairs(acts) do
+            if a.type == row.t and (a.threshold or 0) > 0 and (a.progress or 0) < a.threshold then
+                if not nx or a.threshold < nx.threshold then nx = a end
+            end
+        end
+        if nx and row.label then
+            local p = (nx.progress or 0) / nx.threshold
+            local mine = {}
+            for _, a in ipairs(acts) do
+                if a.type == row.t and (a.threshold or 0) > 0 then mine[#mine + 1] = a end
+            end
+            table.sort(mine, function(x, y) return x.threshold < y.threshold end)
+            out[#out + 1] = { id = "vault:" .. row.key, kind = "weekly", tag = row.tag, group = row.group,
+                text = row.label, proximity = math.max(0.3, p), endsAt = reset, target = "week",
+                why = SL.SUG_W_VAULT_FMT and string.format(SL.SUG_W_VAULT_FMT, nx.progress or 0, nx.threshold) or nil,
+                -- Infobulle du Conseiller : chaque emplacement de la ligne.
+                steps = function()
+                    local st = {}
+                    for i, a in ipairs(mine) do
+                        local pr = math.min(a.progress or 0, a.threshold)
+                        st[#st + 1] = { text = string.format(SL.SUG_ST_SLOT_FMT or "%d: %d / %d", i, pr, a.threshold),
+                            done = (a.progress or 0) >= a.threshold }
+                    end
+                    return st
+                end }
+        end
+    end
+    return out
+end
+
 -- Ouvre la fenetre sur un onglet ("week" ou "chars").
 function WeeklyCompassAPI.OpenTab(tab)
     local g = ns.DB:GetGlobal()

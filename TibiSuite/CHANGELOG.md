@@ -1,5 +1,16 @@
 # Changelog
 
+## 7.1.5.49
+- Nouveau : le Conseiller. La suite repère ce que tu n'as pas encore fait et qui est à ta portée : hauts faits presque finis, montures à obtenir, boss mondiaux et rares, renoms proches du palier, Grand coffre.
+- Chaque suggestion est classée selon ce que tu joues vraiment (historique de Stats sur 4 semaines, tous tes personnages) et affiche toujours sa raison.
+- Fenêtre « Tes propositions du jour » à la connexion : 5 propositions, avec au survol une fiche façon haut fait officiel (description, points, tous les critères en colonnes, ce qu'il reste à faire).
+- Rubrique Suggestions dans Ma semaine, suggestion dans la prochaine action, rubrique dans la palette de commandes.
+- Nouvelle page Suggestions dans le Centre : liste complète et réglages (activer, tenir compte des habitudes, masquer le contenu de groupe, types proposés, affichage à la connexion, raccourci au choix, suggestions écartées).
+- Clic droit sur une suggestion : plus tard (7 jours) ou pas intéressé (90 jours).
+- Nouveau raccourci clavier « Propositions du jour », réglable dans les raccourcis de Blizzard ou directement dans le Centre.
+- Commandes : /ts conseil, /ts conseil all, /ts conseil reset, /ts propositions.
+- Quoi de neuf 7.1.5.49.
+
 ## 7.1.5.48
 - Quoi de neuf 7.1.5.48 : nouveautés 12.1.5 de DgnTracker.
 - Version alignée sur DgnTracker pour les 16 addons.

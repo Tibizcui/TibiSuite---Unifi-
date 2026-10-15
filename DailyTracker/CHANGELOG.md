@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.49
+- Conseiller de TibiSuite : propose les boss mondiaux de la semaine pas encore vaincus et les rares disponibles dans ta zone.
+
 ## 7.1.5.48
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

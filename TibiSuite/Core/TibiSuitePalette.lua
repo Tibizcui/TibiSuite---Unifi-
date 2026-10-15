@@ -62,6 +62,9 @@ D("PAL_C_SETUP_FMT", "Profil de suite : %s")
 D("PAL_C_CONTRAST",  "Contraste élevé : activer / couper")
 D("PAL_C_CVD",       "Couleurs pour daltoniens : activer / couper")
 D("PAL_C_GOALS",     "Mes objectifs (ajouter, cocher)")
+D("PAL_C_SUGGEST",   "Suggestions du Conseiller")
+D("PAL_C_ADVISOR",   "Propositions du jour (fenêtre)")
+D("PAL_H_SUG",       "SUGGESTIONS")
 D("PAL_SUITE",       "TibiSuite")
 D("PAL_KW_STYLE",    "classique dock panneau vivant apparence")
 
@@ -168,6 +171,10 @@ local function Commands()
     add(L.CTR_WIDGETS,  function() O("widgets") end, "widgets epingler epingle ecran cartes", nil, nil, "nav")
   end
   add(L.PAL_C_GOALS, function() O("goals") end, "objectif objectifs but semaine ajouter cocher", nil, nil, "nav", true)
+  if TibiSuite.ShowAdvisor then
+    add(L.PAL_C_ADVISOR, function() TibiSuite.ShowAdvisor(true) end, "propositions proposition conseiller fenetre jour activites quoi faire", nil, nil, "act", true)
+  end
+  add(L.PAL_C_SUGGEST, function() O("suggest") end, "suggestions conseiller conseil quoi faire haut fait hauts faits idee", nil, nil, "nav")
   add(L.PAL_C_PROFILES, function() O("profiles") end, "profil profils restauration restaurer point automatique specialisation personnage", nil, nil, "nav")
   add(L.PAL_C_DISPLAY,  function() O("display") end, "lisibilite taille texte contraste daltonien daltonisme accessibilite", nil, nil, "nav")
   add(L.PAL_C_REMIND,   function() O("reminders") end, "rappels rappel reset calendrier note alarme", nil, nil, "nav")
@@ -264,8 +271,9 @@ local function Settings()
   local out = {}
   if TibiSuite.PrebuildPanels then pcall(TibiSuite.PrebuildPanels) end
   local pageOf = TibiSuite.PANEL_PAGE or {}
-  local extra = { TibiSuiteCentreBar = "bar", TibiSuiteCentreDisplay = "display", TibiSuiteCentreRemind = "reminders" }
-  local PAGE_NAME = { bar = L.CTR_BAR, display = L.CTR_DISPLAY, reminders = L.CTR_REMIND }
+  local extra = { TibiSuiteCentreBar = "bar", TibiSuiteCentreDisplay = "display", TibiSuiteCentreRemind = "reminders",
+                  TibiSuiteCentreSuggest = "suggest" }
+  local PAGE_NAME = { bar = L.CTR_BAR, display = L.CTR_DISPLAY, reminders = L.CTR_REMIND, suggest = L.CTR_SUGGEST }
   local byKey = {}
   for _, mod in ipairs(TibiSuite.GetCatalog()) do byKey[mod.key] = mod end
   for _, panel in ipairs(UI.panels or {}) do
@@ -377,7 +385,30 @@ local function NextItem()
   return { kind = "cmd", cat = "act", synthetic = true, id = "next",
            text = string.format(L.PAL_NEXT_FMT, mod and mod.addonName or na.key, Clean(na.text or "")),
            icon = TibiSuite.MODULE_LOGO and TibiSuite.MODULE_LOGO[na.key], col = mod and ModCol(mod),
-           run = function() TibiSuite.OpenModule(na.key) end }
+           run = function()
+             if na.suggestion then TibiSuite.OpenSuggestion(na.suggestion) else TibiSuite.OpenModule(na.key) end
+           end }
+end
+
+-- Rubrique « Suggestions » (accueil de la palette) : les 3 meilleures du
+-- Conseiller, sans repeter celle deja montree en prochaine action.
+local function SugItems(skipId)
+  local out = {}
+  if not (TibiSuite.SuggestOn and TibiSuite.SuggestOn() and TibiSuite.GetSuggestions) then return out end
+  local ok, list = pcall(TibiSuite.GetSuggestions, 4)
+  if not ok or type(list) ~= "table" then return out end
+  local mods = {}
+  for _, m in ipairs(TibiSuite.GetCatalog()) do mods[m.key] = m end
+  for _, sg in ipairs(list) do
+    if sg.id ~= skipId and #out < 3 then
+      local m = mods[sg.key]
+      out[#out + 1] = { kind = "cmd", cat = "act", synthetic = true, id = "sug:" .. tostring(sg.id),
+        text = Clean(sg.text), sub = Clean(sg.reason or ""),
+        icon = sg.icon or (TibiSuite.MODULE_LOGO and TibiSuite.MODULE_LOGO[sg.key]), col = m and ModCol(m),
+        run = function() TibiSuite.OpenSuggestion(sg) end }
+    end
+  end
+  return out
 end
 
 local function Search(text)
@@ -388,6 +419,13 @@ local function Search(text)
       -- Accueil : prochaine action, recents, actions rapides.
       local nx = NextItem()
       if nx then Head(L.PAL_H_NEXT); Item(nx) end
+      local okN, na = pcall(TibiSuite.GetNextAction or function() end)
+      local skip = okN and na and na.suggestion and na.suggestion.id or nil
+      local sgs = SugItems(skip)
+      if #sgs > 0 then
+        Head(L.PAL_H_SUG)
+        for _, it in ipairs(sgs) do Item(it) end
+      end
       local byId, seen = {}, {}
       for _, it in ipairs(cmdCache) do byId[it.id] = it end
       for _, it in ipairs(setCache) do byId[it.id] = it end

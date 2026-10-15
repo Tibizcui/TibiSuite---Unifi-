@@ -88,7 +88,34 @@ if HasCore() and IsEnabledByCore() then
       end
       return out
     end,
+    -- Conseiller de TibiSuite (lot 2) : hauts faits a proposer.
+    suggestFn = function()
+      if SX.AdvisorSuggestions then return SX.AdvisorSuggestions() end
+      return nil
+    end,
   })
+end
+
+-- Habitudes du joueur pour le Conseiller de TibiSuite : activite du compte
+-- sur les `days` derniers jours, ramenee a 0..1 par type de contenu (1 =
+-- joueur regulier de ce contenu, seuils AFF_REF). Les tags sans donnee
+-- (mascottes, collections, evenements, reputation) restent absents : le
+-- core les traite comme neutres.
+local AFF_REF = { quest = 150, explore = 150, world = 40, dungeon = 15, raid = 6, delve = 15, pvp = 15, prof = 40 }
+function Stats_Affinity(days)
+  days = days or 28
+  if not SX.AggregateAccount then return nil end
+  local to = time()
+  local ok, a = pcall(SX.AggregateAccount, to - days * 86400, to)
+  if not ok or type(a) ~= "table" then return nil end
+  local counts = {
+    quest = a.quests or 0, explore = a.quests or 0, world = a.worldQuests or 0,
+    dungeon = (a.dungeons or 0) + (a.mplusCount or 0), raid = a.raids or 0, delve = a.delves or 0,
+    pvp = (a.bgPlayedGained or 0) + (a.arenaPlayedGained or 0), prof = a.profGained or 0,
+  }
+  local aff = {}
+  for k, ref in pairs(AFF_REF) do aff[k] = math.min(1, (counts[k] or 0) / ref) end
+  return { aff = aff, counts = counts, days = days }
 end
 
 -- Or net de la semaine (cuivre), tout le compte : lu par les objectifs
@@ -109,4 +136,8 @@ C_Timer.After(1.0, HideOwnMinimap)
 C_Timer.After(3.0, HideOwnMinimap)
 
 SLASH_TIBISTATS1 = "/stats"
-SlashCmdList["TIBISTATS"] = function() SX.Toggle() end
+SlashCmdList["TIBISTATS"] = function(msg)
+  local rest = (msg or ""):lower():match("^%s*probe%s+adv%s*(.-)%s*$")
+  if rest and SX.ProbeAdv then SX.ProbeAdv(rest); return end
+  SX.Toggle()
+end

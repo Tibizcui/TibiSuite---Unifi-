@@ -29,4 +29,7 @@
 	<Binding name="TIBISUITE_NEXT" category="BINDING_CATEGORY_TIBISUITE">
 		if TibiSuite and TibiSuite.RunNextAction then TibiSuite.RunNextAction() end
 	</Binding>
+	<Binding name="TIBISUITE_ADVISOR" category="BINDING_CATEGORY_TIBISUITE">
+		if TibiSuite and TibiSuite.ToggleAdvisor then TibiSuite.ToggleAdvisor() end
+	</Binding>
 </Bindings>

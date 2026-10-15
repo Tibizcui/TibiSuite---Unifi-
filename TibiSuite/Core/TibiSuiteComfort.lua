@@ -64,6 +64,7 @@ local SET_KEYS = {
   "widgets", "widgetsLocked", "widgetScale",
   "uiScale", "highContrast", "cvd",
   "remindDaily", "remindDailyMin", "remindWeekly", "remindWeeklyH", "remindCal", "remindNote",
+  "sugOn", "sugHabits", "sugNoGroup", "sugKinds", "advPopup",
 }
 TibiSuite.SET_KEYS = SET_KEYS
 
@@ -250,7 +251,7 @@ end
 
 -- Fenetres de la suite qui suivent la taille choisie (si elles existent).
 local SCALED = { "TibiSuiteCentre", "TibiSuitePalette", "TibiSuiteSetupWizard", "TibiSuiteWhatsNew",
-  "TibiSuiteProfileFrame", "TibiSuiteConfirmFrame", "TibiSuiteURLFrame" }
+  "TibiSuiteProfileFrame", "TibiSuiteConfirmFrame", "TibiSuiteURLFrame", "TibiSuiteAdvisor" }
 function TibiSuite.ApplyUIScaleTo(f) if f and f.SetScale then f:SetScale(TibiSuite.GetUIScale()) end end
 
 -- Fenetres creees a la demande : la taille est reappliquee a l'ouverture.
@@ -804,4 +805,279 @@ function TibiSuite.GetWeekEvents()
   while #out > 2 do table.remove(out) end
   evCache, evAt = out, GetTime()
   return out
+end
+
+-- ================================================================
+-- CONSEILLER (lot 1, _dev/Conseiller.md)
+-- ----------------------------------------------------------------
+-- Contrat facultatif de RegisterModule :
+--   suggestFn() -> liste, pending
+--     liste = { { id, kind, text, tag, proximity (0..1), done, total,
+--                 endsAt, group, note, icon, weight, why (raison du
+--                 module, remplace l'avancement), open (fonction) ou
+--                 target (openTo) } }
+--     pending = true si le module calcule encore (parcours en cours).
+-- Le core note chaque suggestion :
+--   100 * proximite^1.5 * (0.4 + affinite) * fenetre * poids * groupe
+-- affinite = Stats_Affinity (habitudes des 28 derniers jours, 0..1 par
+-- tag), 0.5 sans Stats ou si le joueur coupe « mes habitudes ».
+-- Reglages (SET_KEYS) : sugOn (nil = actif), sugHabits (nil = actif),
+-- sugNoGroup (nil = non), sugKinds[kind] = false pour couper un type.
+-- Donnees : TibiSuiteDB.sugDismissed[id] = heure de fin (pas un reglage).
+-- ================================================================
+D("SUG_TITLE",        "Suggestions")
+D("SUG_NONE",         "Aucune suggestion pour l'instant.")
+D("SUG_PENDING",      "Analyse des hauts faits en cours, réessaie dans quelques secondes.")
+D("SUG_OFF",          "Le Conseiller est désactivé.")
+D("SUG_R_ENDS_FMT",   "Se termine dans %s.")
+D("SUG_R_HABIT_FMT",  "Tu as fait %d %s ces 4 dernières semaines.")
+D("SUG_R_NEAR_FMT",   "Presque fini : %d sur %d.")
+D("SUG_R_PCT_FMT",    "Déjà %d %% fait.")
+D("SUG_R_NEARPCT_FMT","Presque fini : %d %%.")
+D("SUG_R_NEARLEFT_FMT","Presque fini : plus que %d.")
+D("SUG_R_LEFT_FMT",   "Plus que %d.")
+D("SUG_RESTORED",     "Suggestions écartées remises en jeu.")
+D("SUG_NOTE_META_FMT","Fait partie de : %s")
+D("SUG_MENU_OPEN",    "Y aller")
+D("SUG_MENU_LATER",   "Plus tard (7 jours)")
+D("SUG_MENU_NEVER",   "Pas intéressé")
+D("SUG_MENU_PAGE",    "Toutes les suggestions")
+D("SUG_STATE_FMT",    "analyse des hauts faits : %d %%")
+D("SUG_STATE_COMBAT", "(en pause pendant le combat)")
+D("SUG_STATE_ERR_FMT","Erreur notée pendant l'analyse : %s")
+-- Raisons fournies par les modules (lot 3)
+D("SUG_C_MOUNT_FMT",  "Monture de %s (%s), pas encore obtenue.")
+D("SUG_C_MOUNT_INST_FMT", "Monture de %s, pas encore obtenue.")
+D("SUG_C_LOCKED",     "Instance déjà entamée cette semaine.")
+D("SUG_D_WB_FMT",     "Boss mondial de la semaine, pas encore vaincu (%s).")
+D("SUG_D_RARE_FMT",   "Rare disponible dans %s.")
+D("SUG_W_VAULT_FMT",  "%d sur %d pour le prochain emplacement du Grand coffre.")
+D("SUG_U_quest", "Tu fais beaucoup de quêtes : %d en 4 semaines.")
+D("SUG_U_world", "Tu fais souvent des quêtes du monde : %d en 4 semaines.")
+D("SUG_U_explore", "Tu fais beaucoup de quêtes : %d en 4 semaines.")
+D("SUG_U_dungeon", "Tu joues souvent en donjon : %d visites en 4 semaines.")
+D("SUG_U_mplus", "Tu fais souvent des clés mythiques : %d en 4 semaines.")
+D("SUG_U_raid", "Tu joues souvent en raid : %d visites en 4 semaines.")
+D("SUG_U_delve", "Tu fais souvent des gouffres : %d en 4 semaines.")
+D("SUG_U_pvp", "Tu joues souvent en JcJ : %d parties en 4 semaines.")
+D("SUG_U_prof", "Tu montes souvent tes métiers : %d points en 4 semaines.")
+
+local sugListeners, sugCache, sugAt, sugPending = {}, nil, 0, false
+local SUG_TTL = 300
+
+function TibiSuite.SuggestOn() return TibiSuiteDB ~= nil and TibiSuiteDB.sugOn ~= false end
+function TibiSuite.OnSuggestionsChanged(fn) if type(fn) == "function" then sugListeners[#sugListeners + 1] = fn end end
+
+local sugFireT
+local function FireSuggestions()
+  sugFireT = nil
+  for _, fn in ipairs(sugListeners) do pcall(fn) end
+end
+
+-- Un module dont les donnees ont change le signale ici : la liste sera
+-- recalculee au prochain appel, les abonnes sont prevenus (regroupe a 1 s).
+function TibiSuite.InvalidateSuggestions()
+  sugCache = nil
+  if not sugFireT then sugFireT = C_Timer.NewTimer(1, FireSuggestions) end
+end
+
+-- Habitudes : { aff = { tag = 0..1 }, counts = { tag = n }, days = 28 },
+-- lues chez Stats, gardees 10 min.
+local affCache, affAt = nil, 0
+function TibiSuite.GetAffinity()
+  if TibiSuiteDB and TibiSuiteDB.sugHabits == false then return nil end
+  if affCache and GetTime() - affAt < 600 then return affCache end
+  local fn = _G.Stats_Affinity
+  if type(fn) ~= "function" then return nil end
+  local ok, a = pcall(fn, 28)
+  if ok and type(a) == "table" and type(a.aff) == "table" then
+    a.counts = a.counts or {}
+    affCache = a
+  else
+    affCache = nil
+  end
+  affAt = GetTime()
+  return affCache
+end
+
+local function Dismissed(id)
+  local t = TibiSuiteDB and TibiSuiteDB.sugDismissed
+  local u = t and t[id]
+  if not u then return false end
+  if u > time() then return true end
+  t[id] = nil
+  return false
+end
+
+-- Raison affichee : fin proche d'abord ; sinon « presque fini » en tete
+-- (80 % et plus) puis l'habitude, ou l'habitude puis l'avancement. Au-dela
+-- de 25 elements, l'avancement est en pourcentage (« plus que 1199 » ne
+-- parlait pas, vu en jeu).
+local function Reason(s, aff)
+  local now = time()
+  -- 3 derniers jours seulement : tout l'hebdo finit au reset, donc toujours
+  -- « dans moins de 7 jours » (mention repetee partout, vu en jeu).
+  local soon = s.endsAt and s.endsAt > now and s.endsAt - now < 3 * 86400 and TibiSuite.FmtDuration
+  -- Raison donnee par le module (monture, boss mondial, Grand coffre : pas
+  -- de « pourcentage fait »), suivie de la fin si elle approche.
+  if type(s.why) == "string" and s.why ~= "" then
+    if soon then return s.why .. " " .. string.format(L.SUG_R_ENDS_FMT, TibiSuite.FmtDuration(s.endsAt - now)) end
+    return s.why
+  end
+  if soon then
+    return string.format(L.SUG_R_ENDS_FMT, TibiSuite.FmtDuration(s.endsAt - now))
+  end
+  local prox = s.proximity or 0
+  local pct = math.floor(prox * 100)
+  local near = prox >= 0.8
+  local prog
+  local left = (s.total and s.done) and (s.total - s.done) or nil
+  if left and s.total <= 25 then
+    prog = near and string.format(L.SUG_R_NEAR_FMT, s.done, s.total) or string.format(L.SUG_R_LEFT_FMT, left)
+  elseif left and left <= 25 then
+    -- Gros total mais peu de reste (298 sur 300 montures) : le reste parle mieux.
+    prog = near and string.format(L.SUG_R_NEARLEFT_FMT, left) or string.format(L.SUG_R_LEFT_FMT, left)
+  else
+    prog = near and string.format(L.SUG_R_NEARPCT_FMT, pct) or string.format(L.SUG_R_PCT_FMT, pct)
+  end
+  local habit
+  if aff and s.tag and (aff.aff[s.tag] or 0) >= 0.5 and (aff.counts[s.tag] or 0) > 0 and L["SUG_U_" .. s.tag] then
+    -- Phrase complete par type (« Tu joues souvent en raid : 26 visites en 4
+    -- semaines. ») : « 26 raids » laissait croire a 26 raids differents.
+    habit = string.format(L["SUG_U_" .. s.tag], aff.counts[s.tag])
+  end
+  if not habit then return prog end
+  if near then return prog .. " " .. habit end
+  return habit .. " " .. prog
+end
+
+local function Score(s, aff)
+  local prox = math.max(0, math.min(1, tonumber(s.proximity) or 0))
+  local a = 0.5
+  if aff and s.tag and aff.aff[s.tag] ~= nil then a = aff.aff[s.tag] end
+  local win, now = 1, time()
+  if s.endsAt and s.endsAt > now then
+    local left = s.endsAt - now
+    if left < 86400 then win = 1.6 elseif left < 3 * 86400 then win = 1.3 end
+  end
+  local grp = (s.group and a < 0.2) and 0.6 or 1
+  local w = tonumber(s.weight) or 1
+  return 100 * (prox ^ 1.5) * (0.4 + a) * win * grp * w
+end
+
+-- Liste notee, du meilleur au moins bon, 2 au plus par tag. n = 5 par
+-- defaut. Chaque entree recoit key (module), score, reason.
+-- Renvoie liste, pending.
+function TibiSuite.GetSuggestions(n, fresh)
+  n = n or 5
+  if not TibiSuite.SuggestOn() then return {}, false end
+  if fresh or not sugCache or GetTime() - sugAt > SUG_TTL then
+    local all, pending = {}, false
+    local aff = TibiSuite.GetAffinity()
+    local kinds = TibiSuiteDB.sugKinds or {}
+    local noGroup = TibiSuiteDB.sugNoGroup == true
+    for _, mod in ipairs(TibiSuite.GetCatalog()) do
+      local reg = TibiSuite.registered and TibiSuite.registered[mod.key]
+      if reg and type(reg.suggestFn) == "function" and C_AddOns.IsAddOnLoaded(mod.addonName) then
+        local ok, list, pend = pcall(reg.suggestFn)
+        if ok and pend then pending = true end
+        if ok and type(list) == "table" then
+          for _, s in ipairs(list) do
+            if type(s) == "table" and s.id and s.text and kinds[s.kind or ""] ~= false
+               and not (noGroup and s.group) and not Dismissed(s.id) then
+              s.key = mod.key
+              s.score = Score(s, aff)
+              s.reason = Reason(s, aff)
+              if s.score > 0 then all[#all + 1] = s end
+            end
+          end
+        end
+      end
+    end
+    table.sort(all, function(a, b) return a.score > b.score end)
+    sugCache, sugAt, sugPending = all, GetTime(), pending
+  end
+  local out, per = {}, {}
+  for _, s in ipairs(sugCache) do
+    local t = s.tag or "?"
+    if (per[t] or 0) < 2 then
+      per[t] = (per[t] or 0) + 1
+      out[#out + 1] = s
+      if #out >= n then break end
+    end
+  end
+  return out, sugPending
+end
+
+-- Ecarter : 90 jours (« pas interesse ») par defaut, 7 pour « plus tard ».
+function TibiSuite.DismissSuggestion(id, days)
+  if not id then return end
+  TibiSuiteDB.sugDismissed = TibiSuiteDB.sugDismissed or {}
+  TibiSuiteDB.sugDismissed[id] = time() + (days or 90) * 86400
+  TibiSuite.InvalidateSuggestions()
+end
+
+function TibiSuite.RestoreSuggestions()
+  TibiSuiteDB.sugDismissed = nil
+  TibiSuite.InvalidateSuggestions()
+end
+
+function TibiSuite.OpenSuggestion(s)
+  if type(s) ~= "table" then return end
+  if type(s.open) == "function" then pcall(s.open); return end
+  if s.key and TibiSuite.OpenModuleTo then TibiSuite.OpenModuleTo(s.key, s.target) end
+end
+
+-- Clic droit sur une suggestion (Ma semaine, page Suggestions) : y aller,
+-- plus tard (7 jours), pas interesse (90 jours), page des suggestions.
+-- Sans MenuUtil : « plus tard » directement. onChange appele apres un ecart.
+function TibiSuite.ShowSuggestionMenu(owner, s, onChange)
+  if type(s) ~= "table" then return end
+  local function dismiss(days)
+    TibiSuite.DismissSuggestion(s.id, days)
+    TibiSuite.GetSuggestions(5, true)
+    if onChange then pcall(onChange) end
+  end
+  if not (MenuUtil and MenuUtil.CreateContextMenu) then dismiss(7); return end
+  pcall(MenuUtil.CreateContextMenu, owner, function(_, root)
+    root:CreateTitle(s.text)
+    root:CreateButton(L.SUG_MENU_OPEN, function() TibiSuite.OpenSuggestion(s) end)
+    root:CreateButton(L.SUG_MENU_LATER, function() dismiss(7) end)
+    root:CreateButton(L.SUG_MENU_NEVER, function() dismiss(90) end)
+    if TibiSuite.OpenCentre then root:CreateButton(L.SUG_MENU_PAGE, function() TibiSuite.OpenCentre("suggest") end) end
+  end)
+end
+
+-- /ts conseil [all|reset] : liste dans le chat, en attendant la carte de
+-- Ma semaine (lot 4).
+function TibiSuite.PrintSuggestions(arg)
+  local P = "|cFFC41F3BTibiSuite|r : "
+  if arg == "reset" then TibiSuite.RestoreSuggestions(); print(P .. L.SUG_RESTORED); return end
+  if arg == "show" or arg == "popup" then
+    if TibiSuite.ShowAdvisor then TibiSuite.ShowAdvisor(true) end
+    return
+  end
+  if not TibiSuite.SuggestOn() then print(P .. L.SUG_OFF); return end
+  local list, pending = TibiSuite.GetSuggestions(arg == "all" and 15 or 5, true)
+  -- Etat du parcours des hauts faits (Stats) : avancement, pause en combat,
+  -- derniere erreur notee.
+  local st
+  if type(_G.Stats_AdvisorState) == "function" then
+    local okS, v = pcall(_G.Stats_AdvisorState)
+    if okS and type(v) == "table" then st = v end
+  end
+  local pend = L.SUG_PENDING
+  if pending and st and st.running and st.pct then
+    pend = string.format(L.SUG_STATE_FMT, st.pct) .. (st.combat and (" " .. L.SUG_STATE_COMBAT) or "")
+  end
+  local function Err()
+    if st and st.err then print(P .. "|cFFFF7777" .. string.format(L.SUG_STATE_ERR_FMT, tostring(st.err)) .. "|r") end
+  end
+  if #list == 0 then print(P .. (pending and pend or L.SUG_NONE)); Err(); return end
+  print(P .. "|cFFFFD700" .. L.SUG_TITLE .. "|r" .. (pending and ("  (" .. pend .. ")") or ""))
+  Err()
+  for i, s in ipairs(list) do
+    print(string.format("  %d. |cFFFFFFFF%s|r  |cFF999999[%s, %d]|r", i, s.text, s.tag or "?", math.floor(s.score + 0.5)))
+    print("      |cFFBBBBBB" .. (s.reason or "") .. "|r" .. (s.note and ("  |cFF888888" .. s.note .. "|r") or ""))
+  end
 end

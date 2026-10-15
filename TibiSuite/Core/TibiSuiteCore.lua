@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.1.5.48
+-- TibiSuiteCore v7.1.5.49
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.1.5.48"
+local VERSION = "7.1.5.49"
 
 -- ================================================================
 -- LOCALISATION
@@ -282,6 +282,8 @@ L.HELP_WEEK     = L.HELP_WEEK     or "Ma semaine (tableau de bord du Centre)"
 L.HELP_ACTIVITY = L.HELP_ACTIVITY or "fil d'activité et notifications"
 L.HELP_STREAM   = L.HELP_STREAM   or "mode streaming (masque nom et or)"
 L.HELP_NEXT     = L.HELP_NEXT     or "ouvre le module de la prochaine action"
+L.HELP_CONSEIL  = L.HELP_CONSEIL  or "suggestions du Conseiller (all = 15, reset = remet les écartées, show = fenêtre)"
+L.HELP_PROPOS   = L.HELP_PROPOS   or "fenêtre des propositions du jour"
 L.HELP_UNDO     = L.HELP_UNDO     or "annule le dernier réglage changé"
 L.HELP_RESTORE  = L.HELP_RESTORE  or "profils de suite et points de restauration"
 L.HELP_DISPLAY  = L.HELP_DISPLAY  or "lisibilité (taille, contraste, daltonisme)"
@@ -3156,6 +3158,12 @@ SlashCmdList["TIBISUITE"] = function(msg)
   elseif msg == "next" or msg == "suivant" then
     if TibiSuite.RunNextAction then TibiSuite.RunNextAction() end
 
+  elseif msg == "propositions" or msg == "proposals" then
+    if TibiSuite.ShowAdvisor then TibiSuite.ShowAdvisor(true) end
+
+  elseif msg == "conseil" or msg == "advice" or msg:match("^conseil%s+") or msg:match("^advice%s+") then
+    if TibiSuite.PrintSuggestions then TibiSuite.PrintSuggestions(msg:match("^%S+%s+(%S+)")) end
+
   elseif msg == "doctor" then
     TibiSuite.RunDoctor()
 
@@ -3195,6 +3203,8 @@ SlashCmdList["TIBISUITE"] = function(msg)
     print("  |cFFFFD700/ts activite|r : " .. L.HELP_ACTIVITY)
     print("  |cFFFFD700/ts stream|r : " .. L.HELP_STREAM)
     print("  |cFFFFD700/ts next|r : " .. L.HELP_NEXT)
+    print("  |cFFFFD700/ts conseil|r : " .. L.HELP_CONSEIL)
+    print("  |cFFFFD700/ts propositions|r : " .. L.HELP_PROPOS)
     print("  |cFFFFD700/ts undo|r : " .. L.HELP_UNDO)
     print("  |cFFFFD700/ts restore|r : " .. L.HELP_RESTORE)
     print("  |cFFFFD700/ts display|r : " .. L.HELP_DISPLAY)

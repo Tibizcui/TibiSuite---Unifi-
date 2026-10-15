@@ -2352,76 +2352,647 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
 end)
 
 -- ============================================================================
--- HAUTS FAITS PRESQUE FINIS (7.1.5.45, feuille de route lot 6)
+-- HAUTS FAITS : PARCOURS BUDGETE (7.1.5.45 lot 6, puis Conseiller lot 2)
 -- ----------------------------------------------------------------------------
--- Parcourt les hauts faits (hors statistiques, guilde, tours de force a 0
--- point) et garde ceux a 80 % ou plus, avec les criteres restants. Le
--- parcours est decoupe (une categorie par image) pour ne jamais figer le
--- jeu ; resultat garde en memoire 10 minutes. SX.NearAchievements() renvoie
--- la derniere liste connue (ou nil) et lance un parcours si elle est vieille.
---   { { id, name, icon, points, pct, done, total, remaining = { textes } } }
+-- Un seul parcours sert deux listes :
+--   * SX.NearAchievements() : hauts faits a 80 % ou plus (5 gardes), carte et
+--     tuile « Hauts faits » de Stats, apercu du Centre. Format inchange :
+--     { { id, name, icon, points, pct, done, total, remaining = { textes } } }
+--   * SX.AdvisorSuggestions() : candidats du Conseiller de TibiSuite (30 % ou
+--     plus, 8 au plus par tag), voir _dev/Conseiller.md.
+-- Budget de 5 ms par image avec reprise au milieu d'une categorie (la sonde
+-- du 2026-10-14 a mesure 150 ms pour une seule categorie), jamais en combat.
+-- Parcours complet a la demande puis toutes les 30 min ; entre deux, mise a
+-- jour des seuls hauts faits affiches a ACHIEVEMENT_EARNED / CRITERIA_UPDATE.
+-- Hors guilde, statistiques et hauts faits a 0 point.
 -- ============================================================================
-local achCache, achAt, achRunning = nil, 0, false
 local ACH_MIN, ACH_KEEP = 0.8, 5
+local ADV_MIN, ADV_PER_TAG = 0.3, 8
+local BUDGET_MS, RESCAN = 5, 1800
+
+-- Racine -> type de contenu (ID stables, releves par la sonde).
+local ROOT_TAG = {
+  [96] = "quest", [97] = "explore", [15522] = "delve", [95] = "pvp", [168] = "dungeon",
+  [169] = "prof", [201] = "rep", [155] = "event", [15117] = "pet", [15246] = "collect",
+  [15301] = "feature",   -- fief, visions, vol dynamique... : pas des quetes du monde (vu en jeu)
+}
+-- Tours de force, Heritage, Personnages, Logis : jamais proposes.
+local SKIP_ROOT = { [81] = true, [15234] = true, [92] = true, [15606] = true }
+local EVENT_ROOT = 155
+local RAID_CAT = {
+  [14922] = true, [15068] = true, [15107] = true, [15231] = true, [15255] = true, [15286] = true,
+  [15438] = true, [15468] = true, [15526] = true, [15566] = true,
+}
+-- Sous-categorie -> extension (0 Classique ... 11 Midnight). Une categorie
+-- absente de la table n'a pas d'extension connue (traitee comme recente).
+local CUR_EXP = 11
+local EXP_OF = {
+  -- Quetes
+  [14861] = 0, [15081] = 0, [14862] = 1, [14863] = 2, [15070] = 3, [15110] = 4, [15220] = 5,
+  [15252] = 6, [15284] = 7, [15422] = 8, [15455] = 9, [15506] = 10, [15547] = 11,
+  -- Exploration
+  [14777] = 0, [14778] = 0, [14779] = 1, [14780] = 2, [15069] = 3, [15113] = 4, [15235] = 5,
+  [15257] = 6, [15298] = 7, [15436] = 8, [15465] = 9, [15521] = 10, [15553] = 11,
+  -- Gouffres
+  [15523] = 10, [15571] = 11,
+  -- Donjons et raids
+  [14808] = 0, [14805] = 1, [14806] = 2, [14922] = 2, [15067] = 3, [15068] = 3, [15106] = 4,
+  [15107] = 4, [15228] = 5, [15231] = 5, [15254] = 6, [15255] = 6, [15285] = 7, [15286] = 7,
+  [15428] = 8, [15438] = 8, [15467] = 9, [15468] = 9, [15524] = 10, [15526] = 10,
+  [15541] = 11, [15566] = 11,
+  -- Reputation
+  [14864] = 0, [14865] = 1, [14866] = 2, [15072] = 3, [15114] = 4, [15232] = 5, [15258] = 6,
+  [15305] = 7, [15439] = 8, [15466] = 9, [15530] = 10, [15600] = 11,
+  -- Contenu d'extension
+  [14941] = 2, [15075] = 3, [15302] = 4, [15222] = 4, [15303] = 5, [15304] = 6, [15307] = 7,
+  [15308] = 7, [15417] = 7, [15426] = 7, [15440] = 8, [15441] = 8, [15462] = 9, [15546] = 10,
+  [15605] = 11, [15610] = 11, [15608] = 11,
+}
+
+local achCache, achAt = nil, 0      -- liste « presque finis »
+local advList, advAt = nil, 0       -- candidats du Conseiller
+local nearMap, candMap = {}, {}     -- id -> entree (listes affichees)
+local catInfo = {}                  -- cat -> { root, parent, title }
+local holidays = {}                 -- cat d'evenement actif -> heure de fin
+local metaOf = {}                   -- haut fait enfant -> nom de la meta
+local maxed = false
+local scan                          -- parcours en cours (nil sinon)
 
 local function AchProgress(id)
   local n = GetAchievementNumCriteria and GetAchievementNumCriteria(id) or 0
   if n == 0 then return nil end
-  local done, remaining = 0, {}
   if n == 1 then
     local text, _, completed, qty, req = GetAchievementCriteriaInfo(id, 1)
     if completed then return nil end
     if not req or req <= 1 then return nil end   -- tout ou rien : pas de progression
-    return (qty or 0) / req, qty or 0, req, { (text and text ~= "") and text or nil }
+    return (qty or 0) / req, qty or 0, req, { (text and text ~= "") and text or nil }, 0, nil, true
   end
+  local done, remaining, n8, kids = 0, {}, 0, nil
   for i = 1, n do
-    local text, _, completed = GetAchievementCriteriaInfo(id, i)
+    local text, ctype, completed, _, _, _, _, assetID = GetAchievementCriteriaInfo(id, i)
+    if ctype == 8 then
+      n8 = n8 + 1
+      if not completed and assetID and assetID > 0 then kids = kids or {}; kids[#kids + 1] = assetID end
+    end
     if completed then done = done + 1 elseif #remaining < 3 and text and text ~= "" then remaining[#remaining + 1] = text end
   end
-  return done / n, done, n, remaining
+  return done / n, done, n, remaining, n8, kids, false
 end
 
-function SX.ScanAchievements(onDone)
-  if achRunning or not (GetCategoryList and GetCategoryNumAchievements and GetAchievementInfo) then return end
-  achRunning = true
-  local okC, cats = pcall(GetCategoryList)
-  if not okC or type(cats) ~= "table" then achRunning = false; return end
-  local found, ci = {}, 0
-  local function step()
-    ci = ci + 1
-    local cat = cats[ci]
-    if not cat then
-      table.sort(found, function(a, b) return a.pct > b.pct end)
-      while #found > ACH_KEEP do table.remove(found) end
-      achCache, achAt, achRunning = found, GetTime(), false
-      if onDone then pcall(onDone, found) end
-      if SX.RefreshDashboard then pcall(SX.RefreshDashboard) end
-      return
-    end
-    local okN, total = pcall(GetCategoryNumAchievements, cat, true)
-    for i = 1, (okN and tonumber(total) or 0) do
-      local ok, id, name, points, completed, _, _, _, _, _, icon, _, isGuild, _, _, isStatistic = pcall(GetAchievementInfo, cat, i)
-      if ok and id and not completed and not isGuild and not isStatistic and (points or 0) > 0 then
-        local okP, pct, d, t, rem = pcall(AchProgress, id)
-        if okP and pct and pct >= ACH_MIN and pct < 1 then
-          found[#found + 1] = { id = id, name = name, icon = icon, points = points, pct = pct, done = d, total = t, remaining = rem }
+local function Norm(s) return type(s) == "string" and s:lower() or "" end
+
+local function CalTime(t)
+  if type(t) ~= "table" or not t.year then return nil end
+  return time({ year = t.year, month = t.month, day = t.monthDay, hour = t.hour or 0, min = t.minute or 0 })
+end
+
+-- Categories d'evenements mondiaux dont l'evenement est en cours (calendrier
+-- du jour). Seulement les enfants de 155, et seulement « titre de categorie
+-- contenu dans le titre de l'evenement » (evite « bonus Champs de bataille »
+-- -> « Bataille » des mascottes, vu par la sonde).
+local function ReadHolidays()
+  local out = {}
+  if not (C_Calendar and C_Calendar.GetNumDayEvents and C_Calendar.GetDayEvent and C_DateAndTime) then return out end
+  if C_Calendar.OpenCalendar and not SX._calOpened then SX._calOpened = true; pcall(C_Calendar.OpenCalendar) end
+  local ok, today = pcall(C_DateAndTime.GetCurrentCalendarTime)
+  if not ok or type(today) ~= "table" then return out end
+  local okN, n = pcall(C_Calendar.GetNumDayEvents, 0, today.monthDay)
+  for i = 1, (okN and tonumber(n) or 0) do
+    local okE, e = pcall(C_Calendar.GetDayEvent, 0, today.monthDay, i)
+    if okE and type(e) == "table" and e.calendarType == "HOLIDAY" and type(e.title) == "string"
+       and not (issecretvalue and issecretvalue(e.title)) then
+      local ht, ends = Norm(e.title), CalTime(e.endTime)
+      for cat, ci in pairs(catInfo) do
+        local ct = Norm(ci.title)
+        if ci.parent == EVENT_ROOT and #ct >= 4 and ht:find(ct, 1, true) then
+          if not out[cat] or (ends and ends > out[cat]) then out[cat] = ends or (time() + 86400) end
         end
       end
     end
-    C_Timer.After(0, step)
   end
-  step()
+  return out
 end
 
+-- Evalue un haut fait. Renvoie l'entree « presque fini » et l'entree
+-- « candidat » (l'une ou l'autre peut etre nil). Les enfants des metas sont
+-- notes dans metaOf.
+local function Evaluate(id, cat)
+  local ok, aid, name, points, completed, _, _, _, _, _, icon, _, isGuild, _, _, isStatistic = pcall(GetAchievementInfo, id)
+  if not ok or not aid or completed or isGuild or isStatistic or (points or 0) == 0 then return nil end
+  local okP, pct, d, t, rem, n8, kids, single = pcall(AchProgress, id)
+  if not okP or not pct or pct >= 1 then return nil end
+  if kids then for _, k in ipairs(kids) do metaOf[k] = metaOf[k] or name end end
+  local near
+  if pct >= ACH_MIN then
+    near = { id = id, name = name, icon = icon, points = points, pct = pct, done = d, total = t, remaining = rem }
+  end
+  if pct < ADV_MIN then return near end
+  if not cat and GetAchievementCategory then
+    local okC, c = pcall(GetAchievementCategory, id)
+    cat = okC and c or nil
+  end
+  local info = cat and catInfo[cat]
+  local root = info and info.root
+  local tag = root and ROOT_TAG[root]
+  if not tag or SKIP_ROOT[root] then return near end
+  if n8 and t and n8 * 2 >= t then return near end        -- meta : on propose ses enfants
+  local endsAt
+  if root == EVENT_ROOT then
+    endsAt = holidays[cat]
+    if not endsAt then return near end                    -- evenement pas en cours
+  end
+  if GetPreviousAchievement then                          -- chaine : une seule etape
+    local okp, prev = pcall(GetPreviousAchievement, id)
+    if okp and prev then
+      local okc, _, _, _, pdone = pcall(GetAchievementInfo, prev)
+      if okc and not pdone then return near end
+    end
+  end
+  if root == 168 then tag = RAID_CAT[cat] and "raid" or "dungeon" end
+  local exp = EXP_OF[cat] or (info.parent and EXP_OF[info.parent])
+  local group = false
+  if tag == "raid" then group = not (exp and exp < CUR_EXP and maxed)
+  elseif tag == "dungeon" then group = not (exp and exp < CUR_EXP) end
+  local cand = { id = id, name = name, icon = icon, pct = pct, done = d, total = t, tag = tag, exp = exp,
+                 group = group, endsAt = endsAt, rem = (not single) and rem or nil, cat = cat }
+  return near, cand
+end
+
+local function Rebuild()
+  local SL = _G.TibiSuiteL or {}
+  local near = {}
+  for _, e in pairs(nearMap) do near[#near + 1] = e end
+  table.sort(near, function(a, b) return a.pct > b.pct end)
+  while #near > ACH_KEEP do table.remove(near) end
+  achCache, achAt = near, GetTime()
+
+  local byTag, list = {}, {}
+  for _, c in pairs(candMap) do
+    byTag[c.tag] = byTag[c.tag] or {}
+    table.insert(byTag[c.tag], c)
+  end
+  local keep = {}
+  for _, arr in pairs(byTag) do
+    table.sort(arr, function(a, b) return a.pct > b.pct end)
+    for i = 1, math.min(ADV_PER_TAG, #arr) do
+      local c = arr[i]
+      if metaOf[c.id] and SL.SUG_NOTE_META_FMT then c.note = string.format(SL.SUG_NOTE_META_FMT, metaOf[c.id])
+      elseif c.rem and #c.rem > 0 then c.note = table.concat(c.rem, ", ") end
+      list[#list + 1] = c; keep[c.id] = c
+    end
+  end
+  candMap = keep                       -- seuls les affiches sont suivis entre deux parcours
+  local keepNear = {}
+  for _, e in ipairs(near) do keepNear[e.id] = e end
+  nearMap = keepNear
+  advList, advAt = list, GetTime()
+  if SX.RefreshDashboard then pcall(SX.RefreshDashboard) end
+  if _G.TibiSuite and _G.TibiSuite.InvalidateSuggestions then pcall(_G.TibiSuite.InvalidateSuggestions) end
+end
+
+-- Derniere erreur du parcours (diagnostic, /ts conseil l'affiche) : une
+-- erreur saute la categorie en cours au lieu de figer le parcours sur
+-- « en cours » pour toute la session (vu en jeu le 2026-10-14).
+local lastErr
+
+local function StepBody()
+  local t0 = debugprofilestop()
+  while debugprofilestop() - t0 < BUDGET_MS do
+    local cat = scan.cats[scan.ci]
+    if not cat then
+      nearMap, candMap = scan.near, scan.cand
+      local cbs = scan.onDone
+      scan = nil
+      local okR, errR = pcall(Rebuild)
+      if not okR then
+        lastErr = tostring(errR)
+        advList, advAt = advList or {}, GetTime()   -- pas de relance en boucle
+        achCache, achAt = achCache or {}, GetTime()
+      end
+      for _, fn in ipairs(cbs) do pcall(fn, achCache) end
+      return
+    end
+    if scan.ai == 0 then
+      local okN, total = pcall(GetCategoryNumAchievements, cat, true)
+      scan.nCat = okN and tonumber(total) or 0
+    end
+    scan.ai = scan.ai + 1
+    if scan.ai > scan.nCat then
+      scan.ci, scan.ai = scan.ci + 1, 0
+    else
+      local ok, id = pcall(GetAchievementInfo, cat, scan.ai)
+      if ok and id then
+        local okE, near, cand = pcall(Evaluate, id, cat)
+        if okE then
+          if near then scan.near[id] = near end
+          if cand then scan.cand[id] = cand end
+        end
+      end
+    end
+  end
+end
+
+local function Step()
+  if not scan then return end
+  if InCombatLockdown() then scan.wait = true; C_Timer.After(2, Step); return end
+  scan.wait = false
+  local ok, err = pcall(StepBody)
+  if not ok then
+    lastErr = tostring(err)
+    if scan then scan.ci, scan.ai, scan.errs = scan.ci + 1, 0, (scan.errs or 0) + 1 end
+  end
+  if scan then C_Timer.After(0, Step) end
+end
+
+-- Etat du parcours pour le Conseiller de TibiSuite (diagnostic).
+function Stats_AdvisorState()
+  return {
+    running = scan ~= nil,
+    pct = scan and #scan.cats > 0 and math.floor((scan.ci - 1) / #scan.cats * 100) or nil,
+    combat = scan and scan.wait or false,
+    errs = scan and scan.errs or 0,
+    err = lastErr,
+    ready = advList ~= nil,
+  }
+end
+
+function SX.ScanAchievements(onDone)
+  if scan then
+    if onDone then table.insert(scan.onDone, onDone) end
+    return
+  end
+  if not (GetCategoryList and GetCategoryInfo and GetCategoryNumAchievements and GetAchievementInfo) then return end
+  local okC, cats = pcall(GetCategoryList)
+  if not okC or type(cats) ~= "table" then return end
+  catInfo = {}
+  for _, id in ipairs(cats) do
+    local okI, title, parent = pcall(GetCategoryInfo, id)
+    if okI then catInfo[id] = { title = title, parent = parent } end
+  end
+  for id, ci in pairs(catInfo) do
+    local r, guard = id, 0
+    while catInfo[r] and catInfo[r].parent and catInfo[r].parent ~= -1 and catInfo[catInfo[r].parent] and guard < 10 do
+      r = catInfo[r].parent; guard = guard + 1
+    end
+    ci.root = r
+  end
+  holidays = ReadHolidays()
+  metaOf = {}
+  local maxL = GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion()
+  maxed = maxL and UnitLevel("player") >= maxL or false
+  scan = { cats = cats, ci = 1, ai = 0, nCat = 0, near = {}, cand = {}, onDone = { onDone } }
+  C_Timer.After(0, Step)
+end
+
+function SX.IsScanningAchievements() return scan ~= nil end
+
 function SX.NearAchievements()
-  if (not achCache or GetTime() - achAt > 600) and not achRunning then SX.ScanAchievements() end
+  if (not achCache or GetTime() - achAt > RESCAN) and not scan then SX.ScanAchievements() end
   return achCache
 end
+
+-- Criteres d'un haut fait pour la fiche du Conseiller, comme la fenetre des
+-- hauts faits de Blizzard : TOUS les criteres dans l'ordre du jeu (faits et
+-- pas faits), 40 au plus, plus la description et les points (vu en jeu le
+-- 2026-10-15 : la liste « restants seulement » ne ressemblait pas au haut
+-- fait officiel). Renvoie { { text, done, value } }, { desc, points }.
+function SX.AchSteps(id)
+  local SL = _G.TibiSuiteL or {}
+  local out = {}
+  local okN, n = pcall(GetAchievementNumCriteria, id)
+  n = okN and tonumber(n) or 0
+  for i = 1, n do
+    local ok, text, _, completed, qty, req, _, _, _, qstr = pcall(GetAchievementCriteriaInfo, id, i)
+    if ok then
+      local val
+      if req and req > 1 then
+        val = (type(qstr) == "string" and qstr ~= "") and qstr or (tostring(qty or 0) .. " / " .. tostring(req))
+      end
+      local t = (type(text) == "string" and text ~= "") and text
+        or (val and string.format(SL.SUG_ST_PROGRESS_FMT or "%s", val)) or nil
+      if t then
+        if #out >= 40 then
+          out[#out + 1] = { text = string.format(SL.SUG_ST_MORE_FMT or "+%d", n - i + 1) }
+          break
+        end
+        local value = val
+        if t ~= text then value = nil end    -- deja dans le texte (« Progression : 310 / 400 »)
+        out[#out + 1] = { text = t, done = completed and true or false, value = value }
+      end
+    end
+  end
+  local okI, _, _, points, _, _, _, _, desc = pcall(GetAchievementInfo, id)
+  return out, { desc = okI and type(desc) == "string" and desc ~= "" and desc or nil, points = okI and points or nil }
+end
+
+-- Candidats du Conseiller (contrat suggestFn de TibiSuite). Renvoie
+-- liste, pending.
+function SX.AdvisorSuggestions()
+  if (not advList or GetTime() - advAt > RESCAN) and not scan then SX.ScanAchievements() end
+  if not advList then return {}, true end
+  local out, now = {}, time()
+  for _, c in ipairs(advList) do
+    if not (c.endsAt and c.endsAt < now) then
+      local id = c.id
+      out[#out + 1] = { id = "ach:" .. id, kind = "ach", text = c.name, icon = c.icon, tag = c.tag,
+        proximity = c.pct, done = c.done, total = c.total, endsAt = c.endsAt, group = c.group,
+        note = c.note, open = function() SX.OpenAchievement(id) end,
+        steps = function() return SX.AchSteps(id) end }
+    end
+  end
+  return out, scan ~= nil
+end
+
+-- Mise a jour ciblee entre deux parcours : seulement les hauts faits
+-- affiches (une trentaine au plus), regroupee a 5 s, hors combat.
+local refreshT, refreshExtra = nil, {}
+local function RefreshShown()
+  refreshT = nil
+  if scan or not advList then return end
+  if InCombatLockdown() then refreshT = C_Timer.NewTimer(5, RefreshShown); return end
+  local ids = {}
+  for id in pairs(nearMap) do ids[id] = true end
+  for id in pairs(candMap) do ids[id] = true end
+  for id in pairs(refreshExtra) do ids[id] = true end
+  refreshExtra = {}
+  for id in pairs(ids) do
+    local cat = candMap[id] and candMap[id].cat
+    local ok, near, cand = pcall(Evaluate, id, cat)
+    nearMap[id] = ok and near or nil
+    candMap[id] = ok and cand or nil
+  end
+  Rebuild()
+end
+local function QueueRefresh()
+  if not refreshT then refreshT = C_Timer.NewTimer(5, RefreshShown) end
+end
+
+local achEv = CreateFrame("Frame")
+achEv:RegisterEvent("ACHIEVEMENT_EARNED")
+achEv:RegisterEvent("CRITERIA_UPDATE")
+achEv:RegisterEvent("PLAYER_ENTERING_WORLD")
+achEv:SetScript("OnEvent", function(_, event, id)
+  -- Parcours lance 30 s apres le chargement (une fois), seulement quand le
+  -- Conseiller de TibiSuite est actif : sinon la premiere demande (/ts
+  -- conseil) le lancait et repondait « en cours » (vu en jeu le 2026-10-14).
+  if event == "PLAYER_ENTERING_WORLD" then
+    achEv:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    C_Timer.After(30, function()
+      local TS = _G.TibiSuite
+      if TS and TS.SuggestOn and TS.SuggestOn() and not advList and not scan then SX.ScanAchievements() end
+    end)
+    return
+  end
+  if event == "ACHIEVEMENT_EARNED" and type(id) == "number" then
+    nearMap[id], candMap[id] = nil, nil
+    -- L'etape suivante d'une chaine devient proposable.
+    if GetNextAchievement then
+      local ok, nxt = pcall(GetNextAchievement, id)
+      if ok and nxt then refreshExtra[nxt] = true end
+    end
+  end
+  if advList or achCache then QueueRefresh() end
+end)
 
 -- Ouvre le haut fait dans la fenetre de Blizzard.
 function SX.OpenAchievement(id)
   if not AchievementFrame and UIParentLoadAddOn then pcall(UIParentLoadAddOn, "Blizzard_AchievementUI") end
   if OpenAchievementFrameToAchievement then pcall(OpenAchievementFrameToAchievement, id) end
+end
+
+-- ============================================================================
+-- SONDE DU CONSEILLER (lot 0, _dev/Conseiller.md)
+-- ----------------------------------------------------------------------------
+-- /stats probe adv          lance le releve (une categorie par image)
+-- /stats probe adv report   resume dans le chat
+-- /stats probe adv clear    efface le releve
+-- Lecture seule. Resultat dans StatsDB[perso].advProbe (jamais une cle de
+-- premier niveau de StatsDB : elle serait prise pour un personnage).
+-- Releve : arbre des categories, types de criteres, criteres « haut fait »
+-- (type 8, metas), chaines precedent / suivant, hauts faits de compte, cout
+-- du parcours, evenements du calendrier rapproches des categories.
+-- ============================================================================
+local ADV_P = "|cFFFFD700[Stats sonde]|r "
+local advRunning = false
+
+local function AdvRec()
+  local key = SX.CurrentCharKey and SX.CurrentCharKey()
+  return key and StatsDB and StatsDB[key]
+end
+
+local function AdvNorm(s)
+  return type(s) == "string" and s:lower():gsub("%s+", " ") or ""
+end
+
+local function AdvHolidays()
+  local out = {}
+  if not (C_Calendar and C_Calendar.GetNumDayEvents and C_Calendar.GetDayEvent and C_DateAndTime) then return out end
+  if C_Calendar.OpenCalendar then pcall(C_Calendar.OpenCalendar) end
+  local ok, today = pcall(C_DateAndTime.GetCurrentCalendarTime)
+  if not ok or type(today) ~= "table" then return out end
+  local okN, n = pcall(C_Calendar.GetNumDayEvents, 0, today.monthDay)
+  for i = 1, (okN and tonumber(n) or 0) do
+    local okE, e = pcall(C_Calendar.GetDayEvent, 0, today.monthDay, i)
+    if okE and type(e) == "table" and e.calendarType == "HOLIDAY" and type(e.title) == "string"
+       and not (issecretvalue and issecretvalue(e.title)) then
+      out[#out + 1] = { title = e.title, eventID = e.eventID }
+    end
+  end
+  return out
+end
+
+local function AdvRun()
+  local rec = AdvRec()
+  if not rec then print(ADV_P .. "personnage pas encore connu de Stats, reessaie dans quelques secondes."); return end
+  if advRunning then print(ADV_P .. "deja en cours."); return end
+  if not (GetCategoryList and GetCategoryInfo and GetCategoryNumAchievements and GetAchievementInfo) then
+    print(ADV_P .. "API des hauts faits absente."); return
+  end
+  local okC, cats = pcall(GetCategoryList)
+  if not okC or type(cats) ~= "table" then print(ADV_P .. "GetCategoryList a echoue."); return end
+
+  advRunning = true
+  local _, build = GetBuildInfo()
+  local P = {
+    at = time(), build = build, locale = GetLocale(), level = UnitLevel("player"),
+    maxLevel = GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion() or nil,
+    cats = {}, critTypes = {}, critByRoot = {}, critSamples = {},
+    meta = {}, chains = {}, legacy = {},
+    ach = { total = 0, done = 0, doneByAlt = 0, accountFlag = 0, guild = 0, statistic = 0, zero = 0, incomplete = 0,
+            withCrit = 0, critRead = 0 },
+    cost = { frames = 0, ms = 0, maxFrameMs = 0 },
+    holidays = AdvHolidays(), holidayMatch = {},
+  }
+  print(ADV_P .. string.format("parcours de %d categories, une par image...", #cats))
+
+  -- Arbre d'abord (rapide) : titre, parent, ordre, nombre de hauts faits.
+  for o, id in ipairs(cats) do
+    local okI, title, parent, flags = pcall(GetCategoryInfo, id)
+    local okN, total, done = pcall(GetCategoryNumAchievements, id, true)
+    P.cats[id] = { t = okI and title or nil, p = okI and parent or nil, f = okI and flags or nil, o = o,
+                   n = okN and total or nil, d = okN and done or nil }
+  end
+  local function RootOf(id)
+    local guard = 0
+    while P.cats[id] and P.cats[id].p and P.cats[id].p ~= -1 and P.cats[P.cats[id].p] and guard < 10 do
+      id = P.cats[id].p; guard = guard + 1
+    end
+    return id
+  end
+
+  local ACC = 0x00020000   -- ACHIEVEMENT_FLAGS_ACCOUNT
+  local band = bit and bit.band
+  local ci, startMs = 0, debugprofilestop()
+  local function step()
+    if InCombatLockdown() then C_Timer.After(1, step); return end
+    ci = ci + 1
+    local cat = cats[ci]
+    if not cat then
+      P.cost.ms = math.floor(debugprofilestop() - startMs)
+      -- Evenements du calendrier rapproches des titres de categories.
+      for _, h in ipairs(P.holidays) do
+        local hn, hits = AdvNorm(h.title), {}
+        for id, c in pairs(P.cats) do
+          local cn = AdvNorm(c.t)
+          if cn ~= "" and (hn:find(cn, 1, true) or cn:find(hn, 1, true)) then hits[#hits + 1] = id end
+        end
+        P.holidayMatch[h.title] = hits
+      end
+      rec.advProbe = P
+      advRunning = false
+      print(ADV_P .. string.format("termine : %d hauts faits, %d criteres lus, %d ms au total (%d images, pire image %d ms). /stats probe adv report",
+        P.ach.total, P.ach.critRead, P.cost.ms, P.cost.frames, math.floor(P.cost.maxFrameMs)))
+      return
+    end
+    local t0 = debugprofilestop()
+    local root = RootOf(cat)
+    local okN, total = pcall(GetCategoryNumAchievements, cat, true)
+    for i = 1, (okN and tonumber(total) or 0) do
+      local ok, id, name, points, completed, _, _, _, _, flags, _, _, isGuild, wasEarnedByMe, _, isStatistic = pcall(GetAchievementInfo, cat, i)
+      if ok and id then
+        local A = P.ach
+        A.total = A.total + 1
+        if completed then A.done = A.done + 1 end
+        if completed and wasEarnedByMe == false then A.doneByAlt = A.doneByAlt + 1 end
+        if band and flags and band(flags, ACC) ~= 0 then A.accountFlag = A.accountFlag + 1 end
+        if isGuild then A.guild = A.guild + 1 end
+        if isStatistic then A.statistic = A.statistic + 1 end
+        if (points or 0) == 0 then A.zero = A.zero + 1 end
+        if not completed then A.incomplete = A.incomplete + 1 end
+        -- Chaines (precedent / suivant), quelques exemples.
+        if #P.chains < 15 and GetPreviousAchievement then
+          local okP, prev = pcall(GetPreviousAchievement, id)
+          if okP and prev then
+            local okX, nxt = pcall(GetNextAchievement or function() end, id)
+            P.chains[#P.chains + 1] = { id = id, name = name, prev = prev, nxt = okX and nxt or nil }
+          end
+        end
+        -- Criteres : seulement des hauts faits pas finis (comme le futur parcours).
+        if not completed and not isGuild and not isStatistic then
+          local okC2, nc = pcall(GetAchievementNumCriteria, id)
+          nc = okC2 and tonumber(nc) or 0
+          if nc > 0 then A.withCrit = A.withCrit + 1 end
+          for k = 1, nc do
+            local okK, text, ctype, cdone, qty, req, _, _, assetID = pcall(GetAchievementCriteriaInfo, id, k)
+            if okK then
+              A.critRead = A.critRead + 1
+              ctype = ctype or -1
+              P.critTypes[ctype] = (P.critTypes[ctype] or 0) + 1
+              local br = P.critByRoot[root] or {}
+              br[ctype] = (br[ctype] or 0) + 1
+              P.critByRoot[root] = br
+              if #P.critSamples < 40 and not P.critSamples["t" .. ctype] then
+                P.critSamples["t" .. ctype] = true
+                P.critSamples[#P.critSamples + 1] = { ach = id, i = k, type = ctype, asset = assetID, text = text, qty = qty, req = req }
+              end
+              -- Type 8 : le critere est-il un autre haut fait ? (metas)
+              if ctype == 8 and #P.meta < 20 and assetID and assetID > 0 then
+                local okM, mid, mname, _, mdone = pcall(GetAchievementInfo, assetID)
+                P.meta[#P.meta + 1] = { ach = id, achName = name, asset = assetID, text = text, done = cdone,
+                                        assetIsAch = okM and mid == assetID or false, assetName = okM and mname or nil, assetDone = okM and mdone or nil }
+              end
+            end
+          end
+        end
+      end
+    end
+    -- Titres qui ressemblent a « Heritage » / « Legacy » (contenu disparu).
+    local ct = AdvNorm(P.cats[cat] and P.cats[cat].t)
+    if ct:find("h\195\169ritage", 1, true) or ct:find("legacy", 1, true) or ct:find("tours de force", 1, true) or ct:find("feats of strength", 1, true) then
+      P.legacy[#P.legacy + 1] = cat
+    end
+    local dt = debugprofilestop() - t0
+    P.cost.frames = P.cost.frames + 1
+    if dt > P.cost.maxFrameMs then P.cost.maxFrameMs = dt end
+    C_Timer.After(0, step)
+  end
+  step()
+end
+
+local function AdvReport()
+  local rec = AdvRec()
+  local P = rec and rec.advProbe
+  if not P then print(ADV_P .. "aucun releve. Lance d'abord /stats probe adv"); return end
+  print(ADV_P .. string.format("releve du %s, build %s, %s, niveau %s / %s",
+    date("%d/%m %H:%M", P.at), tostring(P.build), tostring(P.locale), tostring(P.level), tostring(P.maxLevel)))
+  local A = P.ach
+  print(ADV_P .. string.format("hauts faits %d (finis %d, dont par un autre perso %d, drapeau compte %d, guilde %d, stats %d, 0 point %d, pas finis %d)",
+    A.total, A.done, A.doneByAlt, A.accountFlag, A.guild, A.statistic, A.zero, A.incomplete))
+  print(ADV_P .. string.format("cout : %d ms, %d images, pire image %d ms, %d criteres lus",
+    P.cost.ms, P.cost.frames, math.floor(P.cost.maxFrameMs), A.critRead))
+  -- Racines.
+  local roots = {}
+  for id, c in pairs(P.cats) do if c.p == -1 then roots[#roots + 1] = id end end
+  table.sort(roots, function(a, b) return (P.cats[a].o or 0) < (P.cats[b].o or 0) end)
+  for _, id in ipairs(roots) do
+    local kids = 0
+    for _, c in pairs(P.cats) do if c.p == id then kids = kids + 1 end end
+    print(ADV_P .. string.format("  racine %d  %s  (%d sous-categories, %s hauts faits)", id, tostring(P.cats[id].t), kids, tostring(P.cats[id].n)))
+  end
+  -- Gouffres.
+  for id, c in pairs(P.cats) do
+    local t = AdvNorm(c.t)
+    if t:find("gouffre", 1, true) or t:find("delve", 1, true) then
+      print(ADV_P .. string.format("  gouffres ? %d  %s  (parent %s)", id, tostring(c.t), tostring(c.p)))
+    end
+  end
+  -- Types de criteres les plus frequents.
+  local types = {}
+  for t, n in pairs(P.critTypes) do types[#types + 1] = { t = t, n = n } end
+  table.sort(types, function(a, b) return a.n > b.n end)
+  local parts = {}
+  for i = 1, math.min(10, #types) do parts[#parts + 1] = types[i].t .. "=" .. types[i].n end
+  print(ADV_P .. "types de criteres : " .. table.concat(parts, ", "))
+  -- Metas.
+  local ok8 = 0
+  for _, m in ipairs(P.meta) do if m.assetIsAch then ok8 = ok8 + 1 end end
+  print(ADV_P .. string.format("criteres type 8 : %d exemples, %d pointent bien vers un haut fait", #P.meta, ok8))
+  for i = 1, math.min(3, #P.meta) do
+    local m = P.meta[i]
+    print(ADV_P .. string.format("    %s -> %s (%s)", tostring(m.achName), tostring(m.assetName), tostring(m.asset)))
+  end
+  print(ADV_P .. string.format("chaines : %d exemples ; categories heritage / tours de force : %d", #P.chains, #P.legacy))
+  if #P.holidays == 0 then
+    print(ADV_P .. "aucun evenement du calendrier aujourd'hui")
+  else
+    for _, h in ipairs(P.holidays) do
+      local hits = P.holidayMatch[h.title] or {}
+      local names = {}
+      for _, id in ipairs(hits) do names[#names + 1] = tostring(P.cats[id] and P.cats[id].t) .. " (" .. id .. ")" end
+      print(ADV_P .. string.format("evenement « %s » -> %s", h.title, #names > 0 and table.concat(names, ", ") or "aucune categorie"))
+    end
+  end
+  print(ADV_P .. "detail complet dans le fichier SavedVariables Stats.lua apres /reload ou deconnexion.")
+end
+
+function SX.ProbeAdv(arg)
+  arg = (arg or ""):lower()
+  if arg == "report" then AdvReport()
+  elseif arg == "clear" then
+    local rec = AdvRec()
+    if rec then rec.advProbe = nil end
+    print(ADV_P .. "releve efface.")
+  else AdvRun() end
 end
 
 -- ============================================================================

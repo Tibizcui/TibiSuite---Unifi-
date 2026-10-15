@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.49
+- Conseiller de TibiSuite : propose les montures encore à obtenir et faisables cette semaine (boss, difficultés encore ouvertes, chance de butin estimée).
+
 ## 7.1.5.48
 - Fiche « Le Déliement de Kith'ix » (raid à boss unique de la 12.1.5) : position donnée par le jeu, accès par les trois portes des Caveaux d'Atal'Utek, numéro de journal 1324 (verrouillage et collections).
 - Fiche « Labyrinthe de Kindo'jan » (méga-gouffre de la 12.1.5), reconnue par le jeu dans le bois des Chants éternels et à Zul'Aman.

@@ -408,6 +408,54 @@ function R.Summary()
   return { bossDone = bd, bossTotal = bt, known = known, avail = avail }
 end
 
+-- Conseiller de TibiSuite (lot 3) : boss mondiaux de la semaine pas encore
+-- vaincus (pas les Repaires), puis 2 rares appris, repetables et
+-- disponibles dans la zone actuelle.
+function DailyTracker_Suggest()
+  local SL = _G.TibiSuiteL or {}
+  local out = {}
+  local reset
+  if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+    local ok, s = pcall(C_DateAndTime.GetSecondsUntilWeeklyReset)
+    if ok and type(s) == "number" and s > 0 then reset = time() + s end
+  end
+  for _, b in ipairs(R.GetBosses()) do
+    -- Type inconnu (journal illisible) : « Repaire : X » a un deux-points,
+    -- un boss mondial non (vu en jeu le 2026-10-14).
+    local isBoss = b.kind == "wb" or (b.kind == nil and b.title and not b.title:find(":", 1, true))
+    if not b.done and isBoss and b.title and not b.title:find("^#") then
+      local ends = b.ends or reset
+      out[#out + 1] = { id = "wb:" .. b.qid, kind = "rare", text = b.title, tag = "world", proximity = 0.8,
+        endsAt = ends, target = "rares",
+        why = SL.SUG_D_WB_FMT and string.format(SL.SUG_D_WB_FMT, tostring(b.zone)) or nil,
+        steps = function()
+          local st = { { text = string.format(SL.SUG_ST_ZONE_FMT or "%s", tostring(b.zone)), done = false } }
+          if ends and ends > time() and _G.TibiSuite and TibiSuite.FmtDuration then
+            st[#st + 1] = { text = string.format(SL.SUG_ST_TIME_FMT or "%s", TibiSuite.FmtDuration(ends - time())) }
+          end
+          return st
+        end }
+    end
+  end
+  local cur, n = CurMap(), 0
+  for npc, r in pairs(DB().rares) do
+    if n >= 2 then break end
+    if cur and r.map == cur and R.IsSure(r) and R.IsKilled(r) == false and r.name then
+      n = n + 1
+      out[#out + 1] = { id = "rare:" .. npc, kind = "rare", text = r.name, tag = "world", proximity = 0.6,
+        target = "rares", why = SL.SUG_D_RARE_FMT and string.format(SL.SUG_D_RARE_FMT, MapName(cur)) or nil,
+        steps = function()
+          local st = { { text = string.format(SL.SUG_ST_ZONE_FMT or "%s", MapName(cur)), done = false } }
+          if (tonumber(r.kills) or 0) > 0 and SL.SUG_ST_KILLS_FMT then
+            st[#st + 1] = { text = string.format(SL.SUG_ST_KILLS_FMT, r.kills) }
+          end
+          return st
+        end }
+    end
+  end
+  return out
+end
+
 -- ----------------------------------------------------------------
 -- Evenements
 -- ----------------------------------------------------------------

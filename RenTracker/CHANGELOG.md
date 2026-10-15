@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.49
+- Conseiller de TibiSuite : propose les factions proches de leur prochain palier, avec la réputation qu'il reste à gagner.
+
 ## 7.1.5.48
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

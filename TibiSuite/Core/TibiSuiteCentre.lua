@@ -255,6 +255,30 @@ D("CTR_GOAL_AUTO_GATHER", "Récolter %d %s")
 D("CTR_GOAL_AUTO_GOLD",   "Gagner %d po cette semaine")
 D("CTR_GOAL_AUTO_MODULE", "Finir %s")
 D("CTR_GOAL_TT",       "Clic : cocher, ou ouvrir le module concerné. Clic droit : gérer les objectifs.")
+D("CTR_SUGGEST",       "Suggestions")
+D("CTR_SUGGEST_DESC",  "Ce que tu n'as pas encore fait et qui est à ta portée : hauts faits presque finis, montures, boss mondiaux, renoms, Grand coffre. Classé selon ce que tu joues, avec la raison à chaque fois.")
+D("CTR_SUG_HEAD",      "SUGGESTIONS")
+D("CTR_SUG_ALL",       "Tout voir")
+D("CTR_SUG_TT",        "Clic : y aller. Clic droit : plus tard ou pas intéressé.")
+D("CTR_SUG_EMPTY",     "Rien à proposer pour l'instant. Les suggestions arrivent au fil de ta progression.")
+D("CTR_SUG_SEC_GEN",   "Conseiller")
+D("CTR_SUG_GEN_NOTE",  "Les suggestions apparaissent dans Ma semaine, la prochaine action et la palette. Les habitudes viennent de l'historique de Stats (4 dernières semaines, tous tes personnages).")
+D("CTR_SUG_ON",        "Proposer des suggestions")
+D("CTR_SUG_HABITS",    "Tenir compte de mes habitudes de jeu")
+D("CTR_SUG_NOGROUP",   "Masquer le contenu de groupe (raids et donjons actuels)")
+D("CTR_SUG_SEC_POPUP", "Fenêtre des propositions")
+D("CTR_SUG_POPUP_NOTE","À la connexion, une fenêtre te propose 5 activités. Survole une proposition pour voir ce qu'il reste à faire. Elle attend la fin de l'analyse des hauts faits et ne s'ouvre ni en combat ni en instance.")
+D("CTR_SUG_POPUP",     "Afficher les propositions à la connexion")
+D("CTR_SUG_POPUP_SHOW","Ouvrir la fenêtre maintenant")
+D("CTR_SUG_SEC_KINDS", "Types proposés")
+D("CTR_SUG_K_ach",     "Hauts faits presque finis (Stats)")
+D("CTR_SUG_K_coll",    "Montures à obtenir (DgnTracker)")
+D("CTR_SUG_K_rare",    "Boss mondiaux et rares (DailyTracker)")
+D("CTR_SUG_K_renown",  "Renoms proches du palier (RenTracker)")
+D("CTR_SUG_K_weekly",  "Grand coffre (WeeklyCompass)")
+D("CTR_SUG_SEC_DISM",  "Suggestions écartées")
+D("CTR_SUG_DISM_NOTE", "Clic droit sur une suggestion : « Plus tard » la cache 7 jours, « Pas intéressé » 90 jours.")
+D("CTR_SUG_RESTORE",   "Remettre toutes les suggestions écartées")
 D("CTR_WEEK_EVENT",    "ÉVÉNEMENT DE LA SEMAINE")
 D("CTR_WEEK_EVENT_NONE", "Aucun événement aujourd'hui")
 D("CTR_WEEK_EVENT_ENDS", "fin dans %s")
@@ -277,6 +301,7 @@ local GENERAL = {
   { id = "home",   label = "CTR_HOME"   },
   { id = "activity", label = "CTR_ACTIVITY" },
   { id = "goals",    label = "CTR_GOALS" },
+  { id = "suggest",  label = "CTR_SUGGEST" },
   { id = "bar",    label = "CTR_BAR"    },
   { id = "widgets", label = "CTR_WIDGETS" },
   { id = "display", label = "CTR_DISPLAY" },
@@ -563,6 +588,7 @@ end
 
 local CARD_H = 58
 local RefreshHome   -- definie plus bas (le ticker de BuildHome l'appelle)
+local RefreshSuggest -- page Suggestions (definie plus bas)
 
 -- Prochaine action : ce qui presse d'abord, puis le premier « A faire »
 -- incomplet, puis la progression la plus basse. nil = tout est a jour.
@@ -601,6 +627,17 @@ function TibiSuite.GetNextAction()
       end
     end
   end
+  -- Meilleure suggestion du Conseiller (lot 4) : apres l'urgent, le « A
+  -- faire » et les objectifs (150+), devant les modules peu avances (200+).
+  if TibiSuite.SuggestOn and TibiSuite.SuggestOn() and TibiSuite.GetSuggestions then
+    local okS, list = pcall(TibiSuite.GetSuggestions, 1)
+    local s = okS and type(list) == "table" and list[1] or nil
+    local m = s and cat[s.key]
+    if m and (not bestScore or 180 < bestScore) then
+      best, bestScore = { key = s.key, mod = m, urgent = false, suggestion = s,
+        text = s.text .. ((s.reason and s.reason ~= "") and ("  (" .. s.reason .. ")") or "") }, 180
+    end
+  end
   return best
 end
 
@@ -611,6 +648,7 @@ function TibiSuite.RunNextAction()
     if na.key == "Suite" then TibiSuite.OpenCentre("goals")
     elseif na.goal.kind == "gather" then TibiSuite.OpenModuleTo("Skill", "farm")
     else TibiSuite.OpenModule(na.key) end
+  elseif na and na.suggestion then TibiSuite.OpenSuggestion(na.suggestion)
   elseif na then TibiSuite.OpenModule(na.key) else TibiSuite.OpenCentre("home") end
 end
 
@@ -700,6 +738,75 @@ local function MakeStatusCard(parent)
   return c
 end
 
+-- ── Suggestions du Conseiller (lot 4) ──────────────────────────────
+-- Ligne commune a Ma semaine et a la page Suggestions : icone, nom, raison
+-- (et note). Clic : y aller ; clic droit : menu (plus tard, pas interesse).
+local SUG_ROW = 36
+
+local function SugMods()
+  local t = {}
+  for _, mod in ipairs(TibiSuite.GetCatalog()) do t[mod.key] = mod end
+  return t
+end
+
+local function SugRow(parent, store, i, onChange)
+  local r = store[i]
+  if r then return r end
+  r = CreateFrame("Button", nil, parent)
+  r:SetHeight(SUG_ROW - 2)
+  r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  r.bg = r:CreateTexture(nil, "BACKGROUND"); r.bg:SetAllPoints(); r.bg:SetColorTexture(1, 1, 1, 0.035)
+  r.bar = r:CreateTexture(nil, "ARTWORK"); r.bar:SetPoint("TOPLEFT"); r.bar:SetPoint("BOTTOMLEFT"); r.bar:SetWidth(3)
+  r.ico = r:CreateTexture(nil, "ARTWORK"); r.ico:SetSize(20, 20); r.ico:SetPoint("LEFT", 10, 0)
+  r.txt = K.Text(r, "GameFontHighlight", "", K.COL.TXT)
+  r.txt:SetPoint("TOPLEFT", 38, -4); r.txt:SetPoint("RIGHT", -10, 0)
+  r.txt:SetJustifyH("LEFT"); r.txt:SetWordWrap(false)
+  r.sub = K.Text(r, "GameFontDisableSmall", "", K.COL.DIM)
+  r.sub:SetPoint("TOPLEFT", r.txt, "BOTTOMLEFT", 0, -2); r.sub:SetPoint("RIGHT", -10, 0)
+  r.sub:SetJustifyH("LEFT"); r.sub:SetWordWrap(false)
+  local hl = r:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(); hl:SetColorTexture(1, 1, 1, 0.04)
+  r:SetScript("OnClick", function(s, btn)
+    if not s.sug then return end
+    if btn == "RightButton" then TibiSuite.ShowSuggestionMenu(s, s.sug, onChange); return end
+    if TibiSuite.HideSuggestionTip then TibiSuite.HideSuggestionTip() end
+    frame:Hide()
+    TibiSuite.OpenSuggestion(s.sug)
+  end)
+  r:SetScript("OnEnter", function(s)
+    if not s.sug then return end
+    -- Fiche facon haut fait officiel (TibiSuiteAdvisor.lua) si chargee.
+    if TibiSuite.ShowSuggestionTip then TibiSuite.ShowSuggestionTip(s, s.sug, s.col); return end
+    GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+    if TibiSuite.AddSuggestionTooltip then
+      -- Meme infobulle que la fenetre des propositions (ce qu'il reste a faire).
+      TibiSuite.AddSuggestionTooltip(GameTooltip, s.sug, s.col)
+    else
+      GameTooltip:AddLine(s.sug.text, s.col[1], s.col[2], s.col[3])
+      if s.sug.reason and s.sug.reason ~= "" then GameTooltip:AddLine(s.sug.reason, 1, 1, 1, true) end
+      if s.sug.note and s.sug.note ~= "" then GameTooltip:AddLine(s.sug.note, 0.75, 0.75, 0.8, true) end
+      GameTooltip:AddLine(L.CTR_SUG_TT, 0.6, 0.6, 0.65, true)
+    end
+    GameTooltip:Show()
+  end)
+  r:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+    if TibiSuite.HideSuggestionTip then TibiSuite.HideSuggestionTip() end
+  end)
+  store[i] = r
+  return r
+end
+
+local function FillSugRow(r, s, mods)
+  local mod = mods[s.key]
+  local mc = mod and ModCol(mod) or ACC
+  r.sug, r.col = s, mc
+  r.bar:SetColorTexture(mc[1], mc[2], mc[3], 1)
+  r.ico:SetTexture(s.icon or (K.MODULE_LOGO and K.MODULE_LOGO[s.key]) or K.LOGO)
+  r.txt:SetText(s.text)
+  r.sub:SetText((s.reason or "") .. ((s.note and s.note ~= "") and ("  " .. K.HX.DIM .. "·  " .. s.note .. "|r") or ""))
+  r:Show()
+end
+
 local function BuildHome(p)
   local sc = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
   sc:SetPoint("TOPLEFT", 0, 0); sc:SetPoint("BOTTOMRIGHT", -24, 0)
@@ -730,7 +837,10 @@ local function BuildHome(p)
   nx.txt = K.Text(nx, "GameFontHighlight", "", K.COL.TXT); nx.txt:SetPoint("TOPLEFT", nx.lbl, "BOTTOMLEFT", 0, -2)
   nx.txt:SetJustifyH("LEFT"); nx.txt:SetWordWrap(false)
   local nhl = nx:CreateTexture(nil, "HIGHLIGHT"); nhl:SetAllPoints(); nhl:SetColorTexture(1, 1, 1, 0.04)
-  nx:SetScript("OnClick", function(s) if s.key then frame:Hide(); TibiSuite.OpenModule(s.key) end end)
+  nx:SetScript("OnClick", function(s)
+    if s.sug then frame:Hide(); TibiSuite.OpenSuggestion(s.sug)
+    elseif s.key then frame:Hide(); TibiSuite.OpenModule(s.key) end
+  end)
   nx:SetScript("OnEnter", function(s)
     if not s.key then return end
     GameTooltip:SetOwner(s, "ANCHOR_BOTTOM"); GameTooltip:AddLine(L.CTR_NEXT_TT, 1, 1, 1); GameTooltip:Show()
@@ -748,6 +858,12 @@ local function BuildHome(p)
     end
   end
   p.empty = K.Text(c, "GameFontHighlight", L.CTR_WEEK_EMPTY, K.COL.DIM)
+
+  -- Suggestions du Conseiller (3 au plus) et lien vers la page complete.
+  p.sugHead = K.Label(c, L.CTR_SUG_HEAD)
+  p.sugRows, p.sugList = {}, {}
+  p.sugAll = K.Btn(c, 140, 22, L.CTR_SUG_ALL)
+  p.sugAll:SetScript("OnClick", function() Select("suggest") end)
 
   -- Acces rapides
   p.quickHead = K.Label(c, L.CTR_QUICK)
@@ -825,6 +941,19 @@ local function LayoutHome(p)
   if shown == 0 then
     p.empty:ClearAllPoints(); p.empty:SetPoint("TOPLEFT", 2, y - 4); p.empty:SetWidth(w - 4)
     y = y - 34
+  end
+  local ns = #(p.sugList or {})
+  p.sugHead:SetShown(ns > 0); p.sugAll:SetShown(ns > 0)
+  if ns > 0 then
+    p.sugHead:ClearAllPoints(); p.sugHead:SetPoint("TOPLEFT", 2, y - 4)
+    p.sugAll:ClearAllPoints(); p.sugAll:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
+    y = y - 26
+    for i = 1, ns do
+      local r = p.sugRows[i]
+      r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y); r:SetWidth(w)
+      y = y - SUG_ROW
+    end
+    y = y - 6
   end
   p.quickHead:ClearAllPoints(); p.quickHead:SetPoint("TOPLEFT", 2, y - 8)
   y = y - 28
@@ -936,9 +1065,18 @@ function RefreshHome(p)
     end
   end
 
+  -- Suggestions du Conseiller
+  local sl = {}
+  if TibiSuite.SuggestOn and TibiSuite.SuggestOn() and TibiSuite.GetSuggestions then sl = TibiSuite.GetSuggestions(3) end
+  p.sugList = sl
+  local mods = SugMods()
+  for i, s in ipairs(sl) do FillSugRow(SugRow(p.child, p.sugRows, i, function() RefreshHome(p) end), s, mods) end
+  for i = #sl + 1, #p.sugRows do p.sugRows[i]:Hide() end
+
   -- Prochaine action
   local na = TibiSuite.GetNextAction()
   local nx = p.next
+  nx.sug = na and na.suggestion or nil
   if na then
     local mc = ModCol(na.mod)
     nx.key = na.key
@@ -1892,6 +2030,101 @@ local function LayoutOverview(p, mod)
   return p.optHost
 end
 
+-- ── Page Suggestions (Conseiller, lot 4) ───────────────────────────
+-- Liste en haut (6 au plus), reglages du Conseiller dessous (panneau socle
+-- ancre dans p.optHost, comme les pages de module) : cases indexees par la
+-- palette et enregistrees dans Annuler sans code en plus.
+local sugPanel
+local SUG_KINDS = { "ach", "coll", "rare", "renown", "weekly" }
+
+local function SugChanged()
+  if TibiSuite.InvalidateSuggestions then TibiSuite.InvalidateSuggestions() end
+end
+
+local function BuildSugPanel()
+  if sugPanel then return sugPanel end
+  local P = UI.CreateOptionsPanel({ name = "TibiSuiteCentreSuggest", title = L.CTR_SUGGEST, accent = ACC })
+  P:Section(L.CTR_SUG_SEC_GEN)
+  P:Note(L.CTR_SUG_GEN_NOTE)
+  P:Check(L.CTR_SUG_ON, function() return TibiSuiteDB.sugOn ~= false end,
+    function(v) TibiSuiteDB.sugOn = (not v) and false or nil; SugChanged() end)
+  P:Check(L.CTR_SUG_HABITS, function() return TibiSuiteDB.sugHabits ~= false end,
+    function(v) TibiSuiteDB.sugHabits = (not v) and false or nil; SugChanged() end)
+  P:Check(L.CTR_SUG_NOGROUP, function() return TibiSuiteDB.sugNoGroup == true end,
+    function(v) TibiSuiteDB.sugNoGroup = v and true or nil; SugChanged() end)
+  -- Fenetre « Tes propositions du jour » (TibiSuiteAdvisor.lua).
+  P:Section(L.CTR_SUG_SEC_POPUP)
+  P:Note(L.CTR_SUG_POPUP_NOTE)
+  P:Check(L.CTR_SUG_POPUP, function() return TibiSuiteDB.advPopup ~= false end,
+    function(v) TibiSuiteDB.advPopup = (not v) and false or nil end)
+  if TibiSuite.AddAdvisorKeyRow then TibiSuite.AddAdvisorKeyRow(P) end
+  P:Button(L.CTR_SUG_POPUP_SHOW, function()
+    frame:Hide()
+    if TibiSuite.ShowAdvisor then TibiSuite.ShowAdvisor(true) end
+  end)
+  P:Section(L.CTR_SUG_SEC_KINDS)
+  for _, k in ipairs(SUG_KINDS) do
+    P:Check(L["CTR_SUG_K_" .. k] or k,
+      function() return not (TibiSuiteDB.sugKinds and TibiSuiteDB.sugKinds[k] == false) end,
+      function(v)
+        TibiSuiteDB.sugKinds = TibiSuiteDB.sugKinds or {}
+        TibiSuiteDB.sugKinds[k] = (not v) and false or nil
+        if not next(TibiSuiteDB.sugKinds) then TibiSuiteDB.sugKinds = nil end
+        SugChanged()
+      end)
+  end
+  P:Section(L.CTR_SUG_SEC_DISM)
+  P:Note(L.CTR_SUG_DISM_NOTE)
+  P:Button(L.CTR_SUG_RESTORE, function()
+    if TibiSuite.RestoreSuggestions then TibiSuite.RestoreSuggestions() end
+    if TibiSuite.ShowToast then TibiSuite.ShowToast(L.SUG_RESTORED) end
+  end)
+  sugPanel = P
+  return P
+end
+
+local function BuildSuggest(p)
+  p.list = CreateFrame("Frame", nil, p)
+  p.list:SetPoint("TOPLEFT", 0, 0); p.list:SetPoint("TOPRIGHT", -24, 0)
+  p.list.head = K.Label(p.list, L.CTR_SUG_HEAD); p.list.head:SetPoint("TOPLEFT", 2, -2)
+  p.list.state = K.Text(p.list, "GameFontDisableSmall", "", K.COL.DIM); p.list.state:SetPoint("TOPRIGHT", -2, -2)
+  p.list.empty = K.Text(p.list, "GameFontHighlightSmall", "", K.COL.MUT)
+  p.list.empty:SetJustifyH("LEFT")
+  p.list.sep = p.list:CreateTexture(nil, "ARTWORK"); p.list.sep:SetHeight(1)
+  p.list.sep:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
+  p.list.sep:SetPoint("BOTTOMLEFT"); p.list.sep:SetPoint("BOTTOMRIGHT")
+  p.rows = {}
+  p.optHost = CreateFrame("Frame", nil, p)
+end
+
+function RefreshSuggest(p)
+  if not (p and p.list) then return end
+  local list, pending = {}, false
+  local on = TibiSuite.SuggestOn and TibiSuite.SuggestOn()
+  if on then list, pending = TibiSuite.GetSuggestions(6) end
+  p.list.state:SetText(pending and (K.HX.GOLD .. L.SUG_PENDING .. "|r") or "")
+  for _, r in ipairs(p.rows) do r:Hide() end
+  local y = -22
+  p.list.empty:SetShown(#list == 0)
+  if #list == 0 then
+    p.list.empty:SetText(not on and L.SUG_OFF or (pending and L.SUG_PENDING or L.CTR_SUG_EMPTY))
+    p.list.empty:ClearAllPoints(); p.list.empty:SetPoint("TOPLEFT", 4, y); p.list.empty:SetPoint("RIGHT", -4, 0)
+    y = y - math.max(16, p.list.empty:GetStringHeight() or 14) - 8
+  end
+  local mods = SugMods()
+  for i, s in ipairs(list) do
+    local r = SugRow(p.list, p.rows, i, function() RefreshSuggest(p) end)
+    FillSugRow(r, s, mods)
+    r:ClearAllPoints(); r:SetPoint("TOPLEFT", 0, y); r:SetPoint("TOPRIGHT", 0, y)
+    y = y - SUG_ROW
+  end
+  local h = -y + 10
+  p.list:SetHeight(h - 4)
+  p.optHost:ClearAllPoints()
+  p.optHost:SetPoint("TOPLEFT", 0, -h)
+  p.optHost:SetPoint("BOTTOMRIGHT", 0, 0)
+end
+
 -- Bouton Annuler du pied de fenetre : visible tant qu'il y a quelque chose a annuler.
 local function RefreshUndo()
   if not undoBtn then return end
@@ -1947,6 +2180,7 @@ local function Relayout()
   if pages.doctor and pages.doctor.fs then LayoutDoctor(pages.doctor) end
   if pages.profiles and pages.profiles.child and pages.profiles:IsShown() then RefreshProfiles(pages.profiles) end
   if pages.widgets and pages.widgets.child and pages.widgets:IsShown() then RefreshWidgetsPage(pages.widgets) end
+  if pages.suggest and pages.suggest.list and pages.suggest:IsShown() then RefreshSuggest(pages.suggest) end
   if docked and docked:IsDocked() then docked:SetContentWidth(DockW()) end
 end
 
@@ -1981,6 +2215,14 @@ function Select(id)
     SetHeader(K.LOGO, L.CTR_GOALS, ACC, L.CTR_GOALS_DESC)
     p:Show()
     RefreshGoals(p)
+    return
+  elseif id == "suggest" then
+    local p = Page("suggest")
+    if not p.list then BuildSuggest(p) end
+    SetHeader(K.LOGO, L.CTR_SUGGEST, ACC, L.CTR_SUGGEST_DESC)
+    p:Show()
+    RefreshSuggest(p)
+    docked = BuildSugPanel(); docked:Dock(p.optHost, DockW())
     return
   elseif id == "widgets" then
     local p = Page("widgets")
@@ -2083,6 +2325,16 @@ function RefreshAll()
   RefreshRows()
   RefreshFooter()
   if current == "home" and pages.home and pages.home.cards then RefreshHome(pages.home) end
+end
+
+-- Suggestions recalculees (parcours fini, reglage change, ecartee) : la page
+-- affichee suit.
+if TibiSuite.OnSuggestionsChanged then
+  TibiSuite.OnSuggestionsChanged(function()
+    if not (frame and frame:IsShown()) then return end
+    if current == "suggest" and pages.suggest and pages.suggest.list then RefreshSuggest(pages.suggest)
+    elseif current == "home" and pages.home and pages.home.cards then RefreshHome(pages.home) end
+  end)
 end
 
 if TibiSuite.OnDisplayChanged then

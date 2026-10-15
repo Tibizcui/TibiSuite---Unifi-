@@ -1,5 +1,5 @@
 -- ================================================================
--- RenTracker v7.1.5.48
+-- RenTracker v7.1.5.49
 -- Suivi des reputations | Toutes les extensions depuis vanilla
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
@@ -2671,7 +2671,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- zone) si la connexion est deja effective. Aucun impact sur les donnees.
     if IsLoggedIn() then
       if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-        print("|cFF4D99FFRenTracker|r v7.1.5.48 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+        print("|cFF4D99FFRenTracker|r v7.1.5.49 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
       ScheduleParagonScan(3)
@@ -2679,7 +2679,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
 
   elseif event == "PLAYER_LOGIN" then
     if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
-      print("|cFF4D99FFRenTracker|r v7.1.5.48 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFRenTracker|r v7.1.5.49 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)
@@ -2761,6 +2761,40 @@ function RenTrackerAPI.GetOverview()
       progress = e.d.pct, color = c and { c.r, c.g, c.b } or nil }
   end
   return out
+end
+
+-- Conseiller de TibiSuite (lot 3) : les 3 factions les plus proches de leur
+-- prochain palier, a partir de 50 % (meme filtre que l'apercu). Pas de
+-- raison fournie : le core affiche l'avancement (« Presque fini : 92 % »).
+function RenTrackerAPI.GetSuggestions()
+  local list = {}
+  for _, fac in ipairs(GetActiveFactions()) do
+    if fac.id and fac.name then
+      local okD, d = pcall(GetRenownData, fac.id, fac)
+      if okD and d and d.found and not d.capped and (d.pct or 0) >= 0.5 and (d.pct or 0) < 1 then
+        local maxedNoParagon = d.system == "renown" and d.rank and d.cap and d.rank >= d.cap and not d.paragon
+        if not maxedNoParagon then
+          local SL = _G.TibiSuiteL or {}
+          local label, cur, max = d.label and tostring(d.label) or nil, tonumber(d.cur), tonumber(d.max)
+          list[#list + 1] = { id = "rep:" .. fac.id, kind = "renown", tag = "rep", text = fac.name,
+            proximity = d.pct, note = label,
+            steps = function()
+              local st = {}
+              if cur and max and SL.SUG_ST_REP_FMT then
+                st[#st + 1] = { text = string.format(SL.SUG_ST_REP_FMT, label or "", cur, max), done = false }
+                if max > cur and SL.SUG_ST_REP_LEFT_FMT then
+                  st[#st + 1] = { text = string.format(SL.SUG_ST_REP_LEFT_FMT, max - cur) }
+                end
+              end
+              return st
+            end }
+        end
+      end
+    end
+  end
+  table.sort(list, function(a, b) return a.proximity > b.proximity end)
+  while #list > 3 do table.remove(list) end
+  return list
 end
 
 -- Renvoie left, total (quetes hebdo de reputation restantes / comptees).

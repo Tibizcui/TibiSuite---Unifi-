@@ -177,6 +177,9 @@ if HasCore() and IsEnabledByCore() then
     overviewFn    = function()
       if _G.RenTrackerAPI and RenTrackerAPI.GetOverview then return RenTrackerAPI.GetOverview() end
     end,
+    suggestFn     = function()
+      if _G.RenTrackerAPI and RenTrackerAPI.GetSuggestions then return RenTrackerAPI.GetSuggestions() end
+    end,
   })
 elseif GetUI() and GetUI().RegisterSearch then
   -- Repli : suite absente mais socle present -> au moins la recherche marche.

@@ -80,6 +80,7 @@ if HasCore() and IsEnabledByCore() then
     onOptions = function() if _G.DailyTracker_OpenOptions then _G.DailyTracker_OpenOptions() end end,
     statusFn  = function() if _G.DailyTracker_Status then return _G.DailyTracker_Status() end end,
     overviewFn = function() if _G.DailyTracker_Overview then return _G.DailyTracker_Overview() end end,
+    suggestFn = function() if _G.DailyTracker_Suggest then return _G.DailyTracker_Suggest() end end,
     openTo    = function(target)
       if target == "rares" and _G.DailyTracker_OpenRares then _G.DailyTracker_OpenRares(); return true end
       return false

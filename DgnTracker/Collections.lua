@@ -528,6 +528,67 @@ function C.Summary()
   return out
 end
 
+-- Conseiller de TibiSuite (lot 3) : montures faisables cette semaine.
+-- Proximite (« facilite ») 0,4 de base, +0,2 instance deja entamee cette
+-- semaine, +0,1 contenu d'une extension passee, +0,1 taux documente d'au
+-- moins 1 % ; poids 0,75 (un butin a 1 % ne doit pas passer devant un haut
+-- fait presque fini). Les mascottes et jouets ne sont pas proposes (trop
+-- nombreux).
+-- nil = catalogue pas encore construit (jamais lance ici : il part a la
+-- premiere ouverture de la vue Collections).
+function C.Suggestions(max)
+  local cat = C.Catalog()
+  if not cat then return nil end
+  local locks = ReadLocks()
+  local SL = _G.TibiSuiteL or {}
+  local maxTier = 0
+  for _, inst in pairs(cat.inst) do if (inst.tier or 0) > maxTier then maxTier = inst.tier end end
+  local out = {}
+  for _, inst in pairs(cat.inst) do
+    for id, r in pairs(inst.items) do
+      local st, open
+      if r.k == "mount" then st, open = C.ItemState(id, r, inst, locks) end
+      if st == "avail" then
+        local rtxt, rval, rnote = C.Rate(r)
+        local locked = inst.map and locks[inst.map] ~= nil or false
+        local old = (inst.tier or 0) < maxTier
+        local why = (r.en and SL.SUG_C_MOUNT_FMT) and string.format(SL.SUG_C_MOUNT_FMT, r.en, tostring(inst.name))
+          or (SL.SUG_C_MOUNT_INST_FMT and string.format(SL.SUG_C_MOUNT_INST_FMT, tostring(inst.name))) or nil
+        if why and locked and SL.SUG_C_LOCKED then why = why .. " " .. SL.SUG_C_LOCKED end
+        out[#out + 1] = {
+          id = "coll:" .. id, kind = "coll", text = r.n or ("#" .. id), icon = r.ic,
+          tag = inst.raid and "raid" or "dungeon", group = (inst.raid and not old) and true or false,
+          proximity = 0.4 + (locked and 0.2 or 0) + (old and 0.1 or 0) + ((rval or 0) >= 1 and 0.1 or 0),
+          why = why, note = rtxt, target = "coll", rate = rval or 0, weight = 0.75,
+          -- Infobulle du Conseiller : boss, instance, difficultes encore
+          -- ouvertes cette semaine, chance estimee, source du journal.
+          steps = function()
+            local out = {}
+            local okH, lines, src = pcall(C.HowTo, r, inst.name)
+            if okH then for _, l in ipairs(lines or {}) do out[#out + 1] = { text = l } end end
+            if open and #open > 0 and SL.SUG_ST_DIFFS_FMT then
+              local names = {}
+              for _, d in ipairs(open) do names[#names + 1] = C.DiffName(d) end
+              out[#out + 1] = { text = string.format(SL.SUG_ST_DIFFS_FMT, table.concat(names, ", ")), done = false }
+            end
+            if rtxt and SL.SUG_ST_RATE_FMT then out[#out + 1] = { text = string.format(SL.SUG_ST_RATE_FMT, rtxt) } end
+            if rnote then out[#out + 1] = { text = rnote } end
+            if okH and type(src) == "string" and src ~= "" then out[#out + 1] = { text = src } end
+            return out
+          end,
+        }
+      end
+    end
+  end
+  table.sort(out, function(a, b)
+    if a.proximity ~= b.proximity then return a.proximity > b.proximity end
+    if a.rate ~= b.rate then return a.rate > b.rate end
+    return tostring(a.text) < tostring(b.text)
+  end)
+  while #out > (max or 6) do table.remove(out) end
+  return out
+end
+
 -- ----------------------------------------------------------------
 -- Nom et icone d'affichage. Certains objets (jouets surtout) sont classes
 -- sans nom ni icone : on lit l'icone (connue sans cache), on demande le

@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.1.5.49
+- Les Vénithes ascendantes apparaissent dans la fiche (objet compté dans les sacs et les banques).
+- Fiche : 8 lignes de monnaies (la 6e était coupée).
+- Conseiller de TibiSuite : propose le prochain emplacement du Grand coffre à débloquer, emplacement par emplacement.
+
 ## 7.1.5.48
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

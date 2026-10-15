@@ -137,6 +137,12 @@ if HasCore() and IsEnabledByCore() then
       end
       return out
     end,
+    -- Conseiller (lot 3) : montures faisables cette semaine.
+    suggestFn = function()
+      local C = _G.DgnTrackerColl
+      if C and C.Suggestions then return C.Suggestions(6) end
+      return nil
+    end,
     openTo = function(target)
       if target == "coll" and _G.DgnTracker_OpenView then _G.DgnTracker_OpenView("Coll"); return true end
       if type(target) == "table" and _G.DgnTrackerAPI and DgnTrackerAPI.OpenInstance then
