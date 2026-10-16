@@ -304,6 +304,18 @@ L.VER_NONE     = L.VER_NONE     or "aucune plus récente vue"
 L.VER_UPTODATE = L.VER_UPTODATE or "à jour"
 L.VER_HEARD    = L.VER_HEARD    or "joueurs entendus cette session"
 L.VER_NOSOCLE  = L.VER_NOSOCLE  or "socle sans annonce de version (v17 requis)"
+L.VER_PATCH    = L.VER_PATCH    or "interface du jeu / de la suite"
+L.VER_PATCH_OLD = L.VER_PATCH_OLD or "jeu plus récent que la suite"
+L.VER_PATCH_OK = L.VER_PATCH_OK or "suite à jour pour ce patch"
+L.VER_NET      = L.VER_NET      or "réseau"
+L.VER_NET_FMT  = L.VER_NET_FMT  or "préfixe %s, %d envoi(s) (dernier : %s, code %s), %d reçu(s)"
+L.VER_ECHO_OK  = L.VER_ECHO_OK  or "écho reçu en %s : l'envoi et la réception marchent"
+L.VER_ECHO_NO  = L.VER_ECHO_NO  or "aucun écho reçu (normal sans guilde ni groupe)"
+L.VER_SECRET   = L.VER_SECRET   or "%d message(s) masqué(s) par le jeu (valeur secrète)"
+L.VER_CHANNELS = L.VER_CHANNELS or "canaux : guilde %s, groupe %s"
+L.VER_TEST_SENT = L.VER_TEST_SENT or "test : annonce envoyée, tape /ts version dans 2 s pour voir l'écho."
+L.VER_TEST_NOSEND = L.VER_TEST_NOSEND or "test : aucune annonce envoyée (ni guilde ni groupe, en combat, ou annonce coupée)."
+L.HELP_VERSION_TEST = L.HELP_VERSION_TEST or "affiche les deux messages pour essai et vérifie l'envoi"
 L.DOC_VERCHECK = L.DOC_VERCHECK or "annonce de version"
 
 -- Table globale minimale exposée pour les modules récents (ex. MiniHub).
@@ -3190,6 +3202,9 @@ SlashCmdList["TIBISUITE"] = function(msg)
   elseif msg == "version" or msg == "ver" then
     TibiSuite.PrintVersionInfo()
 
+  elseif msg == "version test" or msg == "ver test" then
+    TibiSuite.TestVersionCheck()
+
   elseif msg == "news" or msg == "whatsnew" then
     if TibiSuite.ShowWhatsNew then TibiSuite.ShowWhatsNew(true) end
 
@@ -3229,6 +3244,7 @@ SlashCmdList["TIBISUITE"] = function(msg)
     print("  |cFFFFD700/ts setup|r : " .. L.HELP_SETUP)
     print("  |cFFFFD700/ts news|r : " .. L.HELP_NEWS)
     print("  |cFFFFD700/ts version|r : " .. L.HELP_VERSION)
+    print("  |cFFFFD700/ts version test|r : " .. L.HELP_VERSION_TEST)
 
   elseif msg == "" then
     if TibiSuite.ToggleCentre then TibiSuite.ToggleCentre() else ToggleBar() end
@@ -4035,7 +4051,8 @@ function TibiSuite.RunDoctor(emit)
   local vi = UI and UI.VersionInfo and UI.VersionInfo()
   if vi then
     local state = vi.on and L.VER_ON or ("|cFF808080" .. L.VER_OFF .. "|r")
-    local last = vi.newest and ("|cFFFF9A3C" .. L.VER_NEWEST .. " " .. vi.newest .. "|r") or L.VER_NONE
+    local last = vi.newest and ("|cFFFF9A3C" .. L.VER_NEWEST .. " " .. vi.newest .. "|r")
+      or (vi.patch and vi.patch.old and ("|cFFFF9A3C" .. L.VER_PATCH_OLD .. "|r")) or L.VER_NONE
     print("  " .. L.DOC_VERCHECK .. " : " .. state .. ", " .. last)
   end
   if issues == 0 then
@@ -4064,11 +4081,35 @@ function TibiSuite.PrintVersionInfo(emit)
   else
     print("  " .. L.VER_NEWEST .. " : " .. L.VER_UPTODATE)
   end
+  local p = vi.patch
+  if p then
+    print("  " .. L.VER_PATCH .. " : " .. tostring(p.client) .. " / " .. tostring(p.ours)
+      .. " |cFF808080(" .. tostring(p.src) .. ")|r : "
+      .. (p.old and ("|cFFFF9A3C" .. L.VER_PATCH_OLD .. "|r") or ("|cFF66FF66" .. L.VER_PATCH_OK .. "|r")))
+  end
   print("  " .. L.VER_HEARD .. " : " .. tostring(vi.heardCount or 0))
+  if vi.rxCount ~= nil then
+    print("  " .. L.VER_NET .. " : " .. string.format(L.VER_NET_FMT, tostring(vi.regResult),
+      vi.txCount or 0, tostring(vi.lastChannel or "-"), tostring(vi.lastResult or "-"), vi.rxCount or 0))
+    print("  " .. string.format(L.VER_CHANNELS, vi.inGuild and "+" or "-", tostring(vi.groupChannel or "-")))
+    if vi.echo then
+      print("  |cFF66FF66" .. string.format(L.VER_ECHO_OK, tostring(vi.echo.channel)) .. "|r")
+    else
+      print("  |cFF808080" .. L.VER_ECHO_NO .. "|r")
+    end
+    if (vi.rxSecret or 0) > 0 then print("  |cFFFF9A3C" .. string.format(L.VER_SECRET, vi.rxSecret) .. "|r") end
+  end
   local list = {}
   for v, n in pairs(vi.heard or {}) do list[#list + 1] = { v = v, n = n } end
   table.sort(list, function(a, b) return a.n > b.n end)
   for _, e in ipairs(list) do print("    " .. e.v .. " : " .. e.n) end
+end
+
+function TibiSuite.TestVersionCheck()
+  local UI = _G.TibiMidnight
+  if not (UI and UI.VersionTest) then print("|cFFC41F3BTibiSuite|r " .. L.VER_NOSOCLE) return end
+  local sent = UI.VersionTest()
+  print("|cFFC41F3BTibiSuite|r " .. (sent and L.VER_TEST_SENT or L.VER_TEST_NOSEND))
 end
 
 -- ================================================================

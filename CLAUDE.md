@@ -407,7 +407,7 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   notes, champs ; remonte tout objet ancré TOPLEFT sur `content` sous une note
   raccourcie, y compris les widgets maison de MiniHub/Standby), `panel:IsDocked()`.
   Registre `UI.panels` (+ par `cfg.name`) et `UI.lastShownPanel`. Toute
-  évolution du socle (actuellement v17) : bump `NS_VERSION` + recopie dans les 16 copies en gardant
+  évolution du socle (actuellement v19) : bump `NS_VERSION` + recopie dans les 16 copies en gardant
   leur bloc d'en-tête « COPIE EMBARQUEE (module X) ».
 - Alerte de nouvelle version (v17, non testée en jeu, plan `_dev/VersionCheck.md`) :
   préfixe addon `TibiSuite`, message `V1:<version>:S|M` en guilde / groupe /
@@ -416,6 +416,11 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   avec `loginMsg = "none"`. Suite : `TibiSuiteDB.versionCheck` (nil = actif,
   dans `SET_KEYS`), `TibiSuiteDB.verSeen = {v, at}` (rappel à la connexion),
   `UI.VersionInfo()`, `/ts version`, ligne de `/ts doctor`.
+  **v18, détection de patch** : si l'interface du client (`GetBuildInfo`) dépasse
+  celle de nos `.toc` (`C_AddOns.GetAddOnInterfaceVersion`, sinon métadonnée
+  `Interface`, sinon constante `TOC_INTERFACE` du socle), une ligne « date d'avant
+  la mise à jour X du jeu ». L'alerte exacte passe devant. **Monter
+  `TOC_INTERFACE` à chaque passage de compatibilité** (16 copies du socle).
 - En-tête : `UI.AddHeaderControls(frame,cfg)` pose les boutons flottants Options
   (roue) et Recherche (loupe) au coin haut-droit, applique l'état masqué dès la
   création via `_G.TibiSuite.IsCtrlHidden`, et câble Maj+clic droit -> `cfg.onOptions`.

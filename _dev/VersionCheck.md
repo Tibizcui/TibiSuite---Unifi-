@@ -180,3 +180,26 @@ V1:7.1.5.49:S
 2. L'alerte doit-elle passer outre `loginMsg = "none"` (proposé : oui) ?
 3. Ajouter un lien cliquable vers CurseForge dans la ligne (ouvre
    `TibiSuite.ShowURL`) ?
+
+---
+
+## Ajout v18 (2026-10-16) : détection de patch, sans personne autour
+
+Choix de Tibiscui : pas de canal caché, pas de Tibi Companion. Seule piste
+retenue : comparer le numéro d'interface du client (`select(4, GetBuildInfo())`)
+au plus haut `## Interface` des addons de la suite chargés.
+
+- Source du numéro des `.toc` : `C_AddOns.GetAddOnInterfaceVersion` si elle
+  existe, sinon `GetAddOnMetadata(nom, "Interface")`, sinon la constante
+  `TOC_INTERFACE` du socle (120105). `/ts version` affiche la source retenue
+  (`api`, `meta`, `const`) : à vérifier en jeu.
+- Si le client est plus récent : une ligne par session, 15 s après l'entrée
+  en jeu, hors combat : « Votre version X date d'avant la mise à jour 12.x du
+  jeu : une nouvelle version est probablement disponible. » + fil d'activité.
+- L'alerte exacte (joueurs, ou rappel `verSeen`) passe devant : pas de ligne
+  de patch si une version plus récente est déjà connue.
+- Même réglage `versionCheck`.
+- Limite : un addon dont le `.toc` est trop ancien ne se charge que si le
+  joueur a coché « Charger les addons périmés ». Sans cette case, l'addon ne
+  tourne pas et ne peut rien dire (WoW affiche déjà « Périmé » dans la liste).
+- Entretien : monter `TOC_INTERFACE` à chaque passage de compatibilité.

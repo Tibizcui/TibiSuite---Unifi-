@@ -29,7 +29,7 @@
   le socle du core evolue (bump NS_VERSION cote core -> reporter ici).
 ============================================================================]]
 
-local NS_VERSION = 17
+local NS_VERSION = 19
 
 if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
   return
@@ -1166,6 +1166,12 @@ end
 -- est ignore. Jamais d'envoi ni d'affichage en combat.
 -- En suite : reglage TibiSuiteDB.versionCheck (nil = actif, false = coupe),
 -- memoire TibiSuiteDB.verSeen = { v, at }, entree dans le fil d'activite.
+-- v18 : detection de patch, sans personne autour. Si le client du jeu a
+-- un numero d'interface plus recent que celui de nos .toc, on previent
+-- qu'une mise a jour est probablement disponible (pas de numero exact).
+-- Jamais en meme temps que l'alerte exacte (elle a la priorite).
+-- v19 : diagnostics (prefixe, envois, echo de nos propres messages en
+-- guilde, messages recus) et UI.VersionTest() pour /ts version test.
 -- ============================================================================
 do
   local PREFIX   = "TibiSuite"
@@ -1181,6 +1187,12 @@ do
   local FR = (GetLocale and GetLocale() == "frFR")
   local TXT_NEW = FR and "Nouvelle version %s disponible, votre version %s est obsolète !"
                      or  "New version %s available, your version %s is out of date!"
+  local TXT_PATCH = FR and "Votre version %s date d'avant la mise à jour %s du jeu : une nouvelle version est probablement disponible."
+                       or  "Your version %s predates game patch %s: a new version is probably available."
+  -- Repli si le client ne livre pas le champ Interface des .toc : la plus
+  -- haute valeur de « ## Interface » des .toc. A TENIR A JOUR a chaque
+  -- passage de compatibilite (sinon fausse alerte apres un patch).
+  local TOC_INTERFACE = 120105
 
   local VC = UI._vc or {}
   UI._vc = VC
@@ -1249,15 +1261,26 @@ do
 
   local function InCombat() return InCombatLockdown and InCombatLockdown() end
 
+  local function ChatLine(text)
+    local out = DEFAULT_CHAT_FRAME or (ChatFrame1)
+    local line = "|cFFC41F3B" .. (VC.name or "TibiSuite") .. "|r " .. text
+    if out and out.AddMessage then out:AddMessage(line) else print(line) end
+  end
+
+  local function NewText(newV, mine)
+    return string.format(TXT_NEW, "|cFF33FF33" .. newV .. "|r", "|cFFFF5555" .. mine .. "|r")
+  end
+
+  local function PatchText(mine, gameVer)
+    return string.format(TXT_PATCH, "|cFFFF5555" .. mine .. "|r", "|cFFFFD700" .. tostring(gameVer) .. "|r")
+  end
+
   -- Ligne du chat (une seule par session). Le nom reste rouge de marque.
   local function ShowAlert()
     if VC.shown or not VC.newest or not VC.mine then return end
     if InCombat() then VC.alertPending = true return end
     VC.shown, VC.alertPending = true, nil
-    local text = string.format(TXT_NEW, "|cFF33FF33" .. VC.newest .. "|r", "|cFFFF5555" .. VC.mine .. "|r")
-    local out = DEFAULT_CHAT_FRAME or (ChatFrame1)
-    local line = "|cFFC41F3B" .. (VC.name or "TibiSuite") .. "|r " .. text
-    if out and out.AddMessage then out:AddMessage(line) else print(line) end
+    ChatLine(NewText(VC.newest, VC.mine))
     local TS = _G.TibiSuite
     if InSuite() and TS and TS.Notify then
       pcall(TS.Notify, nil, string.format(TXT_NEW, VC.newest, VC.mine),
@@ -1271,6 +1294,64 @@ do
     VC.newest, VC.newestT = v, t
     if InSuite() then _G.TibiSuiteDB.verSeen = { v = v, at = time() } end
     ShowAlert()
+  end
+
+  -- Numero d'interface d'un addon : API dediee si elle existe, sinon le
+  -- champ Interface des metadonnees (plus haute valeur de la liste), sinon
+  -- nil. La source retenue est gardee pour /ts version (a verifier en jeu).
+  local function TocInterface(name)
+    local api = C_AddOns and C_AddOns.GetAddOnInterfaceVersion
+    if api then
+      local ok, n = pcall(api, name)
+      if ok and type(n) == "number" and n > 0 then return n, "api" end
+    end
+    local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+    if get then
+      local ok, raw = pcall(get, name, "Interface")
+      if ok and type(raw) == "string" then
+        local best
+        for n in raw:gmatch("%d+") do
+          n = tonumber(n)
+          if n and n >= 10000 and (not best or n > best) then best = n end
+        end
+        if best then return best, "meta" end
+      end
+    end
+    return nil
+  end
+
+  -- Plus haute interface connue des addons de la suite charges.
+  local function OurInterface()
+    local best, src
+    for _, a in ipairs(ADDONS) do
+      if IsLoaded(a) then
+        local n, how = TocInterface(a)
+        if n and (not best or n > best) then best, src = n, how end
+      end
+    end
+    if not best then return TOC_INTERFACE, "const" end
+    -- Le repli code en dur protege d'un .toc oublie plus ancien.
+    if TOC_INTERFACE > best then return TOC_INTERFACE, "const" end
+    return best, src
+  end
+
+  local function CheckPatch()
+    if not IsOn() or not VC.mine then return end
+    local gameVer, _, _, client = GetBuildInfo()
+    client = tonumber(client)
+    local ours, src = OurInterface()
+    VC.patch = { client = client, ours = ours, src = src, game = gameVer }
+    if not client or client <= ours then return end
+    VC.patch.old = true
+    if VC.shown or VC.patchShown or VC.newest then return end
+    if InCombat() then VC.patchPending = true return end
+    VC.patchShown, VC.patchPending = true, nil
+    ChatLine(PatchText(VC.mine, gameVer))
+    local TS = _G.TibiSuite
+    if InSuite() and TS and TS.Notify then
+      pcall(TS.Notify, nil, string.format(TXT_PATCH, VC.mine, tostring(gameVer)),
+        { toast = false, sound = false, once = "patch:" .. tostring(client) })
+    end
   end
 
   local function GroupChannel()
@@ -1289,6 +1370,7 @@ do
     local ok, res = pcall(C_ChatInfo.SendAddonMessage, PREFIX, msg, channel)
     VC.lastTx[channel] = time()
     VC.lastResult = ok and res or "error"
+    VC.lastChannel, VC.txCount = channel, (VC.txCount or 0) + 1
   end
 
   -- Envoi regroupe : au plus un par canal toutes les THROTTLE secondes,
@@ -1315,12 +1397,21 @@ do
 
   local function OnAddonMessage(prefix, msg, channel, sender)
     if prefix ~= PREFIX then return end
+    VC.rxCount = (VC.rxCount or 0) + 1
     -- Valeurs secretes de Midnight : on ne touche a rien.
-    if issecretvalue and (issecretvalue(msg) or issecretvalue(sender) or issecretvalue(channel)) then return end
+    if issecretvalue and (issecretvalue(msg) or issecretvalue(sender) or issecretvalue(channel)) then
+      VC.rxSecret = (VC.rxSecret or 0) + 1
+      return
+    end
     if type(msg) ~= "string" or type(sender) ~= "string" or not IsOn() or not VC.mineT then return end
     local me = UnitName and UnitName("player")
     local short = Ambiguate and Ambiguate(sender, "none") or sender:match("^[^%-]+")
-    if me and short == me then return end
+    if me and short == me then
+      -- Echo de notre propre envoi : preuve que l'envoi ET la reception
+      -- marchent sur ce canal, avec un seul client.
+      VC.echo = { channel = channel, at = time() }
+      return
+    end
     local proto, v = msg:match("^(V%d+):([^:]+):[SM]$")
     if proto ~= PROTO then return end
     local t = Parse(v)
@@ -1344,7 +1435,8 @@ do
     VC.mine, VC.mineT, VC.name = Mine()
     if not VC.mineT then return end
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
-      pcall(C_ChatInfo.RegisterAddonMessagePrefix, PREFIX)
+      local ok, res = pcall(C_ChatInfo.RegisterAddonMessagePrefix, PREFIX)
+      VC.regResult = ok and res or "error"
     end
     if InSuite() then
       local seen = _G.TibiSuiteDB.verSeen
@@ -1360,6 +1452,8 @@ do
     VC.wasInGuild = IsInGuild and IsInGuild() or false
     VC.groupSize  = GetNumGroupMembers and GetNumGroupMembers() or 0
     Announce(10)
+    -- Apres l'eventuel rappel (12 s) : l'alerte exacte passe devant.
+    C_Timer.After(15, CheckPatch)
   end
 
   local f = UI._vcFrame or CreateFrame("Frame")
@@ -1387,6 +1481,7 @@ do
       VC.wasInGuild = g
     elseif event == "PLAYER_REGEN_ENABLED" then
       if VC.alertPending then ShowAlert() end
+      if VC.patchPending then CheckPatch() end
       if VC.combatTx then
         local list = VC.combatTx
         VC.combatTx = nil
@@ -1397,6 +1492,25 @@ do
   -- Socle charge apres l'entree en jeu (rare) : on s'initialise tout de suite.
   if IsLoggedIn and IsLoggedIn() then C_Timer.After(0, Init) end
 
+  -- /ts version test : affiche les deux lignes avec des valeurs fictives, sans
+  -- rien memoriser (ni verSeen, ni fil), puis force une annonce sur les
+  -- canaux disponibles pour verifier l'echo. Ne change pas l'etat de session.
+  function UI.VersionTest()
+    local mine = VC.mine or "7.1.5.49"
+    local t = Parse(mine) or { 7, 1, 5, 49 }
+    t[#t] = t[#t] + 1
+    local fake = table.concat(t, ".")
+    local gameVer = (GetBuildInfo and GetBuildInfo()) or "?"
+    ChatLine("|cFF808080[test]|r " .. NewText(fake, mine))
+    ChatLine("|cFF808080[test]|r " .. PatchText(mine, gameVer))
+    if not VC.ready or not IsOn() or InCombat() then return false end
+    local sent = false
+    if IsInGuild and IsInGuild() then VC.lastTx.GUILD = nil; SendNow("GUILD"); sent = true end
+    local g = GroupChannel()
+    if g then VC.lastTx[g] = nil; SendNow(g); sent = true end
+    return sent
+  end
+
   -- Lecture pour /ts version et /ts doctor (core).
   function UI.VersionInfo()
     local byVer, total = {}, 0
@@ -1406,6 +1520,10 @@ do
       on = IsOn(), mine = VC.mine, name = VC.name, newest = VC.newest,
       seenAt = type(seen) == "table" and seen.at or nil,
       heard = byVer, heardCount = total, lastResult = VC.lastResult,
+      patch = VC.patch,
+      regResult = VC.regResult, txCount = VC.txCount or 0, lastChannel = VC.lastChannel,
+      rxCount = VC.rxCount or 0, rxSecret = VC.rxSecret or 0, echo = VC.echo,
+      inGuild = IsInGuild and IsInGuild() or false, groupChannel = GroupChannel(),
     }
   end
 end
