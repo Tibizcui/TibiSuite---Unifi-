@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.50
+- Alerte de nouvelle version dans le chat, aussi quand ce module est installé seul : les joueurs de ta guilde et de ton groupe échangent leur numéro de version, et un patch du jeu plus récent que l'addon est signalé.
+
 ## 7.1.5.49
 - Conseiller de TibiSuite : propose les montures encore à obtenir et faisables cette semaine (boss, difficultés encore ouvertes, chance de butin estimée).
 

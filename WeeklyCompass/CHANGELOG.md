@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.50
+- Alerte de nouvelle version dans le chat, aussi quand ce module est installé seul : les joueurs de ta guilde et de ton groupe échangent leur numéro de version, et un patch du jeu plus récent que l'addon est signalé.
+
 ## 7.1.5.49
 - Les Vénithes ascendantes apparaissent dans la fiche (objet compté dans les sacs et les banques).
 - Fiche : 8 lignes de monnaies (la 6e était coupée).

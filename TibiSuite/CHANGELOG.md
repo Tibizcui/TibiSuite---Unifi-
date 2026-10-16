@@ -1,5 +1,14 @@
 # Changelog
 
+## 7.1.5.50
+- Nouveau : alerte de nouvelle version dans le chat. Les joueurs de ta guilde et de ton groupe qui ont TibiSuite échangent leur numéro de version ; si l'un d'eux a plus récent, une ligne « Nouvelle version X disponible, votre version Y est obsolète ! » s'affiche, une fois par session.
+- Même sans personne autour : si un patch du jeu est plus récent que la suite, une ligne te signale qu'une mise à jour est probablement disponible.
+- Rappel à la connexion suivante tant que la mise à jour n'est pas faite, entrée dans le fil d'activité.
+- Jamais en combat, une annonce au plus par minute et par canal, aucun nom de joueur enregistré.
+- Case « Prévenir quand une nouvelle version est disponible » dans Centre > Barre et accès (décocher coupe aussi l'envoi de ta version).
+- Commandes : /ts version (détail et diagnostic), /ts version test (affiche les deux messages pour essai) ; ligne dans /ts doctor.
+- Quoi de neuf 7.1.5.50.
+
 ## 7.1.5.49
 - Nouveau : le Conseiller. La suite repère ce que tu n'as pas encore fait et qui est à ta portée : hauts faits presque finis, montures à obtenir, boss mondiaux et rares, renoms proches du palier, Grand coffre.
 - Chaque suggestion est classée selon ce que tu joues vraiment (historique de Stats sur 4 semaines, tous tes personnages) et affiche toujours sa raison.

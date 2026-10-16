@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.50
+- Alerte de nouvelle version dans le chat, aussi quand ce module est installé seul : les joueurs de ta guilde et de ton groupe échangent leur numéro de version, et un patch du jeu plus récent que l'addon est signalé.
+
 ## 7.1.5.49
 - Analyse des hauts faits répartie sur plusieurs images (5 ms au plus) : plus de saccade quand la carte « Hauts faits presque finis » se met à jour.
 - Fournit au Conseiller de TibiSuite les hauts faits presque finis (méta-hauts faits, chaînes, événements en cours) et tes habitudes de jeu.
