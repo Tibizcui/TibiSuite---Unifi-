@@ -407,8 +407,15 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   notes, champs ; remonte tout objet ancré TOPLEFT sur `content` sous une note
   raccourcie, y compris les widgets maison de MiniHub/Standby), `panel:IsDocked()`.
   Registre `UI.panels` (+ par `cfg.name`) et `UI.lastShownPanel`. Toute
-  évolution du socle (actuellement v16) : bump `NS_VERSION` + recopie dans les 16 copies en gardant
+  évolution du socle (actuellement v17) : bump `NS_VERSION` + recopie dans les 16 copies en gardant
   leur bloc d'en-tête « COPIE EMBARQUEE (module X) ».
+- Alerte de nouvelle version (v17, non testée en jeu, plan `_dev/VersionCheck.md`) :
+  préfixe addon `TibiSuite`, message `V1:<version>:S|M` en guilde / groupe /
+  raid / instance (60 s par canal, jamais en combat, réponse à un joueur en
+  retard), une ligne par session « Nouvelle version X disponible... », même
+  avec `loginMsg = "none"`. Suite : `TibiSuiteDB.versionCheck` (nil = actif,
+  dans `SET_KEYS`), `TibiSuiteDB.verSeen = {v, at}` (rappel à la connexion),
+  `UI.VersionInfo()`, `/ts version`, ligne de `/ts doctor`.
 - En-tête : `UI.AddHeaderControls(frame,cfg)` pose les boutons flottants Options
   (roue) et Recherche (loupe) au coin haut-droit, applique l'état masqué dès la
   création via `_G.TibiSuite.IsCtrlHidden`, et câble Maj+clic droit -> `cfg.onOptions`.

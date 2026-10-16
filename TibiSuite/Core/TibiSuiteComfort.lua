@@ -65,6 +65,7 @@ local SET_KEYS = {
   "uiScale", "highContrast", "cvd",
   "remindDaily", "remindDailyMin", "remindWeekly", "remindWeeklyH", "remindCal", "remindNote",
   "sugOn", "sugHabits", "sugNoGroup", "sugKinds", "advPopup",
+  "versionCheck",
 }
 TibiSuite.SET_KEYS = SET_KEYS
 

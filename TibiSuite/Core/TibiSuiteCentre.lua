@@ -139,6 +139,8 @@ D("CTR_BAR_SEC_LOGIN", "Messages de connexion")
 D("CTR_BAR_LOGIN_FULL","Complets")
 D("CTR_BAR_LOGIN_ONE", "Une seule ligne")
 D("CTR_BAR_LOGIN_NONE","Aucun")
+D("CTR_BAR_VERCHECK",  "Prévenir quand une nouvelle version est disponible")
+D("CTR_BAR_VER_NOTE",  "Les joueurs de ta guilde et de ton groupe qui ont TibiSuite échangent leur numéro de version. Si l'un d'eux a plus récent, une ligne s'affiche dans le chat, une fois par session, même avec les messages de connexion coupés. Décocher coupe aussi l'envoi de ta version.")
 D("CTR_BAR_SEC_GM",    "Menu Échap")
 D("CTR_BAR_GM",        "Ligne TibiSuite dans le menu Échap")
 D("CTR_BAR_GM_NOTE",   "Placée sous EllesmereUI quand il est présent, sinon sous « Boutique ». Elle ouvre ce Centre. Pris en compte à la prochaine ouverture du menu.")
@@ -1399,6 +1401,9 @@ local function BuildBarPanel()
     P:Check(o[2], function() return (TibiSuiteDB.loginMsg or "one") == o[1] end,
       function() TibiSuiteDB.loginMsg = o[1]; P:Refresh() end)
   end
+  P:Note(L.CTR_BAR_VER_NOTE)
+  P:Check(L.CTR_BAR_VERCHECK, function() return TibiSuiteDB.versionCheck ~= false end,
+    function(v) if v then TibiSuiteDB.versionCheck = nil else TibiSuiteDB.versionCheck = false end end)
   barPanel = P
   return P
 end

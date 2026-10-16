@@ -29,7 +29,7 @@
   socle du core evolue (bump NS_VERSION cote core -> reporter ici).
 ============================================================================]]
 
-local NS_VERSION = 16
+local NS_VERSION = 17
 
 if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
   return
@@ -1153,6 +1153,261 @@ function UI.CharBanner(parent, data)
   fs:SetJustifyH("LEFT")
   fs:SetText(UI.CharBannerText(data))
   return fs
+end
+
+-- ============================================================================
+-- ALERTE DE NOUVELLE VERSION (v17, plan : _dev/VersionCheck.md)
+-- Un addon n'a pas acces a Internet : chaque copie annonce sa version aux
+-- autres joueurs (guilde, groupe, raid, instance) par un message addon
+-- invisible, et previent une fois par session si quelqu'un a plus recent.
+-- Dans le socle (et pas dans le core) pour marcher aussi avec un module
+-- installe seul. Un seul emetteur grace a la garde NS_VERSION.
+-- Message : "V1:<version>:S" (S = suite, M = module seul). Tout autre format
+-- est ignore. Jamais d'envoi ni d'affichage en combat.
+-- En suite : reglage TibiSuiteDB.versionCheck (nil = actif, false = coupe),
+-- memoire TibiSuiteDB.verSeen = { v, at }, entree dans le fil d'activite.
+-- ============================================================================
+do
+  local PREFIX   = "TibiSuite"
+  local PROTO    = "V1"
+  local THROTTLE = 60   -- secondes entre deux envois sur un meme canal
+  -- Les 16 dossiers de la suite, core en tete puis ordre alphabetique.
+  local ADDONS = {
+    "TibiSuite", "DailyTracker", "DgnTracker", "LairLens", "LegTracker",
+    "LvlHistory", "MiniHub", "Opacity", "PostBox", "RenTracker", "RepBar",
+    "SkillTracker", "Standby", "Stats", "WeeklyCompass", "XPBar",
+  }
+
+  local FR = (GetLocale and GetLocale() == "frFR")
+  local TXT_NEW = FR and "Nouvelle version %s disponible, votre version %s est obsolète !"
+                     or  "New version %s available, your version %s is out of date!"
+
+  local VC = UI._vc or {}
+  UI._vc = VC
+  VC.heard   = VC.heard or {}   -- [expediteur] = version (session, jamais sauvegarde)
+  VC.lastTx  = VC.lastTx or {}  -- [canal] = time() du dernier envoi
+  VC.pending = VC.pending or {} -- [canal] = true si un envoi attend (combat, debit)
+
+  -- "7.1.5.49" -> { 7, 1, 5, 49 } ; nil si le format n'est pas strict.
+  local function Parse(v)
+    if type(v) ~= "string" or #v > 23 or not v:match("^%d+[%.%d]*$") or v:find("%.%.") or v:sub(-1) == "." then
+      return nil
+    end
+    local t = {}
+    for n in v:gmatch("%d+") do
+      n = tonumber(n)
+      if not n or n >= 1000 or #t >= 4 then return nil end
+      t[#t + 1] = n
+    end
+    if #t < 2 then return nil end
+    return t
+  end
+
+  -- -1, 0 ou 1 (champs manquants = 0 : 7.1 == 7.1.0).
+  local function Compare(a, b)
+    for i = 1, 4 do
+      local x, y = a[i] or 0, b[i] or 0
+      if x ~= y then return (x < y) and -1 or 1 end
+    end
+    return 0
+  end
+  VC.Parse, VC.Compare = Parse, Compare
+
+  local function IsLoaded(name)
+    if C_AddOns and C_AddOns.IsAddOnLoaded then return C_AddOns.IsAddOnLoaded(name) and true or false end
+    return IsAddOnLoaded and IsAddOnLoaded(name) and true or false
+  end
+
+  local function Meta(name)
+    local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+    if not get then return nil end
+    local ok, v = pcall(get, name, "Version")
+    return ok and v or nil
+  end
+
+  -- Version annoncee = la plus haute des addons de la suite charges.
+  -- Nom affiche = TibiSuite si le core est charge, sinon le 1er module charge.
+  local function Mine()
+    local best, bestT, name
+    for _, a in ipairs(ADDONS) do
+      if IsLoaded(a) then
+        name = name or a
+        local v = Meta(a)
+        local t = Parse(v)
+        if t and (not bestT or Compare(t, bestT) > 0) then best, bestT = v, t end
+      end
+    end
+    return best, bestT, name or "TibiSuite"
+  end
+
+  local function InSuite() return IsLoaded("TibiSuite") and type(_G.TibiSuiteDB) == "table" end
+
+  local function IsOn()
+    if InSuite() then return _G.TibiSuiteDB.versionCheck ~= false end
+    return true  -- module seul : rien pour memoriser un choix, toujours actif
+  end
+
+  local function InCombat() return InCombatLockdown and InCombatLockdown() end
+
+  -- Ligne du chat (une seule par session). Le nom reste rouge de marque.
+  local function ShowAlert()
+    if VC.shown or not VC.newest or not VC.mine then return end
+    if InCombat() then VC.alertPending = true return end
+    VC.shown, VC.alertPending = true, nil
+    local text = string.format(TXT_NEW, "|cFF33FF33" .. VC.newest .. "|r", "|cFFFF5555" .. VC.mine .. "|r")
+    local out = DEFAULT_CHAT_FRAME or (ChatFrame1)
+    local line = "|cFFC41F3B" .. (VC.name or "TibiSuite") .. "|r " .. text
+    if out and out.AddMessage then out:AddMessage(line) else print(line) end
+    local TS = _G.TibiSuite
+    if InSuite() and TS and TS.Notify then
+      pcall(TS.Notify, nil, string.format(TXT_NEW, VC.newest, VC.mine),
+        { toast = false, sound = false, once = "ver:" .. VC.newest })
+    end
+  end
+
+  -- Retient une version plus recente (session + memoire en suite).
+  local function Learn(v, t)
+    if VC.newestT and Compare(t, VC.newestT) <= 0 then return end
+    VC.newest, VC.newestT = v, t
+    if InSuite() then _G.TibiSuiteDB.verSeen = { v = v, at = time() } end
+    ShowAlert()
+  end
+
+  local function GroupChannel()
+    if IsInGroup and LE_PARTY_CATEGORY_INSTANCE and IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then return "INSTANCE_CHAT" end
+    if IsInRaid and IsInRaid() then return "RAID" end
+    if IsInGroup and IsInGroup() then return "PARTY" end
+    return nil
+  end
+
+  local function SendNow(channel)
+    if not (C_ChatInfo and C_ChatInfo.SendAddonMessage) or not VC.mine then return end
+    local msg = PROTO .. ":" .. VC.mine .. ":" .. (InSuite() and "S" or "M")
+    -- Midnight restreint la communication addon dans certains contenus
+    -- d'instance : l'echec (erreur ou code de retour) est ignore en silence,
+    -- l'annonce repartira en guilde plus tard.
+    local ok, res = pcall(C_ChatInfo.SendAddonMessage, PREFIX, msg, channel)
+    VC.lastTx[channel] = time()
+    VC.lastResult = ok and res or "error"
+  end
+
+  -- Envoi regroupe : au plus un par canal toutes les THROTTLE secondes,
+  -- reporte a la sortie de combat. Un envoi en attente n'est jamais empile.
+  local function Queue(channel, delay)
+    if not channel or not IsOn() or not VC.mine then return end
+    if VC.pending[channel] then return end
+    VC.pending[channel] = true
+    local wait = math.max(delay or 0, THROTTLE - (time() - (VC.lastTx[channel] or 0)))
+    C_Timer.After(math.max(wait, 0.1), function()
+      VC.pending[channel] = nil
+      if not IsOn() then return end
+      if InCombat() then VC.combatTx = VC.combatTx or {}; VC.combatTx[channel] = true return end
+      if channel == "GUILD" and not (IsInGuild and IsInGuild()) then return end
+      if channel ~= "GUILD" and GroupChannel() ~= channel then return end
+      SendNow(channel)
+    end)
+  end
+
+  local function Announce(delay)
+    if IsInGuild and IsInGuild() then Queue("GUILD", delay) end
+    Queue(GroupChannel(), delay)
+  end
+
+  local function OnAddonMessage(prefix, msg, channel, sender)
+    if prefix ~= PREFIX then return end
+    -- Valeurs secretes de Midnight : on ne touche a rien.
+    if issecretvalue and (issecretvalue(msg) or issecretvalue(sender) or issecretvalue(channel)) then return end
+    if type(msg) ~= "string" or type(sender) ~= "string" or not IsOn() or not VC.mineT then return end
+    local me = UnitName and UnitName("player")
+    local short = Ambiguate and Ambiguate(sender, "none") or sender:match("^[^%-]+")
+    if me and short == me then return end
+    local proto, v = msg:match("^(V%d+):([^:]+):[SM]$")
+    if proto ~= PROTO then return end
+    local t = Parse(v)
+    if not t then return end
+    -- Garde-fou : un saut de plus d'une version majeure est ignore.
+    if t[1] > VC.mineT[1] + 1 then return end
+    VC.heard[sender] = v
+    local cmp = Compare(t, VC.mineT)
+    if cmp > 0 then
+      Learn(v, t)
+    elseif cmp < 0 and (channel == "GUILD" or channel == "PARTY" or channel == "RAID" or channel == "INSTANCE_CHAT") then
+      -- L'expediteur est en retard : on repond sur le meme canal (debit
+      -- limite) pour qu'il l'apprenne meme si personne d'autre ne parle.
+      Queue(channel, 3)
+    end
+  end
+
+  local function Init()
+    if VC.ready then return end
+    VC.ready = true
+    VC.mine, VC.mineT, VC.name = Mine()
+    if not VC.mineT then return end
+    if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
+      pcall(C_ChatInfo.RegisterAddonMessagePrefix, PREFIX)
+    end
+    if InSuite() then
+      local seen = _G.TibiSuiteDB.verSeen
+      local st = type(seen) == "table" and Parse(seen.v)
+      if st and Compare(st, VC.mineT) > 0 and st[1] <= VC.mineT[1] + 1 then
+        -- Rappel : une version plus recente a deja ete vue, pas encore installee.
+        VC.newest, VC.newestT = seen.v, st
+        if IsOn() then C_Timer.After(12, ShowAlert) end
+      elseif seen ~= nil then
+        _G.TibiSuiteDB.verSeen = nil  -- mise a jour faite (ou valeur illisible)
+      end
+    end
+    VC.wasInGuild = IsInGuild and IsInGuild() or false
+    VC.groupSize  = GetNumGroupMembers and GetNumGroupMembers() or 0
+    Announce(10)
+  end
+
+  local f = UI._vcFrame or CreateFrame("Frame")
+  UI._vcFrame = f
+  f:UnregisterAllEvents()
+  f:RegisterEvent("PLAYER_ENTERING_WORLD")
+  f:RegisterEvent("CHAT_MSG_ADDON")
+  f:RegisterEvent("GROUP_ROSTER_UPDATE")
+  f:RegisterEvent("PLAYER_GUILD_UPDATE")
+  f:RegisterEvent("PLAYER_REGEN_ENABLED")
+  f:SetScript("OnEvent", function(_, event, ...)
+    if event == "PLAYER_ENTERING_WORLD" then
+      Init()
+    elseif not VC.ready then
+      return
+    elseif event == "CHAT_MSG_ADDON" then
+      OnAddonMessage(...)
+    elseif event == "GROUP_ROSTER_UPDATE" then
+      local n = GetNumGroupMembers and GetNumGroupMembers() or 0
+      if n > (VC.groupSize or 0) then Queue(GroupChannel(), 5) end
+      VC.groupSize = n
+    elseif event == "PLAYER_GUILD_UPDATE" then
+      local g = IsInGuild and IsInGuild() or false
+      if g and not VC.wasInGuild then Queue("GUILD", 5) end
+      VC.wasInGuild = g
+    elseif event == "PLAYER_REGEN_ENABLED" then
+      if VC.alertPending then ShowAlert() end
+      if VC.combatTx then
+        local list = VC.combatTx
+        VC.combatTx = nil
+        for ch in pairs(list) do Queue(ch, 2) end
+      end
+    end
+  end)
+  -- Socle charge apres l'entree en jeu (rare) : on s'initialise tout de suite.
+  if IsLoggedIn and IsLoggedIn() then C_Timer.After(0, Init) end
+
+  -- Lecture pour /ts version et /ts doctor (core).
+  function UI.VersionInfo()
+    local byVer, total = {}, 0
+    for _, v in pairs(VC.heard) do byVer[v] = (byVer[v] or 0) + 1; total = total + 1 end
+    local seen = InSuite() and _G.TibiSuiteDB.verSeen or nil
+    return {
+      on = IsOn(), mine = VC.mine, name = VC.name, newest = VC.newest,
+      seenAt = type(seen) == "table" and seen.at or nil,
+      heard = byVer, heardCount = total, lastResult = VC.lastResult,
+    }
+  end
 end
 
 -- Alias tourne vers l'avenir : le meme socle est aussi accessible via

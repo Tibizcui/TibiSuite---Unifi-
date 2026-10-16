@@ -294,6 +294,17 @@ L.HELP_PROFILE = L.HELP_PROFILE or "exporter / importer un profil de la suite"
 L.HELP_SETUP   = L.HELP_SETUP   or "relancer l'installation (rien n'est effacé)"
 L.HELP_NEWS    = L.HELP_NEWS    or "quoi de neuf dans cette version"
 L.HELP_MINIMAP = L.HELP_MINIMAP or "afficher / masquer le bouton de minicarte"
+L.HELP_VERSION = L.HELP_VERSION or "version installée et plus récente vue chez les autres joueurs"
+L.VER_HEADER   = L.VER_HEADER   or "annonce de version"
+L.VER_ON       = L.VER_ON       or "active"
+L.VER_OFF      = L.VER_OFF      or "coupée (Centre > Barre et accès)"
+L.VER_MINE     = L.VER_MINE     or "version installée"
+L.VER_NEWEST   = L.VER_NEWEST   or "plus récente vue"
+L.VER_NONE     = L.VER_NONE     or "aucune plus récente vue"
+L.VER_UPTODATE = L.VER_UPTODATE or "à jour"
+L.VER_HEARD    = L.VER_HEARD    or "joueurs entendus cette session"
+L.VER_NOSOCLE  = L.VER_NOSOCLE  or "socle sans annonce de version (v17 requis)"
+L.DOC_VERCHECK = L.DOC_VERCHECK or "annonce de version"
 
 -- Table globale minimale exposée pour les modules récents (ex. MiniHub).
 -- Elle leur permet de détecter TibiSuite comme parent, de s'y enregistrer,
@@ -3176,6 +3187,9 @@ SlashCmdList["TIBISUITE"] = function(msg)
   elseif msg == "setup" or msg == "install" then
     if TibiSuite.RunSetup then TibiSuite.RunSetup() end
 
+  elseif msg == "version" or msg == "ver" then
+    TibiSuite.PrintVersionInfo()
+
   elseif msg == "news" or msg == "whatsnew" then
     if TibiSuite.ShowWhatsNew then TibiSuite.ShowWhatsNew(true) end
 
@@ -3214,6 +3228,7 @@ SlashCmdList["TIBISUITE"] = function(msg)
     print("  |cFFFFD700/ts profile|r : " .. L.HELP_PROFILE)
     print("  |cFFFFD700/ts setup|r : " .. L.HELP_SETUP)
     print("  |cFFFFD700/ts news|r : " .. L.HELP_NEWS)
+    print("  |cFFFFD700/ts version|r : " .. L.HELP_VERSION)
 
   elseif msg == "" then
     if TibiSuite.ToggleCentre then TibiSuite.ToggleCentre() else ToggleBar() end
@@ -4016,11 +4031,44 @@ function TibiSuite.RunDoctor(emit)
         .. (info and ("   " .. info) or ""))
     end
   end
+  -- Annonce de version (socle v17) : information seulement.
+  local vi = UI and UI.VersionInfo and UI.VersionInfo()
+  if vi then
+    local state = vi.on and L.VER_ON or ("|cFF808080" .. L.VER_OFF .. "|r")
+    local last = vi.newest and ("|cFFFF9A3C" .. L.VER_NEWEST .. " " .. vi.newest .. "|r") or L.VER_NONE
+    print("  " .. L.DOC_VERCHECK .. " : " .. state .. ", " .. last)
+  end
   if issues == 0 then
     print(tag .. "|cFF66FF66" .. L.DOC_ALLGOOD .. "|r")
   else
     print(tag .. "|cFFFF9A3C" .. issues .. "|r " .. L.DOC_ISSUES)
   end
+end
+
+-- ================================================================
+-- /ts version : lit UI.VersionInfo() du socle (v17). Le travail (annonce,
+-- ecoute, alerte dans le chat) est fait par le socle, voir
+-- _dev/VersionCheck.md.
+-- ================================================================
+function TibiSuite.PrintVersionInfo(emit)
+  local print = emit or print
+  local tag = "|cFFC41F3BTibiSuite|r "
+  local UI = _G.TibiMidnight
+  local vi = UI and UI.VersionInfo and UI.VersionInfo()
+  if not vi then print(tag .. L.VER_NOSOCLE) return end
+  print(tag .. L.VER_HEADER .. " : " .. (vi.on and ("|cFF66FF66" .. L.VER_ON .. "|r") or ("|cFF808080" .. L.VER_OFF .. "|r")))
+  print("  " .. L.VER_MINE .. " : |cFFFFD700" .. tostring(vi.mine or VERSION) .. "|r")
+  if vi.newest then
+    local when = vi.seenAt and date(" (%d/%m %H:%M)", vi.seenAt) or ""
+    print("  " .. L.VER_NEWEST .. " : |cFF33FF33" .. vi.newest .. "|r" .. when)
+  else
+    print("  " .. L.VER_NEWEST .. " : " .. L.VER_UPTODATE)
+  end
+  print("  " .. L.VER_HEARD .. " : " .. tostring(vi.heardCount or 0))
+  local list = {}
+  for v, n in pairs(vi.heard or {}) do list[#list + 1] = { v = v, n = n } end
+  table.sort(list, function(a, b) return a.n > b.n end)
+  for _, e in ipairs(list) do print("    " .. e.v .. " : " .. e.n) end
 end
 
 -- ================================================================
