@@ -416,10 +416,8 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
-  ["7.1.5.54"] = {
+  ["7.2.0"] = {
     { key = "Leg", title = "LegTracker", text = L.WN_54_0, new = true },
-  },
-  ["7.1.5.53"] = {
     { key = "Skill", title = "SkillTracker", text = L.WN_53_0, new = true },
   },
   ["7.1.5.52"] = {

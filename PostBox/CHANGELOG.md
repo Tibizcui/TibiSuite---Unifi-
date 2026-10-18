@@ -1,6 +1,6 @@
 # Changelog
 
-## 7.1.5.53
+## 7.2.0
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 
 ## 7.1.5.52

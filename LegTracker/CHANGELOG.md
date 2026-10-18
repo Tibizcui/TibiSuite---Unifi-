@@ -1,7 +1,12 @@
 # Changelog
 
-## 7.1.5.53
-- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+## 7.2.0
+- Nouveau : le légendaire épinglé. Punaise du panneau détail, clic droit sur une ligne ou /lt pin. Une petite fenêtre suit le farm en direct : temps passé dans les raids du légendaire, boss tués, composants gagnés pendant la séance, quête en cours et ses objectifs, raids encore libres cette semaine.
+- Estimation du nombre de passages restants après deux passages, fin du suivi et bilan à l'obtention.
+- Pêcheur de Terradiance : le chrono tourne quand tu pêches aux Îles Brisées, et le haut fait « Passons aux gros poissons » compte comme un composant (survol de sa ligne : les poissons qui restent).
+- Overlay : mode auto ou permanent, compact, taille, opacité, estompé en combat. Glisser pour déplacer, clic gauche pour ouvrir LegTracker, clic droit pour fermer. /lt overlay, /lt farm.
+- Avec TibiSuite : ligne d'état et aperçu du Centre sur le légendaire épinglé, ses raids libres dans le Conseiller, fil d'activité en fin de séance.
+- Aucune donnée existante modifiée : l'épingle et le temps de farm s'ajoutent à LegTrackerDB.
 
 ## 7.1.5.52
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.

@@ -1,7 +1,8 @@
 # Changelog
 
-## 7.1.5.53
-- Quoi de neuf 7.1.5.53 : overlay de pêche et zones de pêche dans SkillTracker.
+## 7.2.0
+- Quoi de neuf 7.2.0 : légendaire épinglé et overlay de farm dans LegTracker, overlay de pêche dans SkillTracker.
+- Conseiller : nouveau type de suggestion « Raids du légendaire épinglé » (Centre > Suggestions).
 
 ## 7.1.5.52
 - Quoi de neuf 7.1.5.52 : temps de farm par métier dans SkillTracker.

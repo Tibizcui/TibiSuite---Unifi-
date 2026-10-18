@@ -1,9 +1,10 @@
 # Changelog
 
-## 7.1.5.53
+## 7.2.0
 - Nouveau : overlay de pêche. Petite fenêtre en direct (durée active, prises, valeur, zone, objets les plus nombreux de la session). S'affiche pendant la pêche ou en permanence, mode compact, taille et opacité réglables. Clic gauche maintenu pour la déplacer, clic droit pour la fermer. /skt peche overlay, options de la section Pêche.
 - L'horloge de l'overlay se fige après 90 s sans lancer ni prise (mention « pause ») : le temps ne compte que quand tu pêches.
 - Statistiques par zone : à chaque fin de session, chaque zone de pêche enregistre ses sessions, ses prises, son temps actif et son dernier passage. Nouvel onglet Zones dans la vue Pêche, classé par habitude.
+- Survol d'un poisson de l'overlay : nom en couleur de qualité, prix à l'hôtel des ventes et chez le vendeur, valeur de la session.
 - Aucune donnée existante modifiée : les réglages et les statistiques s'ajoutent à SkillTrackerDB.
 
 ## 7.1.5.52
