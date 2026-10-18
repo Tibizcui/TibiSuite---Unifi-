@@ -176,6 +176,43 @@ local function Build()
     r.txt = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     r.txt:SetJustifyH("LEFT")
     r.txt:SetWordWrap(false)
+    -- Zone de survol de la ligne : meme infobulle de prix que les noeuds de
+    -- recolte (nom, prix HV ou vendeur, source et age du prix), plus la prise
+    -- de la session. Glisser et clic droit restent ceux de la fenetre.
+    r.hit = CreateFrame("Button", nil, f)
+    r.hit:SetHeight(ROW_H)
+    r.hit:RegisterForDrag("LeftButton")
+    r.hit:SetScript("OnDragStart", function() local fn = f:GetScript("OnDragStart"); if fn then fn(f) end end)
+    r.hit:SetScript("OnDragStop", function() local fn = f:GetScript("OnDragStop"); if fn then fn(f) end end)
+    r.hit:SetScript("OnMouseUp", function(_, button) local fn = f:GetScript("OnMouseUp"); if fn then fn(f, button) end end)
+    r.hit:SetScript("OnEnter", function(self)
+      if not (GameTooltip and r.id) then return end
+      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      local name = ItemName(r.id) or ("#" .. tostring(r.id))
+      local q = C_Item and C_Item.GetItemQualityByID and C_Item.GetItemQualityByID(r.id)
+      local qc = q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
+      -- Compact : une ligne par prix, libelle court a gauche, montant a droite.
+      GameTooltip:SetText(name, qc and qc.r or 1, qc and qc.g or 0.82, qc and qc.b or 0)
+      local P = ST.Prices or {}
+      local ah, _, age
+      if P.AH then ah, _, age = P.AH(r.id) end
+      local vendor = P.Vendor and P.Vendor(r.id)
+      local grey = 0.62
+      if ah then
+        local lbl = T("Hôtel des ventes", "Auction House")
+        if type(age) == "number" and age >= 1 then lbl = lbl .. string.format(T(" · %d j", " · %d d"), age) end
+        GameTooltip:AddDoubleLine(lbl, Money(ah), grey, grey, grey + 0.03, 1, 1, 1)
+      end
+      if vendor and vendor > 0 then
+        GameTooltip:AddDoubleLine(T("Vendeur", "Vendor"), Money(vendor), grey, grey, grey + 0.03, 1, 1, 1)
+      end
+      local unit = ST.UnitPrice and ST.UnitPrice(r.id) or 0
+      GameTooltip:AddDoubleLine(string.format(T("Session · x%d", "Session · x%d"), r.q or 0),
+        (unit > 0) and Money(unit * (r.q or 0)) or "-", ACC[1], ACC[2], ACC[3], 1, 1, 1)
+      GameTooltip:Show()
+    end)
+    r.hit:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    r.hit:Hide()
     rows[i] = r
   end
 
@@ -312,9 +349,15 @@ local function Layout(s)
       r.txt:SetPoint("LEFT", r.icon, "RIGHT", 6, 0)
       r.icon:SetTexture(ItemIcon(e.id)); r.icon:Show()
       r.txt:SetText("|cFFFFFFFFx" .. e.q .. "|r  " .. (ItemName(e.id) or ("#" .. tostring(e.id)))); r.txt:Show()
+      r.id, r.q = e.id, e.q
+      r.hit:ClearAllPoints()
+      r.hit:SetPoint("LEFT", r.icon, "LEFT", -2, 0)
+      r.hit:SetPoint("RIGHT", f, "RIGHT", -8, 0)
+      r.hit:Show()
       last = i
     else
-      r.icon:Hide(); r.txt:Hide()
+      r.icon:Hide(); r.txt:Hide(); r.hit:Hide()
+      r.id, r.q = nil, nil
     end
   end
   if showRows then
