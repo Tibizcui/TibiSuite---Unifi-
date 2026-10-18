@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.52
+- Quoi de neuf 7.1.5.52 : temps de farm par métier dans SkillTracker.
+
 ## 7.1.5.51
 - Quoi de neuf 7.1.5.51 : pêche et nouvelle présentation de Métiers (SkillTracker), correctifs LegTracker et DgnTracker.
 - Ligne d'état et aperçu du Centre pendant une session de pêche.

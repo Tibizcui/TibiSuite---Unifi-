@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.52
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.1.5.51
 - Correctif 12.1.5 : la vue Collections garde le catalogue précédent et le reconstruit seule en arrière-plan.
 

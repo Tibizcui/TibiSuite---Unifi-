@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.52
+- Nouveau : temps de farm par métier (Minage, Herboristerie, Pêche) : session en cours, aujourd'hui, semaine de jeu, mois, année.
+- Le trajet entre deux récoltes compte, une pause de plus de 10 min non. Vue Or > Temps, /skt temps.
+
 ## 7.1.5.51
 - Nouveau : la pêche. Session de pêche (prises, valeur au prix de l'hôtel des ventes, po/h), historique, cumul et lieux de pêche appris en pêchant.
 - Sons de pêche en option : musique et ambiance coupées, effets à fond, son gardé jeu en arrière-plan ; tes réglages reviennent après 90 s sans relancer, au combat ou à la déconnexion.
