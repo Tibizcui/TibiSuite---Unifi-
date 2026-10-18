@@ -46,6 +46,7 @@ L["ITEM_SINGULAR"]        = "Gegenstand"
 L["ITEM_HASH"]            = "Gegenstand #"
 L["OWNED_COUNT_FMT"]      = "Besitzt: %d / %d"
 L["HOWTO_HEADER_COLON"]   = "Wie man es erhaelt:"
+L["CRIT_MISSING"]         = "Noch zu erledigen:"
 L["NO_COMPONENT_LISTED"]  = "Keine Komponente zu verfolgen."
 
 L["TO_COMPLETE"]          = "Zu vervollstaendigen"

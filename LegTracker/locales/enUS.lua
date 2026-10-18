@@ -48,6 +48,7 @@ L["ITEM_SINGULAR"]        = "item"
 L["ITEM_HASH"]            = "Item #"
 L["OWNED_COUNT_FMT"]      = "Owned: %d / %d"
 L["HOWTO_HEADER_COLON"]   = "How to obtain:"
+L["CRIT_MISSING"]         = "Still to do:"
 L["NO_COMPONENT_LISTED"]  = "No component to track."
 
 L["TO_COMPLETE"]          = "To complete"

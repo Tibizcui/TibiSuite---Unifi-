@@ -162,7 +162,14 @@ LegTrackerData.Extensions = {
           {id=40961, name="La fontaine de Dalaran", npc="Marcia Chase", zone="Dalaran (fontaine)"},
           {id=41010, name="Frénésie de poisson", npc="Nat Pagle", zone="Dalaran (fontaine) -> Recif du Crepuscule, Val'sharah"},
         },
+        -- Legendaire epingle (LegFarm.lua) : le farm, c'est pecher aux Iles
+        -- Brisees (carte 619 et ses sous-cartes, Dalaran comprise). Le chrono
+        -- ne tourne que pendant la peche (lancer ou prise de moins de 90 s).
+        farm = { maps = {619}, fishing = true, label = "Îles Brisées" },
+        -- Criteres du haut fait prealable comptes comme un composant (18
+        -- poissons rares). Nom a confirmer par /lt verify.
         trackers = {
+          {achievementID=10596, name="Passons aux gros poissons", need=18},
           {itemID=133887, name="Perle lumineuse", need=1},
         },
       },

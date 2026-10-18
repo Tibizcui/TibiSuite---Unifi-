@@ -13,7 +13,8 @@
 --   * Correction Sulfuras : verifie equipe + sac + coffre + banque
 -- ================================================================
 
-local ADDON = "LegTracker"
+local ADDON, NS = ...
+NS = NS or {}   -- table privee partagee avec LegFarm.lua et LegOverlay.lua
 local L     = LegTrackerL or {}
 local function T(key, default) return L[key] or default end
 
@@ -222,8 +223,36 @@ local function CountCurrency(currencyID)
   return (info and info.quantity) or 0
 end
 
--- Quantite possedee pour un composant (objet ou monnaie)
+-- Criteres faits d'un haut fait (« Passons aux gros poissons » : 18 poissons
+-- rares). Haut fait deja valide sur le compte = tous les criteres.
+local function CountAchievementCriteria(achID)
+  if not (achID and GetAchievementInfo) then return 0 end
+  local ok, _, _, _, completed = pcall(GetAchievementInfo, achID)
+  local n = (GetAchievementNumCriteria and GetAchievementNumCriteria(achID)) or 0
+  if ok and completed then return math.max(n, 1) end
+  local done = 0
+  for i = 1, n do
+    local _, _, critDone = GetAchievementCriteriaInfo(achID, i)
+    if critDone then done = done + 1 end
+  end
+  return done
+end
+
+-- Criteres encore a faire (infobulle du composant), 20 au plus
+local function MissingCriteria(achID)
+  local out = {}
+  if not (achID and GetAchievementNumCriteria and GetAchievementCriteriaInfo) then return out end
+  for i = 1, GetAchievementNumCriteria(achID) or 0 do
+    local name, _, critDone = GetAchievementCriteriaInfo(achID, i)
+    if not critDone and name and name ~= "" then out[#out + 1] = name end
+    if #out >= 20 then break end
+  end
+  return out
+end
+
+-- Quantite possedee pour un composant (objet, monnaie ou criteres de haut fait)
 local function TrackerCount(tr)
+  if tr.achievementID then return CountAchievementCriteria(tr.achievementID) end
   if tr.currencyID then return CountCurrency(tr.currencyID) end
   return CountItemEverywhere(tr.itemID)
 end
@@ -427,6 +456,10 @@ end
 
 -- Icone d'un composant (objet ou monnaie)
 local function GetTrackerIcon(tr)
+  if tr.achievementID then
+    local ok, _, _, _, _, _, _, _, _, _, icon = pcall(GetAchievementInfo, tr.achievementID)
+    return (ok and icon) or QUESTION_ICON
+  end
   if tr.currencyID then
     local info = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(tr.currencyID)
     return (info and info.iconFileID) or QUESTION_ICON
@@ -497,7 +530,7 @@ local function ScanLegendaryStatus(item)
   local trackerDone, trackerTotal = 0, 0
   if item.trackers then
     for _, tr in ipairs(item.trackers) do
-      if tr.itemID or tr.currencyID then
+      if tr.itemID or tr.currencyID or tr.achievementID then
         trackerTotal = trackerTotal + 1
         if TrackerCount(tr) >= (tr.need or 1) then trackerDone = trackerDone + 1 end
       end
@@ -657,7 +690,12 @@ function LegTracker_Overview()
     end
   end
   if not scanned or total == 0 then return out end
+  -- Legendaire epingle en tete (LegFarm.lua), clic = fenetre sur lui
+  local pinLine = NS.PinOverviewLine and NS.PinOverviewLine()
+  if pinLine then lines[#lines + 1] = pinLine end
   lines[#lines + 1] = { text = SL.OV_LEG_TOTAL, value = got .. " / " .. total, progress = got / total }
+  local pinID = NS.GetPinID and NS.GetPinID()
+  for i = #prog, 1, -1 do if prog[i].itemID == pinID and pinLine then table.remove(prog, i) end end
   for i = 1, math.min(2, #prog) do
     local item = prog[i]
     local steps = item.quests and #item.quests or 0
@@ -683,6 +721,9 @@ end
 -- (fait au login). Rien tant qu'aucun scan n'a eu lieu.
 function LegTracker_Status()
   if not LegTrackerData or not LegTrackerData.Extensions then return nil end
+  -- Un legendaire epingle prend la ligne d'etat (LegFarm.lua)
+  local pinSt = NS.PinStatus and NS.PinStatus()
+  if pinSt then return pinSt end
   local got, total, scanned = 0, 0, false
   for _, ext in ipairs(LegTrackerData.Extensions) do
     local g, t = CountExtension(ext)
@@ -877,6 +918,25 @@ local function BuildDetailSkeleton()
   D.farmHdr = MakeFS(f, "GameFontNormalSmall")
   D.farm = MakeFS(f, "GameFontHighlightSmall")
   D.farm:SetWordWrap(true)
+
+  -- Punaise (legendaire epingle : overlay de farm, voir LegFarm.lua)
+  D.pin = CreateFrame("Button", nil, f)
+  D.pin:SetSize(20, 20)
+  D.pin:SetPoint("TOPRIGHT", f, "TOPRIGHT", -6, -10)
+  D.pin.tex = D.pin:CreateTexture(nil, "ARTWORK")
+  D.pin.tex:SetAllPoints()
+  if NS.SetPinTexture then NS.SetPinTexture(D.pin.tex) end
+  D.pin:SetScript("OnClick", function()
+    if D.item and NS.TogglePin then NS.TogglePin(D.item, true) end
+  end)
+  D.pin:SetScript("OnEnter", function(s)
+    if NS.PinTooltip then NS.PinTooltip(s, D.item) end
+    s:SetAlpha(1)
+  end)
+  D.pin:SetScript("OnLeave", function()
+    GameTooltip:Hide()
+    if D.item and NS.PaintPin then NS.PaintPin(D.pin, D.item) end
+  end)
 end
 
 -- Ligne de quete (construite une fois, reutilisee)
@@ -995,9 +1055,17 @@ local function MakeCompRow()
     local tr = s.tr
     if not tr then return end
     local hasItem = tr.itemID and tr.itemID > 0
-    if not (hasItem or tr.currencyID) then return end
+    if not (hasItem or tr.currencyID or tr.achievementID) then return end
     GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
-    if tr.currencyID then
+    if tr.achievementID then
+      -- Haut fait : nom puis criteres encore a faire (poissons rares...)
+      GameTooltip:SetText(tr.name or ("#" .. tr.achievementID), 1, 0.82, 0)
+      local miss = MissingCriteria(tr.achievementID)
+      if #miss > 0 then
+        GameTooltip:AddLine(T("CRIT_MISSING", "Encore a faire :"), 0.95, 0.78, 0.35)
+        for _, n in ipairs(miss) do GameTooltip:AddLine("  " .. n, 0.85, 0.85, 0.85) end
+      end
+    elseif tr.currencyID then
       GameTooltip:SetCurrencyByID(tr.currencyID)
     else
       GameTooltip:SetItemByID(tr.itemID)
@@ -1076,8 +1144,9 @@ function RefreshDetail(item)
   -- Icone en couleur si obtenu (meme par un autre perso), desature si non equippable et non obtenu
   D.icon:SetDesaturated((not HasClass(item) and item._status ~= "OBTAINED") and true or false)
   PlaceAt(D.name, 56, y)
-  D.name:SetWidth(W - 46)
+  D.name:SetWidth(W - 72)
   D.name:SetText(COL_GOLD .. GetItemName(item) .. COL_RESET)
+  if NS.PaintPin then NS.PaintPin(D.pin, item) end
   y = y - 50
 
   -- Statut
@@ -1135,6 +1204,9 @@ function RefreshDetail(item)
 
   -- Farm cette semaine (lot C)
   local farm = FarmText(item)
+  -- Temps de farm deja passe sur ce legendaire (LegFarm.lua)
+  local farmSum = NS.FarmSummary and NS.FarmSummary(item.itemID)
+  if farmSum then farm = (farm and (farm .. "\n") or "") .. farmSum end
   if farm then
     PlaceAt(D.farmHdr, 10, y)
     D.farmHdr:SetText(COL_GOLD .. T("FARM_HEADER", "Farm cette semaine") .. COL_RESET)
@@ -1280,9 +1352,21 @@ local function MakeListRow(parent)
   row.pctFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   row.pctFS:SetPoint("BOTTOMRIGHT", row, "BOTTOMRIGHT", -8, 7)
 
-  row:SetScript("OnClick", function(s)
+  -- Punaise : visible seulement sur le legendaire epingle (clic droit)
+  row.pinTex = row:CreateTexture(nil, "OVERLAY")
+  row.pinTex:SetSize(14, 14)
+  row.pinTex:SetPoint("TOPRIGHT", row, "TOPRIGHT", -5, -5)
+  if NS.SetPinTexture then NS.SetPinTexture(row.pinTex) end
+  row.pinTex:Hide()
+
+  row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  row:SetScript("OnClick", function(s, button)
     local item = s.item
     if not item then return end
+    if button == "RightButton" then
+      if NS.TogglePin then NS.TogglePin(item, true) end
+      return
+    end
     mainFrame.selectedItem = item
     RefreshDetail(item)
     if mainFrame.listRows then
@@ -1338,6 +1422,7 @@ local function MakeListRow(parent)
         end
       end
     end
+    if item and NS.PinRowHint then NS.PinRowHint(GameTooltip, item) end
     GameTooltip:Show()
   end)
 
@@ -1391,6 +1476,9 @@ local function FillListRow(row, item, rowW)
   local nameCol = obtained and COL_GREEN or (equippable and COL_WHITE or COL_GREY)
   local prefix  = obtained and (COL_GREEN .. "* " .. COL_RESET) or ""
   row.nameFS:SetText(prefix .. nameCol .. GetItemName(item) .. COL_RESET)
+  local pinned = NS.GetPinID and NS.GetPinID() == item.itemID
+  row.pinTex:SetShown(pinned and true or false)
+  if pinned then row.pinTex:SetVertexColor(1, 0.43, 0.04) end
 
   -- Par defaut : barre masquee, pourcentage vide
   row.barBg:Hide()
@@ -2339,7 +2427,8 @@ local function VerifyData()
       if item.achievementID then add("achievement", item.achievementID, item.achievementName or item.name, ext.key) end
       for _, raid in ipairs(item.raids or {}) do add("instance", raid.instanceID, raid.name, ext.key) end
       for _, tr in ipairs(item.trackers or {}) do
-        if tr.currencyID then add("currency", tr.currencyID, tr.name, ext.key)
+        if tr.achievementID then add("achievement", tr.achievementID, tr.name, ext.key)
+        elseif tr.currencyID then add("currency", tr.currencyID, tr.name, ext.key)
         else add("item", tr.itemID, tr.name, ext.key) end
       end
       for _, q in ipairs(item.quests or {}) do add("quest", q.id, q.name, ext.key) end
@@ -2454,6 +2543,23 @@ SlashCmdList["LEGTRACKER"] = function(msg)
   end
   if msg == "options" or msg == "config" then
     if LegTracker_OpenOptions then LegTracker_OpenOptions() end
+    return
+  end
+  -- Legendaire epingle et overlay de farm (LegFarm.lua, LegOverlay.lua)
+  if msg == "pin" or msg == "epingle" or msg == "épingle" then
+    if NS.PinSelected then NS.PinSelected(mainFrame and mainFrame.selectedItem) end
+    return
+  end
+  if msg == "pin off" or msg == "unpin" then
+    if NS.Unpin then NS.Unpin(true) end
+    return
+  end
+  if msg == "farm" then
+    if NS.PrintFarm then NS.PrintFarm() end
+    return
+  end
+  if msg == "overlay" then
+    if NS.OverlayToggle then NS.OverlayToggle() end
     return
   end
   if mainFrame:IsShown() then
@@ -2596,6 +2702,8 @@ local function CheckLoot(silent)
     end
   end
   lootBaseline, legBaseline = comps, legs
+  -- Legendaire epingle obtenu : fin du farm (LegFarm.lua)
+  if NS.OnLegendaryCheck then pcall(NS.OnLegendaryCheck, legs) end
 end
 
 local lootPending = false
@@ -2726,6 +2834,8 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- retirer un objet qui n'y est plus (voir bankSeen).
     if event == "BANKFRAME_OPENED" then
       C_Timer.After(0.4, function() bankSeen = true end)
+      -- Compteurs de banque qui arrivent : pas un gain de farm
+      if NS.OnBankData then NS.OnBankData() end
     end
     RequestRefresh(0.5)
     -- Les quantites de banque peuvent arriver maintenant : pas d'alerte
@@ -2784,4 +2894,55 @@ function LegTrackerAPI.GetFarmRaids()
     end
   end
   return out
+end
+
+-- ================================================================
+-- ACCES PARTAGES (LegFarm.lua, LegOverlay.lua) : memes fonctions que la
+-- fenetre, rien de recalcule autrement. Lecture seule sauf SelectItem.
+-- ================================================================
+NS.PREFIX         = PREFIX
+NS.Scan           = ScanLegendaryStatus
+NS.TrackerCount   = TrackerCount
+NS.CountItem      = CountItemEverywhere
+NS.HasClass       = HasClass
+NS.GetRaidLockouts = GetRaidLockouts
+NS.RaidName       = RaidName
+NS.DisplayName    = DisplayName
+NS.GetItemName    = GetItemName
+NS.GetIcon        = GetIcon
+NS.GetTrackerIcon = GetTrackerIcon
+NS.AddWaypoint    = AddTomTomWaypoint
+
+function NS.Owned(itemID)
+  return IsEquipped(itemID) or CountItemEverywhere(itemID) > 0
+end
+
+-- Legendaire et index de son extension, d'apres l'itemID
+function NS.FindItem(itemID)
+  if not itemID then return nil end
+  for i, ext in ipairs((LegTrackerData and LegTrackerData.Extensions) or {}) do
+    for _, item in ipairs(ext.items or {}) do
+      if item.itemID == itemID then return item, i end
+    end
+  end
+end
+
+-- Ouvre la fenetre sur ce legendaire (onglet de son extension, vue liste)
+function NS.SelectItem(itemID)
+  local item, extIdx = NS.FindItem(itemID)
+  if not (item and mainFrame) then return false end
+  LegTrackerDB.selectedExtension = extIdx
+  if mainFrame.collMode then mainFrame.collMode = false ; ApplyViewMode() end
+  mainFrame.selectedItem = item
+  if not mainFrame:IsShown() then
+    if RequestRaidInfo then RequestRaidInfo() end
+    mainFrame:Show() ; LegTrackerDB.open = true
+  end
+  mainFrame:RefreshContent()
+  return true
+end
+
+-- Rafraichit la fenetre si elle est ouverte (punaise posee ou retiree)
+function NS.RefreshWindow()
+  if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
 end

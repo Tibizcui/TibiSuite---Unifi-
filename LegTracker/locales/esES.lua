@@ -46,6 +46,7 @@ L["ITEM_SINGULAR"]        = "objeto"
 L["ITEM_HASH"]            = "Objeto #"
 L["OWNED_COUNT_FMT"]      = "Poseido: %d / %d"
 L["HOWTO_HEADER_COLON"]   = "Como obtenerlo:"
+L["CRIT_MISSING"]         = "Pendiente:"
 L["NO_COMPONENT_LISTED"]  = "Ningun componente que seguir."
 
 L["TO_COMPLETE"]          = "Por completar"

@@ -49,6 +49,9 @@ Locales\deDE.lua
 Locales\esES.lua
 data\LegendaryItems.lua
 LegTracker.lua
+## Legendaire epingle : temps de farm, puis overlay (nouveaux fichiers)
+LegFarm.lua
+LegOverlay.lua
 ## Ancien glue conserve : panneau d'options + recherche globale
 LegTracker_Suite.lua
 ## Glue TibiSuite : inscription comme onglet + masquage minimap

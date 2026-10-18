@@ -141,6 +141,13 @@ if HasCore() and IsEnabledByCore() then
     searchProvider = nil,  -- deja enregistree par LegTracker_Suite.lua (pas de doublon)
     statusFn       = function() if _G.LegTracker_Status then return _G.LegTracker_Status() end end,
     overviewFn     = function() if _G.LegTracker_Overview then return _G.LegTracker_Overview() end end,
+    -- Legendaire epingle (LegFarm.lua) : clic sur sa ligne d'apercu et
+    -- raids de farm libres proposes par le Conseiller.
+    openTo         = function(t)
+      if t == "pin" and _G.LegTracker_OpenPinned then return _G.LegTracker_OpenPinned() end
+      return false
+    end,
+    suggestFn      = function() if _G.LegTracker_Suggest then return _G.LegTracker_Suggest() end end,
   })
 elseif GetUI() and GetUI().RegisterSearch then
   -- Repli : suite absente mais socle present. _Suite.lua enregistre deja la

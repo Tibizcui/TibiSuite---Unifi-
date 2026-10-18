@@ -400,6 +400,33 @@ Héritage, Personnages, Logis ; 15301 Contenu d'extension = tag `feature`. Méta
 partie de »), chaînes : seule la première étape pas finie, événements : seulement
 en cours (enfants de 155 dont le titre est dans celui du calendrier). **Lot 3** (non testé en jeu) : champ `why` du contrat (raison du module). Fournisseurs : DgnTracker `DgnTrackerColl.Suggestions` (montures faisables, poids 0,75), DailyTracker `DailyTracker_Suggest` (boss mondiaux, rares de la zone), RenTracker `RenTrackerAPI.GetSuggestions` (factions à 50 % ou plus), WeeklyCompass `WeeklyCompassAPI.GetSuggestions` (prochain seuil du Grand coffre). **Lot 4** (non testé en jeu) : rubrique SUGGESTIONS de Ma semaine, page Centre `suggest` (panneau socle `TibiSuiteCentreSuggest`), `TibiSuite.ShowSuggestionMenu`, suggestion dans `GetNextAction` (score 180, `na.suggestion`), rubrique de la palette, `WHATSNEW["7.1.5.49"]`. Diagnostic : `Stats_AdvisorState()` (avancement, pause en combat, dernière erreur), affiché par `/ts conseil`. **Fenêtre des propositions** (`Core/TibiSuiteAdvisor.lua`, non testée en jeu) : `TibiSuite.ShowAdvisor(force)` / `ToggleAdvisor()`, 5 cartes, infobulle `AddSuggestionTooltip` (champ `steps()` du contrat : `{ {text, done, value} }`, branché dans les 5 fournisseurs), à la vraie connexion (pas /reload) une fois l'analyse finie, hors combat et instance, `TibiSuiteDB.advPopup` (nil = actif). Raccourci `TIBISUITE_ADVISOR` + capture dans Centre > Suggestions (`AddAdvisorKeyRow`, `SetAdvisorKey`).
 
+**Légendaire épinglé (LegTracker, lots 1-3, non testés en jeu).** Plan
+`_dev/LegOverlay.md`. `LegTracker.lua` passe à `local ADDON, NS = ...` et
+expose ses fonctions en fin de fichier (`NS.Scan`, `TrackerCount`, `FindItem`,
+`SelectItem`, `Owned`...). `LegFarm.lua` (nouveau) : une épingle par perso
+(`LegTrackerDB.pin["Nom-Royaume"]`), séance de farm dans un raid de
+`item.raids` ou la zone de la quête en cours (quête dans le journal, hors
+`IsResting`), fermée après 5 min hors raid / 10 min hors zone, pause `/afk`,
+boss par `ENCOUNTER_END`, gains = hausses des compteurs (`cur.seen`, recalés à
+la banque et à la connexion), `LegTrackerDB.farm[perso][itemID] = { total,
+runs, nSess, sessions (10), perRun, doneAt, cur }`, estimation après 2
+passages (`NS.Estimate`), fin à l'obtention (hook `NS.OnLegendaryCheck` dans
+`CheckLoot`). `LegOverlay.lua` (nouveau) : fenêtre `LegTrackerOverlay`,
+réglages `overlay/overlayAuto/overlayCompact/overlayFade/overlayScale/
+overlayAlpha/overlayPos`. Punaise du panneau détail, clic droit sur une ligne,
+`/lt pin|pin off|farm|overlay`. Suite : `NS.PinStatus` (ligne d'état,
+`ST_LEG_PIN_FMT`), ligne `OV_LEG_PIN` en tête de l'aperçu, `openTo("pin")`,
+`LegTracker_Suggest` (kind `legendary`, ajouté à `SUG_KINDS` du Centre,
+`SUG_L_FMT`), fil d'activité en fin de séance et à l'obtention,
+`WHATSNEW["7.1.5.54"]`. **Farm de pêche (Pêcheur de Terradiance)** : champ
+de données `farm = { maps = {619}, fishing = true, label }` (séance de type
+`fish` sur ces cartes ou leurs sous-cartes, seulement avec un lancer de Pêche
+131474 / même nom de sort ou une prise `IsFishingLoot` de moins de 90 s, fermée
+après 10 min ; une séance de pêche compte comme un passage pour l'estimation).
+Nouveau type de composant `{ achievementID, need }` = critères faits du haut
+fait (`CountAchievementCriteria`, infobulle des critères manquants, contrôlé
+par `/lt verify`), gains sur `CRITERIA_UPDATE` / `ACHIEVEMENT_EARNED`.
+
 **Menu Échap (validé en jeu, y compris en combat).** `GameMenuFrame:AddButton`
 dans un post-hook de `InitButtons` posé **au chargement du fichier**, donc avant
 ceux d'EllesmereUI/ElvUI : leur passe d'habillage stylise notre bouton toute

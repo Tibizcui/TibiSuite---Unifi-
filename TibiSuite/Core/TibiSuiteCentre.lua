@@ -278,6 +278,7 @@ D("CTR_SUG_K_coll",    "Montures à obtenir (DgnTracker)")
 D("CTR_SUG_K_rare",    "Boss mondiaux et rares (DailyTracker)")
 D("CTR_SUG_K_renown",  "Renoms proches du palier (RenTracker)")
 D("CTR_SUG_K_weekly",  "Grand coffre (WeeklyCompass)")
+D("CTR_SUG_K_legendary", "Raids du légendaire épinglé (LegTracker)")
 D("CTR_SUG_SEC_DISM",  "Suggestions écartées")
 D("CTR_SUG_DISM_NOTE", "Clic droit sur une suggestion : « Plus tard » la cache 7 jours, « Pas intéressé » 90 jours.")
 D("CTR_SUG_RESTORE",   "Remettre toutes les suggestions écartées")
@@ -2040,7 +2041,7 @@ end
 -- ancre dans p.optHost, comme les pages de module) : cases indexees par la
 -- palette et enregistrees dans Annuler sans code en plus.
 local sugPanel
-local SUG_KINDS = { "ach", "coll", "rare", "renown", "weekly" }
+local SUG_KINDS = { "ach", "coll", "rare", "renown", "weekly", "legendary" }
 
 local function SugChanged()
   if TibiSuite.InvalidateSuggestions then TibiSuite.InvalidateSuggestions() end

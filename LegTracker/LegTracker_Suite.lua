@@ -2,6 +2,7 @@
   LegTracker - Intégration TibiSuite "Midnight"  (ajout non destructif)
 ============================================================================]]
 
+local _, LTNS  = ...   -- table privee de l'addon (LegFarm.lua, LegOverlay.lua)
 local FRAME    = "LegTrackerMainFrame"
 local ACCENT   = { 1.000, 0.427, 0.043 }   -- orange (logo #FF6D0B)
 local LOGO     = "Interface\\AddOns\\LegTracker\\medias\\LegTracker"
@@ -83,6 +84,42 @@ local function BuildOptions()
   panel:Check(T("OPT_LOOT_SOUND", "Son de l'alerte"),
     function() return _G.LegTrackerDB and _G.LegTrackerDB.lootSound ~= false end,
     function(v) if _G.LegTrackerDB then _G.LegTrackerDB.lootSound = v end end)
+
+  -- Legendaire epingle (LegFarm.lua / LegOverlay.lua, table privee de l'addon)
+  local NS = LTNS or {}
+  local FR = GetLocale() == "frFR"
+  local function TX(fr, en) return FR and fr or en end
+  local function DBv(k) return _G.LegTrackerDB and _G.LegTrackerDB[k] end
+  local function DBs(k, v) if _G.LegTrackerDB then _G.LegTrackerDB[k] = v end end
+  local function Relook() if NS.OverlayRelook then NS.OverlayRelook() end end
+  panel:Section(TX("Overlay de farm", "Farm overlay"))
+  panel:Note(TX("Épingle un légendaire (punaise du panneau détail ou clic droit sur sa ligne) : une petite fenêtre suit le temps de farm, les composants, la quête en cours et les raids de la semaine. Glisser pour la déplacer, clic gauche pour ouvrir LegTracker, clic droit pour la fermer.",
+                "Pin a legendary (pin button in the detail panel or right click on its row): a small window follows farm time, components, current quest and this week's raids. Drag to move it, left click to open LegTracker, right click to close it."))
+  panel:Check(TX("Afficher l'overlay du légendaire épinglé", "Show the pinned legendary overlay"),
+    function() return DBv("overlay") ~= false end,
+    function(v) if NS.OverlaySetEnabled then NS.OverlaySetEnabled(v) else DBs("overlay", v) end end)
+  panel:Check(TX("Seulement dans ses raids et la zone de sa quête", "Only in its raids and quest zone"),
+    function() return DBv("overlayAuto") ~= false end,
+    function(v) DBs("overlayAuto", v); Relook() end,
+    TX("Décoché : l'overlay reste affiché tant qu'un légendaire est épinglé.", "Unchecked: the overlay stays visible while a legendary is pinned."))
+  panel:Check(TX("Mode compact (une seule ligne)", "Compact mode (single line)"),
+    function() return DBv("overlayCompact") == true end,
+    function(v) DBs("overlayCompact", v); Relook() end)
+  panel:Check(TX("Estomper en combat", "Fade in combat"),
+    function() return DBv("overlayFade") ~= false end,
+    function(v) DBs("overlayFade", v); Relook() end)
+  panel:Slider(TX("Taille de l'overlay (%)", "Overlay size (%)"), 50, 200, 5,
+    function() return DBv("overlayScale") or 100 end,
+    function(v) DBs("overlayScale", v); Relook() end)
+  panel:Slider(TX("Opacité de l'overlay (%)", "Overlay opacity (%)"), 20, 100, 5,
+    function() return DBv("overlayAlpha") or 92 end,
+    function(v) DBs("overlayAlpha", v); Relook() end)
+  panel:Button(TX("Remettre l'overlay à sa place", "Reset the overlay position"), function()
+    if NS.OverlayResetPos then NS.OverlayResetPos() end
+  end)
+  panel:Button(TX("Retirer l'épingle", "Unpin"), function()
+    if NS.Unpin then NS.Unpin(true) end
+  end)
 
   panel:Section(T("OPT_SEC_FLOATING", "Boutons flottants"))
   panel:Check(T("OPT_HIDE_OPTIONS_BTN", "Masquer le bouton Options"),
