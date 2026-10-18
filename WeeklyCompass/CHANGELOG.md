@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.2.1
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.2.0
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

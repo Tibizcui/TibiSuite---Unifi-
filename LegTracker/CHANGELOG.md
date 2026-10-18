@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.2.1
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.2.0
 - Nouveau : le légendaire épinglé. Punaise du panneau détail, clic droit sur une ligne ou /lt pin. Une petite fenêtre suit le farm en direct : temps passé dans les raids du légendaire, boss tués, composants gagnés pendant la séance, quête en cours et ses objectifs, raids encore libres cette semaine.
 - Estimation du nombre de passages restants après deux passages, fin du suivi et bilan à l'obtention.

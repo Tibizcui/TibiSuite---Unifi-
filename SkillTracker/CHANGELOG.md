@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.2.1
+- Dépeçage suivi : cuirs, peaux et écailles ramassés sur une créature juste après le sort, dans la session de Récolte, avec son temps dans Or > Temps.
+- Récolte : nouveaux onglets Lieux (ce que donne chaque zone) et Zones (sessions, récoltes, temps et dernier passage par zone).
+- L'overlay suit aussi la récolte (Minage, Herboristerie, Dépeçage), métier en titre ; option « Aussi pendant la récolte ».
+- Les sessions de récolte et de pêche appartiennent au personnage qui les ouvre : changer de personnage ne mélange plus les récoltes.
+- Infobulle de prix de l'overlay collée à la fenêtre, sans la chevaucher.
+
 ## 7.2.0
 - Nouveau : overlay de pêche. Petite fenêtre en direct (durée active, prises, valeur, zone, objets les plus nombreux de la session). S'affiche pendant la pêche ou en permanence, mode compact, taille et opacité réglables. Clic gauche maintenu pour la déplacer, clic droit pour la fermer. /skt peche overlay, options de la section Pêche.
 - L'horloge de l'overlay se fige après 90 s sans lancer ni prise (mention « pause ») : le temps ne compte que quand tu pêches.

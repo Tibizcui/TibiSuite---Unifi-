@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.2.1
+- Quoi de neuf 7.2.1 : la récolte au niveau de la pêche dans SkillTracker (Dépeçage, lieux, zones, overlay).
+
 ## 7.2.0
 - Quoi de neuf 7.2.0 : légendaire épinglé et overlay de farm dans LegTracker, overlay de pêche dans SkillTracker.
 - Conseiller : nouveau type de suggestion « Raids du légendaire épinglé » (Centre > Suggestions).

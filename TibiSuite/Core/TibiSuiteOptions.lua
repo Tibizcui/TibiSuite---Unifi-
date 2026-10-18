@@ -318,6 +318,7 @@ L.WN_43_1  = L.WN_43_1  or "Nouveau style Panneau vivant : la barre devient un t
 L.WN_43_2  = L.WN_43_2  or "Le changement de style est immédiat, sans rechargement. Le style voyage dans les profils TS1 et se choisit aussi dans l'installateur (/ts setup). Commandes : /ts bar classic, dock ou panel."
 L.WN_49_0  = L.WN_49_0  or "Nouveau : le Conseiller. La suite repère ce que tu n'as pas encore fait et qui est à ta portée (hauts faits presque finis, montures à obtenir, boss mondiaux, renoms, Grand coffre), le classe selon ce que tu joues et dit toujours pourquoi. Dans Ma semaine, la prochaine action, la palette et la nouvelle page Suggestions du Centre ; clic droit pour « plus tard » ou « pas intéressé ». À la connexion, une fenêtre te propose 5 activités, avec au survol ce qu'il reste à faire (désactivable, raccourci au choix dans Centre > Suggestions)."
 L.WN_49_1  = L.WN_49_1  or "La fiche affiche les Vénithes ascendantes, comptées dans les sacs et les banques, et ses 8 lignes de monnaies tiennent enfin toutes."
+L.WN_55_0  = L.WN_55_0  or "Métiers : la récolte rejoint la pêche. Le Dépeçage est suivi (cuirs, peaux et écailles ramassés sur une créature), avec son propre temps de farm. La Récolte gagne les onglets Lieux (ce que donne chaque zone) et Zones (tes habitudes). L'overlay suit aussi ta récolte, avec le métier en titre. Les sessions sont maintenant propres à chaque personnage : changer de personnage ne mélange plus les récoltes."
 L.WN_54_0  = L.WN_54_0  or "Nouveau dans LegTracker : le légendaire épinglé. Clique sur la punaise du panneau détail (ou clic droit sur une ligne) : une petite fenêtre suit ton farm en direct, avec le temps passé dans ses raids, les boss tués, les composants gagnés pendant la séance, la quête en cours et ses objectifs, et les raids encore libres cette semaine. Après deux passages, elle estime le nombre de passages restants. Le Conseiller propose ses raids libres, la ligne d'état de la barre suit sa progression. /lt pin, /lt farm, /lt overlay."
 L.WN_53_0  = L.WN_53_0  or "Nouveau dans Métiers : l'overlay de pêche. Une petite fenêtre en direct affiche le temps de pêche, les prises, la valeur, la zone et les objets les plus nombreux de la session. Clic gauche pour la déplacer, clic droit pour la fermer. Les zones où tu pêches sont aussi classées par habitude, dans l'onglet Zones de la vue Pêche. Activation : /skt peche overlay, ou les options de Métiers."
 L.WN_52_0  = L.WN_52_0  or "Nouveau dans Métiers : le temps de farm par métier (Minage, Herboristerie, Pêche). Pour chacun, le temps de la session en cours, puis aujourd'hui, la semaine de jeu, le mois et l'année. Le trajet entre deux récoltes compte, une pause de plus de 10 min non. Vue Or > Temps, /skt temps."
@@ -416,6 +417,9 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.2.1"] = {
+    { key = "Skill", title = "SkillTracker", text = L.WN_55_0, new = true },
+  },
   ["7.2.0"] = {
     { key = "Leg", title = "LegTracker", text = L.WN_54_0, new = true },
     { key = "Skill", title = "SkillTracker", text = L.WN_53_0, new = true },
