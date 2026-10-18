@@ -105,6 +105,11 @@ local function BuildOptions()
   panel:Check(TX("Mode compact (une seule ligne)", "Compact mode (single line)"),
     function() return DBv("overlayCompact") == true end,
     function(v) DBs("overlayCompact", v); Relook() end)
+  panel:Check(TX("Détail du haut fait au survol", "Achievement detail on hover"),
+    function() return DBv("overlayCriteria") ~= false end,
+    function(v) DBs("overlayCriteria", v); Relook() end,
+    TX("Quand une étape est un haut fait (ex. Passons aux gros poissons), le survol de sa ligne dans l'overlay liste ce qu'il reste à faire.",
+       "When a step is an achievement (e.g. Bigger Fish to Fry), hovering its row in the overlay lists what is left."))
   panel:Check(TX("Estomper en combat", "Fade in combat"),
     function() return DBv("overlayFade") ~= false end,
     function(v) DBs("overlayFade", v); Relook() end)

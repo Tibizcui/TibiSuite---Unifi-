@@ -44,6 +44,8 @@ local OV = {
   quest1Fmt = T("Quête : %s", "Quest: %s"),
   takeFmt   = T("À prendre : %s", "To pick up: %s"),
   questsOk  = T("Quêtes terminées", "Quests completed"),
+  critLeft  = T("Encore à faire :", "Still to do:"),
+  critDone  = T("Déjà fait : %d", "Already done: %d"),
   raids     = T("Raids :", "Raids:"),
   free      = T("libre", "free"),
   locked    = T("verrouillé", "locked"),
@@ -70,6 +72,7 @@ local function Enabled() return DB().overlay ~= false end
 local function Auto()    return DB().overlayAuto ~= false end
 local function Compact() return DB().overlayCompact == true end
 local function Fade()    return DB().overlayFade ~= false end
+local function Crit()    return DB().overlayCriteria ~= false end
 local function Scale()   return math.max(0.5, math.min(2, (DB().overlayScale or 100) / 100)) end
 local function Alpha()   return math.max(0.2, math.min(1, (DB().overlayAlpha or 92) / 100)) end
 
@@ -110,6 +113,34 @@ local function GetSep(i)
   return s
 end
 
+local function ShowCompTooltip(owner, c)
+  if not c then return end
+  local tr = c.tr
+  GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+  if tr.achievementID then
+    GameTooltip:SetText(c.name, ACC[1], ACC[2], ACC[3])
+    GameTooltip:AddLine(c.have .. " / " .. c.need, 1, 1, 1)
+    local miss = c.missing
+    if miss and #miss > 0 then
+      GameTooltip:AddLine(" ")
+      GameTooltip:AddLine(OV.critLeft, 0.95, 0.78, 0.35)
+      for i = 1, math.min(#miss, 25) do
+        local cr = miss[i]
+        local qty = ((tonumber(cr.req) or 0) > 1) and ("  " .. (cr.q or 0) .. "/" .. cr.req) or ""
+        GameTooltip:AddLine("  " .. cr.name .. qty, 1, 1, 1)
+      end
+    end
+    if (c.doneN or 0) > 0 then
+      GameTooltip:AddLine(string.format(OV.critDone, c.doneN), 0.6, 0.6, 0.65)
+    end
+  elseif tr.currencyID then
+    GameTooltip:SetCurrencyByID(tr.currencyID)
+  elseif tr.itemID then
+    GameTooltip:SetItemByID(tr.itemID)
+  end
+  GameTooltip:Show()
+end
+
 local function GetComp(i)
   local r = comps[i]
   if r then return r end
@@ -125,6 +156,18 @@ local function GetComp(i)
   r.barBg:SetHeight(2)
   r.bar = f:CreateTexture(nil, "ARTWORK")
   r.bar:SetHeight(2)
+  -- Survol de la ligne : criteres restants d'un haut fait, sinon l'infobulle
+  -- de l'objet ou de la monnaie. Clics et glisser renvoyes a l'overlay.
+  r.hit = CreateFrame("Button", nil, f)
+  r.hit:SetHeight(ROW_H)
+  r.hit:RegisterForDrag("LeftButton")
+  r.hit:SetScript("OnDragStart", function() f:GetScript("OnDragStart")(f) end)
+  r.hit:SetScript("OnDragStop", function() f:GetScript("OnDragStop")(f) end)
+  r.hit:SetScript("OnMouseDown", function(_, b) f:GetScript("OnMouseDown")(f, b) end)
+  r.hit:SetScript("OnMouseUp", function(_, b) f:GetScript("OnMouseUp")(f, b) end)
+  r.hit:SetScript("OnEnter", function(s) ShowCompTooltip(s, s.c) end)
+  r.hit:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  r.hit:Hide()
   comps[i] = r
   return r
 end
@@ -267,8 +310,16 @@ local function Collect()
   for _, tr in ipairs(item.trackers or {}) do
     local key = NS.TrKey(tr)
     if key then
-      d.comps[#d.comps + 1] = { tr = tr, key = key, name = TrackerName(tr), have = NS.TrackerCount(tr),
-                                need = tr.need or 1, icon = NS.GetTrackerIcon(tr) }
+      local c = { tr = tr, key = key, name = TrackerName(tr), have = NS.TrackerCount(tr),
+                  need = tr.need or 1, icon = NS.GetTrackerIcon(tr) }
+      -- Haut fait en cours (etape d'obtention) : ses criteres manquants
+      if tr.achievementID and c.have < c.need and Crit() and NS.CriteriaList then
+        c.missing, c.doneN = {}, 0
+        for _, cr in ipairs(NS.CriteriaList(tr.achievementID)) do
+          if cr.done then c.doneN = c.doneN + 1 else c.missing[#c.missing + 1] = cr end
+        end
+      end
+      d.comps[#d.comps + 1] = c
       if #d.comps >= MAX_COMPS then break end
     end
   end
@@ -389,7 +440,7 @@ local function Render()
   -- Tout masquer, puis placer ce qui sert
   for _, t in ipairs(texts) do t:Hide() end
   for _, s in ipairs(seps) do s:Hide() end
-  for _, r in ipairs(comps) do r.icon:Hide(); r.name:Hide(); r.count:Hide(); r.barBg:Hide(); r.bar:Hide() end
+  for _, r in ipairs(comps) do r.icon:Hide(); r.name:Hide(); r.count:Hide(); r.barBg:Hide(); r.bar:Hide(); r.hit:Hide(); r.hit.c = nil end
   questBtn:Hide(); questBtn.q = nil
 
   if compact then
@@ -455,6 +506,11 @@ local function Render()
       r._p = p
       r.bar:SetShown(p > 0)
       width = math.max(width, 10 + 14 + 6 + r.name:GetStringWidth() + 16 + r.count:GetStringWidth() + 10)
+      r.hit.c = c
+      r.hit:ClearAllPoints()
+      r.hit:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -y)
+      r.hit:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -y)
+      r.hit:Show()
       y = y + ROW_H
     else
       nt = nt + 1

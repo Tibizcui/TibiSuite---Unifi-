@@ -250,6 +250,19 @@ local function MissingCriteria(achID)
   return out
 end
 
+-- Tous les criteres d'un haut fait : { name, done, q, req } (overlay)
+local function CriteriaList(achID)
+  local out = {}
+  if not (achID and GetAchievementNumCriteria and GetAchievementCriteriaInfo) then return out end
+  for i = 1, GetAchievementNumCriteria(achID) or 0 do
+    local name, _, critDone, q, req = GetAchievementCriteriaInfo(achID, i)
+    if name and name ~= "" and not (issecretvalue and issecretvalue(name)) then
+      out[#out + 1] = { name = name, done = critDone and true or false, q = q, req = req }
+    end
+  end
+  return out
+end
+
 -- Quantite possedee pour un composant (objet, monnaie ou criteres de haut fait)
 local function TrackerCount(tr)
   if tr.achievementID then return CountAchievementCriteria(tr.achievementID) end
@@ -2912,6 +2925,7 @@ NS.GetItemName    = GetItemName
 NS.GetIcon        = GetIcon
 NS.GetTrackerIcon = GetTrackerIcon
 NS.AddWaypoint    = AddTomTomWaypoint
+NS.CriteriaList   = CriteriaList
 
 function NS.Owned(itemID)
   return IsEquipped(itemID) or CountItemEverywhere(itemID) > 0

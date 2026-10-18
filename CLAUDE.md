@@ -426,6 +426,9 @@ après 10 min ; une séance de pêche compte comme un passage pour l'estimation)
 Nouveau type de composant `{ achievementID, need }` = critères faits du haut
 fait (`CountAchievementCriteria`, infobulle des critères manquants, contrôlé
 par `/lt verify`), gains sur `CRITERIA_UPDATE` / `ACHIEVEMENT_EARNED`.
+Tant qu'un haut fait composant n'est pas fini, le survol de sa ligne dans l'overlay liste ses critères
+manquants en infobulle (`NS.CriteriaList`, zone `r.hit` qui renvoie clics et glisser à l'overlay),
+réglage `overlayCriteria` (nil = actif).
 
 **Menu Échap (validé en jeu, y compris en combat).** `GameMenuFrame:AddButton`
 dans un post-hook de `InitButtons` posé **au chargement du fichier**, donc avant
