@@ -110,8 +110,8 @@ end
 -- POOL DE WIDGETS (on reutilise, on ne recree jamais)
 -- ================================================================
 local mainFrame, content
-local pools = { header = {}, bar = {}, note = {}, tab = {}, item = {}, card = {}, sort = {} }
-local used  = { header = {}, bar = {}, note = {}, tab = {}, item = {}, card = {}, sort = {} }
+local pools = { header = {}, bar = {}, note = {}, tab = {}, item = {}, card = {}, sort = {}, tcard = {} }
+local used  = { header = {}, bar = {}, note = {}, tab = {}, item = {}, card = {}, sort = {}, tcard = {} }
 
 local function resetPools()
   for kind, list in pairs(used) do
@@ -299,7 +299,7 @@ end
 local VIEW_LABEL = {
   current = "METIER_VIEW_CURRENT", all = "METIER_VIEW_ALL", account = "METIER_VIEW_ACCOUNT",
   conc = "METIER_VIEW_CONC", week = "METIER_VIEW_WEEK", recipes = "METIER_VIEW_RECIPES",
-  farm = "METIER_VIEW_FARM", fish = "METIER_VIEW_FISH", wealth = "METIER_VIEW_WEALTH",
+  farm = "METIER_VIEW_FARM", fish = "METIER_VIEW_FISH", time = "METIER_VIEW_TIME", wealth = "METIER_VIEW_WEALTH",
 }
 
 -- Trois rubriques (une rangee d'onglets), puis les vues de la rubrique
@@ -309,7 +309,7 @@ local FR_UI = (GetLocale and GetLocale() == "frFR")
 local VIEW_GROUPS = {
   { key = "prog", label = FR_UI and "Progression" or "Progress", views = { "current", "all", "account" } },
   { key = "track", label = FR_UI and "Suivi" or "Tracking", views = { "conc", "week", "recipes" } },
-  { key = "gains", label = FR_UI and "Or" or "Gold", views = { "farm", "fish", "wealth" } },
+  { key = "gains", label = FR_UI and "Or" or "Gold", views = { "farm", "fish", "time", "wealth" } },
 }
 local GROUP_OF = {}
 for _, g in ipairs(VIEW_GROUPS) do for _, v in ipairs(g.views) do GROUP_OF[v] = g end end
@@ -1407,6 +1407,99 @@ local function renderFarm(kind)
 end
 
 -- ================================================================
+-- VUE "TEMPS" : temps de farm par metier (Gathering.lua, ST.FarmTimeTotals).
+-- Une carte par metier : icone, nom, session en cours a droite, puis
+-- quatre colonnes Aujourd'hui / Semaine / Mois / Annee.
+-- ================================================================
+local TCARD_H = 62
+
+local function MakeTimeCard()
+  local c = CreateFrame("Frame", nil, content, "BackdropTemplate")
+  c:SetSize(ROW_W, TCARD_H)
+  c:SetBackdrop(UI.FlatBackdrop())
+  local acc = c:CreateTexture(nil, "OVERLAY")
+  acc:SetPoint("TOPLEFT", 1, -1)
+  acc:SetPoint("BOTTOMLEFT", 1, 1)
+  acc:SetWidth(2)
+  c._acc = acc
+  local ic = c:CreateTexture(nil, "ARTWORK")
+  ic:SetSize(18, 18)
+  ic:SetPoint("TOPLEFT", 10, -7)
+  ic:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  c._ic = ic
+  local name = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  name:SetPoint("LEFT", ic, "RIGHT", 6, 0)
+  c._name = name
+  local sess = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  sess:SetPoint("TOPRIGHT", -10, -10)
+  sess:SetJustifyH("RIGHT")
+  c._sess = sess
+  c._cap, c._val = {}, {}
+  local colW = (ROW_W - 16) / 4
+  for i = 1, 4 do
+    local x = 10 + (i - 1) * colW
+    local cap = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    cap:SetPoint("BOTTOMLEFT", c, "BOTTOMLEFT", x, 20)
+    cap:SetWidth(colW - 4)
+    cap:SetJustifyH("LEFT")
+    local val = c:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    val:SetPoint("BOTTOMLEFT", c, "BOTTOMLEFT", x, 6)
+    val:SetWidth(colW - 4)
+    val:SetJustifyH("LEFT")
+    c._cap[i], c._val[i] = cap, val
+  end
+  return c
+end
+
+local function placeTimeCard(name, icon, tot, TT, highlight)
+  local c = table.remove(pools.tcard) or MakeTimeCard()
+  used.tcard[#used.tcard + 1] = c
+  c:ClearAllPoints()
+  c:SetPoint("TOPLEFT", content, "TOPLEFT", 4, Y)
+  c:SetBackdropColor(0.04, 0.05, 0.06, 0.95)
+  c:SetBackdropBorderColor(0, 0, 0, 1)
+  c._acc:SetColorTexture(ACC[1], ACC[2], ACC[3], highlight and 1 or 0.45)
+  c._ic:SetTexture(icon or 134400)
+  c._name:SetText(name)
+  if tot.session and tot.session > 0 then
+    c._sess:SetText("|cFF8A8A90" .. TT.session .. "|r  |cFF00FF98" .. ST.FarmTimeText(tot.session) .. "|r")
+  else
+    c._sess:SetText("")
+  end
+  local cols = { { TT.day, tot.day }, { TT.week, tot.week }, { TT.month, tot.month }, { TT.year, tot.year } }
+  for i, col in ipairs(cols) do
+    c._cap[i]:SetText(col[1])
+    c._val[i]:SetText((col[2] or 0) > 0 and ("|cFFFFFFFF" .. ST.FarmTimeText(col[2]) .. "|r") or "|cFF555555-|r")
+  end
+  c:Show()
+  line(TCARD_H + 6)
+  return c
+end
+
+local function renderTime()
+  local TT = ST.TimeText
+  if not (TT and ST.FarmTimeTotals) then placeNote(L.NO_DATA, 8) return end
+  placeNote("|cFF8A8A90" .. TT.intro .. "|r", 6)
+  local sum = { session = 0, day = 0, week = 0, month = 0, year = 0 }
+  local list = {}
+  for _, key in ipairs(ST.TIME_PROFS) do
+    local tot = ST.FarmTimeTotals(key)
+    if tot.year > 0 or tot.week > 0 or tot.session > 0 then
+      list[#list + 1] = { key = key, tot = tot }
+      for k in pairs(sum) do sum[k] = sum[k] + (tot[k] or 0) end
+    end
+  end
+  if #list == 0 then placeNote(TT.none, 8) return end
+  if #list > 1 then placeTimeCard(TT.total, "Interface\\Icons\\INV_Misc_PocketWatch_01", sum, TT, true) end
+  table.sort(list, function(a, b) return a.tot.year > b.tot.year end)
+  for _, e in ipairs(list) do
+    local name, icon = ST.ProfMeta(e.key)
+    placeTimeCard(name, icon, e.tot, TT, #list == 1)
+  end
+  placeNote("|cFF777777" .. TT.weekNote .. "|r", 6)
+end
+
+-- ================================================================
 -- VUE "VALEUR" : sacs et banques de chaque personnage + banque de
 -- bataillon, objets les plus precieux du compte (Gathering.lua).
 -- ================================================================
@@ -1495,6 +1588,7 @@ function ST.RefreshUI()
   elseif v == "recipes" then renderRecipes()
   elseif v == "farm" then renderFarm("farm")
   elseif v == "fish" then renderFarm("fish")
+  elseif v == "time" then renderTime()
   elseif v == "wealth" then renderWealth()
   end
 

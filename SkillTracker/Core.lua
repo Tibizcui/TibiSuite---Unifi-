@@ -1099,7 +1099,7 @@ ST.OpenView = OpenView
 
 -- Point d'entree pour TibiSuite (apercu du Centre : clic sur une ligne).
 function SkillTracker_OpenView(v)
-  local ok = { farm = true, fish = true, wealth = true, conc = true, week = true, recipes = true, current = true }
+  local ok = { farm = true, fish = true, time = true, wealth = true, conc = true, week = true, recipes = true, current = true }
   if not ok[v] then return false end
   if v == "farm" and ST.settings then ST.settings.farmScope = "cur" end
   if v == "fish" and ST.settings then ST.settings.fishScope = "cur" end
@@ -1131,6 +1131,8 @@ SlashCmdList["SKILLTRACKER"] = function(msg)
     OpenView("recipes", msg:match("^%S+%s+(.+)$") or "")
   elseif msg == "farm" or msg == "recolte" or msg == "récolte" then
     if ST.FarmToggle then ST.FarmToggle() end
+  elseif msg == "time" or msg == "temps" then
+    OpenView("time")
   elseif msg == "fish" or msg == "peche" or msg == "pêche" then
     if ST.FishToggle then ST.FishToggle() end
   elseif msg:match("^fish%s") or msg:match("^peche%s") or msg:match("^pêche%s") then
@@ -1156,6 +1158,7 @@ SlashCmdList["SKILLTRACKER"] = function(msg)
     if ST.GatherText then print("  |cFFFFD700/skt probe|r : " .. ST.GatherText.slash) end
     if ST.FarmText then print("  |cFFFFD700/skt farm|r : " .. ST.FarmText.slash) end
     if ST.FishText then print("  |cFFFFD700/skt peche|r : " .. ST.FishText.slash) end
+    if ST.TimeText then print("  |cFFFFD700/skt temps|r : " .. ST.TimeText.slash) end
     if ST.FishText then print("  |cFFFFD700/skt peche sonde|r : " .. ST.FishText.probe) end
     print("  |cFFFFD700/skt mark|r, |cFFFFD700/skt diff|r : " .. L.SLASH_DIFF)
     print("  |cFFFFD700/skt dump|r, |cFFFFD700/skt kpdump|r : " .. L.SLASH_DUMP)

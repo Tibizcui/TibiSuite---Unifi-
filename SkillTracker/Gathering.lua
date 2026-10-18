@@ -523,9 +523,146 @@ function FarmRecord(qty)
     s.items[id] = (s.items[id] or 0) + q
     db.total[id] = (db.total[id] or 0) + q
   end
+  local prof = ST.GatherProfOf(qty) or s.lastProf
+  if prof then s.lastProf = prof end
+  ST.FarmTimeAdd(prof, s)
   if _G.TibiSuite and TibiSuite.RefreshStatus then TibiSuite.RefreshStatus() end
   if ST.RefreshUI then ST.RefreshUI() end
 end
+
+-- ================================================================
+-- TEMPS DE FARM PAR METIER
+-- ----------------------------------------------------------------
+-- Le temps entre deux recoltes (ou prises) est credite au metier de la
+-- seconde, s'il fait 10 min au plus (meme seuil que la fin de session) :
+-- le trajet entre deux noeuds compte, une pause plus longue non. Metier
+-- d'une recolte = objets ramasses (metal, pierre, gemmes : Minage ; plantes :
+-- Herboristerie ; elements seuls : metier precedent de la session).
+-- Pour tout le compte (tous personnages confondus).
+--   SkillTrackerDB.ftime = { lastAt, days = { [metier] = { ["AAAAMMJJ"] = s } },
+--                            week = { id = reset, [metier] = s } }
+-- Jour, mois, annee : sommes des jours. Semaine : semaine de jeu (du reset
+-- hebdo au suivant), tenue a part pour etre exacte a l'heure pres.
+-- Session : champ ptime de la session de recolte ou de peche en cours.
+-- ================================================================
+ST.TIME_PROFS = { "mining", "herb", "fish" }
+local PROF_META = {
+  mining = { skill = 186, icon = 136248, fr = "Minage", en = "Mining" },
+  herb   = { skill = 182, icon = 136246, fr = "Herboristerie", en = "Herbalism" },
+  fish   = { skill = 356, icon = 136245, fr = "Pêche", en = "Fishing" },
+}
+
+function ST.ProfMeta(key)
+  local m = PROF_META[key]
+  if not m then return key, 134400 end
+  local name
+  if C_TradeSkillUI and C_TradeSkillUI.GetTradeSkillDisplayName then
+    local ok, n = pcall(C_TradeSkillUI.GetTradeSkillDisplayName, m.skill)
+    if ok and type(n) == "string" and n ~= "" and not Secret(n) then name = n end
+  end
+  return name or T(m.fr, m.en), m.icon
+end
+
+function ST.GatherProfOf(qty)
+  local getInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+  if not getInstant then return nil end
+  local votes = {}
+  for id, q in pairs(qty or {}) do
+    local ok, _, _, _, _, _, classID, subID = pcall(getInstant, id)
+    if ok and classID == 7 then
+      local p = (subID == 7 or subID == 4) and "mining" or (subID == 9 and "herb") or nil
+      if p then votes[p] = (votes[p] or 0) + q end
+    end
+  end
+  local best, bn
+  for p, n in pairs(votes) do if not bn or n > bn then best, bn = p, n end end
+  return best
+end
+
+-- Identifiant de la semaine de jeu : heure du prochain reset hebdo.
+local function WeekId()
+  if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+    local ok, s = pcall(C_DateAndTime.GetSecondsUntilWeeklyReset)
+    if ok and type(s) == "number" and not Secret(s) then return math.floor((time() + s) / 3600 + 0.5) end
+  end
+  return date("%Y-%W")
+end
+ST.FarmWeekId = WeekId
+
+local function TimeDB()
+  SkillTrackerDB.ftime = SkillTrackerDB.ftime or {}
+  local t = SkillTrackerDB.ftime
+  t.days = t.days or {}
+  t.week = t.week or {}
+  local wid = WeekId()
+  if t.week.id ~= wid then t.week = { id = wid } end
+  return t
+end
+ST.FarmTimeDB = TimeDB
+
+-- Credite le temps ecoule depuis la recolte precedente au metier `prof`
+-- (nil : met seulement l'horloge a jour). `sess` recoit le temps de session.
+function ST.FarmTimeAdd(prof, sess)
+  local t = TimeDB()
+  local now = time()
+  local gap = t.lastAt and (now - t.lastAt) or 0
+  t.lastAt = now
+  if not prof or gap <= 0 or gap > FARM_IDLE then return end
+  t.days[prof] = t.days[prof] or {}
+  local dk = date("%Y%m%d", now)
+  t.days[prof][dk] = (t.days[prof][dk] or 0) + gap
+  t.week[prof] = (t.week[prof] or 0) + gap
+  if sess then
+    sess.ptime = sess.ptime or {}
+    sess.ptime[prof] = (sess.ptime[prof] or 0) + gap
+  end
+end
+
+-- { session, day, week, month, year } en secondes pour un metier.
+function ST.FarmTimeTotals(prof)
+  local t = TimeDB()
+  local out = { session = 0, day = 0, week = t.week[prof] or 0, month = 0, year = 0 }
+  local today, month, year = date("%Y%m%d"), date("%Y%m"), date("%Y")
+  for dk, s in pairs(t.days[prof] or {}) do
+    if dk == today then out.day = out.day + s end
+    if dk:sub(1, 6) == month then out.month = out.month + s end
+    if dk:sub(1, 4) == year then out.year = out.year + s end
+  end
+  local sess = (prof == "fish") and (ST.FishActive and ST.FishActive()) or ST.FarmActive()
+  out.session = sess and sess.ptime and sess.ptime[prof] or 0
+  return out
+end
+
+-- Jours de plus de 400 jours retires (la semaine et l'annee restent justes).
+function ST.FarmTimePrune()
+  local limit = date("%Y%m%d", time() - 400 * 86400)
+  for _, days in pairs(TimeDB().days) do
+    for dk in pairs(days) do if dk < limit then days[dk] = nil end end
+  end
+end
+
+-- Duree en heures et minutes (jamais en jours : 30 h de farm se lisent mieux).
+function ST.FarmTimeText(s)
+  s = math.floor(s or 0)
+  if s < 60 then return (s > 0) and "< 1 min" or "-" end
+  local h, m = math.floor(s / 3600), math.floor((s % 3600) / 60)
+  if h > 0 then return string.format("%d h %02d", h, m) end
+  return string.format("%d min", m)
+end
+
+ST.TimeText = {
+  view = T("Temps", "Time"),
+  intro = T("Temps passé à récolter et à pêcher, pour tout le compte. Le trajet entre deux récoltes compte ; une pause de plus de 10 min, non.",
+    "Time spent gathering and fishing, for the whole account. Travel between two harvests counts; a break longer than 10 min does not."),
+  total = T("Tous métiers", "All professions"),
+  session = T("Session", "Session"), day = T("Aujourd'hui", "Today"), week = T("Semaine", "Week"),
+  month = T("Mois", "Month"), year = T("Année", "Year"),
+  none = T("Aucun temps de farm pour l'instant : il se compte dès ta première récolte ou ta première prise.",
+    "No farming time yet: it is counted from your first harvest or catch."),
+  slash = T("temps de farm par métier (jour, semaine, mois, année)", "farming time per profession (day, week, month, year)"),
+  weekNote = T("Semaine = semaine de jeu, du reset hebdomadaire au suivant.", "Week = game week, from one weekly reset to the next."),
+}
+if ST.L then ST.L.METIER_VIEW_TIME = ST.TimeText.view end
 
 -- /skt farm : demarre une session vide, ou termine la session en cours.
 function ST.FarmToggle()
@@ -590,6 +727,7 @@ farmFrame:RegisterEvent("PLAYER_LOGIN")
 farmFrame:SetScript("OnEvent", function()
   C_Timer.After(5, function()
     pcall(ST.FarmCleanup)
+    pcall(ST.FarmTimePrune)
     local db = FarmDB()
     if db.cur and time() - (db.cur.last or 0) > FARM_IDLE then FarmClose(true) end
   end)

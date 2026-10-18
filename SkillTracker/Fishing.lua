@@ -135,6 +135,7 @@ local function FishRecord(qty)
     s.items[id] = (s.items[id] or 0) + q
     db.total[id] = (db.total[id] or 0) + q
   end
+  if ST.FarmTimeAdd then ST.FarmTimeAdd("fish", s) end
   if place and ST.settings.fishSpots ~= false then
     local sp = Spots()
     local rec = sp[place] or { n = 0, items = {} }
