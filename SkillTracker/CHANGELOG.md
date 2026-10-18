@@ -1,5 +1,13 @@
 # Changelog
 
+## 7.1.5.51
+- Nouveau : la pêche. Session de pêche (prises, valeur au prix de l'hôtel des ventes, po/h), historique, cumul et lieux de pêche appris en pêchant.
+- Sons de pêche en option : musique et ambiance coupées, effets à fond, son gardé jeu en arrière-plan ; tes réglages reviennent après 90 s sans relancer, au combat ou à la déconnexion.
+- Clic pour se déplacer coupé pendant la pêche (si tu l'utilises).
+- Vues rangées en trois rubriques : Progression, Suivi, Or.
+- Listes de Récolte et de Pêche en tableau : valeur totale, tri sur l'en-tête, quantité et prix à l'unité.
+- Commandes : /skt peche, /skt peche sonde.
+
 ## 7.1.5.50
 - Alerte de nouvelle version dans le chat, aussi quand ce module est installé seul : les joueurs de ta guilde et de ton groupe échangent leur numéro de version, et un patch du jeu plus récent que l'addon est signalé.
 

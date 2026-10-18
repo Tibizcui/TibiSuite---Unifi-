@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.51
+- Correctif 12.1.5 : un relevé fait sans voir la banque ne vide plus la liste des légendaires du personnage.
+
 ## 7.1.5.50
 - Alerte de nouvelle version dans le chat, aussi quand ce module est installé seul : les joueurs de ta guilde et de ton groupe échangent leur numéro de version, et un patch du jeu plus récent que l'addon est signalé.
 

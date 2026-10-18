@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.51
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.1.5.50
 - Alerte de nouvelle version dans le chat, aussi quand ce module est installé seul : les joueurs de ta guilde et de ton groupe échangent leur numéro de version, et un patch du jeu plus récent que l'addon est signalé.
 

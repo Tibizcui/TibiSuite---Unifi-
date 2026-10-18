@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.1.5.51
+- Quoi de neuf 7.1.5.51 : pêche et nouvelle présentation de Métiers (SkillTracker), correctifs LegTracker et DgnTracker.
+- Ligne d'état et aperçu du Centre pendant une session de pêche.
+
 ## 7.1.5.50
 - Nouveau : alerte de nouvelle version dans le chat. Les joueurs de ta guilde et de ton groupe qui ont TibiSuite échangent leur numéro de version ; si l'un d'eux a plus récent, une ligne « Nouvelle version X disponible, votre version Y est obsolète ! » s'affiche, une fois par session.
 - Même sans personne autour : si un patch du jeu est plus récent que la suite, une ligne te signale qu'une mise à jour est probablement disponible.
