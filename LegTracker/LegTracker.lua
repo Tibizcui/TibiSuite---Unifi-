@@ -247,14 +247,41 @@ end
 -- GESTION DES DONNEES DE COMPTE (suivi multi-personnages)
 -- ================================================================
 
+-- 7.1.5.51 : la banque n'est comptee de facon sure qu'une fois ouverte dans
+-- la session. Avant, un scan au login qui ne voyait pas la banque (0 partout)
+-- vidait la liste du personnage : ses legendaires rangés en banque
+-- disparaissaient (constate sur la SavedVariable apres la 12.1.5). Tant que
+-- la banque n'a pas ete vue, on garde donc ce qui etait deja connu ; une fois
+-- vue, la liste est recalculee pour de bon (objet vendu ou detruit = retire).
+local bankSeen = false
+
+-- Deja enregistre comme possede par CE personnage lors d'un scan precedent
+local function KnownOnCurrentChar(itemID)
+  local chars = LegTrackerDB and LegTrackerDB.accountData and PLAYER_REALM
+                and LegTrackerDB.accountData[PLAYER_REALM]
+  local mine = chars and PLAYER_NAME and chars[PLAYER_NAME]
+  return type(mine) == "table" and mine[itemID] == true
+end
+
 local function SaveCurrentCharData()
   if not LegTrackerDB or not PLAYER_NAME or not PLAYER_REALM then return end
   local db = LegTrackerDB
   if not db.accountData[PLAYER_REALM] then db.accountData[PLAYER_REALM] = {} end
   -- Table reutilisee (videe) plutot que recreee a chaque scan
   local charData = db.accountData[PLAYER_REALM][PLAYER_NAME]
-  if type(charData) == "table" then wipe(charData) else charData = {} end
+  local kept = {}
+  if type(charData) == "table" then
+    if not bankSeen then
+      for k, v in pairs(charData) do
+        if type(k) == "number" and v == true then kept[k] = true end
+      end
+    end
+    wipe(charData)
+  else
+    charData = {}
+  end
   db.accountData[PLAYER_REALM][PLAYER_NAME] = charData
+  for k in pairs(kept) do charData[k] = true end
 
   -- Sauvegarde de la classe du personnage pour colorisation
   if PLAYER_CLASS then
@@ -440,6 +467,7 @@ local function ScanLegendaryStatus(item)
   --   achievement = tour de force du compte, transmog = apparence apprise.
   local id  = item.itemID
   local via = (IsObtainedOnCurrentChar(id) and "char")
+           or (not bankSeen and KnownOnCurrentChar(id) and "char")
            or (IsObtainedOnAlt(id) and "alt")
            or (AnyAchievementCompleted(item) and "achievement")
            or (HasTransmog(id) and "transmog")
@@ -2693,7 +2721,12 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
           .. " |cFF888888" .. T("LOGIN_SUBCMDS", "(/lt scan = forcer scan, /lt verify = controler les IDs, /lt reset = reinit donnees compte)") .. "|r")
 
   elseif event == "BANKFRAME_OPENED" or event == "BANKFRAME_CLOSED" then
-    -- Rescanner apres ouverture/fermeture banque (pour detecter items en banque)
+    -- Rescanner apres ouverture/fermeture banque (pour detecter items en banque).
+    -- Le contenu de la banque est maintenant connu : le scan suivant peut
+    -- retirer un objet qui n'y est plus (voir bankSeen).
+    if event == "BANKFRAME_OPENED" then
+      C_Timer.After(0.4, function() bankSeen = true end)
+    end
     RequestRefresh(0.5)
     -- Les quantites de banque peuvent arriver maintenant : pas d'alerte
     lootMuteUntil = (GetTime and GetTime() or 0) + 2

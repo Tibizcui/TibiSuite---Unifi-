@@ -950,7 +950,7 @@ local function BuildUI()
 
     -- Catalogue absent ou en construction
     local cat = Coll and Coll.Catalog()
-    if Coll and not cat and not Coll.IsBuilding() then
+    if Coll and (not cat or (Coll.IsStale and Coll.IsStale())) and not Coll.IsBuilding() then
       local ok, why = Coll.Start()
       if not ok then
         head("|cFFFF8844" .. (why == "open" and T("COLL_EJ_OPEN", "Ferme le journal des aventures : le catalogue se construit à partir de lui.")

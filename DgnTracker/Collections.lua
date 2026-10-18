@@ -81,10 +81,19 @@ end
 -- ----------------------------------------------------------------
 C.state = nil   -- { phase = "scan"|"load", done, total } pendant la construction
 
+-- 7.1.5.51 : un catalogue d'une version precedente du jeu reste servi (meme
+-- langue) en attendant sa reconstruction. Avant, la 12.1.5 le rendait
+-- invisible jusqu'a l'ouverture de la vue Collections : apercus, infobulles,
+-- Conseiller et fil d'activite n'avaient plus aucune monture.
 function C.Catalog()
   local c = DB().coll
-  if type(c) == "table" and c.build == Build() and c.locale == Locale() and type(c.inst) == "table" then return c end
+  if type(c) == "table" and c.locale == Locale() and type(c.inst) == "table" then return c end
   return nil
+end
+-- Catalogue present mais construit sur une autre version du jeu
+function C.IsStale()
+  local c = C.Catalog()
+  return c ~= nil and c.build ~= Build()
 end
 function C.IsBuilding() return C.state ~= nil end
 
@@ -95,7 +104,7 @@ local function Changed() if onChange then pcall(onChange) end end
 local loadFrame
 function C.Start(force)
   if C.state then return true end
-  if not force and C.Catalog() then return true end
+  if not force and C.Catalog() and not C.IsStale() then return true end
   if not (EJ_GetNumTiers and EJ_SelectTier and EJ_GetInstanceByIndex and EJ_SelectInstance and EJ_GetNumLoot
           and C_EncounterJournal and C_EncounterJournal.GetLootInfoByIndex) then return false, "api" end
   if EncounterJournal and EncounterJournal.IsShown and EncounterJournal:IsShown() then return false, "open" end
@@ -651,9 +660,32 @@ local function Announce(hit)
   Changed()
 end
 
+-- 7.1.5.51 : apres une mise a jour du jeu, le catalogue existant est
+-- reconstruit tout seul en arriere-plan, une fois, 20 s apres l'arrivee en
+-- jeu, hors combat, hors instance et journal des aventures ferme (sinon on
+-- retente plus tard). Aucun catalogue = rien ne tourne au chargement, comme
+-- avant : la premiere construction reste a l'ouverture de la vue.
+local autoTried = false
+local function AutoRebuild()
+  if autoTried or C.state or not C.IsStale() then return end
+  local inInst = IsInInstance and select(1, IsInInstance())
+  local ejOpen = EncounterJournal and EncounterJournal.IsShown and EncounterJournal:IsShown()
+  if (InCombatLockdown and InCombatLockdown()) or inInst or ejOpen then
+    C_Timer.After(60, AutoRebuild)
+    return
+  end
+  autoTried = true
+  C.Start()
+end
+
 local ev = CreateFrame("Frame")
-for _, e in ipairs({ "NEW_MOUNT_ADDED", "NEW_PET_ADDED", "NEW_TOY_ADDED", "UPDATE_INSTANCE_INFO" }) do pcall(ev.RegisterEvent, ev, e) end
+for _, e in ipairs({ "NEW_MOUNT_ADDED", "NEW_PET_ADDED", "NEW_TOY_ADDED", "UPDATE_INSTANCE_INFO", "PLAYER_ENTERING_WORLD" }) do pcall(ev.RegisterEvent, ev, e) end
 ev:SetScript("OnEvent", function(_, event, arg)
+  if event == "PLAYER_ENTERING_WORLD" then
+    ev:UnregisterEvent("PLAYER_ENTERING_WORLD")
+    C_Timer.After(20, AutoRebuild)
+    return
+  end
   if event == "UPDATE_INSTANCE_INFO" then Changed(); return end
   if not C.Catalog() then return end
   local ix = Index()
