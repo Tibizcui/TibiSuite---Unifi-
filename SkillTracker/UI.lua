@@ -1038,7 +1038,7 @@ local FARM_SRC = {
            reset = function() ST.FarmResetTotal() end, scope = "farmScope", setting = "farm" },
   fish = { text = function() return ST.FishText end, db = function() return ST.FishDB and ST.FishDB() end,
            active = function() return ST.FishActive() end, toggle = function() ST.FishToggle() end,
-           reset = function() ST.FishResetTotal() end, scope = "fishScope", setting = "fish", spots = true },
+           reset = function() ST.FishResetTotal() end, scope = "fishScope", setting = "fish", spots = true, zones = true },
 }
 
 local function ItemMeta(id)
@@ -1334,6 +1334,25 @@ local function renderFishSpots(FT)
   end)
 end
 
+-- Zones de peche classees par habitude : sessions, prises, temps actif, dernier passage.
+local function renderFishZones(FT)
+  local list = ST.FishZoneList and ST.FishZoneList() or {}
+  if #list == 0 then placeNote(FT.noZones, 8) return end
+  placeNote("|cFF777777" .. FT.zonesNote .. "|r", 6)
+  for i, z in ipairs(list) do
+    placeNote(accHex() .. i .. ".  " .. z.name .. "|r", 8)
+    local tm = (z.seconds and z.seconds > 0) and ST.FormatDuration(z.seconds) or "-"
+    placeNote("|cFF888888" .. string.format(FT.zoneFmt, z.sessions, z.catches, tm,
+      z.last and date("%d/%m", z.last) or "-") .. "|r", 14)
+  end
+  line(4)
+  local fb = placeHeader("|cFF999999" .. FT.forgetZones .. "|r", 4)
+  fb:SetScript("OnClick", function()
+    if _G.TibiSuite and TibiSuite.ShowConfirm then TibiSuite.ShowConfirm(FT.forgetZones .. " ?", function() ST.FishForgetZones() end)
+    else ST.FishForgetZones() end
+  end)
+end
+
 local function renderFarm(kind)
   kind = kind or "farm"
   local src = FARM_SRC[kind]
@@ -1345,6 +1364,7 @@ local function renderFarm(kind)
   local scope = ST.settings[src.scope] or "cur"
   local opts = { { "cur", FT.scopeCur }, { "hist", FT.scopeHist }, { "all", FT.scopeAll } }
   if src.spots then opts[#opts + 1] = { "spots", FT.scopeSpots } end
+  if src.zones and FT.scopeZones then opts[#opts + 1] = { "zones", FT.scopeZones } end
   local items = {}
   for _, o in ipairs(opts) do
     items[#items + 1] = { text = o[2], color = ACC, state = (scope == o[1]) and "on" or "off",
@@ -1353,7 +1373,10 @@ local function renderFarm(kind)
   placeChips(items, 4, 60, 140)
   line(2)
 
-  if scope == "spots" and src.spots then
+  if scope == "zones" and src.zones then
+    renderFishZones(FT)
+    return
+  elseif scope == "spots" and src.spots then
     renderFishSpots(FT)
     return
   elseif scope == "cur" then
@@ -1989,6 +2012,24 @@ local function BuildOptions()
     optPanel:Check(F.optCTM, function() return ST.settings.fishNoCTM ~= false end,
       function(v) ST.settings.fishNoCTM = v; if not v and ST.FishExitMode then ST.FishExitMode() end end, F.optCTMTT)
     optPanel:Button(F.forget, function() ST.FishForgetSpots() end)
+  end
+
+  if ST.FishText and ST.FishText.ovOpt and ST.FishOverlayUpdate then
+    local F = ST.FishText
+    local function upd() ST.FishOverlayUpdate() end
+    optPanel:Section(F.ovSection)
+    optPanel:Note(F.ovNote)
+    optPanel:Check(F.ovOpt, function() return ST.settings.fishOverlay == true end,
+      function(v) ST.FishOverlaySetEnabled(v) end, F.ovOptTT)
+    optPanel:Check(F.ovAuto, function() return ST.settings.fishOverlayAuto ~= false end,
+      function(v) ST.settings.fishOverlayAuto = v; upd() end)
+    optPanel:Check(F.ovCompact, function() return ST.settings.fishOverlayCompact == true end,
+      function(v) ST.settings.fishOverlayCompact = v; upd() end)
+    optPanel:Slider(F.ovScale, 60, 150, 10, function() return ST.settings.fishOverlayScale or 100 end,
+      function(v) ST.settings.fishOverlayScale = v; upd() end)
+    optPanel:Slider(F.ovAlpha, 30, 100, 5, function() return ST.settings.fishOverlayAlpha or 92 end,
+      function(v) ST.settings.fishOverlayAlpha = v; upd() end)
+    optPanel:Button(F.ovReset, function() ST.FishOverlayResetPos() end)
   end
 
   optPanel:Section(L.OPT_DATA)

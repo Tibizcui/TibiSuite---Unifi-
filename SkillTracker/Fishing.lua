@@ -83,6 +83,31 @@ local function Spots()
 end
 ST.FishSpots = Spots
 
+-- Statistiques par zone (par langue du client, comme les coins de peche) :
+-- SkillTrackerDB.fish.zoneStats[langue][zone] = { sessions, catches, seconds, last }
+local function ZoneStats()
+  local f = FishDB()
+  f.zoneStats = f.zoneStats or {}
+  local loc = (GetLocale and GetLocale()) or "enUS"
+  f.zoneStats[loc] = f.zoneStats[loc] or {}
+  return f.zoneStats[loc]
+end
+
+-- Zones classees par habitude : { name, sessions, catches, seconds, last }.
+function ST.FishZoneList()
+  local out = {}
+  for name, rec in pairs(ZoneStats()) do
+    out[#out + 1] = { name = name, sessions = rec.sessions or 0, catches = rec.catches or 0,
+      seconds = rec.seconds or 0, last = rec.last }
+  end
+  table.sort(out, function(a, b)
+    if a.sessions ~= b.sessions then return a.sessions > b.sessions end
+    if a.catches ~= b.catches then return a.catches > b.catches end
+    return a.name < b.name
+  end)
+  return out
+end
+
 local function Place()
   local z = GetZoneText and GetZoneText()
   if not z or z == "" or Secret(z) then return nil, nil end
@@ -100,8 +125,24 @@ local function FishClose(quiet)
   local db = FishDB()
   local s = db.cur
   db.cur = nil
-  if not s or (s.nodes or 0) == 0 then return end
+  if not s or (s.nodes or 0) == 0 then
+    if ST.FishOverlayUpdate then ST.FishOverlayUpdate() end
+    return
+  end
   s.zone = ST.FarmTopZone and ST.FarmTopZone(s) or nil
+  -- Habitudes : chaque zone ou l'on a pêché compte une session, ses prises, sa
+  -- part du temps actif (au prorata des prises) et la date du dernier passage.
+  local zs = ZoneStats()
+  local total = math.max(1, s.nodes or 0)
+  local secs = s.active or (ST.FarmDuration and ST.FarmDuration(s)) or 0
+  for z, n in pairs(s.zones or {}) do
+    local rec = zs[z] or { sessions = 0, catches = 0, seconds = 0 }
+    rec.sessions = (rec.sessions or 0) + 1
+    rec.catches = (rec.catches or 0) + n
+    rec.seconds = (rec.seconds or 0) + math.floor(secs * n / total + 0.5)
+    rec.last = time()
+    zs[z] = rec
+  end
   table.insert(db.sessions, 1, s)
   while #db.sessions > MAX_SESSIONS do table.remove(db.sessions) end
   if not quiet and _G.TibiSuite and TibiSuite.Notify then
@@ -110,6 +151,7 @@ local function FishClose(quiet)
       "Fishing session ended: %d catches, %s in %s."), s.nodes, ST.Prices.Money(v), ST.FormatDuration(ST.FarmDuration(s))),
       { sound = false })
   end
+  if ST.FishOverlayUpdate then ST.FishOverlayUpdate() end
   if ST.RefreshUI then ST.RefreshUI() end
 end
 ST.FishClose = FishClose
@@ -145,6 +187,7 @@ local function FishRecord(qty)
     sp[place] = rec
   end
   if _G.TibiSuite and TibiSuite.RefreshStatus then TibiSuite.RefreshStatus() end
+  if ST.FishOverlayUpdate then ST.FishOverlayUpdate() end
   if ST.RefreshUI then ST.RefreshUI() end
 end
 
@@ -156,12 +199,19 @@ function ST.FishToggle()
     if db.cur then FishClose(true) end
     db.cur = NewSession(time())
     print(ST.TAG .. " " .. T("Session de pêche démarrée.", "Fishing session started."))
+    if ST.FishOverlayUpdate then ST.FishOverlayUpdate() end
     if ST.RefreshUI then ST.RefreshUI() end
   end
 end
 
 function ST.FishResetTotal()
   FishDB().total = {}
+  if ST.RefreshUI then ST.RefreshUI() end
+end
+
+function ST.FishForgetZones()
+  local f = FishDB()
+  if f.zoneStats then f.zoneStats[(GetLocale and GetLocale()) or "enUS"] = nil end
   if ST.RefreshUI then ST.RefreshUI() end
 end
 
@@ -363,6 +413,8 @@ frame:SetScript("OnEvent", function(_, event, a1, a2, a3)
     if not isFish then return end
     mode.lastCast = GetTime()
     mode.pending = mode.lastCast
+    ST.FishLastCast = mode.lastCast   -- lu par l'overlay (FishOverlay.lua)
+    if ST.FishOverlayUpdate then ST.FishOverlayUpdate() end
     if not mode.on and not InCombatLockdown() then EnterMode() end
   elseif event == "LOOT_READY" or event == "LOOT_OPENED" then
     -- LOOT_READY puis LOOT_OPENED pour le meme butin : un seul passage.
@@ -391,6 +443,7 @@ ST.FishText = {
   view = T("Pêche", "Fishing"),
   scopeCur = T("Session", "Session"), scopeHist = T("Historique", "History"), scopeAll = T("Cumul", "All time"),
   scopeSpots = T("Lieux", "Spots"),
+  scopeZones = T("Zones", "Zones"),
   extKey = "fishExtFilter",
   sortName = T("Objet", "Item"), sortQty = T("Quantité", "Quantity"), sortValue = T("Valeur", "Value"), sortExt = T("Extension", "Expansion"),
   sortBy = T("Trier par :", "Sort by:"), extFilter = T("Filtrer par extension :", "Filter by expansion:"),
@@ -413,6 +466,10 @@ ST.FishText = {
   spotFmt = T("%d prises  ·  vu le %s", "%d catches  ·  seen %s"),
   spotsNote = T("Part de chaque objet dans les prises de l'endroit.", "Share of each item in the catches of the place."),
   forget = T("Oublier les coins de pêche", "Forget fishing spots"),
+  noZones = T("Aucune zone enregistrée : elles se remplissent à la fin de chaque session de pêche.", "No zone recorded yet: they fill in when each fishing session ends."),
+  zonesNote = T("Zones classées par habitude : nombre de sessions, puis de prises.", "Zones ranked by habit: number of sessions, then catches."),
+  zoneFmt = T("%d sessions  ·  %d prises  ·  %s  ·  dernier passage %s", "%d sessions  ·  %d catches  ·  %s  ·  last visit %s"),
+  forgetZones = T("Oublier les statistiques de zones", "Forget zone statistics"),
   slash = T("démarrer / terminer une session de pêche", "start / end a fishing session"),
   probe = T("sonde de pêche : affiche ce que le jeu renvoie quand tu pêches (clear pour vider)", "fishing probe: shows what the game returns while you fish (clear to empty)"),
   section = T("Pêche", "Fishing"),

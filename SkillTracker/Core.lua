@@ -58,6 +58,11 @@ local DB_DEFAULTS = {
   fishSoundBG  = true,    -- avec fishSound : son garde jeu en arriere-plan
   fishNoCTM    = true,    -- couper le clic pour se deplacer pendant la peche
   fishScope    = "cur",   -- vue Peche : "cur" / "hist" / "all" / "spots"
+  fishOverlay        = false, -- overlay de session de peche (FishOverlay.lua)
+  fishOverlayAuto    = true,  -- visible seulement pendant la peche
+  fishOverlayCompact = false, -- une seule ligne
+  fishOverlayScale   = 100,   -- echelle en %
+  fishOverlayAlpha   = 92,    -- opacite en %
   mmAngle      = 210,
   accountTag   = nil,     -- libelle libre pour distinguer ses comptes a l'import
   metierView   = "current", -- "current" / "all" / "account" / "conc" / "week"
@@ -1137,7 +1142,11 @@ SlashCmdList["SKILLTRACKER"] = function(msg)
     if ST.FishToggle then ST.FishToggle() end
   elseif msg:match("^fish%s") or msg:match("^peche%s") or msg:match("^pêche%s") then
     local sub, rest = msg:match("^%S+%s+(%S+)%s*(.*)$")
-    if (sub == "sonde" or sub == "probe") and ST.FishProbe then ST.FishProbe(rest ~= "" and rest or nil) end
+    if (sub == "sonde" or sub == "probe") and ST.FishProbe then ST.FishProbe(rest ~= "" and rest or nil)
+    elseif sub == "overlay" or sub == "hud" then
+      if ST.FishOverlayToggle then ST.FishOverlayToggle()
+      else print(ST.TAG .. " FishOverlay.lua non chargé : ferme complètement le jeu puis relance-le (un /reload ne suffit pas pour un nouveau fichier).") end
+    end
   elseif msg == "probe" or msg == "sonde" or msg:match("^probe%s") or msg:match("^sonde%s") then
     if ST.ProbeCommand then ST.ProbeCommand(msg:match("^%S+%s+(.+)$")) end
   elseif msg == "check" then
@@ -1158,6 +1167,7 @@ SlashCmdList["SKILLTRACKER"] = function(msg)
     if ST.GatherText then print("  |cFFFFD700/skt probe|r : " .. ST.GatherText.slash) end
     if ST.FarmText then print("  |cFFFFD700/skt farm|r : " .. ST.FarmText.slash) end
     if ST.FishText then print("  |cFFFFD700/skt peche|r : " .. ST.FishText.slash) end
+    if ST.FishText and ST.FishText.ovSlash then print("  |cFFFFD700/skt peche overlay|r : " .. ST.FishText.ovSlash) end
     if ST.TimeText then print("  |cFFFFD700/skt temps|r : " .. ST.TimeText.slash) end
     if ST.FishText then print("  |cFFFFD700/skt peche sonde|r : " .. ST.FishText.probe) end
     print("  |cFFFFD700/skt mark|r, |cFFFFD700/skt diff|r : " .. L.SLASH_DIFF)
