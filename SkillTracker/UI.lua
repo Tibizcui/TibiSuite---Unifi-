@@ -110,8 +110,8 @@ end
 -- POOL DE WIDGETS (on reutilise, on ne recree jamais)
 -- ================================================================
 local mainFrame, content
-local pools = { header = {}, bar = {}, note = {}, tab = {} }
-local used  = { header = {}, bar = {}, note = {}, tab = {} }
+local pools = { header = {}, bar = {}, note = {}, tab = {}, item = {}, card = {}, sort = {} }
+local used  = { header = {}, bar = {}, note = {}, tab = {}, item = {}, card = {}, sort = {} }
 
 local function resetPools()
   for kind, list in pairs(used) do
@@ -296,28 +296,31 @@ end
 -- ================================================================
 -- BASCULE DE VUE
 -- ================================================================
-local METIER_VIEWS = { "current", "all", "account", "conc", "week", "recipes", "farm", "wealth" }
+local METIER_VIEWS = { "current", "all", "account", "conc", "week", "recipes", "farm", "fish", "wealth" }
 local VIEW_LABEL = {
   current = "METIER_VIEW_CURRENT", all = "METIER_VIEW_ALL", account = "METIER_VIEW_ACCOUNT",
   conc = "METIER_VIEW_CONC", week = "METIER_VIEW_WEEK", recipes = "METIER_VIEW_RECIPES",
-  farm = "METIER_VIEW_FARM", wealth = "METIER_VIEW_WEALTH",
+  farm = "METIER_VIEW_FARM", fish = "METIER_VIEW_FISH", wealth = "METIER_VIEW_WEALTH",
 }
 
 local function placeMetierViewSwitch()
   local sel = ST.settings.metierView or "current"
-  if not VIEW_LABEL[sel] then sel = "current"; ST.settings.metierView = sel end
+  if not (VIEW_LABEL[sel] and L[VIEW_LABEL[sel]]) then sel = "current"; ST.settings.metierView = sel end
   local items = {}
   for _, v in ipairs(METIER_VIEWS) do
     local text = L[VIEW_LABEL[v]]
+    if text then
     if v == "conc" and ST.ConcFullCount then
       local n = ST.ConcFullCount()
       if n > 0 then text = text .. " (" .. n .. ")" end
     end
     if v == "farm" and ST.FarmActive and ST.FarmActive() then text = text .. " |cFF00FF98*|r" end
+    if v == "fish" and ST.FishActive and ST.FishActive() then text = text .. " |cFF00FF98*|r" end
     items[#items + 1] = {
       text = text, color = ACC, state = (v == sel) and "on" or "off",
       onClick = function() ST.settings.metierView = v; ST.RefreshUI() end,
     }
+    end
   end
   placeChips(items, 4, 60, 200)
 end
@@ -992,7 +995,16 @@ end
 -- Tri par objet / quantite / valeur / extension, filtre par extension.
 -- Donnees : SkillTrackerDB.farm (Gathering.lua).
 -- ================================================================
-local farmPick           -- index de la session d'historique ouverte (nil = liste)
+-- La vue "Peche" (Fishing.lua) passe par le meme rendu : une source par vue.
+local farmPick = {}      -- [vue] = index de la session d'historique ouverte (nil = liste)
+local FARM_SRC = {
+  farm = { text = function() return ST.FarmText end, db = function() return ST.FarmDB and ST.FarmDB() end,
+           active = function() return ST.FarmActive() end, toggle = function() ST.FarmToggle() end,
+           reset = function() ST.FarmResetTotal() end, scope = "farmScope", setting = "farm" },
+  fish = { text = function() return ST.FishText end, db = function() return ST.FishDB and ST.FishDB() end,
+           active = function() return ST.FishActive() end, toggle = function() ST.FishToggle() end,
+           reset = function() ST.FishResetTotal() end, scope = "fishScope", setting = "fish", spots = true },
+}
 
 local function ItemMeta(id)
   local get = (C_Item and C_Item.GetItemInfo) or GetItemInfo
@@ -1011,8 +1023,174 @@ local function ItemMeta(id)
   return name or ("#" .. id), icon, qc and { qc.r, qc.g, qc.b } or { 0.9, 0.9, 0.9 }, type(expac) == "number" and expac or nil
 end
 
-local function renderFarmItems(items)
-  local FT = ST.FarmText
+-- ── Liste d'objets en tableau (Recolte, Peche, coins de peche) ──────
+-- Une ligne = icone cerclee de la couleur de qualite, nom, quantite et prix
+-- a l'unite en petit dessous, valeur alignee a droite, fin trait de part en
+-- bas. Lignes alternees sans bordure ; le tri se fait sur l'en-tete.
+local ROW_H, ROW_W = 30, 292
+
+local function MakeItemRow()
+  local r = CreateFrame("Button", nil, content)
+  r:SetSize(ROW_W, ROW_H)
+  local bg = r:CreateTexture(nil, "BACKGROUND")
+  bg:SetAllPoints()
+  r._bg = bg
+  local hl = r:CreateTexture(nil, "HIGHLIGHT")
+  hl:SetAllPoints()
+  hl:SetColorTexture(1, 1, 1, 0.06)
+  local ib = r:CreateTexture(nil, "BORDER")
+  ib:SetSize(22, 22)
+  ib:SetPoint("LEFT", 5, 0)
+  r._ib = ib
+  local ic = r:CreateTexture(nil, "ARTWORK")
+  ic:SetPoint("TOPLEFT", ib, "TOPLEFT", 1, -1)
+  ic:SetPoint("BOTTOMRIGHT", ib, "BOTTOMRIGHT", -1, 1)
+  ic:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  r._ic = ic
+  local val = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  val:SetPoint("RIGHT", -8, 0)
+  val:SetJustifyH("RIGHT")
+  r._val = val
+  local name = r:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  name:SetPoint("TOPLEFT", ib, "TOPRIGHT", 7, 1)
+  name:SetPoint("RIGHT", val, "LEFT", -8, 0)
+  name:SetJustifyH("LEFT")
+  name:SetWordWrap(false)
+  r._name = name
+  local sub = r:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  sub:SetPoint("BOTTOMLEFT", ib, "BOTTOMRIGHT", 7, -1)
+  sub:SetPoint("RIGHT", val, "LEFT", -8, 0)
+  sub:SetJustifyH("LEFT")
+  sub:SetWordWrap(false)
+  r._sub = sub
+  local share = r:CreateTexture(nil, "ARTWORK")
+  share:SetPoint("BOTTOMLEFT", 0, 0)
+  share:SetHeight(2)
+  r._share = share
+  return r
+end
+
+local function acquireItemRow()
+  local r = table.remove(pools.item) or MakeItemRow()
+  used.item[#used.item + 1] = r
+  r:SetScript("OnEnter", nil)
+  r:SetScript("OnLeave", nil)
+  r:SetScript("OnClick", nil)
+  r:Show()
+  return r
+end
+
+-- d = { id, icon, name, qc, sub, value, share (0..1), shareColor, zebra }
+local function placeItemRow(d)
+  local r = acquireItemRow()
+  r:ClearAllPoints()
+  r:SetPoint("TOPLEFT", content, "TOPLEFT", 4, Y)
+  r._bg:SetColorTexture(1, 1, 1, d.zebra and 0.035 or 0.015)
+  r._ib:SetColorTexture(d.qc[1], d.qc[2], d.qc[3], 0.9)
+  r._ic:SetTexture(d.icon or 134400)
+  r._name:SetText(hex(d.qc) .. d.name .. "|r")
+  r._sub:SetText(d.sub or "")
+  r._val:SetText(d.value or "")
+  local c = d.shareColor or ACC
+  r._share:SetColorTexture(c[1], c[2], c[3], 0.7)
+  r._share:SetWidth(math.max(1, math.floor(ROW_W * math.min(1, d.share or 0) + 0.5)))
+  r._share:SetShown((d.share or 0) > 0)
+  if d.id then
+    r:SetScript("OnEnter", function(s)
+      GameTooltip:SetOwner(s, "ANCHOR_RIGHT")
+      pcall(GameTooltip.SetItemByID, GameTooltip, d.id)
+      if d.tip then d.tip(GameTooltip) end
+      GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+  end
+  line(ROW_H + 1)
+  return r
+end
+
+-- Carte de synthese : libelle et grand chiffre a gauche, detail a droite.
+local function MakeCard()
+  local c = CreateFrame("Frame", nil, content, "BackdropTemplate")
+  c:SetSize(ROW_W, 42)
+  c:SetBackdrop(UI.FlatBackdrop())
+  local acc = c:CreateTexture(nil, "OVERLAY")
+  acc:SetPoint("TOPLEFT", 1, -1)
+  acc:SetPoint("BOTTOMLEFT", 1, 1)
+  acc:SetWidth(2)
+  c._acc = acc
+  local cap = c:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  cap:SetPoint("TOPLEFT", 10, -6)
+  c._cap = cap
+  local big = c:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  big:SetPoint("BOTTOMLEFT", 10, 6)
+  c._big = big
+  local right = c:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  right:SetPoint("RIGHT", -10, 0)
+  right:SetJustifyH("RIGHT")
+  c._right = right
+  return c
+end
+
+local function placeCard(caption, big, right)
+  local c = table.remove(pools.card) or MakeCard()
+  used.card[#used.card + 1] = c
+  c:ClearAllPoints()
+  c:SetPoint("TOPLEFT", content, "TOPLEFT", 4, Y)
+  c:SetBackdropColor(0.04, 0.05, 0.06, 0.95)
+  c:SetBackdropBorderColor(0, 0, 0, 1)
+  c._acc:SetColorTexture(ACC[1], ACC[2], ACC[3], 1)
+  c._cap:SetText(caption or "")
+  c._big:SetText(big or "")
+  c._right:SetText(right or "")
+  c:Show()
+  line(48)
+  return c
+end
+
+-- En-tete de tri : "Objet" a gauche, les autres a droite ; la colonne
+-- active est en couleur d'accent et soulignee.
+local function MakeSortBtn()
+  local b = CreateFrame("Button", nil, content)
+  b:SetHeight(18)
+  local fs = b:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  fs:SetPoint("CENTER")
+  b._label = fs
+  local u = b:CreateTexture(nil, "OVERLAY")
+  u:SetPoint("BOTTOMLEFT", 0, 0)
+  u:SetPoint("BOTTOMRIGHT", 0, 0)
+  u:SetHeight(1)
+  b._u = u
+  return b
+end
+
+local function placeSortHeader(opts, current, onPick)
+  local right = 4 + ROW_W - 4   -- bord droit, aligne sur la colonne Valeur
+  for i = #opts, 1, -1 do
+    local o = opts[i]
+    local b = table.remove(pools.sort) or MakeSortBtn()
+    used.sort[#used.sort + 1] = b
+    local on = (o[1] == current)
+    b._label:SetText(on and (accHex() .. o[2] .. "|r") or ("|cFF8A8A90" .. o[2] .. "|r"))
+    local w = (b._label:GetStringWidth() or 30) + 8
+    b:SetWidth(w)
+    b._u:SetColorTexture(ACC[1], ACC[2], ACC[3], 0.9)
+    b._u:SetShown(on)
+    b:ClearAllPoints()
+    if i == 1 then
+      b:SetPoint("TOPLEFT", content, "TOPLEFT", 6, Y)       -- "Objet" a gauche
+    else
+      right = right - w
+      b:SetPoint("TOPLEFT", content, "TOPLEFT", right, Y)   -- les autres a droite
+      right = right - 6
+    end
+    b:SetScript("OnClick", function() onPick(o[1]) end)
+    b:Show()
+  end
+  line(22)
+end
+
+local function renderFarmItems(items, FT)
+  FT = FT or ST.FarmText
   local rows, buckets, seen = {}, {}, {}
   for id, q in pairs(items or {}) do
     id = tonumber(id)
@@ -1030,27 +1208,13 @@ local function renderFarmItems(items)
   ST.settings.farmExtFilter = ST.settings.farmExtFilter or {}
   local extSel = ST.settings.farmExtFilter
   for b in pairs(extSel) do if not seen[b] then extSel[b] = nil end end
-  if #buckets > 1 then
-    placeNote("|cFFAAAAAA" .. FT.extFilter .. "|r", 6)
-    placeExtFilterChips(buckets, extSel)
-  end
   local anySel = next(extSel) ~= nil
-
-  -- Tri.
-  local sort = ST.settings.farmSort or "value"
-  placeNote("|cFFAAAAAA" .. FT.sortBy .. "|r", 6)
-  local sitems = {}
-  for _, o in ipairs({ { "name", FT.sortName }, { "qty", FT.sortQty }, { "value", FT.sortValue }, { "ext", FT.sortExt } }) do
-    sitems[#sitems + 1] = { text = o[2], color = ACC, state = (sort == o[1]) and "on" or "off",
-      onClick = function() ST.settings.farmSort = o[1]; ST.RefreshUI() end }
-  end
-  placeChips(sitems, 4, 44, 110)
-  line(2)
 
   local shown = {}
   for _, r in ipairs(rows) do
     if (not anySel) or extSel[r.expac or "other"] then shown[#shown + 1] = r end
   end
+  local sort = ST.settings.farmSort or "value"
   table.sort(shown, function(a, b)
     if sort == "name" then return a.name < b.name end
     if sort == "qty" then if a.q ~= b.q then return a.q > b.q end return a.name < b.name end
@@ -1067,10 +1231,20 @@ local function renderFarmItems(items)
     if r.value > topValue then topValue = r.value end
     sumValue, sumQty = sumValue + r.value, sumQty + r.q
   end
-  placeNote("|cFFFFD100" .. string.format(FT.totalFmt, sumQty, ST.Prices.Money(sumValue)) .. "|r", 6)
+
+  -- Synthese.
+  placeCard("|cFF9A9AA0" .. (FT.totalCap or FT.sortValue) .. "|r", ST.Prices.Money(sumValue),
+    string.format(FT.countFmt or "%d / %d", sumQty, #shown))
+
+  if #buckets > 1 then
+    placeExtFilterChips(buckets, extSel)
+  end
+
+  placeSortHeader({ { "name", FT.sortName }, { "ext", FT.sortExt }, { "qty", FT.sortQty }, { "value", FT.sortValue } },
+    sort, function(k) ST.settings.farmSort = k; ST.RefreshUI() end)
 
   local lastBucket
-  for _, r in ipairs(shown) do
+  for i, r in ipairs(shown) do
     -- En tri par extension : un intertitre par extension.
     if sort == "ext" and (r.expac or "other") ~= lastBucket then
       lastBucket = r.expac or "other"
@@ -1078,38 +1252,77 @@ local function renderFarmItems(items)
       placeNote(hex(c) .. full .. "|r", 8)
     end
     local _, _, ec = ST.BucketMeta(r.expac or "other")
-    local w = placeBar(r.value, math.max(1, topValue), nil, 8, nil, function(tt)
-      pcall(tt.SetItemByID, tt, r.id)
-      tt:AddLine(" ")
-      local srcTxt = (r.src == "vendor") and FT.vendor or (r.src or "-")
-      tt:AddLine(string.format(FT.unitFmt, ST.Prices.Money(r.unit), srcTxt), 0.85, 0.85, 0.9)
-    end)
-    PaintBar(w, ec, 0.55)
-    w._txt:SetJustifyH("LEFT")
-    w._txt:SetText((r.icon and ("|T" .. r.icon .. ":14:14|t ") or "") .. hex(r.qc) .. r.name .. "|r  |cFFDDDDDDx" .. r.q .. "|r"
-      .. "   |cFFFFD100" .. ST.Prices.Money(r.value) .. "|r")
+    local unitTxt = (r.unit and r.unit > 0) and (ST.Prices.Money(r.unit) .. " " .. (FT.each or "/u")) or ""
+    placeItemRow({
+      id = r.id, icon = r.icon, name = r.name, qc = r.qc, zebra = (i % 2 == 0),
+      sub = "|cFFCFCFD4x" .. r.q .. "|r" .. (unitTxt ~= "" and ("  |cFF6E6E74·|r  " .. unitTxt) or ""),
+      value = (r.value > 0) and ST.Prices.Money(r.value) or "|cFF6E6E74-|r",
+      share = (topValue > 0) and (r.value / topValue) or 0, shareColor = ec,
+      tip = function(tt)
+        tt:AddLine(" ")
+        local srcTxt = (r.src == "vendor") and FT.vendor or (r.src or "-")
+        tt:AddLine(string.format(FT.unitFmt, ST.Prices.Money(r.unit), srcTxt), 0.85, 0.85, 0.9)
+      end,
+    })
   end
 end
 
-local function renderFarm()
-  local FT = ST.FarmText
-  if not (FT and ST.FarmDB) then placeNote(L.NO_DATA, 8) return end
-  if ST.FarmCleanup and not ST.runtime.farmCleaned then ST.runtime.farmCleaned = true; pcall(ST.FarmCleanup) end
-  if ST.settings.farm == false then placeNote(FT.opt .. " : " .. L.FILTER_NONE, 8) return end
-  local db = ST.FarmDB()
-  local scope = ST.settings.farmScope or "cur"
+-- Coins de peche : un lieu par intertitre, ses objets en part des prises.
+local function renderFishSpots(FT)
+  local list = ST.FishSpotList and ST.FishSpotList() or {}
+  if #list == 0 then placeNote(FT.noSpots, 8) return end
+  placeNote("|cFF777777" .. FT.spotsNote .. "|r", 6)
+  for _, sp in ipairs(list) do
+    placeNote(accHex() .. sp.name .. "|r  |cFF888888" .. string.format(FT.spotFmt, sp.n,
+      sp.at and date("%d/%m", sp.at) or "-") .. "|r", 8)
+    local rows, sum = {}, 0
+    for id, q in pairs(sp.items) do rows[#rows + 1] = { id = tonumber(id), q = q }; sum = sum + q end
+    table.sort(rows, function(a, b) return a.q > b.q end)
+    for i = 1, math.min(5, #rows) do
+      local r = rows[i]
+      local name, icon, qc = ItemMeta(r.id)
+      local unit = ST.UnitPrice(r.id)
+      placeItemRow({ id = r.id, icon = icon, name = name, qc = qc, zebra = (i % 2 == 0),
+        sub = "|cFFCFCFD4x" .. r.q .. "|r" .. ((unit and unit > 0) and ("  |cFF6E6E74·|r  " .. ST.Prices.Money(unit) .. " " .. (FT.each or "/u")) or ""),
+        value = "|cFFE6E6EA" .. math.floor(r.q / sum * 100 + 0.5) .. " %|r",
+        share = r.q / sum, shareColor = qc })
+    end
+    line(6)
+  end
+  line(4)
+  local fb = placeHeader("|cFF999999" .. FT.forget .. "|r", 4)
+  fb:SetScript("OnClick", function()
+    if _G.TibiSuite and TibiSuite.ShowConfirm then TibiSuite.ShowConfirm(FT.forget .. " ?", function() ST.FishForgetSpots() end)
+    else ST.FishForgetSpots() end
+  end)
+end
+
+local function renderFarm(kind)
+  kind = kind or "farm"
+  local src = FARM_SRC[kind]
+  local FT = src and src.text()
+  if not (FT and src.db()) then placeNote(L.NO_DATA, 8) return end
+  if kind == "farm" and ST.FarmCleanup and not ST.runtime.farmCleaned then ST.runtime.farmCleaned = true; pcall(ST.FarmCleanup) end
+  if ST.settings[src.setting] == false then placeNote(FT.opt .. " : " .. L.FILTER_NONE, 8) return end
+  local db = src.db()
+  local scope = ST.settings[src.scope] or "cur"
+  local opts = { { "cur", FT.scopeCur }, { "hist", FT.scopeHist }, { "all", FT.scopeAll } }
+  if src.spots then opts[#opts + 1] = { "spots", FT.scopeSpots } end
   local items = {}
-  for _, o in ipairs({ { "cur", FT.scopeCur }, { "hist", FT.scopeHist }, { "all", FT.scopeAll } }) do
+  for _, o in ipairs(opts) do
     items[#items + 1] = { text = o[2], color = ACC, state = (scope == o[1]) and "on" or "off",
-      onClick = function() ST.settings.farmScope = o[1]; farmPick = nil; ST.RefreshUI() end }
+      onClick = function() ST.settings[src.scope] = o[1]; farmPick[kind] = nil; ST.RefreshUI() end }
   end
   placeChips(items, 4, 60, 140)
   line(2)
 
-  if scope == "cur" then
-    local s = ST.FarmActive()
+  if scope == "spots" and src.spots then
+    renderFishSpots(FT)
+    return
+  elseif scope == "cur" then
+    local s = src.active()
     local btn = placeHeader(accHex() .. (s and FT.stop or FT.start) .. "|r", 4)
-    btn:SetScript("OnClick", function() ST.FarmToggle() end)
+    btn:SetScript("OnClick", function() src.toggle() end)
     if not s then placeNote(FT.idle, 8) return end
     local v = ST.ItemsValue(s.items)
     local dur = ST.FarmDuration(s)
@@ -1117,20 +1330,21 @@ local function renderFarm()
       .. (ST.FarmTopZone(s) and ("  ·  " .. ST.FarmTopZone(s)) or "") .. "|r", 6)
     local rate = ST.FarmRate(s, v)
     placeNote(string.format(FT.statsFmt, s.nodes or 0, ST.Prices.Money(v), rate and ST.Prices.Money(rate) or "-"), 6)
-    renderFarmItems(s.items)
+    renderFarmItems(s.items, FT)
   elseif scope == "hist" then
     if #db.sessions == 0 then placeNote(FT.noHist, 8) return end
-    if farmPick and db.sessions[farmPick] then
-      local s = db.sessions[farmPick]
+    local pick = farmPick[kind]
+    if pick and db.sessions[pick] then
+      local s = db.sessions[pick]
       local back = placeHeader(accHex() .. FT.back .. "|r", 4)
-      back:SetScript("OnClick", function() farmPick = nil; ST.RefreshUI() end)
+      back:SetScript("OnClick", function() farmPick[kind] = nil; ST.RefreshUI() end)
       local v = ST.ItemsValue(s.items)
       local dur = ST.FarmDuration(s)
       placeNote("|cFFDDDDDD" .. date("%d/%m %H:%M", s.start) .. "|r  |cFF888888" .. ST.FormatDuration(dur)
         .. (s.zone and ("  ·  " .. s.zone) or "") .. "|r", 6)
       local rate = ST.FarmRate(s, v)
       placeNote(string.format(FT.statsFmt, s.nodes or 0, ST.Prices.Money(v), rate and ST.Prices.Money(rate) or "-"), 6)
-      renderFarmItems(s.items)
+      renderFarmItems(s.items, FT)
       return
     end
     for i, s in ipairs(db.sessions) do
@@ -1139,17 +1353,17 @@ local function renderFarm()
       local row = placeHeader("|cFFDDDDDD" .. date("%d/%m %H:%M", s.start) .. "|r  |cFF888888" .. ST.FormatDuration(dur)
         .. (s.zone and ("  ·  " .. s.zone) or "") .. "|r", 4)
       local idx = i
-      row:SetScript("OnClick", function() farmPick = idx; ST.RefreshUI() end)
+      row:SetScript("OnClick", function() farmPick[kind] = idx; ST.RefreshUI() end)
       local rate = ST.FarmRate(s, v)
       placeNote(string.format(FT.statsFmt, s.nodes or 0, ST.Prices.Money(v), rate and ST.Prices.Money(rate) or "-"), 12)
     end
   else
-    renderFarmItems(db.total)
+    renderFarmItems(db.total, FT)
     line(4)
     local rb = placeHeader("|cFF999999" .. FT.reset .. "|r", 4)
     rb:SetScript("OnClick", function()
-      if _G.TibiSuite and TibiSuite.ShowConfirm then TibiSuite.ShowConfirm(FT.reset .. " ?", function() ST.FarmResetTotal() end)
-      else ST.FarmResetTotal() end
+      if _G.TibiSuite and TibiSuite.ShowConfirm then TibiSuite.ShowConfirm(FT.reset .. " ?", function() src.reset() end)
+      else src.reset() end
     end)
   end
   placeNote("|cFF777777" .. FT.priceNote .. "|r", 6)
@@ -1242,7 +1456,8 @@ function ST.RefreshUI()
   elseif v == "conc" then renderConc()
   elseif v == "week" then renderWeek(chars)
   elseif v == "recipes" then renderRecipes()
-  elseif v == "farm" then renderFarm()
+  elseif v == "farm" then renderFarm("farm")
+  elseif v == "fish" then renderFarm("fish")
   elseif v == "wealth" then renderWealth()
   end
 
@@ -1626,6 +1841,23 @@ local function BuildOptions()
     end)
     optPanel:Button(G.probe, function() ST.ProbeCommand() end)
     optPanel:Button(G.report, function() ST.ProbeReport() end)
+  end
+
+  if ST.FishText then
+    local F = ST.FishText
+    optPanel:Section(F.section)
+    optPanel:Note(F.note)
+    optPanel:Check(F.opt, function() return ST.settings.fish ~= false end,
+      function(v) ST.settings.fish = v; if not v and ST.FishClose then ST.FishClose(true) end end)
+    optPanel:Check(F.optSpots, function() return ST.settings.fishSpots ~= false end,
+      function(v) ST.settings.fishSpots = v end)
+    optPanel:Check(F.optSound, function() return ST.settings.fishSound == true end,
+      function(v) ST.settings.fishSound = v; if not v and ST.FishExitMode then ST.FishExitMode() end end, F.optSoundTT)
+    optPanel:Check(F.optBG, function() return ST.settings.fishSoundBG ~= false end,
+      function(v) ST.settings.fishSoundBG = v end)
+    optPanel:Check(F.optCTM, function() return ST.settings.fishNoCTM ~= false end,
+      function(v) ST.settings.fishNoCTM = v; if not v and ST.FishExitMode then ST.FishExitMode() end end, F.optCTMTT)
+    optPanel:Button(F.forget, function() ST.FishForgetSpots() end)
   end
 
   optPanel:Section(L.OPT_DATA)

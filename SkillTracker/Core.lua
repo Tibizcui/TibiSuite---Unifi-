@@ -52,6 +52,12 @@ local DB_DEFAULTS = {
   wealth       = true,    -- relever la valeur des sacs et des banques
   farmScope    = "cur",   -- vue Recolte : "cur" / "hist" / "all"
   farmSort     = "value", -- "name" / "qty" / "value" / "ext"
+  fish         = true,    -- suivre les sessions de peche (Fishing.lua)
+  fishSpots    = true,    -- apprendre ce que donne chaque coin de peche
+  fishSound    = false,   -- sons de peche (CVars notees puis remises)
+  fishSoundBG  = true,    -- avec fishSound : son garde jeu en arriere-plan
+  fishNoCTM    = true,    -- couper le clic pour se deplacer pendant la peche
+  fishScope    = "cur",   -- vue Peche : "cur" / "hist" / "all" / "spots"
   mmAngle      = 210,
   accountTag   = nil,     -- libelle libre pour distinguer ses comptes a l'import
   metierView   = "current", -- "current" / "all" / "account" / "conc" / "week"
@@ -957,13 +963,25 @@ function SkillTracker_Status()
   local SL = _G.TibiSuiteL or {}
   local TS = _G.TibiSuite
   -- Session de recolte en cours : elle passe devant (widget pendant le farm).
+  -- Session de peche : meme principe, la plus recente des deux l'emporte.
   local farm = ST.FarmActive and ST.FarmActive()
-  if farm and (farm.nodes or 0) > 0 and TS and TS.FmtGold then
+  local fish = ST.FishActive and ST.FishActive()
+  if fish and (fish.nodes or 0) == 0 then fish = nil end
+  if farm and (farm.nodes or 0) == 0 then farm = nil end
+  local isFish = fish and (not farm or (fish.last or 0) >= (farm.last or 0))
+  if isFish then farm = fish end
+  if farm and TS and TS.FmtGold then
     local v = ST.ItemsValue(farm.items)
     local perH = ST.FarmRate and ST.FarmRate(farm, v)
     local g = (TS.FmtGold(v):gsub("^%+", ""))
-    local text = perH and string.format(SL.ST_FARM_RATE_FMT or "%d %s %s", farm.nodes, g, (TS.FmtGold(perH):gsub("^%+", "")))
-      or string.format(SL.ST_FARM_FMT or "%d %s", farm.nodes, g)
+    local text
+    if isFish then
+      text = perH and string.format(SL.ST_FISH_RATE_FMT or "%d %s %s", farm.nodes, g, (TS.FmtGold(perH):gsub("^%+", "")))
+        or string.format(SL.ST_FISH_FMT or "%d %s", farm.nodes, g)
+    else
+      text = perH and string.format(SL.ST_FARM_RATE_FMT or "%d %s %s", farm.nodes, g, (TS.FmtGold(perH):gsub("^%+", "")))
+        or string.format(SL.ST_FARM_FMT or "%d %s", farm.nodes, g)
+    end
     return { text = text, color = { 1, 0.82, 0 } }
   end
   local full, nextIn = 0, nil
@@ -1012,6 +1030,12 @@ function SkillTracker_Overview()
     local v = ST.ItemsValue(farm.items)
     lines[#lines + 1] = { text = ST.FarmText.active, color = { 1, 0.82, 0 }, target = "farm",
       value = string.format("%d · %s", farm.nodes, ST.Prices.Money(v)) }
+  end
+  local fish = ST.FishActive and ST.FishActive()
+  if fish and (fish.nodes or 0) > 0 and ST.FishText then
+    local v = ST.ItemsValue(fish.items)
+    lines[#lines + 1] = { text = ST.FishText.active, color = { 1, 0.82, 0 }, target = "fish",
+      value = string.format("%d · %s", fish.nodes, ST.Prices.Money(v)) }
   end
   for i, e in ipairs(ST.ConcList()) do
     if #lines >= 3 then break end
@@ -1075,9 +1099,10 @@ ST.OpenView = OpenView
 
 -- Point d'entree pour TibiSuite (apercu du Centre : clic sur une ligne).
 function SkillTracker_OpenView(v)
-  local ok = { farm = true, wealth = true, conc = true, week = true, recipes = true, current = true }
+  local ok = { farm = true, fish = true, wealth = true, conc = true, week = true, recipes = true, current = true }
   if not ok[v] then return false end
   if v == "farm" and ST.settings then ST.settings.farmScope = "cur" end
+  if v == "fish" and ST.settings then ST.settings.fishScope = "cur" end
   OpenView(v)
   return true
 end
@@ -1106,6 +1131,11 @@ SlashCmdList["SKILLTRACKER"] = function(msg)
     OpenView("recipes", msg:match("^%S+%s+(.+)$") or "")
   elseif msg == "farm" or msg == "recolte" or msg == "récolte" then
     if ST.FarmToggle then ST.FarmToggle() end
+  elseif msg == "fish" or msg == "peche" or msg == "pêche" then
+    if ST.FishToggle then ST.FishToggle() end
+  elseif msg:match("^fish%s") or msg:match("^peche%s") or msg:match("^pêche%s") then
+    local sub, rest = msg:match("^%S+%s+(%S+)%s*(.*)$")
+    if (sub == "sonde" or sub == "probe") and ST.FishProbe then ST.FishProbe(rest ~= "" and rest or nil) end
   elseif msg == "probe" or msg == "sonde" or msg:match("^probe%s") or msg:match("^sonde%s") then
     if ST.ProbeCommand then ST.ProbeCommand(msg:match("^%S+%s+(.+)$")) end
   elseif msg == "check" then
@@ -1125,6 +1155,8 @@ SlashCmdList["SKILLTRACKER"] = function(msg)
     print("  |cFFFFD700/skt check|r : " .. L.SLASH_CHECK)
     if ST.GatherText then print("  |cFFFFD700/skt probe|r : " .. ST.GatherText.slash) end
     if ST.FarmText then print("  |cFFFFD700/skt farm|r : " .. ST.FarmText.slash) end
+    if ST.FishText then print("  |cFFFFD700/skt peche|r : " .. ST.FishText.slash) end
+    if ST.FishText then print("  |cFFFFD700/skt peche sonde|r : " .. ST.FishText.probe) end
     print("  |cFFFFD700/skt mark|r, |cFFFFD700/skt diff|r : " .. L.SLASH_DIFF)
     print("  |cFFFFD700/skt dump|r, |cFFFFD700/skt kpdump|r : " .. L.SLASH_DUMP)
   else

@@ -318,6 +318,7 @@ L.WN_43_1  = L.WN_43_1  or "Nouveau style Panneau vivant : la barre devient un t
 L.WN_43_2  = L.WN_43_2  or "Le changement de style est immédiat, sans rechargement. Le style voyage dans les profils TS1 et se choisit aussi dans l'installateur (/ts setup). Commandes : /ts bar classic, dock ou panel."
 L.WN_49_0  = L.WN_49_0  or "Nouveau : le Conseiller. La suite repère ce que tu n'as pas encore fait et qui est à ta portée (hauts faits presque finis, montures à obtenir, boss mondiaux, renoms, Grand coffre), le classe selon ce que tu joues et dit toujours pourquoi. Dans Ma semaine, la prochaine action, la palette et la nouvelle page Suggestions du Centre ; clic droit pour « plus tard » ou « pas intéressé ». À la connexion, une fenêtre te propose 5 activités, avec au survol ce qu'il reste à faire (désactivable, raccourci au choix dans Centre > Suggestions)."
 L.WN_49_1  = L.WN_49_1  or "La fiche affiche les Vénithes ascendantes, comptées dans les sacs et les banques, et ses 8 lignes de monnaies tiennent enfin toutes."
+L.WN_51_0  = L.WN_51_0  or "Nouveau dans Métiers : la pêche. Chaque prise est comptée dans une session de pêche (valeur au prix de l'hôtel des ventes, po/h), avec un historique et les coins de pêche appris en pêchant : ce que donne chaque endroit. En option, des sons de pêche pour bien entendre le bouchon (musique et ambiance coupées le temps de pêcher, tes réglages reviennent ensuite). Vue Pêche de Métiers, /skt peche."
 L.WN_50_0  = L.WN_50_0  or "Nouveau : la suite te prévient quand une mise à jour est disponible. Les joueurs de ta guilde et de ton groupe qui ont TibiSuite échangent discrètement leur numéro de version ; si l'un d'eux a plus récent, une ligne s'affiche dans le chat, une fois par session. Même seul, la suite te signale qu'un patch du jeu est plus récent qu'elle. Désactivable dans Centre > Barre et accès ; /ts version pour le détail, /ts version test pour essayer."
 L.WN_48_0  = L.WN_48_0  or "Mise à jour 12.1.5 : le raid « Le Déliement de Kith'ix » et le méga-gouffre « Labyrinthe de Kindo'jan » ont leur fiche (point de route, accès par les portes des Caveaux d'Atal'Utek, verrouillage et collections du raid). Les gouffres de Midnight sont reconnus chaque semaine, qu'ils soient abondants ou non."
 L.WN_47_0  = L.WN_47_0  or "Compatible avec la mise à jour 12.1.5 « La Promesse de demain » : les 16 addons se chargent sans cocher « Charger les addons obsolètes ». Montants de PostBox et de SkillTracker affichés via la nouvelle API de monnaie de Blizzard."
@@ -409,6 +410,9 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.51"] = {
+    { key = "Skill", title = "SkillTracker", text = L.WN_51_0, new = true },
+  },
   ["7.1.5.50"] = {
     { key = "Suite", title = "TibiSuite", text = L.WN_50_0, new = true },
   },

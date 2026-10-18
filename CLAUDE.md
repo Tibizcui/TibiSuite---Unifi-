@@ -284,6 +284,26 @@ banques à `BANKFRAME_OPENED`, onglets `Enum.BagIndex.CharacterBankTab_*` /
 `AccountBankTab_*`), `ST.SnapValue` (vendable HV sinon vendeur, lié au
 vendeur), `ST.WealthTop`, vue « Valeur » (`metierView = "wealth"`).
 Piège Lua rencontré : `local a, b = x and f()` ne garde que la 1re valeur.
+**Pêche (lots 1 et 2, idées de Fishing Buddy, validés en jeu le 2026-10-18)** :
+`SkillTracker/Fishing.lua` (nouveau fichier => redémarrage complet), code
+réécrit (Fishing Buddy est sous CC BY-NC-SA : ne rien copier). Prise =
+`LOOT_READY` avec `IsFishingLoot()`, sinon butin dans les 35 s d'un
+`UNIT_SPELLCAST_CHANNEL_START` de Pêche (131474 ou même nom de sort), tous
+objets comptés. `SkillTrackerDB.fish = { cur, sessions (20), total, spots[langue]
+["Zone · Sous-zone"] = {n, at, items} }`, même forme que `farm` (`nodes` = prises)
+pour réutiliser `FarmDuration/FarmRate/FarmTopZone` ; vue « Pêche »
+(`metierView = "fish"`, `fishScope cur|hist|all|spots`, rendu `renderFarm(kind)`
+partagé avec Récolte via `FARM_SRC`), `/skt peche`, `openTo("fish")`, ligne
+d'état `TibiSuiteL.ST_FISH_FMT/ST_FISH_RATE_FMT` (la session la plus récente
+entre récolte et pêche). Lot 2 : sons de pêche (`fishSound`, défaut coupé,
+`fishSoundBG`) et clic pour se déplacer coupé (`fishNoCTM`), CVars notées dans
+`SkillTrackerDB.fishRestore` AVANT changement, remises après 90 s sans relancer,
+au combat, au logout et au login. Sonde `/skt peche sonde` (`clear`), trace dans
+`SkillTrackerDB.fishProbe` ; dédoublonnage du butin par le temps (1 s, LOOT_READY
+puis LOOT_OPENED), plus de garde LOOT_CLOSED. Liste d'objets de Récolte / Pêche
+en tableau (carte de synthèse, en-tête de tri, `placeItemRow`, pools `item/card/sort`).
+Pas de lancer au double-clic (code sécurisé)
+ni de tenue (canne en emplacement de métier). `WHATSNEW["7.1.5.51"]`.
 **Objectifs personnels (lot 3, non testés en jeu)** : `TibiSuiteDB.goals`
 (`id, text, kind manual|gather|gold|module, target, item, module, weekly,
 done/doneWeek, notified`), `TibiSuite.GetGoals/AddGoal/RemoveGoal/ToggleGoal/
