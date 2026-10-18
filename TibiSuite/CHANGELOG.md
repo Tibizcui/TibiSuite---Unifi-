@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.1.5.53
+- Quoi de neuf 7.1.5.53 : overlay de pêche et zones de pêche dans SkillTracker.
+
 ## 7.1.5.52
 - Quoi de neuf 7.1.5.52 : temps de farm par métier dans SkillTracker.
 

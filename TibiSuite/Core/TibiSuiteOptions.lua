@@ -318,6 +318,7 @@ L.WN_43_1  = L.WN_43_1  or "Nouveau style Panneau vivant : la barre devient un t
 L.WN_43_2  = L.WN_43_2  or "Le changement de style est immédiat, sans rechargement. Le style voyage dans les profils TS1 et se choisit aussi dans l'installateur (/ts setup). Commandes : /ts bar classic, dock ou panel."
 L.WN_49_0  = L.WN_49_0  or "Nouveau : le Conseiller. La suite repère ce que tu n'as pas encore fait et qui est à ta portée (hauts faits presque finis, montures à obtenir, boss mondiaux, renoms, Grand coffre), le classe selon ce que tu joues et dit toujours pourquoi. Dans Ma semaine, la prochaine action, la palette et la nouvelle page Suggestions du Centre ; clic droit pour « plus tard » ou « pas intéressé ». À la connexion, une fenêtre te propose 5 activités, avec au survol ce qu'il reste à faire (désactivable, raccourci au choix dans Centre > Suggestions)."
 L.WN_49_1  = L.WN_49_1  or "La fiche affiche les Vénithes ascendantes, comptées dans les sacs et les banques, et ses 8 lignes de monnaies tiennent enfin toutes."
+L.WN_53_0  = L.WN_53_0  or "Nouveau dans Métiers : l'overlay de pêche. Une petite fenêtre en direct affiche le temps de pêche, les prises, la valeur, la zone et les objets les plus nombreux de la session. Clic gauche pour la déplacer, clic droit pour la fermer. Les zones où tu pêches sont aussi classées par habitude, dans l'onglet Zones de la vue Pêche. Activation : /skt peche overlay, ou les options de Métiers."
 L.WN_52_0  = L.WN_52_0  or "Nouveau dans Métiers : le temps de farm par métier (Minage, Herboristerie, Pêche). Pour chacun, le temps de la session en cours, puis aujourd'hui, la semaine de jeu, le mois et l'année. Le trajet entre deux récoltes compte, une pause de plus de 10 min non. Vue Or > Temps, /skt temps."
 L.WN_51_0  = L.WN_51_0  or "Nouveau dans Métiers : la pêche. Chaque prise est comptée dans une session de pêche (valeur au prix de l'hôtel des ventes, po/h), avec un historique, un cumul et les lieux de pêche appris en pêchant : ce que donne chaque endroit. En option, des sons de pêche pour bien entendre le bouchon (musique et ambiance coupées le temps de pêcher, tes réglages reviennent ensuite). Vue Or > Pêche, /skt peche."
 L.WN_51_1  = L.WN_51_1  or "Métiers plus lisible : les vues sont rangées en trois rubriques (Progression, Suivi, Or), chacune se souvient de ta dernière vue. Les listes de Récolte et de Pêche deviennent un tableau : valeur totale en tête, tri d'un clic sur l'en-tête, quantité et prix à l'unité sous chaque objet."
@@ -414,6 +415,9 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.1.5.53"] = {
+    { key = "Skill", title = "SkillTracker", text = L.WN_53_0, new = true },
+  },
   ["7.1.5.52"] = {
     { key = "Skill", title = "SkillTracker", text = L.WN_52_0, new = true },
   },
