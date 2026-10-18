@@ -388,8 +388,9 @@ end)
 -- ================================================================
 ST.FishText = {
   view = T("Pêche", "Fishing"),
-  scopeCur = T("Session", "Session"), scopeHist = T("Historique", "History"), scopeAll = T("Depuis toujours", "All time"),
-  scopeSpots = T("Coins de pêche", "Fishing spots"),
+  scopeCur = T("Session", "Session"), scopeHist = T("Historique", "History"), scopeAll = T("Cumul", "All time"),
+  scopeSpots = T("Lieux", "Spots"),
+  extKey = "fishExtFilter",
   sortName = T("Objet", "Item"), sortQty = T("Quantité", "Quantity"), sortValue = T("Valeur", "Value"), sortExt = T("Extension", "Expansion"),
   sortBy = T("Trier par :", "Sort by:"), extFilter = T("Filtrer par extension :", "Filter by expansion:"),
   active = T("Session de pêche en cours", "Fishing session in progress"),

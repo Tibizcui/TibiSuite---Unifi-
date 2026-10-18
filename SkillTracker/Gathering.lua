@@ -602,7 +602,7 @@ end)
 -- Textes de la vue Recolte (UI.lua).
 ST.FarmText = {
   view = T("Récolte", "Gathering"),
-  scopeCur = T("Session", "Session"), scopeHist = T("Historique", "History"), scopeAll = T("Depuis toujours", "All time"),
+  scopeCur = T("Session", "Session"), scopeHist = T("Historique", "History"), scopeAll = T("Cumul", "All time"),
   sortName = T("Objet", "Item"), sortQty = T("Quantité", "Quantity"), sortValue = T("Valeur", "Value"), sortExt = T("Extension", "Expansion"),
   sortBy = T("Trier par :", "Sort by:"), extFilter = T("Filtrer par extension :", "Filter by expansion:"),
   active = T("Session en cours", "Session in progress"),

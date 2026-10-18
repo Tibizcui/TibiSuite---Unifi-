@@ -296,30 +296,65 @@ end
 -- ================================================================
 -- BASCULE DE VUE
 -- ================================================================
-local METIER_VIEWS = { "current", "all", "account", "conc", "week", "recipes", "farm", "fish", "wealth" }
 local VIEW_LABEL = {
   current = "METIER_VIEW_CURRENT", all = "METIER_VIEW_ALL", account = "METIER_VIEW_ACCOUNT",
   conc = "METIER_VIEW_CONC", week = "METIER_VIEW_WEEK", recipes = "METIER_VIEW_RECIPES",
   farm = "METIER_VIEW_FARM", fish = "METIER_VIEW_FISH", wealth = "METIER_VIEW_WEALTH",
 }
 
+-- Trois rubriques (une rangee d'onglets), puis les vues de la rubrique
+-- choisie. Chaque rubrique se souvient de sa derniere vue
+-- (settings.metierViewByGroup).
+local FR_UI = (GetLocale and GetLocale() == "frFR")
+local VIEW_GROUPS = {
+  { key = "prog", label = FR_UI and "Progression" or "Progress", views = { "current", "all", "account" } },
+  { key = "track", label = FR_UI and "Suivi" or "Tracking", views = { "conc", "week", "recipes" } },
+  { key = "gains", label = FR_UI and "Or" or "Gold", views = { "farm", "fish", "wealth" } },
+}
+local GROUP_OF = {}
+for _, g in ipairs(VIEW_GROUPS) do for _, v in ipairs(g.views) do GROUP_OF[v] = g end end
+
 local function placeMetierViewSwitch()
   local sel = ST.settings.metierView or "current"
   if not (VIEW_LABEL[sel] and L[VIEW_LABEL[sel]]) then sel = "current"; ST.settings.metierView = sel end
+  ST.settings.metierViewByGroup = ST.settings.metierViewByGroup or {}
+  local memo = ST.settings.metierViewByGroup
+  local cur = GROUP_OF[sel] or VIEW_GROUPS[1]
+  memo[cur.key] = sel
+
+  local concFull = ST.ConcFullCount and ST.ConcFullCount() or 0
+  local farmOn = ST.FarmActive and ST.FarmActive()
+  local fishOn = ST.FishActive and ST.FishActive()
+
+  -- Rangee 1 : les rubriques, en trois tiers egaux.
+  local groups = {}
+  for _, g in ipairs(VIEW_GROUPS) do
+    local text = g.label
+    if g.key == "track" and concFull > 0 then text = text .. " (" .. concFull .. ")" end
+    if g.key == "gains" and (farmOn or fishOn) then text = text .. " |cFF00FF98*|r" end
+    groups[#groups + 1] = {
+      text = text, color = ACC, state = (g == cur) and "on" or "off",
+      onClick = function()
+        local v = memo[g.key]
+        if not (v and L[VIEW_LABEL[v]]) then v = g.views[1] end
+        ST.settings.metierView = v; ST.RefreshUI()
+      end,
+    }
+  end
+  placeChips(groups, 4, 94, 94)
+
+  -- Rangee 2 : les vues de la rubrique choisie.
   local items = {}
-  for _, v in ipairs(METIER_VIEWS) do
+  for _, v in ipairs(cur.views) do
     local text = L[VIEW_LABEL[v]]
     if text then
-    if v == "conc" and ST.ConcFullCount then
-      local n = ST.ConcFullCount()
-      if n > 0 then text = text .. " (" .. n .. ")" end
-    end
-    if v == "farm" and ST.FarmActive and ST.FarmActive() then text = text .. " |cFF00FF98*|r" end
-    if v == "fish" and ST.FishActive and ST.FishActive() then text = text .. " |cFF00FF98*|r" end
-    items[#items + 1] = {
-      text = text, color = ACC, state = (v == sel) and "on" or "off",
-      onClick = function() ST.settings.metierView = v; ST.RefreshUI() end,
-    }
+      if v == "conc" and concFull > 0 then text = text .. " (" .. concFull .. ")" end
+      if v == "farm" and farmOn then text = text .. " |cFF00FF98*|r" end
+      if v == "fish" and fishOn then text = text .. " |cFF00FF98*|r" end
+      items[#items + 1] = {
+        text = text, color = ACC, state = (v == sel) and "on" or "off",
+        onClick = function() ST.settings.metierView = v; ST.RefreshUI() end,
+      }
     end
   end
   placeChips(items, 4, 60, 200)
@@ -1205,8 +1240,10 @@ local function renderFarmItems(items, FT)
   table.sort(buckets, function(a, b) return ((a == "other") and -1 or a) > ((b == "other") and -1 or b) end)
 
   -- Filtre par extension (aucune selection = tout).
-  ST.settings.farmExtFilter = ST.settings.farmExtFilter or {}
-  local extSel = ST.settings.farmExtFilter
+  -- Filtre propre a chaque vue (Recolte / Peche) : celui de l'une ne vide pas l'autre.
+  local extKey = FT.extKey or "farmExtFilter"
+  ST.settings[extKey] = ST.settings[extKey] or {}
+  local extSel = ST.settings[extKey]
   for b in pairs(extSel) do if not seen[b] then extSel[b] = nil end end
   local anySel = next(extSel) ~= nil
 
