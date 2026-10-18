@@ -302,6 +302,17 @@ au combat, au logout et au login. Sonde `/skt peche sonde` (`clear`), trace dans
 `SkillTrackerDB.fishProbe` ; dédoublonnage du butin par le temps (1 s, LOOT_READY
 puis LOOT_OPENED), plus de garde LOOT_CLOSED. Liste d'objets de Récolte / Pêche
 en tableau (carte de synthèse, en-tête de tri, `placeItemRow`, pools `item/card/sort`).
+**Récolte au niveau de la pêche (validé en jeu le 2026-10-18)** : Dépeçage =
+sort reconnu dans `UNIT_SPELLCAST_SENT` (4e argument, 8613 / 194174 ou nom
+contenant celui de 8613, `ST.IsSkinningSpell`), butin d'une `Creature` limité
+aux marchandises sous-classe 6 (`ST.IsSkinItem`), `FarmRecord(qty, "skin")`,
+jamais appris comme nœud, gardé par `FarmCleanup`. `SkillTrackerDB.farm.spots`
+et `.zoneStats` par langue (zone seule), vues Lieux et Zones de Récolte via
+`FARM_SRC.spotList/zoneList/forgetSpots/forgetZones`, réglage `farmSpots`.
+Temps par métier : `TIME_PROFS` mining, herb, skin, fish (`SkillTrackerDB.ftime`,
+vue Or > Temps). L'overlay (`FishOverlay.lua`) suit la session la plus récente,
+pêche ou récolte (`curKind`, titre = métier, pause 180 s en récolte), réglage
+`farmOverlay` (nil = actif) ; infobulle de prix au survol collée à 2 px.
 Pas de lancer au double-clic (code sécurisé)
 ni de tenue (canne en emplacement de métier). `WHATSNEW["7.1.5.51"]`.
 **Objectifs personnels (lot 3, non testés en jeu)** : `TibiSuiteDB.goals`

@@ -1035,10 +1035,19 @@ local farmPick = {}      -- [vue] = index de la session d'historique ouverte (ni
 local FARM_SRC = {
   farm = { text = function() return ST.FarmText end, db = function() return ST.FarmDB and ST.FarmDB() end,
            active = function() return ST.FarmActive() end, toggle = function() ST.FarmToggle() end,
-           reset = function() ST.FarmResetTotal() end, scope = "farmScope", setting = "farm" },
+           reset = function() ST.FarmResetTotal() end, scope = "farmScope", setting = "farm",
+           spots = true, zones = true,
+           spotList = function() return ST.FarmSpotList and ST.FarmSpotList() or {} end,
+           forgetSpots = function() ST.FarmForgetSpots() end,
+           zoneList = function() return ST.FarmZoneList and ST.FarmZoneList() or {} end,
+           forgetZones = function() ST.FarmForgetZones() end },
   fish = { text = function() return ST.FishText end, db = function() return ST.FishDB and ST.FishDB() end,
            active = function() return ST.FishActive() end, toggle = function() ST.FishToggle() end,
-           reset = function() ST.FishResetTotal() end, scope = "fishScope", setting = "fish", spots = true, zones = true },
+           reset = function() ST.FishResetTotal() end, scope = "fishScope", setting = "fish", spots = true, zones = true,
+           spotList = function() return ST.FishSpotList and ST.FishSpotList() or {} end,
+           forgetSpots = function() ST.FishForgetSpots() end,
+           zoneList = function() return ST.FishZoneList and ST.FishZoneList() or {} end,
+           forgetZones = function() ST.FishForgetZones() end },
 }
 
 local function ItemMeta(id)
@@ -1305,8 +1314,8 @@ local function renderFarmItems(items, FT)
 end
 
 -- Coins de peche : un lieu par intertitre, ses objets en part des prises.
-local function renderFishSpots(FT)
-  local list = ST.FishSpotList and ST.FishSpotList() or {}
+local function renderFishSpots(FT, src)
+  local list = src.spotList()
   if #list == 0 then placeNote(FT.noSpots, 8) return end
   placeNote("|cFF777777" .. FT.spotsNote .. "|r", 6)
   for _, sp in ipairs(list) do
@@ -1329,14 +1338,14 @@ local function renderFishSpots(FT)
   line(4)
   local fb = placeHeader("|cFF999999" .. FT.forget .. "|r", 4)
   fb:SetScript("OnClick", function()
-    if _G.TibiSuite and TibiSuite.ShowConfirm then TibiSuite.ShowConfirm(FT.forget .. " ?", function() ST.FishForgetSpots() end)
-    else ST.FishForgetSpots() end
+    if _G.TibiSuite and TibiSuite.ShowConfirm then TibiSuite.ShowConfirm(FT.forget .. " ?", function() src.forgetSpots() end)
+    else src.forgetSpots() end
   end)
 end
 
 -- Zones de peche classees par habitude : sessions, prises, temps actif, dernier passage.
-local function renderFishZones(FT)
-  local list = ST.FishZoneList and ST.FishZoneList() or {}
+local function renderFishZones(FT, src)
+  local list = src.zoneList()
   if #list == 0 then placeNote(FT.noZones, 8) return end
   placeNote("|cFF777777" .. FT.zonesNote .. "|r", 6)
   for i, z in ipairs(list) do
@@ -1348,8 +1357,8 @@ local function renderFishZones(FT)
   line(4)
   local fb = placeHeader("|cFF999999" .. FT.forgetZones .. "|r", 4)
   fb:SetScript("OnClick", function()
-    if _G.TibiSuite and TibiSuite.ShowConfirm then TibiSuite.ShowConfirm(FT.forgetZones .. " ?", function() ST.FishForgetZones() end)
-    else ST.FishForgetZones() end
+    if _G.TibiSuite and TibiSuite.ShowConfirm then TibiSuite.ShowConfirm(FT.forgetZones .. " ?", function() src.forgetZones() end)
+    else src.forgetZones() end
   end)
 end
 
@@ -1374,10 +1383,10 @@ local function renderFarm(kind)
   line(2)
 
   if scope == "zones" and src.zones then
-    renderFishZones(FT)
+    renderFishZones(FT, src)
     return
   elseif scope == "spots" and src.spots then
-    renderFishSpots(FT)
+    renderFishSpots(FT, src)
     return
   elseif scope == "cur" then
     local s = src.active()
@@ -1985,6 +1994,11 @@ local function BuildOptions()
     if ST.FarmText then
       optPanel:Check(ST.FarmText.opt, function() return ST.settings.farm ~= false end,
         function(v) ST.settings.farm = v; if not v and ST.FarmClose then ST.FarmClose(true) end end)
+      if ST.FarmText.optSpots then
+        optPanel:Check(ST.FarmText.optSpots, function() return ST.settings.farmSpots ~= false end,
+          function(v) ST.settings.farmSpots = v end)
+        optPanel:Note(ST.FarmText.skinNote)
+      end
     end
     for _, o in ipairs({ { "auto", G.sourceAuto }, { "auctionator", G.sourceAuc }, { "tsm", G.sourceTSM } }) do
       optPanel:Check(o[2], function() return (ST.settings.priceSource or "auto") == o[1] end,
@@ -2021,6 +2035,10 @@ local function BuildOptions()
     optPanel:Note(F.ovNote)
     optPanel:Check(F.ovOpt, function() return ST.settings.fishOverlay == true end,
       function(v) ST.FishOverlaySetEnabled(v) end, F.ovOptTT)
+    if F.ovGather then
+      optPanel:Check(F.ovGather, function() return ST.settings.farmOverlay ~= false end,
+        function(v) ST.settings.farmOverlay = v; if ST.FishOverlayUpdate then ST.FishOverlayUpdate() end end, F.ovGatherTT)
+    end
     optPanel:Check(F.ovAuto, function() return ST.settings.fishOverlayAuto ~= false end,
       function(v) ST.settings.fishOverlayAuto = v; upd() end)
     optPanel:Check(F.ovCompact, function() return ST.settings.fishOverlayCompact == true end,

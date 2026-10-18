@@ -43,6 +43,9 @@ FT.ovScale    = T("Taille de l'overlay (%)", "Overlay size (%)")
 FT.ovAlpha    = T("Opacité de l'overlay (%)", "Overlay opacity (%)")
 FT.ovReset    = T("Remettre l'overlay à sa place", "Reset the overlay position")
 FT.ovSlash    = T("afficher / masquer l'overlay de pêche", "show / hide the fishing overlay")
+FT.ovGather   = T("Aussi pendant la récolte (Minage, Herboristerie, Dépeçage)", "Also while gathering (Mining, Herbalism, Skinning)")
+FT.ovGatherTT = T("Le même overlay suit ta session de récolte, avec le métier en titre. La session la plus récente (pêche ou récolte) est affichée.",
+                  "The same overlay follows your gathering session, with the profession as title. The most recent session (fishing or gathering) is shown.")
 local OV = {
   title   = T("Pêche", "Fishing"),
   waiting = T("En attente de la première prise", "Waiting for the first catch"),
@@ -51,6 +54,9 @@ local OV = {
   close   = T("Clic droit : fermer", "Right click: close"),
   stats   = T("%d prises  ·  %d / h", "%d catches  ·  %d / h"),
   statsNo = T("%d prises", "%d catches"),
+  gStats  = T("%d récoltes  ·  %d / h", "%d harvests  ·  %d / h"),
+  gStatsNo = T("%d récoltes", "%d harvests"),
+  gather  = T("Récolte", "Gathering"),
   value   = T("Valeur", "Value"),
   rate    = T("Rythme", "Rate"),
   perH    = T("/ h", "/ h"),
@@ -65,6 +71,7 @@ local ROW_H = 17
 local MAX_ROWS = 3
 local CAST_WINDOW = 120   -- apres une incantation, l'overlay reste visible 2 min
 local PAUSE_AFTER = 90    -- sans lancer ni prise depuis 90 s : l'horloge se fige
+local PAUSE_GATHER = 180  -- recolte : le vol entre deux noeuds est plus long
 
 -- ---------------------------------------------------------------- reglages
 local function S() return ST.settings or {} end
@@ -73,6 +80,11 @@ local function Auto()    return S().fishOverlayAuto ~= false end
 local function Compact() return S().fishOverlayCompact == true end
 local function Scale()   return math.max(0.5, math.min(2, (S().fishOverlayScale or 100) / 100)) end
 local function Alpha()   return math.max(0.2, math.min(1, (S().fishOverlayAlpha or 92) / 100)) end
+local function GatherOn() return S().farmOverlay ~= false end
+
+-- Session affichee : la plus recente entre peche et recolte (curKind = "fish"
+-- ou "farm"). Une session de recolte sans aucune recolte ne s'affiche pas.
+local curKind = "fish"
 
 -- ---------------------------------------------------------------- outils
 local function Dur(sec)
@@ -117,7 +129,7 @@ end
 -- Epoch de la derniere activite de peche (prise ou incantation).
 local function LastActivity(s)
   local a = s.last or s.start or time()
-  if ST.FishLastCast then
+  if curKind == "fish" and ST.FishLastCast then
     local ce = time() - (GetTime() - ST.FishLastCast)
     if ce > a then a = ce end
   end
@@ -187,7 +199,7 @@ local function Build()
     r.hit:SetScript("OnMouseUp", function(_, button) local fn = f:GetScript("OnMouseUp"); if fn then fn(f, button) end end)
     r.hit:SetScript("OnEnter", function(self)
       if not (GameTooltip and r.id) then return end
-      GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+      GameTooltip:SetOwner(self, "ANCHOR_NONE")
       local name = ItemName(r.id) or ("#" .. tostring(r.id))
       local q = C_Item and C_Item.GetItemQualityByID and C_Item.GetItemQualityByID(r.id)
       local qc = q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[q]
@@ -210,6 +222,17 @@ local function Build()
       GameTooltip:AddDoubleLine(string.format(T("Session · x%d", "Session · x%d"), r.q or 0),
         (unit > 0) and Money(unit * (r.q or 0)) or "-", ACC[1], ACC[2], ACC[3], 1, 1, 1)
       GameTooltip:Show()
+      -- Collee a la fenetre (haut aligne, 2 px d'ecart), a droite ; a gauche
+      -- si elle sortirait de l'ecran.
+      GameTooltip:ClearAllPoints()
+      local right = (f:GetRight() or 0) * f:GetEffectiveScale()
+      local need = (GameTooltip:GetWidth() + 2) * GameTooltip:GetEffectiveScale()
+      local screen = UIParent:GetRight() * UIParent:GetEffectiveScale()
+      if right + need > screen then
+        GameTooltip:SetPoint("TOPRIGHT", f, "TOPLEFT", -2, 0)
+      else
+        GameTooltip:SetPoint("TOPLEFT", f, "TOPRIGHT", 2, 0)
+      end
     end)
     r.hit:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     r.hit:Hide()
@@ -236,7 +259,7 @@ local function Build()
   f:SetScript("OnEnter", function(self)
     if GameTooltip then
       GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-      GameTooltip:SetText(OV.title, ACC[1], ACC[2], ACC[3])
+      GameTooltip:SetText(f.title:GetText() or OV.title, ACC[1], ACC[2], ACC[3])
       GameTooltip:AddLine(OV.move, 0.85, 0.85, 0.9)
       GameTooltip:AddLine(OV.close, 0.85, 0.85, 0.9)
       GameTooltip:Show()
@@ -275,7 +298,21 @@ local function Collect(s)
 end
 
 local function Session()
-  if ST.FishActive then return ST.FishActive() end
+  local fish = ST.FishActive and ST.FishActive()
+  local farm = GatherOn() and ST.FarmActive and ST.FarmActive()
+  if farm and (farm.nodes or 0) == 0 then farm = nil end
+  if farm and (not fish or (farm.last or 0) > (fish.last or 0)) then
+    curKind = "farm"
+    return farm
+  end
+  curKind = "fish"
+  return fish
+end
+
+-- Titre d'une session de recolte : le metier en cours, sinon "Recolte".
+local function GatherTitle(s)
+  if s and s.lastProf and ST.ProfMeta then return (ST.ProfMeta(s.lastProf)) end
+  return OV.gather
 end
 
 local previewUntil = 0   -- apercu de 20 s quand on active l'overlay (mode auto)
@@ -378,7 +415,7 @@ local function Active(s)
   local now = time()
   local dt = now - (lastT or now)
   lastT = now
-  local paused = (now - LastActivity(s)) > PAUSE_AFTER
+  local paused = (now - LastActivity(s)) > ((curKind == "farm") and PAUSE_GATHER or PAUSE_AFTER)
   if dt > 0 and dt <= 5 and not paused then s.active = s.active + dt end
   return s.active, paused
 end
@@ -390,6 +427,7 @@ local function Tick()
   local compact = Compact()
   local place = CurrentPlace()
   if not s then
+    f.title:SetText(OV.title)
     f.snd:SetText("")
     f.time:SetText("|cFF6E6E74--:--|r")
     if compact then
@@ -402,6 +440,8 @@ local function Tick()
     end
   else
     local el, paused = Active(s)
+    local isFarm = (curKind == "farm")
+    f.title:SetText(isFarm and GatherTitle(s) or OV.title)
     local n = s.nodes or 0
     local perH = (el >= 300) and (n / el * 3600) or nil
     local tcol = paused and "|cFF8C8C94" or "|cFFFFFFFF"
@@ -410,8 +450,10 @@ local function Tick()
     else
       f.time:SetText(tcol .. Dur(el) .. "|r")
       f.snd:SetText(paused and ("|cFF8C8C94(" .. OV.pause .. ")|r")
-        or ((ST.FishModeOn and ST.FishModeOn()) and ("|cFF6E6E74(" .. OV.sound .. ")|r") or ""))
-      f.line1:SetText(perH and string.format(OV.stats, n, math.floor(perH + 0.5)) or string.format(OV.statsNo, n)); f.line1:Show()
+        or ((not isFarm and ST.FishModeOn and ST.FishModeOn()) and ("|cFF6E6E74(" .. OV.sound .. ")|r") or ""))
+      local fmt, fmtNo = OV.stats, OV.statsNo
+      if isFarm then fmt, fmtNo = OV.gStats, OV.gStatsNo end
+      f.line1:SetText(perH and string.format(fmt, n, math.floor(perH + 0.5)) or string.format(fmtNo, n)); f.line1:Show()
       f.line2:SetText("|cFF9A9AA0" .. OV.value .. "|r  " .. Money(cache.value)); f.line2:Show()
       f.line3:Hide()   -- le rythme en po/h a ete retire a la demande de Tibiscui
       local z = place or (ST.FarmTopZone and ST.FarmTopZone(s))

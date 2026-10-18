@@ -379,18 +379,75 @@ local function IsTradeGood(itemID)
   return ok and classID == 7 and (subID == nil or GATHER_SUB[subID] == true)
 end
 
+-- Depecage : sort reconnu par son identifiant ou par son nom (celui du sort
+-- de base, contenu dans le nom des variantes d'extension). Butin d'une
+-- creature, seulement les cuirs, peaux et ecailles (marchandises, sous-classe 6).
+local SKIN_IDS = { [8613] = true, [194174] = true }
+local skinName
+local function SpellNameOf(id)
+  if C_Spell and C_Spell.GetSpellName then
+    local ok, n = pcall(C_Spell.GetSpellName, id)
+    if ok then return n end
+  end
+  if GetSpellInfo then return (GetSpellInfo(id)) end
+end
+local function IsSkinningSpell(id)
+  if type(id) ~= "number" or Secret(id) then return false end
+  if SKIN_IDS[id] then return true end
+  skinName = skinName or SpellNameOf(8613)
+  local n = SpellNameOf(id)
+  return skinName ~= nil and type(n) == "string" and not Secret(n) and n:find(skinName, 1, true) ~= nil
+end
+ST.IsSkinningSpell = IsSkinningSpell
+
+local function IsSkinItem(itemID)
+  local getInstant = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+  if not getInstant then return false end
+  local ok, _, _, _, _, _, classID, subID = pcall(getInstant, itemID)
+  return ok and classID == 7 and subID == 6
+end
+ST.IsSkinItem = IsSkinItem
+
 local learnFrame = CreateFrame("Frame")
 learnFrame:RegisterEvent("UNIT_SPELLCAST_SENT")
 learnFrame:RegisterEvent("LOOT_READY")
 local FarmRecord   -- defini plus bas (session de recolte)
-learnFrame:SetScript("OnEvent", function(_, event, a1, a2)
+local lastSkinLoot = 0
+learnFrame:SetScript("OnEvent", function(_, event, a1, a2, _, a4)
   if not ST.settings then return end
   local learnOn = ST.settings.priceLearn ~= false
   local farmOn = ST.settings.farm ~= false
   if not (learnOn or farmOn) then return end
   if event == "UNIT_SPELLCAST_SENT" then
     if a1 == "player" and type(a2) == "string" and a2 ~= "" and not Secret(a2) then
-      pending = { name = a2, t = GetTime() }
+      pending = { name = a2, t = GetTime(), skin = IsSkinningSpell(a4) }
+    end
+    return
+  end
+  -- Depecage : butin d'une creature juste apres le sort. Jamais appris comme
+  -- un noeud (la cible est une creature).
+  if pending and pending.skin and GetTime() - pending.t <= 10 then
+    pending = nil
+    if not farmOn or not GetNumLootItems or GetTime() - lastSkinLoot < 1 then return end
+    local qty, any = {}, false
+    for slot = 1, GetNumLootItems() do
+      local link = GetLootSlotLink and GetLootSlotLink(slot)
+      local fromCreature = false
+      if GetLootSourceInfo then
+        local guid = GetLootSourceInfo(slot)
+        fromCreature = type(guid) == "string" and not Secret(guid) and guid:find("^Creature") ~= nil
+      end
+      local id = link and not Secret(link) and tonumber(link:match("item:(%d+)"))
+      if id and fromCreature and IsSkinItem(id) then
+        local q = GetLootSlotInfo and select(3, GetLootSlotInfo(slot))
+        q = (type(q) == "number" and not Secret(q)) and q or 1
+        qty[id] = (qty[id] or 0) + math.max(1, q)
+        any = true
+      end
+    end
+    if any and FarmRecord then
+      lastSkinLoot = GetTime()
+      pcall(FarmRecord, qty, "skin")
     end
     return
   end
@@ -451,6 +508,65 @@ local function FarmDB()
 end
 ST.FarmDB = FarmDB
 
+-- Une session (recolte ou peche) appartient au personnage qui l'a ouverte :
+-- "Nom-Royaume". Une session d'un autre personnage (ou d'avant ce champ) n'est
+-- jamais reprise : elle est rangee dans l'historique.
+function ST.CharKey()
+  local n = UnitName and UnitName("player")
+  local r = GetRealmName and GetRealmName()
+  if type(n) ~= "string" or Secret(n) then return "?" end
+  if type(r) ~= "string" or Secret(r) then r = "" end
+  return n .. "-" .. r
+end
+function ST.IsMySession(s) return s ~= nil and s.char == ST.CharKey() end
+
+local function ByLocale(key)
+  local f = FarmDB()
+  f[key] = f[key] or {}
+  local loc = (GetLocale and GetLocale()) or "enUS"
+  f[key][loc] = f[key][loc] or {}
+  return f[key][loc]
+end
+function ST.FarmSpots() return ByLocale("spots") end
+function ST.FarmZoneStats() return ByLocale("zoneStats") end
+
+-- Lieux tries par nombre de recoltes : { name, n, at, items }.
+function ST.FarmSpotList()
+  local out = {}
+  for name, rec in pairs(ST.FarmSpots()) do
+    out[#out + 1] = { name = name, n = rec.n or 0, at = rec.at, items = rec.items or {} }
+  end
+  table.sort(out, function(a, b) if a.n ~= b.n then return a.n > b.n end return a.name < b.name end)
+  return out
+end
+
+-- Zones classees par habitude : { name, sessions, catches, seconds, last }.
+function ST.FarmZoneList()
+  local out = {}
+  for name, rec in pairs(ST.FarmZoneStats()) do
+    out[#out + 1] = { name = name, sessions = rec.sessions or 0, catches = rec.catches or 0,
+      seconds = rec.seconds or 0, last = rec.last }
+  end
+  table.sort(out, function(a, b)
+    if a.sessions ~= b.sessions then return a.sessions > b.sessions end
+    if a.catches ~= b.catches then return a.catches > b.catches end
+    return a.name < b.name
+  end)
+  return out
+end
+
+function ST.FarmForgetSpots()
+  local f = FarmDB()
+  if f.spots then f.spots[(GetLocale and GetLocale()) or "enUS"] = nil end
+  if ST.RefreshUI then ST.RefreshUI() end
+end
+
+function ST.FarmForgetZones()
+  local f = FarmDB()
+  if f.zoneStats then f.zoneStats[(GetLocale and GetLocale()) or "enUS"] = nil end
+  if ST.RefreshUI then ST.RefreshUI() end
+end
+
 -- Prix unitaire retenu pour un objet : HV si connu, sinon vendeur.
 function ST.UnitPrice(id)
   local ah, src = Prices.AH(id)
@@ -476,7 +592,7 @@ ST.FarmTopZone = TopZone
 
 function ST.FarmActive()
   local f = FarmDB().cur
-  if f and time() - (f.last or 0) <= FARM_IDLE then return f end
+  if f and ST.IsMySession(f) and time() - (f.last or 0) <= FARM_IDLE then return f end
 end
 
 -- Duree utile d'une session (au moins une minute, pour le po/h).
@@ -497,8 +613,22 @@ local function FarmClose(quiet)
   db.cur = nil
   if not s or (s.nodes or 0) == 0 then return end
   s.zone = TopZone(s)
+  -- Habitudes par zone : une session, ses recoltes, sa part de la duree
+  -- (au prorata des recoltes) et la date du dernier passage.
+  local zs = ST.FarmZoneStats()
+  local total = math.max(1, s.nodes or 0)
+  local secs = ST.FarmDuration(s)
+  for z, n in pairs(s.zones or {}) do
+    local rec = zs[z] or { sessions = 0, catches = 0, seconds = 0 }
+    rec.sessions = (rec.sessions or 0) + 1
+    rec.catches = (rec.catches or 0) + n
+    rec.seconds = (rec.seconds or 0) + math.floor(secs * n / total + 0.5)
+    rec.last = s.last or time()
+    zs[z] = rec
+  end
   table.insert(db.sessions, 1, s)
   while #db.sessions > MAX_SESSIONS do table.remove(db.sessions) end
+  if ST.FishOverlayUpdate then ST.FishOverlayUpdate() end
   if not quiet and _G.TibiSuite and TibiSuite.Notify then
     local v = ST.ItemsValue(s.items)
     TibiSuite.Notify("Skill", string.format(T("Session de récolte terminée : %d nœuds, %s en %s.",
@@ -509,23 +639,35 @@ local function FarmClose(quiet)
 end
 ST.FarmClose = FarmClose
 
-function FarmRecord(qty)
+function FarmRecord(qty, forcedProf)
   local db = FarmDB()
   local now = time()
-  if db.cur and now - (db.cur.last or 0) > FARM_IDLE then FarmClose() end
-  if not db.cur then db.cur = { start = now, last = now, nodes = 0, items = {}, zones = {} } end
+  if db.cur and not ST.IsMySession(db.cur) then FarmClose(true)
+  elseif db.cur and now - (db.cur.last or 0) > FARM_IDLE then FarmClose() end
+  if not db.cur then db.cur = { start = now, last = now, nodes = 0, items = {}, zones = {}, char = ST.CharKey() } end
   local s = db.cur
   s.nodes = (s.nodes or 0) + 1
   s.last = now
   local zone = GetZoneText and GetZoneText()
-  if zone and zone ~= "" then s.zones[zone] = (s.zones[zone] or 0) + 1 end
+  if zone and (zone == "" or Secret(zone)) then zone = nil end
+  if zone then s.zones[zone] = (s.zones[zone] or 0) + 1 end
   for id, q in pairs(qty) do
     s.items[id] = (s.items[id] or 0) + q
     db.total[id] = (db.total[id] or 0) + q
   end
-  local prof = ST.GatherProfOf(qty) or s.lastProf
+  -- Lieux de recolte : ce que donne chaque zone (comme les coins de peche).
+  if zone and ST.settings.farmSpots ~= false then
+    local sp = ST.FarmSpots()
+    local rec = sp[zone] or { n = 0, items = {} }
+    rec.n = (rec.n or 0) + 1
+    rec.at = now
+    for id, q in pairs(qty) do rec.items[id] = (rec.items[id] or 0) + q end
+    sp[zone] = rec
+  end
+  local prof = forcedProf or ST.GatherProfOf(qty) or s.lastProf
   if prof then s.lastProf = prof end
   ST.FarmTimeAdd(prof, s)
+  if ST.FishOverlayUpdate then ST.FishOverlayUpdate() end
   if _G.TibiSuite and TibiSuite.RefreshStatus then TibiSuite.RefreshStatus() end
   if ST.RefreshUI then ST.RefreshUI() end
 end
@@ -545,10 +687,11 @@ end
 -- hebdo au suivant), tenue a part pour etre exacte a l'heure pres.
 -- Session : champ ptime de la session de recolte ou de peche en cours.
 -- ================================================================
-ST.TIME_PROFS = { "mining", "herb", "fish" }
+ST.TIME_PROFS = { "mining", "herb", "skin", "fish" }
 local PROF_META = {
   mining = { skill = 186, icon = 136248, fr = "Minage", en = "Mining" },
   herb   = { skill = 182, icon = 136246, fr = "Herboristerie", en = "Herbalism" },
+  skin   = { skill = 393, icon = 134366, fr = "Dépeçage", en = "Skinning" },
   fish   = { skill = 356, icon = 136245, fr = "Pêche", en = "Fishing" },
 }
 
@@ -605,8 +748,9 @@ ST.FarmTimeDB = TimeDB
 function ST.FarmTimeAdd(prof, sess)
   local t = TimeDB()
   local now = time()
-  local gap = t.lastAt and (now - t.lastAt) or 0
-  t.lastAt = now
+  local me = ST.CharKey()
+  local gap = (t.lastAt and t.lastBy == me) and (now - t.lastAt) or 0
+  t.lastAt, t.lastBy = now, me
   if not prof or gap <= 0 or gap > FARM_IDLE then return end
   t.days[prof] = t.days[prof] or {}
   local dk = date("%Y%m%d", now)
@@ -671,7 +815,7 @@ function ST.FarmToggle()
   else
     if db.cur then FarmClose(true) end
     local now = time()
-    db.cur = { start = now, last = now, nodes = 0, items = {}, zones = {} }
+    db.cur = { start = now, last = now, nodes = 0, items = {}, zones = {}, char = ST.CharKey() }
     print(ST.TAG .. " " .. T("Session de récolte démarrée.", "Gathering session started."))
     if ST.RefreshUI then ST.RefreshUI() end
   end
@@ -706,7 +850,7 @@ function ST.FarmCleanup()
   local function clean(t)
     for id in pairs(t or {}) do
       local n = tonumber(id)
-      if n and not IsTradeGood(n) then t[id] = nil end
+      if n and not IsTradeGood(n) and not IsSkinItem(n) then t[id] = nil end
     end
   end
   local db = FarmDB()
@@ -729,7 +873,7 @@ farmFrame:SetScript("OnEvent", function()
     pcall(ST.FarmCleanup)
     pcall(ST.FarmTimePrune)
     local db = FarmDB()
-    if db.cur and time() - (db.cur.last or 0) > FARM_IDLE then FarmClose(true) end
+    if db.cur and (not ST.IsMySession(db.cur) or time() - (db.cur.last or 0) > FARM_IDLE) then FarmClose(true) end
   end)
   C_Timer.NewTicker(30, function()
     local db = SkillTrackerDB and SkillTrackerDB.farm
@@ -762,6 +906,22 @@ ST.FarmText = {
   opt = T("Suivre les sessions de récolte", "Track gathering sessions"),
 }
 if ST.L then ST.L.METIER_VIEW_FARM = ST.FarmText.view end
+do
+  local FA = ST.FarmText
+  FA.scopeSpots = T("Lieux", "Spots")
+  FA.scopeZones = T("Zones", "Zones")
+  FA.noSpots = T("Aucun lieu appris : chaque récolte note ce que donne la zone.", "No spot learned yet: each harvest records what the zone gives.")
+  FA.spotFmt = T("%d récoltes  ·  vu le %s", "%d harvests  ·  seen %s")
+  FA.spotsNote = T("Part de chaque objet dans les récoltes de la zone.", "Share of each item in the harvests of the zone.")
+  FA.forget = T("Oublier les lieux de récolte", "Forget gathering spots")
+  FA.noZones = T("Aucune zone enregistrée : elles se remplissent à la fin de chaque session de récolte.", "No zone recorded yet: they fill in when each gathering session ends.")
+  FA.zonesNote = T("Zones classées par habitude : nombre de sessions, puis de récoltes.", "Zones ranked by habit: number of sessions, then harvests.")
+  FA.zoneFmt = T("%d sessions  ·  %d récoltes  ·  %s  ·  dernier passage %s", "%d sessions  ·  %d harvests  ·  %s  ·  last visit %s")
+  FA.forgetZones = T("Oublier les statistiques de zones", "Forget zone statistics")
+  FA.optSpots = T("Apprendre ce que donne chaque zone de récolte", "Learn what each gathering zone gives")
+  FA.skinNote = T("Le Dépeçage compte les cuirs, peaux et écailles ramassés sur une créature juste après le sort.",
+    "Skinning counts the leathers, hides and scales looted from a creature right after the spell.")
+end
 
 -- ================================================================
 -- VALEUR DES SACS ET DES BANQUES (7.1.5.45, feuille de route lot 2)

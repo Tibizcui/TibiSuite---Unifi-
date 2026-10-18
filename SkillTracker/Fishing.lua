@@ -118,6 +118,7 @@ end
 
 function ST.FishActive()
   local f = FishDB().cur
+  if f and ST.IsMySession and not ST.IsMySession(f) then return nil end
   if f and time() - (f.last or 0) <= FISH_IDLE then return f end
 end
 
@@ -157,13 +158,14 @@ end
 ST.FishClose = FishClose
 
 local function NewSession(now)
-  return { start = now, last = now, nodes = 0, items = {}, zones = {} }
+  return { start = now, last = now, nodes = 0, items = {}, zones = {}, char = ST.CharKey and ST.CharKey() or nil }
 end
 
 local function FishRecord(qty)
   local db = FishDB()
   local now = time()
-  if db.cur and now - (db.cur.last or 0) > FISH_IDLE then FishClose() end
+  if db.cur and ST.IsMySession and not ST.IsMySession(db.cur) then FishClose(true)
+  elseif db.cur and now - (db.cur.last or 0) > FISH_IDLE then FishClose() end
   if not db.cur then
     db.cur = NewSession(now)
     print(ST.TAG .. " " .. T("Session de pêche démarrée (première prise).", "Fishing session started (first catch)."))
@@ -389,7 +391,7 @@ frame:SetScript("OnEvent", function(_, event, a1, a2, a3)
     C_Timer.After(3, function()
       pcall(RestoreCVars)
       local db = FishDB()
-      if db.cur and time() - (db.cur.last or 0) > FISH_IDLE then FishClose(true) end
+      if db.cur and ((ST.IsMySession and not ST.IsMySession(db.cur)) or time() - (db.cur.last or 0) > FISH_IDLE) then FishClose(true) end
     end)
     C_Timer.NewTicker(15, function()
       if mode.on and GetTime() - mode.lastCast > MODE_IDLE then ExitMode() end
