@@ -114,6 +114,8 @@ end
 local function announce()
     local g = ns.DB and ns.DB:GetGlobal()
     if g and g.login == false then return end
+    -- 7.3 : en suite, seul TibiSuite annonce la connexion.
+    if _G.TibiSuite and _G.TibiSuite.RegisterModule then return end
 
     local active, pending = 0, 0
     local modules, order = ns.Registry:GetAll()

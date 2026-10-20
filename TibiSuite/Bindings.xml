@@ -32,4 +32,7 @@
 	<Binding name="TIBISUITE_ADVISOR" category="BINDING_CATEGORY_TIBISUITE">
 		if TibiSuite and TibiSuite.ToggleAdvisor then TibiSuite.ToggleAdvisor() end
 	</Binding>
+	<Binding name="TIBISUITE_PLANNER" category="BINDING_CATEGORY_TIBISUITE">
+		if TibiSuite and TibiSuite.ToggleSessionWindow then TibiSuite.ToggleSessionWindow() end
+	</Binding>
 </Bindings>

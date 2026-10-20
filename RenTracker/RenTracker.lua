@@ -2639,6 +2639,7 @@ evFrame:RegisterEvent("ZONE_CHANGED")
 evFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 evFrame:RegisterEvent("ZONE_CHANGED_INDOORS")
 
+local loginAnnounced = false
 evFrame:SetScript("OnEvent", function(_, event, arg1)
 
   if event == "ADDON_LOADED" and arg1 == "TibiSuite" then
@@ -2670,7 +2671,9 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     -- plus. On rejoue donc ici le travail de login (message + suivi auto par
     -- zone) si la connexion est deja effective. Aucun impact sur les donnees.
     if IsLoggedIn() then
-      if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
+      if not loginAnnounced and not (_G.TibiSuite and _G.TibiSuite.RegisterModule)
+         and not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
+        loginAnnounced = true
         print("|cFF4D99FFRenTracker|r v7.2.1 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
@@ -2678,7 +2681,11 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     end
 
   elseif event == "PLAYER_LOGIN" then
-    if not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
+    -- En suite, seul TibiSuite annonce la connexion (7.3) ; en autonome,
+    -- une seule ligne meme apres le rattrapage LoadOnDemand.
+    if not loginAnnounced and not (_G.TibiSuite and _G.TibiSuite.RegisterModule)
+       and not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
+      loginAnnounced = true
       print("|cFF4D99FFRenTracker|r v7.2.1 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)

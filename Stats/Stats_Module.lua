@@ -128,6 +128,36 @@ function Stats_WeeklyNet()
   return (agg.goldGain or 0) - (agg.goldSpent or 0)
 end
 
+-- Or gagne par source sur [from, to] (cuivre), tout le compte : page
+-- Patrimoine de TibiSuite (7.3). vendor / ah / other = journal des gains
+-- (d.goldLog) ; gain / spent = totaux du jour (d.goldGain / d.goldSpent).
+function Stats_GoldSources(from, to)
+  if not SX.AggregateAccount then return nil end
+  local ok, agg = pcall(SX.AggregateAccount, from, to)
+  if not ok or type(agg) ~= "table" then return nil end
+  local out = { vendor = 0, ah = 0, other = 0, gain = agg.goldGain or 0, spent = agg.goldSpent or 0 }
+  for _, e in ipairs(agg.goldLog or {}) do
+    local src = out[e.source] and e.source or "other"
+    if (e.ts or 0) >= from and (e.ts or 0) <= to then out[src] = out[src] + (tonumber(e.amount) or 0) end
+  end
+  return out
+end
+
+-- Compteurs du compte sur [from, to] : bilan de fin de semaine de TibiSuite
+-- (7.3). Valeurs simples (nombres), or en cuivre, temps en secondes.
+function Stats_Summary(from, to)
+  if not SX.AggregateAccount then return nil end
+  local ok, a = pcall(SX.AggregateAccount, from, to)
+  if not ok or type(a) ~= "table" then return nil end
+  return {
+    played = a.played or 0, quests = a.quests or 0, worldQuests = a.worldQuests or 0,
+    dungeons = (a.dungeons or 0) + (a.mplusCount or 0), mplus = a.mplusCount or 0,
+    raids = a.raids or 0, delves = a.delves or 0, gold = (a.goldGain or 0) - (a.goldSpent or 0),
+    rep = a.repGained or 0, prof = a.profGained or 0, pvp = a.pvpKillsGained or 0,
+    ach = a.achPoints or 0, sessions = a.sessions or 0,
+  }
+end
+
 -- Stats n'a pas de bouton minimap propre pour l'instant (fenetre ouverte
 -- depuis la barre TibiSuite ou /ts stats) ; HideOwnMinimap reste un
 -- garde-fou si un futur bouton minimap standalone est ajoute.

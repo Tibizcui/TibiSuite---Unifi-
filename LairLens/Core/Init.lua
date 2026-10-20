@@ -170,7 +170,7 @@ local function onPlayerLogin()
     -- En suite, seul le reglage "full" du core fait parler les modules
     -- (meme regle que SkillTracker / LvlHistory).
     local mode = "full"
-    if hasCore() then mode = (_G.TibiSuiteDB and _G.TibiSuiteDB.loginMsg) or "one" end
+    if hasCore() then mode = "none" end  -- 7.3 : seul TibiSuite annonce en suite
     if mode == "full" then
         print("|cFFFFFFFFLairLens|r v" .. LL.VERSION .. " " .. LL.L["LOADED_MSG"])
     end

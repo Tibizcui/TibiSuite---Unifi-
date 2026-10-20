@@ -441,6 +441,40 @@ Tant qu'un haut fait composant n'est pas fini, le survol de sa ligne dans l'over
 manquants en infobulle (`NS.CriteriaList`, zone `r.hit` qui renvoie clics et glisser à l'overlay),
 réglage `overlayCriteria` (nil = actif).
 
+**Lot 7.3 (plan `_dev/Plan_7.3.md`, non testé en jeu, 6 nouveaux fichiers => redémarrage complet).**
+- Chat : en suite, SEUL le core annonce la connexion (nombre de modules,
+  commandes de `MODULE_SLASH` en mode `full`) ; un module ne `print` sa ligne
+  qu'en autonome (`not HasCore()`), quel que soit `loginMsg`. Alertes qui ont
+  une entrée dans le fil : fil seulement en suite.
+- `Core/TibiSuitePlanner.lua` : `PlanSession/StartSession/StopSession/
+  GetSession/ShowSessionWindow`, `TibiSuiteCharDB.session/sessionLast`,
+  `TibiSuiteDB.estLearn`, champ facultatif `est` (minutes) des contrats,
+  `/ts temps [min]`, raccourci `TIBISUITE_PLANNER`.
+- `TibiSuite.RegisterCentrePage{id,label,desc,after,build,refresh}` (Centre),
+  `TibiSuite.GetCentreAnchor(id)`.
+- `Core/TibiSuiteWorth.lua` : page `worth`, `GetWorth`, `ExportWorth`,
+  `TibiSuiteDB.worthHist[AAAAMMJJ]={g,i}` (120 j). Lit
+  `WeeklyCompassAPI.GetGold`, `SkillTracker_WealthSummary/WealthTop/
+  FarmValueSince`, `Stats_GoldSources`. `/ts patrimoine`.
+- `Core/TibiSuiteRecap.lua` : `FreezeWeek` (10 min, logout, changement
+  d'état), `TibiSuiteDB.weekRecap[wid]` (8), `recapSeen`, `weekRecapPopup`,
+  `ShowRecap`, `ExportRecap`, `Stats_Summary(from,to)`. `/ts bilan`.
+  `ExportSuite` porte `worth` et `recap`.
+- WeeklyCompass : `WeeklyCompassAPI.GetMPlusRoster()`, `UI/MPlus.lua`
+  (onglet « Mythique+ » = action, `/wc cles`, `OpenTab("mplus")`),
+  suggestions `kind = "mplus"` (ajouté à `SUG_KINDS`).
+- `Core/TibiSuiteTour.lua` : `StartTour/StopTour`, `TibiSuiteDB.tourDone`,
+  `/ts visite`. `Core/TibiSuiteGroupProbe.lua` : `/ts sonde groupe`
+  (préfixe `TibiSuiteGP`, `TibiSuiteDB.groupProbe`).
+- `Core/TibiSuiteGroup.lua` : partage en groupe, coupé par défaut
+  (`TibiSuiteDB.groupShare`, SET_KEYS). Préfixe `TibiSuiteG`, messages
+  `G1:L|M|P|Q|X`. Sonde : code 11 pendant une rencontre, donc rien ne part
+  tant que `InChatMessagingLockdown()` ou combat, file (un message par type)
+  vidée à `ENCOUNTER_END` / `PLAYER_REGEN_ENABLED`. Pairs en mémoire
+  seulement. Lit `LegTracker_PinnedItemID`, `DgnTracker_MissingMountsHere`.
+  Fenêtre `TibiSuiteGroup`, `/ts groupe`, bouton « Groupe » de Ma semaine.
+  Partage validé en jeu par Tibiscui le 2026-10-20.
+
 **Menu Échap (validé en jeu, y compris en combat).** `GameMenuFrame:AddButton`
 dans un post-hook de `InitButtons` posé **au chargement du fichier**, donc avant
 ceux d'EllesmereUI/ElvUI : leur passe d'habillage stylise notre bouton toute

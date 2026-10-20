@@ -412,16 +412,125 @@ function WeeklyCompassAPI.GetSuggestions()
                 end }
         end
     end
+    -- Mythique+ (7.3, lot E) : une cle en poche qui ameliore la meilleure du
+    -- perso sur ce donjon. Fiches d'une semaine passee ignorees (cle changee).
+    local okR, roster = pcall(WeeklyCompassAPI.GetMPlusRoster)
+    if okR and type(roster) == "table" and SL.SUG_MP_FMT then
+        for _, c in ipairs(roster.chars) do
+            if c.improves and not c.stale and c.keyLevel then
+                local b = c.keyMap and c.best[c.keyMap]
+                out[#out + 1] = { id = "mplus:" .. tostring(c.key) .. ":" .. tostring(c.keyMap) .. ":" .. c.keyLevel,
+                    kind = "mplus", tag = "dungeon", group = true, weight = 0.8,
+                    text = string.format(SL.SUG_MP_FMT, c.keyLevel, tostring(c.keyName or "?"), tostring(c.name or "?")),
+                    proximity = c.current and 0.75 or 0.6, endsAt = reset, target = "mplus",
+                    why = (b and b.timed and b.level) and string.format(SL.SUG_MP_WHY_FMT, b.level) or SL.SUG_MP_NEW }
+            end
+        end
+    end
     return out
 end
 
--- Ouvre la fenetre sur un onglet ("week" ou "chars").
+-- Ouvre la fenetre sur un onglet ("week" ou "chars"), ou la fenetre
+-- Mythique+ ("mplus", UI/MPlus.lua).
 function WeeklyCompassAPI.OpenTab(tab)
+    if tab == "mplus" and ns.MPlusShow then ns.MPlusShow(); return true end
     local g = ns.DB:GetGlobal()
     if g and (tab == "week" or tab == "chars") then g.tab = tab end
     local f = _G.WeeklyCompassFrame
     if f and f:IsShown() then ns.UI:Refresh() else ns.UI:Toggle() end
     return true
+end
+
+-- Or de chaque personnage et banque de Bataillon (7.3, page Patrimoine de
+-- TibiSuite). Persos masques exclus. Montants en cuivre, au dernier releve.
+-- Renvoie { chars = { { key, name, realm, class, gold, at } }, warband =
+-- { money, at } | nil }.
+function WeeklyCompassAPI.GetGold()
+    local out = { chars = {} }
+    local g = ns.DB:GetGlobal() or {}
+    local hidden = g.hidden or {}
+    for key, c in pairs(ns.DB:GetAllChars()) do
+        local e = type(c) == "table" and c.snapshot and c.snapshot["profile:gold"]
+        if e and not hidden[key] and tonumber(e.sortValue) then
+            out.chars[#out.chars + 1] = { key = key, name = c.name, realm = c.realm, class = c.class,
+                gold = tonumber(e.sortValue), at = e.updatedAt or c.lastSeen }
+        end
+    end
+    table.sort(out.chars, function(a, b) return a.gold > b.gold end)
+    if type(g.warband) == "table" and tonumber(g.warband.money) then
+        out.warband = { money = tonumber(g.warband.money), at = g.warband.at }
+    end
+    return out
+end
+
+-- Mythique+ de tous les personnages (7.3, lot E), lu dans la fiche
+-- (sheet:data.mplus) que chaque perso remplit a sa connexion. Rien n'est
+-- calcule en points de cote (formule de Blizzard non publique) : on compare
+-- des niveaux de cle.
+--   stale    = fiche d'une semaine passee : courses de la semaine remises a 0,
+--              cle en poche a reverifier (elle change au reset) ;
+--   improves = la cle en poche depasse la meilleure du perso sur ce donjon
+--              (ou donjon jamais fait), keyGain = niveaux gagnes ;
+--   nextVault = courses manquantes pour le prochain emplacement Mythique+ du
+--              Grand coffre (seuils 1, 4, 8), nil si les 3 sont pris.
+-- Renvoie { chars = { ... }, maps = { {map, name} } } (persos tries par cote).
+local MPLUS_VAULT = { 1, 4, 8 }
+function WeeklyCompassAPI.GetMPlusRoster()
+    local out, maps, seen = { chars = {} }, {}, {}
+    local hidden = (ns.DB:GetGlobal() or {}).hidden or {}
+    local cur = ns.Reset and ns.Reset.GetCurrentPeriodId and ns.Reset:GetCurrentPeriodId()
+    local me = ns.charKey and ns.charKey() or nil
+    for key, char in pairs(ns.DB:GetAllChars()) do
+        if type(char) == "table" and not hidden[key] then
+            local by = {}
+            local okE, list = pcall(ns.Journal.GetEntries, ns.Journal, char)
+            for _, e in ipairs(okE and list or {}) do by[e.key] = e end
+            local sh = by["sheet:data"]
+            -- Fiche sans bloc M+ (aucune cote, cle ni course cette saison) :
+            -- le perso reste dans le tableau, avec des cases vides.
+            local m = sh and (type(sh.mplus) == "table" and sh.mplus or {}) or nil
+            if m then
+                local stale = cur and not ns.Reset:IsSamePeriod(char.periodId, cur) or false
+                local c = { key = key, name = char.name, realm = char.realm, class = char.class,
+                    current = (key == me), score = m.score, stale = stale, best = {},
+                    weekRuns = stale and 0 or (m.weekRuns or 0), weekBest = (not stale) and m.weekBest or nil,
+                    noData = (sh.mplus == nil) or nil }
+                for _, r in ipairs(m.runs or {}) do
+                    if r.map then
+                        c.best[r.map] = { level = r.level, timed = r.timed }
+                        if not seen[r.map] then seen[r.map] = true; maps[#maps + 1] = { map = r.map, name = r.name } end
+                    end
+                end
+                if type(m.key) == "table" and m.key.level then
+                    c.keyMap, c.keyLevel, c.keyName = m.key.map, m.key.level, m.key.name
+                    local b = c.best[m.key.map]
+                    local bl = b and b.timed and b.level or 0
+                    if m.key.level > bl then c.improves, c.keyGain = true, m.key.level - bl end
+                end
+                for _, t in ipairs(MPLUS_VAULT) do
+                    if c.weekRuns < t then c.nextVault = t - c.weekRuns; break end
+                end
+                out.chars[#out.chars + 1] = c
+            end
+        end
+    end
+    -- Donjons de la saison lus en direct : les colonnes existent meme si
+    -- aucun perso n'a encore de course.
+    local CM = C_ChallengeMode
+    if CM and type(CM.GetMapTable) == "function" then
+        local okT, list = pcall(CM.GetMapTable)
+        for _, id in ipairs(okT and type(list) == "table" and list or {}) do
+            if not seen[id] then
+                local okN, nm = pcall(CM.GetMapUIInfo, id)
+                seen[id] = true
+                maps[#maps + 1] = { map = id, name = okN and nm or ("#" .. id) }
+            end
+        end
+    end
+    table.sort(maps, function(a, b) return tostring(a.name) < tostring(b.name) end)
+    table.sort(out.chars, function(a, b) return (a.score or 0) > (b.score or 0) end)
+    out.maps = maps
+    return out
 end
 
 -- Renvoie { { key, name, realm, class, current, claim, inferred, ilvl }, ... }

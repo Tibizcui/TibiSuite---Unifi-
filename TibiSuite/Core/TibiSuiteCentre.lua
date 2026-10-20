@@ -279,6 +279,7 @@ D("CTR_SUG_K_rare",    "Boss mondiaux et rares (DailyTracker)")
 D("CTR_SUG_K_renown",  "Renoms proches du palier (RenTracker)")
 D("CTR_SUG_K_weekly",  "Grand coffre (WeeklyCompass)")
 D("CTR_SUG_K_legendary", "Raids du légendaire épinglé (LegTracker)")
+D("CTR_SUG_K_mplus",   "Clés Mythique+ qui battent ta meilleure (WeeklyCompass)")
 D("CTR_SUG_SEC_DISM",  "Suggestions écartées")
 D("CTR_SUG_DISM_NOTE", "Clic droit sur une suggestion : « Plus tard » la cache 7 jours, « Pas intéressé » 90 jours.")
 D("CTR_SUG_RESTORE",   "Remettre toutes les suggestions écartées")
@@ -440,6 +441,20 @@ local function ShowNote(text, btnLabel, onClick)
 end
 
 local Select, RefreshAll
+
+-- Pages ajoutees par d'autres fichiers du core (7.3 : Patrimoine, Bilan de
+-- la semaine). spec = { id, label (cle de L), desc (cle de L), after (id de
+-- la page precedente, sinon fin de GENERAL), build(p, api), refresh(p, api) }.
+-- A appeler au chargement du fichier, avant la construction du Centre.
+local EXTRA = {}
+function TibiSuite.RegisterCentrePage(spec)
+  if type(spec) ~= "table" or not spec.id or EXTRA[spec.id] then return end
+  EXTRA[spec.id] = spec
+  local pos = #GENERAL + 1
+  for i, g in ipairs(GENERAL) do if g.id == spec.after then pos = i + 1 end end
+  table.insert(GENERAL, pos, { id = spec.id, label = spec.label })
+end
+local function PageApi() return { K = K, UI = UI, ACC = ACC, DockW = DockW, Hex = Hex } end
 
 -- ── Interrupteur d'un module ───────────────────────────────────────
 local function ToggleModule(mod)
@@ -874,6 +889,10 @@ local function BuildHome(p)
   local function hideThen(fn) return function() frame:Hide(); fn() end end
   local quick = {
     { L.CTR_Q_BAR,     function() SlashCmdList["TIBISUITE"]("bar") end },
+    { L.CTR_Q_PLANNER or "Session", hideThen(function() if TibiSuite.ShowSessionWindow then TibiSuite.ShowSessionWindow() end end) },
+    { L.CTR_Q_TOUR or "Visite", function() if TibiSuite.StartTour then TibiSuite.StartTour() end end },
+    { L.CTR_Q_GROUP or "Groupe", hideThen(function() if TibiSuite.ShowGroupWindow then TibiSuite.ShowGroupWindow() end end) },
+    { L.CTR_Q_RECAP or "Bilan", hideThen(function() if TibiSuite.ShowRecap then TibiSuite.ShowRecap(TibiSuite.RecapWeekId and TibiSuite.RecapWeekId()) end end) },
     { L.CTR_Q_PALETTE, hideThen(function() if TibiSuite.OpenPalette then TibiSuite.OpenPalette() end end) },
     { L.CTR_Q_SETUP,   hideThen(function() if TibiSuite.RunSetup then TibiSuite.RunSetup() end end) },
     { L.CTR_Q_NEWS,    hideThen(function() if TibiSuite.ShowWhatsNew then TibiSuite.ShowWhatsNew(true) end end) },
@@ -2041,7 +2060,7 @@ end
 -- ancre dans p.optHost, comme les pages de module) : cases indexees par la
 -- palette et enregistrees dans Annuler sans code en plus.
 local sugPanel
-local SUG_KINDS = { "ach", "coll", "rare", "renown", "weekly", "legendary" }
+local SUG_KINDS = { "ach", "coll", "rare", "renown", "weekly", "legendary", "mplus" }
 
 local function SugChanged()
   if TibiSuite.InvalidateSuggestions then TibiSuite.InvalidateSuggestions() end
@@ -2187,6 +2206,9 @@ local function Relayout()
   if pages.profiles and pages.profiles.child and pages.profiles:IsShown() then RefreshProfiles(pages.profiles) end
   if pages.widgets and pages.widgets.child and pages.widgets:IsShown() then RefreshWidgetsPage(pages.widgets) end
   if pages.suggest and pages.suggest.list and pages.suggest:IsShown() then RefreshSuggest(pages.suggest) end
+  for id, ex in pairs(EXTRA) do
+    if ex.refresh and pages[id] and pages[id]._built and pages[id]:IsShown() then pcall(ex.refresh, pages[id], PageApi()) end
+  end
   if docked and docked:IsDocked() then docked:SetContentWidth(DockW()) end
 end
 
@@ -2198,6 +2220,20 @@ function Select(id)
   note:Hide()
   SetFooter(nil)
   RefreshRows()
+
+  local ex = EXTRA[id]
+  if ex then
+    local p = Page(id)
+    if not p._built then
+      local ok, err = pcall(ex.build, p, PageApi())
+      if not ok then print("|cFFC41F3BTibiSuite|r : " .. tostring(err)) end
+      p._built = true
+    end
+    SetHeader(K.LOGO, L[ex.label] or ex.label, ACC, L[ex.desc] or "")
+    p:Show()
+    if ex.refresh then pcall(ex.refresh, p, PageApi()) end
+    return
+  end
 
   if id == "home" then
     local p = Page("home")
@@ -2679,6 +2715,19 @@ function TibiSuite.ToggleCentre(pageId)
 end
 
 function TibiSuite.IsCentreShown() return frame and frame:IsShown() or false end
+
+-- Zone du Centre a surligner (visite guidee, 7.3) : "frame", "body",
+-- "side", "undo", ou l'id d'une ligne de la barre laterale ("home",
+-- "widgets", ou la cle d'un module). nil si absente.
+function TibiSuite.GetCentreAnchor(id)
+  if not frame then return nil end
+  if id == "frame" then return frame end
+  if id == "body" then return frame.body end
+  if id == "side" then return listC end
+  if id == "undo" then return undoBtn end
+  for _, r in ipairs(rows) do if r.id == id then return r end end
+  return nil
+end
 
 -- Resynchronise la page « Barre et acces » si elle est a l'ecran (appele par
 -- RefreshOptions du core : /ts lock, barre deplacee a la souris, profils...).

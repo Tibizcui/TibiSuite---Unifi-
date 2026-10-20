@@ -696,3 +696,25 @@ ev:SetScript("OnEvent", function(_, event, arg)
     if ok then Announce(ix.pet[speciesID]) end
   end
 end)
+
+-- Partage en groupe de TibiSuite (7.3, lot C) : montures pas encore obtenues
+-- de l'instance ou se trouve le joueur. Instance reconnue par sa carte
+-- (champ map du catalogue = 8e retour de GetInstanceInfo). Renvoie
+-- itemIDs (liste), nom de l'instance ; nil hors instance ou sans catalogue.
+function DgnTracker_MissingMountsHere()
+  local cat = C.Catalog()
+  if not cat or not GetInstanceInfo then return nil end
+  local name, itype, _, _, _, _, _, mapID = GetInstanceInfo()
+  if not mapID or itype == "none" then return nil end
+  for _, inst in pairs(cat.inst) do
+    if inst.map == mapID then
+      local out = {}
+      for id, r in pairs(inst.items or {}) do
+        if r.k == "mount" and not C.Owned(id, r) then out[#out + 1] = id end
+      end
+      table.sort(out)
+      return out, inst.name or name
+    end
+  end
+  return nil
+end

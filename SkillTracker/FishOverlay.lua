@@ -62,6 +62,7 @@ local OV = {
   perH    = T("/ h", "/ h"),
   sound   = T("sons", "sound"),
   pause   = T("pause", "paused"),
+  total   = T("Temps cumulé", "Total time"),
 }
 
 local ACC = ST.COLOR or { 0.0, 1.0, 0.596 }
@@ -92,6 +93,29 @@ local function Dur(sec)
   local h, m, s = math.floor(sec / 3600), math.floor(sec / 60) % 60, sec % 60
   if h > 0 then return string.format("%d:%02d:%02d", h, m, s) end
   return string.format("%02d:%02d", m, s)
+end
+
+-- Temps cumule d'un metier, toutes sessions et tous persos confondus
+-- (SkillTrackerDB.ftime.days, alimente a chaque prise / recolte). Somme
+-- gardee 30 s : l'overlay se rafraichit chaque seconde.
+local totalCache = {}
+local function ProfTotal(prof)
+  if not prof then return 0 end
+  local c = totalCache[prof]
+  if c and GetTime() - c.at < 30 then return c.v end
+  local v = 0
+  local t = SkillTrackerDB and SkillTrackerDB.ftime and SkillTrackerDB.ftime.days
+  for _, s in pairs(t and t[prof] or {}) do v = v + (tonumber(s) or 0) end
+  totalCache[prof] = { at = GetTime(), v = v }
+  return v
+end
+
+-- "26 h 05 min" (heures au-dela d'un jour : plus parlant qu'en jours).
+local function HoursText(sec)
+  sec = math.max(0, math.floor(sec or 0))
+  local h, m = math.floor(sec / 3600), math.floor(sec / 60) % 60
+  if h > 0 then return string.format("%d h %02d min", h, m) end
+  return string.format("%d min", m)
 end
 
 local function Money(c)
@@ -435,7 +459,9 @@ local function Tick()
     else
       local waiting = ST.FishLastCast and GetTime() - ST.FishLastCast <= CAST_WINDOW
       f.line1:SetText("|cFF9A9AA0" .. (waiting and OV.waiting or OV.noSess) .. "|r"); f.line1:Show()
-      f.line2:Hide(); f.line3:Hide()
+      f.line2:Hide()
+      local tot = ProfTotal("fish")
+      f.line3:SetText("|cFF9A9AA0" .. OV.total .. "|r  " .. HoursText(tot)); f.line3:SetShown(tot > 0)
       f.zone:SetText(place or ""); f.zone:SetShown(place ~= nil)
     end
   else
@@ -455,7 +481,11 @@ local function Tick()
       if isFarm then fmt, fmtNo = OV.gStats, OV.gStatsNo end
       f.line1:SetText(perH and string.format(fmt, n, math.floor(perH + 0.5)) or string.format(fmtNo, n)); f.line1:Show()
       f.line2:SetText("|cFF9A9AA0" .. OV.value .. "|r  " .. Money(cache.value)); f.line2:Show()
-      f.line3:Hide()   -- le rythme en po/h a ete retire a la demande de Tibiscui
+      -- Ligne 3 : temps cumule du metier (le rythme en po/h a ete retire a la
+      -- demande de Tibiscui). Recolte : metier deduit des objets de la session.
+      local prof = isFarm and (ST.GatherProfOf and ST.GatherProfOf(s.items)) or (not isFarm and "fish") or nil
+      local tot = ProfTotal(prof)
+      f.line3:SetText("|cFF9A9AA0" .. OV.total .. "|r  " .. HoursText(tot)); f.line3:SetShown(tot > 0)
       local z = place or (ST.FarmTopZone and ST.FarmTopZone(s))
       f.zone:SetText(z or ""); f.zone:SetShown(z ~= nil)
     end

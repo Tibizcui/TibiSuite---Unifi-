@@ -266,7 +266,7 @@ local function Init()
   -- Message de connexion : en suite, on suit TibiSuiteDB.loginMsg (seul
   -- "full" fait parler les modules) ; en autonome, message complet.
   local mode = "full"
-  if HasCore() then mode = (TibiSuiteDB and TibiSuiteDB.loginMsg) or "one" end
+  if HasCore() then mode = "none" end  -- 7.3 : seul TibiSuite annonce en suite
   if mode == "full" then
     print(string.format(L.LOGIN_MSG, P.VERSION))
   end

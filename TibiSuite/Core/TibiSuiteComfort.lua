@@ -66,6 +66,7 @@ local SET_KEYS = {
   "remindDaily", "remindDailyMin", "remindWeekly", "remindWeeklyH", "remindCal", "remindNote",
   "sugOn", "sugHabits", "sugNoGroup", "sugKinds", "advPopup",
   "versionCheck",
+  "weekRecapPopup", "plannerPos", "groupShare",
 }
 TibiSuite.SET_KEYS = SET_KEYS
 
@@ -733,6 +734,13 @@ local function Hex6(c)
   return string.format("%02X%02X%02X", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
 end
 
+local function SafeCall(fn)
+  if type(fn) ~= "function" then return nil end
+  local ok, v = pcall(fn)
+  if ok then return v end
+  return nil
+end
+
 -- Lu par Stats (Export.lua) au moment de generer le code. Photo du
 -- personnage connecte prise a l'instant, puis tout le compte.
 function TibiSuite.ExportSuite()
@@ -762,6 +770,10 @@ function TibiSuite.ExportSuite()
     reset = { d = d and (now + d) or nil, w = w and (now + w) or nil },
     feed = feed, goals = goals,
     chars = TibiSuiteDB.weekSnap or {},
+    -- 7.3 : patrimoine (TibiSuiteWorth.lua) et bilans hebdo (TibiSuiteRecap.lua),
+    -- blocs additifs ignores par un site ou un Companion pas encore a jour.
+    worth = SafeCall(TibiSuite.ExportWorth),
+    recap = SafeCall(TibiSuite.ExportRecap),
   }
 end
 
@@ -853,6 +865,9 @@ D("SUG_C_LOCKED",     "Instance déjà entamée cette semaine.")
 D("SUG_D_WB_FMT",     "Boss mondial de la semaine, pas encore vaincu (%s).")
 D("SUG_D_RARE_FMT",   "Rare disponible dans %s.")
 D("SUG_W_VAULT_FMT",  "%d sur %d pour le prochain emplacement du Grand coffre.")
+D("SUG_MP_FMT",       "Ta clé +%d %s sur %s")
+D("SUG_MP_WHY_FMT",   "Meilleure dans les temps sur ce donjon : +%d.")
+D("SUG_MP_NEW",       "Donjon pas encore réussi dans les temps cette saison.")
 D("SUG_L_FMT",        "Raid de farm libre cette semaine pour %s (légendaire épinglé).")
 D("SUG_U_quest", "Tu fais beaucoup de quêtes : %d en 4 semaines.")
 D("SUG_U_world", "Tu fais souvent des quêtes du monde : %d en 4 semaines.")

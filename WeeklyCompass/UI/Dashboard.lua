@@ -49,6 +49,8 @@ local WHEEL_STEP = ROW_H * 3
 local TABS = {
     { key = "week",  labelKey = "TAB_WEEK",  subKey = "UI_SUBTITLE" },
     { key = "chars", labelKey = "TAB_CHARS", subKey = "UI_SUBTITLE_CHARS" },
+    -- 7.3 : ouvre la fenetre Mythique+ (UI/MPlus.lua), ce n'est pas une vue.
+    { key = "mplus", labelKey = "TAB_MPLUS", action = function() if ns.MPlusToggle then ns.MPlusToggle() end end },
 }
 
 -- Etat de defilement, partage entre le rendu et le glisser de la barre.
@@ -480,6 +482,7 @@ local function buildTabs()
         b.line:SetPoint("BOTTOMRIGHT", 0, 0)
         b.line:SetHeight(2)
         b:SetScript("OnClick", function(self)
+            if t.action then t.action(); return end
             local g = ns.DB:GetGlobal()
             if g then g.tab = self.key end
             scrollOffset = 0
@@ -1105,6 +1108,9 @@ SlashCmdList["WEEKLYCOMPASS"] = function(msg)
             if e.reward and e.reward.text then r = "  " .. e.reward.text end
             print(("  - %s [%s]%s%s"):format(e.label or e.key, e.status, p, r))
         end
+
+    elseif msg == "cles" or msg == "clés" or msg == "keys" then
+        if ns.MPlusShow then ns.MPlusShow() end
 
     elseif msg == "mplus" or msg == "m+" then
         -- Sonde Mythique+ : ce que le client renvoie vraiment (cle en poche

@@ -1940,14 +1940,20 @@ local function LoginMessage(conflict)
     -- "full" fait parler les modules. En autonome, message complet.
     local mode = "full"
     if HasCore() then mode = (TibiSuiteDB and TibiSuiteDB.loginMsg) or "one" end
-    if conflict then
+    if conflict and HasCore() and _G.TibiSuite.Notify then
+        -- 7.3 : en suite, l'avertissement passe par le fil d'activite.
+        if MiniHubDB.conflictNotified ~= conflict then
+            pcall(_G.TibiSuite.Notify, "MiniHub", string.format(L["MSG_CONFLICT_LOGIN"], conflict), { urgent = true })
+            MiniHubDB.conflictNotified = conflict
+        end
+    elseif conflict then
         -- Prevenu une seule fois par addon concurrent (plus de rappel a
         -- chaque connexion) ; la carte du hub et /mh l'expliquent ensuite.
         if mode ~= "none" and MiniHubDB.conflictNotified ~= conflict then
             Print(string.format(L["MSG_CONFLICT_LOGIN"], conflict))
             MiniHubDB.conflictNotified = conflict
         end
-    elseif mode == "full" then
+    elseif not HasCore() then
         print("|cFFFCD748MiniHub|r v" .. MiniHub.version .. " " .. L["LOGIN_LOADED"])
     end
 end

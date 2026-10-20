@@ -499,9 +499,7 @@ local function OnLogin()
     T.Utils.Log("v%s chargé - %s - Mode: %s%s", ADDON_VERSION, T.charKey, db.mode, resume and " (session reprise)" or "")
     -- Message de connexion : court, et masque quand le core TibiSuite gere un
     -- message unique de suite ("one" / "none").
-    local tdb = _G.TibiSuiteDB
-    local loginMsg = type(tdb) == "table" and tdb.loginMsg or "full"
-    if loginMsg == "full" or not (_G.TibiSuite and _G.TibiSuite.RegisterModule) then
+    if not (_G.TibiSuite and _G.TibiSuite.RegisterModule) then  -- 7.3 : seul TibiSuite annonce en suite
         print("|cFF5EE223LvlHistory|r v" .. ADDON_VERSION .. " " .. Loc("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/lvlh|r " .. Loc("LOGIN_TO_OPEN", "pour ouvrir."))
     end
 end

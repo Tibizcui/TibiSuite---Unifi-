@@ -768,3 +768,9 @@ ev:SetScript("OnEvent", function(_, event, a1, a2, a3, a4, a5)
     NS.placeDirty = true
   end
 end)
+
+-- Partage en groupe de TibiSuite (7.3, lot C) : objet epingle du perso
+-- connecte (itemID) ou nil. Lecture seule.
+function LegTracker_PinnedItemID()
+  return NS.GetPinID and NS.GetPinID() or nil
+end

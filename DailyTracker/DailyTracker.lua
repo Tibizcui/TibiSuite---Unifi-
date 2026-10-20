@@ -2593,8 +2593,8 @@ evFrame:SetScript("OnEvent",function(_,event,arg1,arg2)
       local d, t = GetExtStats(CURRENT_EXT, "weekly")
       local recap = (t - d > 0) and string.format(L.RECAP, t - d, FormatDuration(SecUntilWeeklyReset())) or nil
       if HasCore() and TibiSuite.Notify then
+        -- Seul TibiSuite annonce la connexion en suite (7.3).
         if recap and NS.initialLogin then TibiSuite.Notify("Daily", recap, { sound = false }) end
-        if mode=="full" then print(string.format(L.LOGIN_MSG, VERSION)) end
       elseif mode=="full" then
         print(string.format(L.LOGIN_MSG, VERSION))
         if recap then print(ACCENT_HEX.."DailyTracker|r "..recap) end

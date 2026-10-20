@@ -393,10 +393,12 @@ local function ReadProfessionMeta(char, known)
           if not ST.runtime.concAlerted[key] then
             ST.runtime.concAlerted[key] = true
             local msg = string.format(L.CONC_FULL_ALERT, prof.name or "?", prof.conc.cur, prof.conc.max)
-            print(ST.TAG .. " " .. msg)
-            -- Fil d'activite de TibiSuite (trace seulement : l'alerte est deja dans le chat).
+            -- 7.3 : en suite, l'alerte passe par le fil d'activite (avec
+            -- notification) ; la ligne de chat reste pour le mode autonome.
             if _G.TibiSuite and _G.TibiSuite.Notify then
-              pcall(_G.TibiSuite.Notify, "Skill", msg, { toast = false })
+              pcall(_G.TibiSuite.Notify, "Skill", msg)
+            else
+              print(ST.TAG .. " " .. msg)
             end
           end
         else
@@ -1191,7 +1193,7 @@ local function OnLogin()
   C_Timer.After(3, function()
     -- En suite, seul le reglage "full" du core fait parler les modules.
     local mode = "full"
-    if HasCore() then mode = (TibiSuiteDB and TibiSuiteDB.loginMsg) or "one" end
+    if HasCore() then mode = "none" end  -- 7.3 : seul TibiSuite annonce en suite
     if mode == "full" then
       print(ST.TAG .. " v" .. ST.VERSION .. " " .. L.LOADED_MSG
         .. "  -  |cFFFFD700/skt|r, |cFFFFD700/skt help|r.")

@@ -1033,6 +1033,43 @@ function ST.WealthTop(n)
   return list
 end
 
+-- ── Page Patrimoine de TibiSuite (7.3, lot B) ────────────────────────
+-- Valeur au prix du moment, par personnage et banque de Bataillon.
+-- Renvoie { total, warband, at, chars = { ["Nom-Royaume"] = { class, value } } }.
+function SkillTracker_WealthSummary()
+  local w = WealthDB()
+  local out = { total = 0, warband = 0, at = 0, chars = {} }
+  for key, c in pairs(w.chars) do
+    local v = ST.SnapValue(c.bags) + ST.SnapValue(c.bank)
+    out.chars[key] = { class = c.class, value = v }
+    out.total = out.total + v
+    for _, s in ipairs({ c.bags or false, c.bank or false }) do
+      if s and (s.at or 0) > out.at then out.at = s.at end
+    end
+  end
+  out.warband = ST.SnapValue(w.warband)
+  out.total = out.total + out.warband
+  return out
+end
+
+function SkillTracker_WealthTop(n) return ST.WealthTop(n) end
+
+-- Valeur des sessions de recolte et de peche commencees depuis `since`
+-- (tous les personnages). Renvoie recolte, peche (cuivre).
+function SkillTracker_FarmValueSince(since)
+  since = since or 0
+  local function sum(db)
+    local v = 0
+    if type(db) ~= "table" then return 0 end
+    for _, s in ipairs(db.sessions or {}) do
+      if (s.start or 0) >= since then v = v + ST.ItemsValue(s.items) end
+    end
+    if db.cur and (db.cur.start or 0) >= since then v = v + ST.ItemsValue(db.cur.items) end
+    return v
+  end
+  return sum(FarmDB()), (ST.FishDB and sum(ST.FishDB())) or 0
+end
+
 local bankOpen = false
 local pendingBags = false
 local wealthFrame = CreateFrame("Frame")

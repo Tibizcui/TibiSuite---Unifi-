@@ -226,6 +226,26 @@ local function Commands()
   if TibiSuite.RunNextAction then
     add(L.PAL_C_NEXT, function() TibiSuite.RunNextAction() end, "prochaine action quoi faire suivant urgent", nil, nil, "act")
   end
+  if TibiSuite.ShowGroupWindow then
+    add(L.PAL_C_GROUP or "Groupe", function() TibiSuite.ShowGroupWindow() end,
+      "groupe partage sauvegarde verrou boss legendaire monture raid group share", nil, nil, "act")
+  end
+  if TibiSuite.StartTour then
+    add(L.PAL_C_TOUR or "Visite", function() TibiSuite.StartTour() end,
+      "visite guidee aide decouvrir tutoriel tour help", nil, nil, "act")
+  end
+  if TibiSuite.ShowRecap then
+    add(L.PAL_C_RECAP or "Bilan", function() TibiSuite.ShowRecap() end,
+      "bilan semaine passee recap resume hebdo week", nil, nil, "act")
+  end
+  if TibiSuite.GetWorth and TibiSuite.OpenCentre then
+    add(L.PAL_C_WORTH or "Patrimoine", function() TibiSuite.OpenCentre("worth") end,
+      "patrimoine or argent richesse valeur sacs banque fortune gold worth", nil, nil, "act")
+  end
+  if TibiSuite.ShowSessionWindow then
+    add(L.PAL_C_PLANNER or "Session", function() TibiSuite.ShowSessionWindow() end,
+      "temps minutes session guidee planifier plan time", nil, nil, "act")
+  end
 
   for _, mod in ipairs(TibiSuite.GetCatalog()) do
     if TibiSuite.ModuleExists(mod.addonName) then

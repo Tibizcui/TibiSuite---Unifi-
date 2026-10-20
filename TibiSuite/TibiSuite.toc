@@ -42,3 +42,9 @@ Core\TibiSuiteComfort.lua
 Core\TibiSuitePalette.lua
 Core\TibiSuiteCentre.lua
 Core\TibiSuiteAdvisor.lua
+Core\TibiSuitePlanner.lua
+Core\TibiSuiteWorth.lua
+Core\TibiSuiteRecap.lua
+Core\TibiSuiteTour.lua
+Core\TibiSuiteGroupProbe.lua
+Core\TibiSuiteGroup.lua

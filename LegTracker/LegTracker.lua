@@ -2676,7 +2676,9 @@ local lootBaseline, legBaseline
 local lootMuteUntil = 0
 
 local function LootAlert(text)
-  print(PREFIX .. text)
+  -- En suite, l'alerte vit dans le fil d'activite (et l'alerte de raid
+  -- ci-dessous) ; la ligne de chat reste pour le mode autonome (7.3).
+  if not (_G.TibiSuite and _G.TibiSuite.Notify) then print(PREFIX .. text) end
   -- Fil d'activite de TibiSuite (si le core est la) : trace seulement, ce
   -- module affiche deja son alerte a l'ecran.
   if _G.TibiSuite and _G.TibiSuite.Notify then
@@ -2837,9 +2839,12 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
     end
 
+    -- En suite, seul TibiSuite annonce la connexion (7.3).
+    if not (_G.TibiSuite and _G.TibiSuite.RegisterModule) then
     print(COL_BLUE .. "LegTracker v7.2.1" .. COL_RESET
           .. " " .. T("LOGIN_LOADED", "chargé -- tapez") .. " " .. COL_GOLD .. "/lt" .. COL_RESET .. " " .. T("LOGIN_TO_OPEN", "pour ouvrir.")
           .. " |cFF888888" .. T("LOGIN_SUBCMDS", "(/lt scan = forcer scan, /lt verify = controler les IDs, /lt reset = reinit donnees compte)") .. "|r")
+    end
 
   elseif event == "BANKFRAME_OPENED" or event == "BANKFRAME_CLOSED" then
     -- Rescanner apres ouverture/fermeture banque (pour detecter items en banque).

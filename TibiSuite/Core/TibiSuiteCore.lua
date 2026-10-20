@@ -260,6 +260,8 @@ L.MSG_SYNC_REENABLED  = L.MSG_SYNC_REENABLED  or "réactivé(s) dans la liste d'
 L.MSG_SYNC_DISABLED   = L.MSG_SYNC_DISABLED   or "décoché(s) dans TibiSuite, désactivé(s) dans la liste d'addons (|cFFFFD700/ts modules|r pour réactiver) :"
 L.MSG_SYNC_FIRST      = L.MSG_SYNC_FIRST      or "module(s) décoché(s) ne seront plus chargés par WoW à partir du prochain |cFFFFD700/reload|r :"
 L.MSG_LOGIN_ONE       = L.MSG_LOGIN_ONE       or "ouvrir le Centre"
+L.MSG_LOGIN_COUNT_FMT = L.MSG_LOGIN_COUNT_FMT or "%d modules actifs"
+L.MSG_LOGIN_SLASHES   = L.MSG_LOGIN_SLASHES   or "Modules :"
 -- /ts doctor
 L.DOC_HEADER    = L.DOC_HEADER    or "diagnostic des modules"
 L.DOC_SOCLE     = L.DOC_SOCLE     or "socle d'interface"
@@ -3185,6 +3187,25 @@ SlashCmdList["TIBISUITE"] = function(msg)
   elseif msg == "next" or msg == "suivant" then
     if TibiSuite.RunNextAction then TibiSuite.RunNextAction() end
 
+  elseif msg == "temps" or msg == "time" or msg:match("^temps%s+") or msg:match("^time%s+") then
+    if TibiSuite.SessionSlash then TibiSuite.SessionSlash(msg:match("^%S+%s+(%d+)")) end
+
+  elseif msg:match("^sonde groupe") or msg:match("^probe group") then
+    -- Sonde du partage en groupe (7.3, lot C) : report, clear, sinon on/off.
+    if TibiSuite.GroupProbe then TibiSuite.GroupProbe(msg:match("^%S+%s+%S+%s+(%S+)")) end
+
+  elseif msg == "groupe" or msg == "group" then
+    if TibiSuite.ToggleGroupWindow then TibiSuite.ToggleGroupWindow() end
+
+  elseif msg == "visite" or msg == "tour" then
+    if TibiSuite.StartTour then TibiSuite.StartTour() end
+
+  elseif msg == "bilan" or msg == "recap" then
+    if TibiSuite.ShowRecap then TibiSuite.ShowRecap() end
+
+  elseif msg == "patrimoine" or msg == "worth" or msg == "wealth" then
+    if TibiSuite.OpenCentre then TibiSuite.OpenCentre("worth") end
+
   elseif msg == "propositions" or msg == "proposals" then
     if TibiSuite.ShowAdvisor then TibiSuite.ShowAdvisor(true) end
 
@@ -3236,6 +3257,11 @@ SlashCmdList["TIBISUITE"] = function(msg)
     print("  |cFFFFD700/ts activite|r : " .. L.HELP_ACTIVITY)
     print("  |cFFFFD700/ts stream|r : " .. L.HELP_STREAM)
     print("  |cFFFFD700/ts next|r : " .. L.HELP_NEXT)
+    print("  |cFFFFD700/ts temps|r : " .. (L.HELP_TEMPS or ""))
+    print("  |cFFFFD700/ts patrimoine|r : " .. (L.HELP_WORTH or ""))
+    print("  |cFFFFD700/ts bilan|r : " .. (L.HELP_RECAP or ""))
+    print("  |cFFFFD700/ts visite|r : " .. (L.HELP_TOUR or ""))
+    print("  |cFFFFD700/ts groupe|r : " .. (L.HELP_GROUP or ""))
     print("  |cFFFFD700/ts conseil|r : " .. L.HELP_CONSEIL)
     print("  |cFFFFD700/ts propositions|r : " .. L.HELP_PROPOS)
     print("  |cFFFFD700/ts undo|r : " .. L.HELP_UNDO)
@@ -4319,13 +4345,27 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     end
 
     -- Message de bienvenue, selon le reglage « Messages de connexion »
-    -- (installateur) : complet, une ligne (defaut) ou aucun.
+    -- (installateur) : complet, une ligne (defaut) ou aucun. Depuis 7.3, le
+    -- core est le SEUL annonceur en suite : aucun module n'ecrit sa propre
+    -- ligne, meme en « complet » (leurs commandes sont listees ici).
     local loginMsg = TibiSuiteDB.loginMsg or "one"
+    local nActive, slashes = 0, {}
+    -- Commandes des modules : table MODULE_SLASH de TibiSuiteOptions.lua.
+    local LOGIN_SLASH = (TibiSuite._kit and TibiSuite._kit.MODULE_SLASH) or {}
+    for _, mod in ipairs(MODULES) do
+      if C_AddOns.IsAddOnLoaded(mod.addonName) then
+        nActive = nActive + 1
+        local sl = LOGIN_SLASH[mod.key]
+        if sl then slashes[#slashes + 1] = "|cFFFFD700" .. sl .. "|r" end
+      end
+    end
+    local countTxt = "|cFF888888(" .. string.format(L.MSG_LOGIN_COUNT_FMT, nActive) .. ")|r"
     if loginMsg == "full" then
-      print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " " .. L.WELCOME_HEADER)
+      print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " " .. countTxt .. " " .. L.WELCOME_HEADER)
       print("  |cFFFFD700/ts|r " .. L.HELP_CENTRE .. "    |cFFFFD700/ts bar|r " .. L.HELP_TOGGLE)
       print("  |cFFFFD700/ts config|r options    |cFFFFD700/ts openall|r / |cFFFFD700closeall|r " .. L.HELP_OPENCLOSEALL)
       print("  |cFFFFD700/ts lock|r " .. L.WELCOME_LOCK .. "    |cFFFFD700/ts vertical|r orientation    |cFFFFD700/ts help|r " .. L.WELCOME_HELP)
+      if #slashes > 0 then print("  " .. L.MSG_LOGIN_SLASHES .. " " .. table.concat(slashes, " ")) end
 
       -- Rappel du site officiel, 45s apres le login. Affiche UNIQUEMENT ici
       -- (le core) quand il est present : chaque module verifie HasCore() et se
@@ -4336,7 +4376,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
         print("|cFFC41F3BTibiSuite|r : télécharge Tibi-Companion sur |cFFFFD700https://tibiscui.fr/tibi-companion.html|r")
       end)
     elseif loginMsg == "one" then
-      print("|cFFC41F3BTibiSuite|r v" .. VERSION .. "   |cFFFFD700/ts|r " .. L.MSG_LOGIN_ONE
+      print("|cFFC41F3BTibiSuite|r v" .. VERSION .. " " .. countTxt .. "   |cFFFFD700/ts|r " .. L.MSG_LOGIN_ONE
         .. "   |cFFFFD700/ts help|r " .. L.WELCOME_HELP)
     end
 

@@ -75,6 +75,7 @@ Data\Activities\Sheet.lua
 # --- Interface ---
 UI\Dashboard.lua
 UI\Sheet.lua
+UI\MPlus.lua
 UI\Launcher.lua
 
 ## Glue TibiSuite : inscription comme onglet + recherche globale (remplace UI\Suite.lua)
