@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.3.0
+- L'overlay de pêche et de récolte affiche le temps cumulé du métier, toutes sessions confondues.
+- Valeur des sacs, des banques et des sessions lue par la page Patrimoine de TibiSuite.
+- En suite, l'alerte de concentration pleine passe par le fil d'activité (avec notification) au lieu de la discussion.
+- En suite TibiSuite, plus de ligne de connexion propre à ce module dans la discussion : seul TibiSuite s'annonce. Inchangé en addon autonome.
+
 ## 7.2.1
 - Dépeçage suivi : cuirs, peaux et écailles ramassés sur une créature juste après le sort, dans la session de Récolte, avec son temps dans Or > Temps.
 - Récolte : nouveaux onglets Lieux (ce que donne chaque zone) et Zones (sessions, récoltes, temps et dernier passage par zone).

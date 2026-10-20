@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.3.0
+- Légendaire épinglé partagé avec le groupe quand le partage de TibiSuite est activé.
+- En suite, l'alerte de butin passe par le fil d'activité et l'alerte de raid, plus par la discussion.
+- En suite TibiSuite, plus de ligne de connexion propre à ce module dans la discussion : seul TibiSuite s'annonce. Inchangé en addon autonome.
+
 ## 7.2.1
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

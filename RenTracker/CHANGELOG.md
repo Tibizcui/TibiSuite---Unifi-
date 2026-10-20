@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.3.0
+- En suite TibiSuite, plus de ligne de connexion propre à ce module dans la discussion : seul TibiSuite s'annonce. Inchangé en addon autonome.
+- Plus de double message de connexion après un chargement à la demande.
+
 ## 7.2.1
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

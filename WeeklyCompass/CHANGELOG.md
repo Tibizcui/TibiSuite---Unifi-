@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.3.0
+- Nouvel onglet Mythique+ : cote, clé en poche, courses de la semaine pour le Grand coffre et meilleure clé par donjon de chaque personnage (/wc cles).
+- Le Conseiller de TibiSuite propose les clés qui battent ta meilleure sur leur donjon.
+- Or des personnages et banque de Bataillon lus par la page Patrimoine de TibiSuite.
+- En suite TibiSuite, plus de ligne de connexion propre à ce module dans la discussion : seul TibiSuite s'annonce. Inchangé en addon autonome.
+
 ## 7.2.1
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

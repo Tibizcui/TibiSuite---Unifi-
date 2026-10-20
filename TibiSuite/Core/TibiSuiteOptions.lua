@@ -318,6 +318,13 @@ L.WN_43_1  = L.WN_43_1  or "Nouveau style Panneau vivant : la barre devient un t
 L.WN_43_2  = L.WN_43_2  or "Le changement de style est immédiat, sans rechargement. Le style voyage dans les profils TS1 et se choisit aussi dans l'installateur (/ts setup). Commandes : /ts bar classic, dock ou panel."
 L.WN_49_0  = L.WN_49_0  or "Nouveau : le Conseiller. La suite repère ce que tu n'as pas encore fait et qui est à ta portée (hauts faits presque finis, montures à obtenir, boss mondiaux, renoms, Grand coffre), le classe selon ce que tu joues et dit toujours pourquoi. Dans Ma semaine, la prochaine action, la palette et la nouvelle page Suggestions du Centre ; clic droit pour « plus tard » ou « pas intéressé ». À la connexion, une fenêtre te propose 5 activités, avec au survol ce qu'il reste à faire (désactivable, raccourci au choix dans Centre > Suggestions)."
 L.WN_49_1  = L.WN_49_1  or "La fiche affiche les Vénithes ascendantes, comptées dans les sacs et les banques, et ses 8 lignes de monnaies tiennent enfin toutes."
+L.WN_56_0  = L.WN_56_0  or "J'ai X minutes : dis combien de temps tu as (15 à 90 min), la suite compose une session qui tient dans ce temps (ce qui presse, tes objectifs, les propositions du Conseiller) et la coche toute seule. Les durées s'affinent au fil des sessions. Bouton « J'ai du temps » dans Ma semaine, /ts temps 45."
+L.WN_56_1  = L.WN_56_1  or "Nouvelle page Patrimoine dans le Centre : ce que vaut ta bande de guerriers (or des personnages, banque de Bataillon, objets des sacs et banques), sa courbe sur 30 ou 90 jours, les gains de la semaine par source et tes objets les plus précieux. /ts patrimoine."
+L.WN_56_2  = L.WN_56_2  or "Bilan de la semaine : au premier login après le reset, ta semaine passée en un coup d'œil (temps joué, donjons, raids, gouffres, or, réputation, objectifs, meilleur moment), comparée à la précédente. Les 8 dernières semaines restent consultables (flèches, bouton dans Ma semaine, /ts bilan)."
+L.WN_56_3  = L.WN_56_3  or "Nouvel onglet Mythique+ : tous tes personnages d'un coup d'œil, cote, clé en poche, courses de la semaine pour le Grand coffre et meilleure clé par donjon. Le Conseiller propose les clés qui battent ta meilleure. /wc cles."
+L.WN_56_4  = L.WN_56_4  or "Partage en groupe (à activer dans /ts groupe) : entre joueurs de TibiSuite, vois qui est déjà sauvegardé sur les boss de l'instance, qui farme quel légendaire et qui n'a pas encore les montures d'ici. Rien ne part pendant un boss : les infos suivent à la fin."
+L.WN_56_5  = L.WN_56_5  or "Plus calme et plus clair : à la connexion, une seule ligne TibiSuite dans la discussion au lieu d'une par module. Nouvelle visite guidée du Centre (/ts visite) pour découvrir Ma semaine, la palette, les widgets et le Conseiller."
+L.WN_56_6  = L.WN_56_6  or "L'overlay de pêche et de récolte affiche le temps cumulé du métier, toutes sessions confondues."
 L.WN_55_0  = L.WN_55_0  or "Métiers : la récolte rejoint la pêche. Le Dépeçage est suivi (cuirs, peaux et écailles ramassés sur une créature), avec son propre temps de farm. La Récolte gagne les onglets Lieux (ce que donne chaque zone) et Zones (tes habitudes). L'overlay suit aussi ta récolte, avec le métier en titre. Les sessions sont maintenant propres à chaque personnage : changer de personnage ne mélange plus les récoltes."
 L.WN_54_0  = L.WN_54_0  or "Nouveau dans LegTracker : le légendaire épinglé. Clique sur la punaise du panneau détail (ou clic droit sur une ligne) : une petite fenêtre suit ton farm en direct, avec le temps passé dans ses raids, les boss tués, les composants gagnés pendant la séance, la quête en cours et ses objectifs, et les raids encore libres cette semaine. Après deux passages, elle estime le nombre de passages restants. Le Conseiller propose ses raids libres, la ligne d'état de la barre suit sa progression. /lt pin, /lt farm, /lt overlay."
 L.WN_53_0  = L.WN_53_0  or "Nouveau dans Métiers : l'overlay de pêche. Une petite fenêtre en direct affiche le temps de pêche, les prises, la valeur, la zone et les objets les plus nombreux de la session. Clic gauche pour la déplacer, clic droit pour la fermer. Les zones où tu pêches sont aussi classées par habitude, dans l'onglet Zones de la vue Pêche. Activation : /skt peche overlay, ou les options de Métiers."
@@ -417,6 +424,15 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.3.0"] = {
+    { key = "Suite", title = "TibiSuite", text = L.WN_56_0, new = true },
+    { key = "Suite", title = "TibiSuite", text = L.WN_56_1, new = true },
+    { key = "Suite", title = "TibiSuite", text = L.WN_56_2, new = true },
+    { key = "Weekly", title = "WeeklyCompass", text = L.WN_56_3, new = true },
+    { key = "Suite", title = "TibiSuite", text = L.WN_56_4, new = true },
+    { key = "Suite", title = "TibiSuite", text = L.WN_56_5, new = true },
+    { key = "Skill", title = "SkillTracker", text = L.WN_56_6, new = true },
+  },
   ["7.2.1"] = {
     { key = "Skill", title = "SkillTracker", text = L.WN_55_0, new = true },
   },

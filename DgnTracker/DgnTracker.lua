@@ -1,5 +1,5 @@
 -- ================================================================
--- DgnTracker v7.2.1
+-- DgnTracker v7.3.0
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
 
@@ -1768,7 +1768,7 @@ evFrame:SetScript("OnEvent",function(_,event,arg1)
     local mode = "full"
     if HasCore() then mode = "none" end  -- 7.3 : seul TibiSuite annonce en suite
     if mode == "full" then
-      print("|cFF4D99FFDgnTracker|r v7.2.1 " .. T("LOGIN_LOADED", "chargé --") .. " |cFFFFD700/dg|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFDgnTracker|r v7.3.0 " .. T("LOGIN_LOADED", "chargé --") .. " |cFFFFD700/dg|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
   end
 end)

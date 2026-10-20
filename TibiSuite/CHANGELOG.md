@@ -1,5 +1,14 @@
 # Changelog
 
+## 7.3.0
+- J'ai X minutes : session guidée qui tient dans le temps choisi et se coche toute seule (bouton dans Ma semaine, /ts temps).
+- Nouvelle page Patrimoine dans le Centre : or des personnages, banque de Bataillon, objets, courbe sur 30 ou 90 jours, gains de la semaine par source (/ts patrimoine).
+- Bilan de la semaine au premier login après le reset, comparé à la semaine précédente, 8 semaines consultables (/ts bilan, bouton dans Ma semaine).
+- Partage en groupe, à activer dans /ts groupe : boss déjà tués de l'instance, légendaire épinglé, montures manquantes ici. Rien n'est envoyé pendant une rencontre de boss.
+- Une seule ligne TibiSuite dans la discussion à la connexion, avec le nombre de modules actifs.
+- Visite guidée du Centre (/ts visite).
+- Code d'export : nouveaux blocs patrimoine et bilan de la semaine pour le Dashboard et Tibi Companion.
+
 ## 7.2.1
 - Quoi de neuf 7.2.1 : la récolte au niveau de la pêche dans SkillTracker (Dépeçage, lieux, zones, overlay).
 

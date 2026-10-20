@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.3.0
+- En suite, l'avertissement d'addon concurrent passe par le fil d'activité de TibiSuite.
+- En suite TibiSuite, plus de ligne de connexion propre à ce module dans la discussion : seul TibiSuite s'annonce. Inchangé en addon autonome.
+
 ## 7.2.1
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

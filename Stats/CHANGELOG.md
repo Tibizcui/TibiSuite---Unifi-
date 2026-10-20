@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.0
+- Gains d'or par source et compteurs de la semaine lus par la page Patrimoine et le bilan de la semaine de TibiSuite.
+
 ## 7.2.1
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 
