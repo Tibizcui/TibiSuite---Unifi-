@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.1
+- Correction de bug : fermer ou replier la barre TibiSuite (croix, « Tout fermer », /ts closeall) ne masque plus MiniHub affiché à l'écran.
+
 ## 7.3.0
 - En suite, l'avertissement d'addon concurrent passe par le fil d'activité de TibiSuite.
 - En suite TibiSuite, plus de ligne de connexion propre à ce module dans la discussion : seul TibiSuite s'annonce. Inchangé en addon autonome.

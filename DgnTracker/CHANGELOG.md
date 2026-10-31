@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.1
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.3.0
 - Montures manquantes de l'instance partagées avec le groupe quand le partage de TibiSuite est activé.
 - En suite TibiSuite, plus de ligne de connexion propre à ce module dans la discussion : seul TibiSuite s'annonce. Inchangé en addon autonome.

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.1
+- Correction de bug : fermer ou replier la barre TibiSuite (croix, « Tout fermer », /ts closeall) ne masque plus la barre d'expérience affichée à l'écran.
+
 ## 7.3.0
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

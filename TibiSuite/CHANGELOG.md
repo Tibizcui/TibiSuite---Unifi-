@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.1
+- Correction de bug : fermer ou replier la barre TibiSuite (croix, « Tout fermer », /ts closeall) ne masque plus les barres permanentes (XPBar, RepBar, MiniHub) affichées à l'écran.
+
 ## 7.3.0
 - J'ai X minutes : session guidée qui tient dans le temps choisi et se coche toute seule (bouton dans Ma semaine, /ts temps).
 - Nouvelle page Patrimoine dans le Centre : or des personnages, banque de Bataillon, objets, courbe sur 30 ou 90 jours, gains de la semaine par source (/ts patrimoine).

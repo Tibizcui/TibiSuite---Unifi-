@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.3.0
+-- TibiSuiteCore v7.3.1
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.3.0"
+local VERSION = "7.3.1"
 
 -- ================================================================
 -- LOCALISATION
@@ -474,6 +474,7 @@ end
 --   frameGlobal : nom global de la frame principale de l'addon
 --   mmBtnGlobal : nom global du bouton minimap de l'addon
 --   toggleFn    : nom de la fonction publique Toggle de l'addon
+--   permanent   : (facultatif) true pour une barre permanente a l'ecran ; exclue de "Tout fermer"
 --   col         : couleur identitaire r/g/b [0-1]
 --   curseUrl    : URL CurseForge à afficher si l'addon est absent
 --   doctorFn    : (facultatif) nom d'une fonction globale du module qui
@@ -572,6 +573,7 @@ local MODULES = {
     curseUrl    = "https://www.curseforge.com/wow/addons/minihub",
     saved       = { "MiniHubDB" },
     -- pas d'escClose : MiniHub est un conteneur permanent, pas une fenetre a fermer avec Echap
+    permanent   = true,  -- element permanent : jamais masque par "Tout fermer" ni par la fermeture de la barre
   },
   {
     key         = "XPBar",
@@ -586,6 +588,7 @@ local MODULES = {
     curseUrl    = "https://www.curseforge.com/wow/addons/xpbar",
     saved       = { "XPBarDB" },
     -- pas d'escClose : XPBar est une barre permanente a l'ecran, pas une fenetre a fermer avec Echap
+    permanent   = true,  -- element permanent : jamais masque par "Tout fermer" ni par la fermeture de la barre
   },
   {
     key         = "RepBar",
@@ -600,6 +603,7 @@ local MODULES = {
     curseUrl    = "https://www.curseforge.com/wow/addons/repbar",
     saved       = { "RepBarDB" },
     -- pas d'escClose : RepBar est une barre permanente a l'ecran, pas une fenetre a fermer avec Echap
+    permanent   = true,  -- element permanent : jamais masque par "Tout fermer" ni par la fermeture de la barre
   },
   {
     key         = "Lair",
@@ -818,7 +822,7 @@ end
 -- ================================================================
 -- OUVRIR / FERMER TOUS LES MODULES INSTALLÉS
 -- show=true  : affiche les fenêtres encore masquées
--- show=false : masque les fenêtres encore visibles
+-- show=false : masque les fenêtres encore visibles (sauf les modules permanents)
 -- On passe par la fonction Toggle de chaque module (build paresseux),
 -- et on ne bascule que si l'état diffère de la cible.
 -- ================================================================
@@ -828,7 +832,10 @@ function SetAllModules(show)
       local f  = _G[mod.frameGlobal]
       local fn = _G[mod.toggleFn]
       local shown = f and f:IsShown()
-      if show and not shown then
+      if (not show) and mod.permanent then
+        -- Barre permanente (XPBar, RepBar, MiniHub) : on ne la ferme jamais ici,
+        -- sinon fermer TibiSuite masquerait aussi la barre affichee a l'ecran.
+      elseif show and not shown then
         if fn then fn() elseif f then f:Show() end
       elseif (not show) and shown then
         if fn then fn() else f:Hide() end

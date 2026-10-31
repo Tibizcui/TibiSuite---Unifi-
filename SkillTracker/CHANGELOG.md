@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.1
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.3.0
 - L'overlay de pêche et de récolte affiche le temps cumulé du métier, toutes sessions confondues.
 - Valeur des sacs, des banques et des sessions lue par la page Patrimoine de TibiSuite.
