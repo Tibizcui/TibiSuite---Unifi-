@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.2
+- Bug correction display : « Tout fermer » et la fermeture de la barre TibiSuite ne referment plus que les fenêtres des modules, jamais les éléments affichés à l'écran (XPBar, RepBar, MiniHub).
+
 ## 7.3.1
 - Correction de bug : fermer ou replier la barre TibiSuite (croix, « Tout fermer », /ts closeall) ne masque plus la barre d'expérience affichée à l'écran.
 

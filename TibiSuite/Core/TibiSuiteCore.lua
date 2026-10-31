@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.3.1
+-- TibiSuiteCore v7.3.2
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.3.1"
+local VERSION = "7.3.2"
 
 -- ================================================================
 -- LOCALISATION
@@ -475,6 +475,7 @@ end
 --   mmBtnGlobal : nom global du bouton minimap de l'addon
 --   toggleFn    : nom de la fonction publique Toggle de l'addon
 --   permanent   : (facultatif) true pour une barre permanente a l'ecran ; exclue de "Tout fermer"
+--                 (aussi accepte dans RegisterModule ; sans escClose, un module est deja exclu)
 --   col         : couleur identitaire r/g/b [0-1]
 --   curseUrl    : URL CurseForge à afficher si l'addon est absent
 --   doctorFn    : (facultatif) nom d'une fonction globale du module qui
@@ -826,19 +827,28 @@ end
 -- On passe par la fonction Toggle de chaque module (build paresseux),
 -- et on ne bascule que si l'état diffère de la cible.
 -- ================================================================
+-- Seules les vraies FENETRES sont concernees (escClose, comme Echap). Un
+-- element d'affichage permanent (XPBar, RepBar, MiniHub, ou tout module qui
+-- passe permanent=true au catalogue ou a RegisterModule) n'est jamais touche :
+-- sa fonction Toggle memorise un etat « masque » (db.hidden) qui survivrait
+-- au /reload. Fermeture par f:Hide(), exactement ce que fait Echap, donc
+-- aucun etat persistant d'un module n'est modifie en refermant la suite.
+local function IsWindowModule(mod)
+  local reg = TibiSuite.registered and TibiSuite.registered[mod.key]
+  if mod.permanent or (reg and reg.permanent) then return false end
+  return mod.escClose and true or false
+end
+
 function SetAllModules(show)
   for _, mod in ipairs(MODULES) do
-    if C_AddOns.IsAddOnLoaded(mod.addonName) then
+    if C_AddOns.IsAddOnLoaded(mod.addonName) and IsWindowModule(mod) then
       local f  = _G[mod.frameGlobal]
       local fn = _G[mod.toggleFn]
       local shown = f and f:IsShown()
-      if (not show) and mod.permanent then
-        -- Barre permanente (XPBar, RepBar, MiniHub) : on ne la ferme jamais ici,
-        -- sinon fermer TibiSuite masquerait aussi la barre affichee a l'ecran.
-      elseif show and not shown then
+      if show and not shown then
         if fn then fn() elseif f then f:Show() end
       elseif (not show) and shown then
-        if fn then fn() else f:Hide() end
+        f:Hide()
       end
     end
   end
