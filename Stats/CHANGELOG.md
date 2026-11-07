@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.3
+- Export du Dashboard : raids (runs et boss tués) et temps passé en donjon et en raid par personnage, lus depuis LvlHistory. Format inchangé et additif : un site ou Tibi Companion non mis à jour ignore simplement ces champs.
+
 ## 7.3.2
 - Bug correction display : « Tout fermer » et la fermeture de la barre TibiSuite ne referment plus que les fenêtres des modules, jamais les éléments affichés à l'écran (XPBar, RepBar, MiniHub).
 

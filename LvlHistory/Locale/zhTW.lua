@@ -73,5 +73,6 @@ for k, v in pairs({
   OPT_HIDE_OPTIONS_BTN = "隱藏設定按鈕", OPT_HIDE_SEARCH_BTN = "隱藏搜尋框",
   OPT_FLOATING_NOTE = "設定按鈕與搜尋框位於視窗上方。即使隱藏，在視窗上 Shift+右鍵 也能開啟這些設定。",
   OPT_NOTE = "提示：右鍵點擊 TibiSuite 列中的 Lvl Hist 圖塊也能開啟這些設定。",
+  TAB_RAIDS = "團隊副本", LBL_TOP_RAIDS = "最常玩的團隊副本", LBL_FAVORITE_RAID = "最愛團隊副本", LBL_BOSSES_SUB_FMT = "擊殺首領：%d", COL_BOSS = "首領", LBL_DGN_RAID_DELVES_SESSION = "地城 / 團隊副本 / 探究", SEARCH_RAID = "團隊副本", TT_RAID_LINE_FMT = "%d 次，%d 個首領", COL_INSTTIME = "停留", TT_INST_TOTAL = "停留時間", TT_INST_AVG = "平均每次", TT_INST_AVG_SHORT = "平均", LBL_TIME_SUB_FMT = "時間：%s", TT_RUNS_FMT = "%d 次", TT_INST_BEST = "最快", TT_BEST_KEY = "最佳鑰石", COL_DIFFS = "難度", COL_RUNS = "次數", COL_KEY = "鑰石", COL_BEST = "最高",
   SEARCH_TITLE = "搜尋", SEARCH_LEVEL_FMT = "等級 ", SEARCH_DUNGEON = "地城", SEARCH_DELVE = "探究",
 }) do L[k] = v end

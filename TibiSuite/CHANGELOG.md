@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.3.3
+- Nouveauté XPBar et RepBar : centrage horizontal en bas ou en haut de l'écran.
+- Nouveauté LvlHistory : onglet Raids et temps passé en instance (donjons et raids).
+- Nouveauté Stats : l'export du Dashboard inclut les raids et le temps en instance.
+
 ## 7.3.2
 - Bug correction display : « Tout fermer » et la fermeture de la barre TibiSuite ne referment plus que les fenêtres des modules, jamais les éléments affichés à l'écran (XPBar, RepBar, MiniHub).
 

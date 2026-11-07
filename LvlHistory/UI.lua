@@ -12,7 +12,8 @@ local function Loc(key, default) return L[key] or default end
 -- ─────────────────────────────────────────────
 -- Constantes de mise en page
 -- ─────────────────────────────────────────────
-local FW = 480   -- largeur totale (etendu)
+local FW = 480   -- largeur de base (plancher) ; la fenetre s'elargit au besoin
+local curW = FW  -- largeur courante (auto-ajustee, voir ApplyWidth)
 local FH = 420   -- hauteur totale (etendu)
 local HDR_H  = 36
 local TAB_H  = 26
@@ -58,7 +59,8 @@ local C = {
 -- Noms des onglets
 local TAB_LABELS = {
   Loc("TAB_SESSION", "Session"), Loc("TAB_ZONES", "Zones"), Loc("TAB_ALTS", "Alts"),
-  Loc("TAB_DUNGEONS", "Donjons"), Loc("TAB_STATS", "Stats"), Loc("TAB_LEVELS", "Niveaux"),
+  Loc("TAB_DUNGEONS", "Donjons"), Loc("TAB_RAIDS", "Raids"),
+  Loc("TAB_STATS", "Stats"), Loc("TAB_LEVELS", "Niveaux"),
 }
 
 -- ─────────────────────────────────────────────
@@ -75,7 +77,7 @@ local footerRef   = nil    -- ref frame footer
 local contentRef  = nil    -- ref frame content area
 local opacPopup   = nil    -- popup slider opacite
 -- Hauteur de contenu (liste) memorisee par onglet defilant (2=Zones, 3=Alts,
--- 4=Donjons), pour l'auto-hauteur de la fenetre. Les onglets fixes (Session,
+-- 4=Donjons, 5=Raids), pour l'auto-hauteur de la fenetre. Les onglets fixes (Session,
 -- Stats) restent a la taille de base.
 local listContentH = {}
 -- Donnees modifiees depuis le dernier rendu (voir UI.MarkDirty) : seuls
@@ -174,8 +176,42 @@ end
 -- listContentH ; on ajoute le chrome (86 en haut de la zone + 14 en bas +
 -- en-tete 36 + barre d'onglets 26 + pied 24 = 186). Les onglets fixes gardent
 -- la taille de base FH. Jamais plus petit que FH, jamais plus grand que l'ecran.
+-- Largeur utile demandee par l'onglet actif (renseignee par les onglets
+-- Donjons / Raids selon leurs colonnes) ; nil = largeur de base.
+local listContentW = {}
+
+-- Largeur minimale pour que le pied de page ne se chevauche pas
+local function FooterNeedW()
+    if not (w.ftrTotal and w.ftrZone) then return 0 end
+    return PAD + 130 + math.ceil(w.ftrTotal:GetStringWidth()) + 14
+        + 60 + 10 + math.ceil(w.ftrZone:GetStringWidth()) + PAD
+end
+
+-- Ajuste la largeur de la fenetre : plancher FW, plafond largeur ecran - 40.
+-- Renvoie true si la largeur a change.
+local function ApplyWidth()
+    if not mainFrame or isCollapsed then return false end
+    local need = math.max(FW, listContentW[activeTab] or 0, FooterNeedW())
+    local cap = math.max(FW, ((UIParent and UIParent:GetWidth()) or 1024) - 40)
+    need = math.min(math.ceil(need), cap)
+    if need == curW then return false end
+    curW = need
+    mainFrame:SetWidth(curW)
+    -- Onglets : repartis sur la nouvelle largeur
+    local tabW = math.floor(curW / #TAB_LABELS)
+    for i, t in ipairs(tabBtns) do
+        if t.btn then
+            t.btn:SetSize(tabW, TAB_H)
+            t.btn:ClearAllPoints()
+            t.btn:SetPoint("LEFT", t.btn:GetParent(), "LEFT", (i - 1) * tabW, 0)
+        end
+    end
+    return true
+end
+
 local function ResizeToActive()
     if not mainFrame or isCollapsed then return end
+    ApplyWidth()
     local need = listContentH[activeTab]
     -- Auto-hauteur centralisee dans le socle : chrome 186 (haut 86 + bas 14 +
     -- en-tete 36 + onglets 26 + pied 24), plancher FH, plafond ecran-80.
@@ -310,7 +346,7 @@ local function BuildTabBar(parent)
             end
         end)
 
-        tabBtns[i] = { lbl = lbl, uline = uline }
+        tabBtns[i] = { lbl = lbl, uline = uline, btn = btn }
 
         -- Separateur vertical entre tabs (sauf avant le 1er)
         if i > 1 then
@@ -373,6 +409,9 @@ local function BuildFooter(parent)
 
     w.ftrZone = FS(ftr, "GameFontNormalSmall", "RIGHT", -PAD, 0)
     w.ftrZone:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+    -- Le bouton Opacite suit le nom de zone (plus de chevauchement)
+    opBtn:ClearAllPoints()
+    opBtn:SetPoint("RIGHT", w.ftrZone, "LEFT", -10, 0)
 
     footerRef = ftr
 end
@@ -593,8 +632,8 @@ function UI.RefreshTab1()
         s1.info.extra2:SetText(UI.XPSourceText(db.session.xpSrc))
         s1.info.extra2:SetTextColor(C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3])
     else
-        s1.infoLbl.extra1:SetText(Loc("LBL_DGN_DELVES_SESSION", "Donjons / gouffres"))
-        s1.info.extra1:SetText(string.format("%d  /  %d", db.session.dungeons or 0, db.session.delves or 0))
+        s1.infoLbl.extra1:SetText(Loc("LBL_DGN_RAID_DELVES_SESSION", "Donjons / raids / gouffres"))
+        s1.info.extra1:SetText(string.format("%d  /  %d  /  %d", db.session.dungeons or 0, db.session.raids or 0, db.session.delves or 0))
         s1.info.extra1:SetTextColor(C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3])
         s1.infoLbl.extra2:SetText(Loc("LBL_TOP_CURRENCY", "Monnaie la plus gagnee"))
         local topN, topG = nil, 0
@@ -1041,13 +1080,39 @@ local DGN_ROW_H    = 30
 local DGN_BAR_H    = 8
 local DGN_TITLE_H  = 32
 -- rowW = FW - PAD*2 - 22 = 430
--- Layout : 6(L) + nameW(dyn) + 8 + 80(bar) + 8 + statusW(dyn) + 8 + 36(diff) + 8 + 54(time) + 6 + 24(count) + right
+-- Layout : 6(L) + nameW(dyn) + 8 + 48(bar) + 8 + statusW(dyn) + 8 + 36(diff) + 8 + 40(time) + 8 + 44(passe) + 6 + 24(count) + right
 local DGN_NAME_W   = 110
 local DGN_STATUS_W = 60
 local DGN_COUNT_W  = 24
-local DGN_BAR_W    = 80
+local DGN_BAR_W    = 48
 local DGN_DIFF_W   = 36
-local DGN_TIME_W   = 54
+local DGN_TIME_W   = 40
+local DGN_INST_W   = 44   -- colonne "temps passe en instance"
+
+-- Un en-tete s'ancre sur la cellule correspondante de la 1re ligne : alignement
+-- exact par construction. Le centre de la 1re ligne est a DGN_TITLE_H + DGN_ROW_H/2
+-- sous le haut de la liste ; l'en-tete se place 17 px sous ce haut.
+local HDR_DY = DGN_TITLE_H + DGN_ROW_H / 2 - 17
+local function AnchorHdr(hdr, cell, point)
+    hdr:ClearAllPoints()
+    hdr:SetPoint(point or "LEFT", cell, point or "LEFT", 0, HDR_DY)
+end
+
+-- Duree courte pour la colonne et les infobulles : "45s", "12m", "3h 05m"
+local function FmtDur(secs)
+    if not secs or secs <= 0 then return "--" end
+    if secs < 60 then return string.format("%ds", math.floor(secs)) end
+    return LvlHistory.Utils.FormatTime(secs, true)
+end
+
+-- Duree d'un run : "18:42" ou "1:02:07"
+local function FmtClock(secs)
+    secs = math.floor(secs or 0)
+    if secs <= 0 then return "--" end
+    local h, m, sec = math.floor(secs / 3600), math.floor((secs % 3600) / 60), secs % 60
+    if h > 0 then return string.format("%d:%02d:%02d", h, m, sec) end
+    return string.format("%d:%02d", m, sec)
+end
 
 -- ── Palette photo (vert / jaune / rouge) ────────────────────
 -- Heroique → vert  (= "Timed"    dans la photo)
@@ -1084,16 +1149,22 @@ local function UpdateDgnRowBar(row, d, maxCount)
         else                                                                            nw  = nw  + rest
         end
     end
-    row.BarN:SetWidth(nw)
+    -- Une texture a largeur 0 retombe sur sa taille naturelle (8 px) : un segment
+    -- vide doit donc etre quasi nul ET masque, sinon il dessine un carre parasite.
+    local function SetSeg(t, wd)
+        t:SetWidth(math.max(wd, 0.01))
+        t:SetShown(wd > 0)
+    end
+    SetSeg(row.BarN, nw)
     row.BarH:ClearAllPoints()
     row.BarH:SetPoint("TOPLEFT", row.BarN, "TOPRIGHT", 0, 0)
-    row.BarH:SetWidth(hw)
+    SetSeg(row.BarH, hw)
     row.BarMy:ClearAllPoints()
     row.BarMy:SetPoint("TOPLEFT", row.BarH, "TOPRIGHT", 0, 0)
-    row.BarMy:SetWidth(myw)
+    SetSeg(row.BarMy, myw)
     row.BarMP:ClearAllPoints()
     row.BarMP:SetPoint("TOPLEFT", row.BarMy, "TOPRIGHT", 0, 0)
-    row.BarMP:SetWidth(mpw)
+    SetSeg(row.BarMP, mpw)
 end
 
 -- ── CreateDgnRow — copie de CreateStatsDungeonRow (SkyMythicHistory) ───
@@ -1167,6 +1238,13 @@ local function CreateDgnRow(parent, index, rowW)
     row.Time:SetNonSpaceWrap(false)
     row.Time:SetTextColor(0.22, 0.72, 0.44, 1)
 
+    -- Temps passe en instance (total, ex: "3h 05m")
+    row.InstT = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.InstT:SetWidth(DGN_INST_W)
+    row.InstT:SetJustifyH("CENTER")
+    row.InstT:SetNonSpaceWrap(false)
+    row.InstT:SetTextColor(0.55, 0.75, 0.95, 1)
+
     -- Count (rose/saumon, far right — copie de SkyMythicHistory)
     row.Count = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     row.Count:SetPoint("RIGHT", row, "RIGHT", -4, 0)
@@ -1183,7 +1261,7 @@ local function CreateDgnRow(parent, index, rowW)
     return row
 end
 
-local dgnList
+local dgnList, dgnHdrDiff, dgnHdrStatus, dgnHdrCount
 local dgnRows = {}
 local s4      = {}
 local dgnMeasFS, mapNameToID
@@ -1228,7 +1306,7 @@ function UI.RefreshDelves(db, top)
         return 0
     end
     delveTitle:Show()
-    local rowH, rowW = 22, FW - PAD * 2 - 22
+    local rowH, rowW = 22, curW - PAD * 2 - 22
     local shown = math.min(#sorted, MAX_DELVE_ROWS)
     for i = 1, shown do
         local r = delveRows[i]
@@ -1261,6 +1339,7 @@ function UI.RefreshDelves(db, top)
             delveRows[i] = r
         end
         local e = sorted[i]
+        r:SetWidth(rowW)
         r:ClearAllPoints()
         r:SetPoint("TOPLEFT", dgnList, "TOPLEFT", 0, -(top + 32 + (i - 1) * rowH))
         r.name:SetText(e.name)
@@ -1305,11 +1384,11 @@ local function BuildTabDungeons(ca)
     -- En-tetes colonnes droite
     local hdrDiff = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     hdrDiff:SetPoint("TOPLEFT", content, "TOPLEFT",
-        6 + DGN_NAME_W + 8 + DGN_BAR_W + 8 + DGN_STATUS_W + 8, -6)
+        6 + DGN_NAME_W + 8 + DGN_BAR_W + 8 + DGN_STATUS_W + 8, -12)
     hdrDiff:SetWidth(DGN_DIFF_W)
     hdrDiff:SetJustifyH("CENTER")
     hdrDiff:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
-    hdrDiff:SetText(Loc("COL_DIFF", "Diff."))
+    hdrDiff:SetText(Loc("COL_KEY", "Cle"))   -- meilleure cle M+ (+7...)
 
     local hdrTime = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     hdrTime:SetPoint("TOPLEFT", hdrDiff, "TOPRIGHT", 8, 0)
@@ -1318,16 +1397,73 @@ local function BuildTabDungeons(ca)
     hdrTime:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
     hdrTime:SetText(Loc("COL_TIME", "Tps"))
 
+    local hdrInst = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    hdrInst:SetPoint("TOPLEFT", hdrTime, "TOPRIGHT", 8, 0)
+    hdrInst:SetWidth(DGN_INST_W)
+    hdrInst:SetJustifyH("CENTER")
+    hdrInst:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+    hdrInst:SetText(Loc("COL_INSTTIME", "Passe"))
+    dgnHdrDiff = hdrDiff
+
+    -- Difficultes jouees (colonne a part) et total de runs (colonne de droite)
+    dgnHdrStatus = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    dgnHdrStatus:SetJustifyH("LEFT")
+    dgnHdrStatus:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+    dgnHdrStatus:SetText(Loc("COL_DIFFS", "Difficulte"))
+    dgnHdrCount = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    dgnHdrCount:SetJustifyH("RIGHT")
+    dgnHdrCount:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+    dgnHdrCount:SetText(Loc("COL_RUNS", "Runs"))
+
     -- Pre-construire MAX_DGN_ROWS lignes (cachees, comme SkyMythicHistory)
     dgnRows = {}
     for i = 1, MAX_DGN_ROWS do
         local row = CreateDgnRow(content, i, rowW)
         row:EnableMouse(true)
         row:SetScript("OnEnter", function(self)
-            if not _G.DgnTracker_Toggle then return end
+            local d = LvlHistory.db
+            local name = self.dgnName
+            if not (d and name) then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:SetText(self.Name:GetText() or "", 1, 1, 1)
-            GameTooltip:AddLine(Loc("TT_OPEN_DGNTRACKER", "Clic : ouvrir DgnTracker"), 0.7, 0.7, 0.7)
+            GameTooltip:SetText(name, 1, 1, 1)
+
+            -- Une ligne par difficulte jouee : runs et run le plus rapide
+            local diffs = {}
+            for key, n in pairs(d.dgnDetails or {}) do
+                local nm, df = key:match("^(.+)||(.+)$")
+                if nm == name and df then diffs[#diffs + 1] = { diff = df, n = n, key = key } end
+            end
+            table.sort(diffs, function(x, y) return x.diff < y.diff end)
+            for _, e in ipairs(diffs) do
+                local right = string.format(Loc("TT_RUNS_FMT", "%d runs"), e.n)
+                local fast = (d.dgnTimeBest or {})[e.key]
+                if fast then
+                    right = right .. "  /  " .. Loc("TT_INST_BEST", "le plus rapide") .. " " .. FmtClock(fast)
+                end
+                GameTooltip:AddDoubleLine(e.diff, right, 1, 1, 1, 0.8, 0.8, 0.8)
+            end
+
+            -- Meilleure cle M+ chronometree (donnees Blizzard ou LvlHistory)
+            local bt = (d.dgnBestTime or {})[name]
+            if bt and bt.key and bt.key > 0 then
+                local v = "+" .. bt.key
+                if bt.ms and bt.ms > 0 then v = v .. "  " .. FmtClock(bt.ms / 1000) end
+                GameTooltip:AddDoubleLine(Loc("TT_BEST_KEY", "Meilleure cle"), v, 0.8, 0.8, 0.8, 0.94, 0.75, 0.25)
+            end
+
+            -- Temps passe en instance
+            local tot = (d.dgnTime or {})[name] or 0
+            if tot > 0 then
+                GameTooltip:AddDoubleLine(Loc("TT_INST_TOTAL", "Temps passe"), FmtDur(tot), 0.8, 0.8, 0.8, 0.55, 0.75, 0.95)
+                local n = (d.dgnTimeRuns or {})[name] or 0
+                if n > 0 then
+                    local avg = ((d.dgnTimeDone or {})[name] or 0) / n
+                    GameTooltip:AddDoubleLine(Loc("TT_INST_AVG", "Moyenne par run"), FmtDur(avg), 0.8, 0.8, 0.8, 0.55, 0.75, 0.95)
+                end
+            end
+            if _G.DgnTracker_Toggle then
+                GameTooltip:AddLine(Loc("TT_OPEN_DGNTRACKER", "Clic : ouvrir DgnTracker"), 0.7, 0.7, 0.7)
+            end
             GameTooltip:Show()
         end)
         row:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1341,6 +1477,8 @@ end
 -- RefreshTab4 — pattern SkyMythicHistory:RefreshStatsView
 -- Seul le texte et SetWidth changent. Aucun frame/texture recree.
 function UI.RefreshTab4()
+    -- Verse le temps d'instance deja ecoule pour afficher une valeur a jour
+    if LvlHistory.InstTick then LvlHistory.InstTick() end
     local db = LvlHistory.db
     if not db or not dgnList or #dgnRows == 0 then return end
 
@@ -1384,7 +1522,9 @@ function UI.RefreshTab4()
         s4.blks[1].num:SetText(tostring(totalRuns))
         NumColor(s4.blks[1].num, totalRuns, "info")
         s4.blks[1].lbl:SetText(Loc("LBL_TOTAL_COMPLETED", "Total completes"))
-        s4.blks[1].sub:SetText("")
+        local allT = 0
+        for name in pairs(byDungeon) do allT = allT + ((db.dgnTime or {})[name] or 0) end
+        s4.blks[1].sub:SetText(allT > 0 and string.format(Loc("LBL_TIME_SUB_FMT", "temps : %s"), FmtDur(allT)) or "")
         s4.blks[2].num:SetText(tostring(sess))
         NumColor(s4.blks[2].num, sess, "good")
         s4.blks[2].lbl:SetText(Loc("LBL_THIS_SESSION_CAP", "Cette session"))
@@ -1427,14 +1567,33 @@ function UI.RefreshTab4()
         local w = math.ceil(measFS:GetStringWidth())
         if w > maxNamePx then maxNamePx = w end
     end
-    -- Clamp : min 100, max 220 (evite un nom ultra-long de tout ecraser)
-    local nameW = math.max(100, math.min(220, maxNamePx + 4))
+    -- Clamp : min 100, max 240 ; la fenetre s'elargit pour tout afficher
+    local nameW = math.max(100, math.min(240, maxNamePx + 4))
 
     -- Recalculer les largeurs des autres colonnes en fonction de nameW
     -- Layout : 6(L) + nameW + 8 + DGN_BAR_W + 8 + statusW + 8 + DGN_DIFF_W + 8 + DGN_TIME_W + 6 + DGN_COUNT_W + 10(R)
-    local rowW     = FW - PAD * 2 - 22
-    local fixed    = 6 + 8 + DGN_BAR_W + 8 + 8 + DGN_DIFF_W + 8 + DGN_TIME_W + 6 + DGN_COUNT_W + 10
-    local statusW  = math.max(40, rowW - fixed - nameW)
+    local fixed    = 6 + 8 + DGN_BAR_W + 8 + 8 + DGN_DIFF_W + 8 + DGN_TIME_W + 8 + DGN_INST_W + 6 + DGN_COUNT_W + 4
+    -- Largeur auto : nom + statut (64 px) + colonnes fixes ; puis largeur reelle
+    listContentW[4] = fixed + nameW + 64 + PAD * 2 + 22
+    ApplyWidth()
+    local rowW     = curW - PAD * 2 - 22
+    local statusW  = math.max(36, rowW - fixed - nameW)
+    dgnList:SetWidth(rowW)
+
+    -- En-tete Diff. aligne sur les colonnes mesurees (les suivants s'y ancrent)
+    if dgnHdrDiff then
+        dgnHdrDiff:ClearAllPoints()
+        dgnHdrDiff:SetPoint("TOPLEFT", dgnList, "TOPLEFT", 6 + nameW + 8 + DGN_BAR_W + 8 + statusW + 8, -12)
+        if sorted[1] then
+            AnchorHdr(dgnHdrDiff, dgnRows[1].Diff)
+            AnchorHdr(dgnHdrStatus, dgnRows[1].Status)
+            dgnHdrStatus:SetWidth(statusW)
+            AnchorHdr(dgnHdrCount, dgnRows[1].Count, "RIGHT")
+            dgnHdrStatus:Show(); dgnHdrCount:Show()
+        else
+            dgnHdrStatus:Hide(); dgnHdrCount:Hide()
+        end
+    end
 
     -- Helper : formate des millisecondes en "m:ss"
     local function FmtMs(ms)
@@ -1459,6 +1618,7 @@ function UI.RefreshTab4()
     local visibleRows  = 0
     for i, row in ipairs(dgnRows) do
         local d = sorted[i]
+        row:SetWidth(rowW)
         if d then
             -- Repositionner les colonnes selon nameW mesure
             row.Name:SetWidth(nameW)
@@ -1471,6 +1631,9 @@ function UI.RefreshTab4()
             row.Diff:SetPoint("LEFT", row.Status, "RIGHT", 8, 0)
             row.Time:ClearAllPoints()
             row.Time:SetPoint("LEFT", row.Diff, "RIGHT", 8, 0)
+            row.InstT:ClearAllPoints()
+            row.InstT:SetPoint("LEFT", row.Time, "RIGHT", 8, 0)
+            row.InstT:SetText(FmtDur((db.dgnTime or {})[d.name]))
 
             -- Nom : 1er en or vif, les autres en or dim
             row.Name:SetText(d.name)
@@ -1482,15 +1645,14 @@ function UI.RefreshTab4()
             -- Count (rose/saumon, far right)
             row.Count:SetText(tostring(d.count))
 
-            -- Status : H:X  M+:X (sans M:X ni N:X)
+            -- Difficultes jouees, sans chiffre (les runs par difficulte sont dans
+            -- l'infobulle, le total dans la colonne de droite)
             local parts = {}
-            if d.heroic > 0 then
-                table.insert(parts, "|cff1edd1eH:" .. d.heroic .. "|r")
-            end
-            if d.mp > 0 then
-                table.insert(parts, "|cffe64040M+:" .. d.mp .. "|r")
-            end
-            row.Status:SetText(table.concat(parts, " "))
+            if d.normal > 0 then table.insert(parts, "|cff999999N|r") end
+            if d.heroic > 0 then table.insert(parts, "|cff1edd1eH|r") end
+            if d.mythic > 0 then table.insert(parts, "|cffffc700M|r") end
+            if d.mp     > 0 then table.insert(parts, "|cffe64040M+|r") end
+            row.Status:SetText(table.concat(parts, "  "))
 
             -- ── Difficulte et Temps depuis les donnees Blizzard ──────────────
             local mapID   = (db.dgnMapID and db.dgnMapID[d.name]) or (mapNameToID and mapNameToID[d.name])
@@ -1563,7 +1725,322 @@ function UI.RefreshTab4()
 end
 
 -- ─────────────────────────────────────────────
--- TAB 5 — Stats
+-- TAB 5 — Raids  (meme architecture que l'onglet Donjons)
+-- Source : db.raidRuns / raidDetails / raidBoss / raidBossDiff (voir
+-- T.RecordRaidKill dans Core.lua). Les lignes sont celles de l'onglet
+-- Donjons (CreateDgnRow, UpdateDgnRowBar) : les 4 segments de la barre sont
+-- ici LFR / Normal / Heroique / Mythique, et la colonne "Tps" devient "Boss".
+-- ─────────────────────────────────────────────
+
+local RAID_ORDER  = { "LFR", "N", "H", "M" }
+local RAID_RGB    = {
+    LFR = { 0.314, 0.565, 0.753, 1 },
+    N   = DGN_COLORS.NORMAL,
+    H   = DGN_COLORS.HEROIC,
+    M   = DGN_COLORS.MYTHIC,
+}
+local RAID_HEX    = { LFR = "|cff5090c0", N = "|cff999999", H = "|cff1edd1e", M = "|cffffc700" }
+local RAID_SHORT  = { LFR = "L", N = "N", H = "H", M = "M" }
+local MAX_RAID_ROWS = 30
+local RD_BOSS_W   = 40
+
+local raidList, raidMeasFS
+local raidRows = {}
+local raidHdrDiff, raidHdrBoss, raidHdrInst, raidHdrStatus, raidHdrCount
+local sRaid = {}
+
+-- Libelle complet d'une difficulte (globales Blizzard, donc traduit par le client)
+local function RaidDiffName(code)
+    if code == "LFR" then return _G.PLAYER_DIFFICULTY3 or "Raid Finder"
+    elseif code == "N" then return _G.PLAYER_DIFFICULTY1 or "Normal"
+    elseif code == "H" then return _G.PLAYER_DIFFICULTY2 or "Heroic"
+    elseif code == "M" then return _G.PLAYER_DIFFICULTY6 or "Mythic" end
+    return code
+end
+
+local function BuildTabRaids(ca)
+    local f = CreateFrame("Frame", nil, ca)
+    f:SetAllPoints(ca)
+
+    sRaid.blks = StatRow(f)
+
+    local scrollTop = -(PAD + SROW_H + 8)
+    local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT",     f, "TOPLEFT",     PAD - 4, scrollTop)
+    scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -22, PAD)
+
+    local rowW    = FW - PAD * 2 - 22
+    local content = CreateFrame("Frame", nil, scroll)
+    content:SetSize(rowW, DGN_TITLE_H + MAX_RAID_ROWS * DGN_ROW_H + 8)
+    scroll:SetScrollChild(content)
+    raidList = content
+
+    local secTitle = content:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    secTitle:SetPoint("TOPLEFT", content, "TOPLEFT", 8, -10)
+    secTitle:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3])
+    secTitle:SetText(Loc("LBL_TOP_RAIDS", "Raids les plus joues"))
+    local titleLine = content:CreateTexture(nil, "ARTWORK")
+    titleLine:SetTexture(WHITE_TEX)
+    titleLine:SetVertexColor(C.GOLD[1], C.GOLD[2], C.GOLD[3], 0.35)
+    titleLine:SetPoint("BOTTOMLEFT",  secTitle, "BOTTOMLEFT",  0, -3)
+    titleLine:SetPoint("BOTTOMRIGHT", secTitle, "BOTTOMRIGHT", 0, -3)
+    titleLine:SetHeight(1)
+
+    -- En-tetes de colonnes (repositionnees au refresh selon la largeur des noms)
+    raidHdrDiff = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    raidHdrDiff:SetWidth(DGN_DIFF_W)
+    raidHdrDiff:SetJustifyH("CENTER")
+    raidHdrDiff:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+    raidHdrDiff:SetText(Loc("COL_BEST", "Max"))   -- meilleure difficulte jouee
+    raidHdrStatus = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    raidHdrStatus:SetJustifyH("LEFT")
+    raidHdrStatus:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+    raidHdrStatus:SetText(Loc("COL_DIFFS", "Difficulte"))
+    raidHdrCount = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    raidHdrCount:SetJustifyH("RIGHT")
+    raidHdrCount:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+    raidHdrCount:SetText(Loc("COL_RUNS", "Runs"))
+    raidHdrBoss = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    raidHdrBoss:SetWidth(RD_BOSS_W)
+    raidHdrBoss:SetJustifyH("CENTER")
+    raidHdrBoss:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+    raidHdrBoss:SetText(Loc("COL_BOSS", "Boss"))
+    raidHdrInst = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    raidHdrInst:SetWidth(DGN_INST_W)
+    raidHdrInst:SetJustifyH("CENTER")
+    raidHdrInst:SetTextColor(C.MUTED[1], C.MUTED[2], C.MUTED[3])
+    raidHdrInst:SetText(Loc("COL_INSTTIME", "Passe"))
+
+    raidRows = {}
+    for i = 1, MAX_RAID_ROWS do
+        local row = CreateDgnRow(content, i, rowW)
+        -- Couleurs des 4 segments : LFR / Normal / Heroique / Mythique
+        row.BarN:SetVertexColor(RAID_RGB.LFR[1], RAID_RGB.LFR[2], RAID_RGB.LFR[3], 0.87)
+        row.BarH:SetVertexColor(RAID_RGB.N[1],   RAID_RGB.N[2],   RAID_RGB.N[3],   0.87)
+        row.BarMy:SetVertexColor(RAID_RGB.H[1],  RAID_RGB.H[2],  RAID_RGB.H[3],  0.87)
+        row.BarMP:SetVertexColor(RAID_RGB.M[1],  RAID_RGB.M[2],  RAID_RGB.M[3],  0.87)
+        row.Time:SetWidth(RD_BOSS_W)
+        row:EnableMouse(true)
+        row:SetScript("OnEnter", function(self)
+            local d = LvlHistory.db
+            if not (d and self.raidName) then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(self.raidName, 1, 1, 1)
+            -- Une ligne par difficulte jouee : runs et boss tues
+            for _, code in ipairs(RAID_ORDER) do
+                local key = self.raidName .. "||" .. code
+                local runs = (d.raidDetails or {})[key] or 0
+                if runs > 0 then
+                    local bosses = (d.raidBossDiff or {})[key] or 0
+                    GameTooltip:AddDoubleLine(
+                        RAID_HEX[code] .. RaidDiffName(code) .. "|r",
+                        string.format(Loc("TT_RAID_LINE_FMT", "%d runs, %d boss"), runs, bosses),
+                        1, 1, 1, 0.8, 0.8, 0.8)
+                end
+                -- Temps passe sur cette difficulte (total + moyenne par run)
+                local tt = (d.raidTime or {})[key] or 0
+                if tt > 0 then
+                    local n = (d.raidTimeRuns or {})[key] or 0
+                    local right = FmtDur(tt)
+                    if n > 0 then
+                        right = right .. "  /  " .. Loc("TT_INST_AVG_SHORT", "moy.") .. " " .. FmtDur(tt / n)
+                    end
+                    GameTooltip:AddDoubleLine("   " .. Loc("TT_INST_TOTAL", "Temps passe"), right,
+                        0.7, 0.7, 0.7, 0.55, 0.75, 0.95)
+                end
+            end
+            if _G.DgnTrackerAPI then
+                GameTooltip:AddLine(Loc("TT_OPEN_DGNTRACKER", "Clic : ouvrir DgnTracker"), 0.7, 0.7, 0.7)
+            end
+            GameTooltip:Show()
+        end)
+        row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row:SetScript("OnMouseUp", function(self)
+            if self.raidName then OpenDgnTracker(self.raidName, nil, "raid") end
+        end)
+        raidRows[i] = row
+    end
+
+    return f
+end
+
+-- Seul le texte et SetWidth changent. Aucun frame/texture recree.
+function UI.RefreshTab5()
+    -- Verse le temps d'instance deja ecoule pour afficher une valeur a jour
+    if LvlHistory.InstTick then LvlHistory.InstTick() end
+    local db = LvlHistory.db
+    if not db or not raidList or #raidRows == 0 then return end
+
+    -- ── Donnees par raid : { total, LFR, N, H, M } ──────────────────────────
+    local byRaid = {}
+    for key, count in pairs(db.raidDetails or {}) do
+        local name, code = key:match("^(.+)||(.+)$")
+        if name and code then
+            local d = byRaid[name]
+            if not d then
+                d = { total = 0, LFR = 0, N = 0, H = 0, M = 0 }
+                byRaid[name] = d
+            end
+            d.total = d.total + count
+            if d[code] ~= nil and code ~= "total" then d[code] = d[code] + count end
+        end
+    end
+
+    -- ── Bandeau de stats ────────────────────────────────────────────────────
+    if sRaid.blks then
+        local totalRuns, topName, topCount = 0, "--", 0
+        for name, d in pairs(byRaid) do
+            totalRuns = totalRuns + d.total
+            if d.total > topCount then topName = name; topCount = d.total end
+        end
+        local totalBoss = 0
+        for _, n in pairs(db.raidBoss or {}) do totalBoss = totalBoss + n end
+        local sess = db.session.raids or 0
+        sRaid.blks[1].num:SetText(tostring(totalRuns))
+        NumColor(sRaid.blks[1].num, totalRuns, "info")
+        sRaid.blks[1].lbl:SetText(Loc("LBL_TOTAL_COMPLETED", "Total completes"))
+        local allT = 0
+        for name in pairs(byRaid) do
+            for _, code in ipairs(RAID_ORDER) do
+                allT = allT + ((db.raidTime or {})[name .. "||" .. code] or 0)
+            end
+        end
+        sRaid.blks[1].sub:SetText(allT > 0 and string.format(Loc("LBL_TIME_SUB_FMT", "temps : %s"), FmtDur(allT)) or "")
+        sRaid.blks[2].num:SetText(tostring(sess))
+        NumColor(sRaid.blks[2].num, sess, "good")
+        sRaid.blks[2].lbl:SetText(Loc("LBL_THIS_SESSION_CAP", "Cette session"))
+        sRaid.blks[2].sub:SetText(string.format(Loc("LBL_BOSSES_SUB_FMT", "boss tues : %d"), totalBoss))
+        sRaid.blks[3].num:SetText(topCount > 0 and ("x" .. topCount) or "--")
+        NumColor(sRaid.blks[3].num, topCount, "neutral")
+        sRaid.blks[3].lbl:SetText(Loc("LBL_FAVORITE_RAID", "Raid favori"))
+        sRaid.blks[3].sub:SetText(topName ~= "--" and topName or "")
+    end
+
+    -- ── Tri par total decroissant ───────────────────────────────────────────
+    local sorted = {}
+    for name, d in pairs(byRaid) do
+        sorted[#sorted + 1] = { name = name, count = d.total, LFR = d.LFR, N = d.N, H = d.H, M = d.M }
+    end
+    table.sort(sorted, function(a, b)
+        if a.count ~= b.count then return a.count > b.count end
+        return a.name < b.name
+    end)
+
+    -- ── Largeur des noms (mesuree, pour eviter les chevauchements) ──────────
+    if not raidMeasFS then
+        raidMeasFS = raidList:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        raidMeasFS:Hide()
+    end
+    local maxNamePx = DGN_NAME_W
+    for _, d in ipairs(sorted) do
+        raidMeasFS:SetText(d.name)
+        local w = math.ceil(raidMeasFS:GetStringWidth())
+        if w > maxNamePx then maxNamePx = w end
+    end
+    local nameW   = math.max(100, math.min(240, maxNamePx + 4))
+    -- 6(L) + nameW + 8 + bar + 8 + statusW + 8 + diff + 8 + boss + 8 + passe + 6 + count + 4(R)
+    local fixed   = 6 + 8 + DGN_BAR_W + 8 + 8 + DGN_DIFF_W + 8 + RD_BOSS_W + 8 + DGN_INST_W + 6 + DGN_COUNT_W + 4
+    -- Largeur auto : nom + statut "L:2 N:1 H:5 M:1" (92 px) + colonnes fixes
+    listContentW[5] = fixed + nameW + 92 + PAD * 2 + 22
+    ApplyWidth()
+    local rowW    = curW - PAD * 2 - 22
+    local statusW = math.max(36, rowW - fixed - nameW)
+    raidList:SetWidth(rowW)
+
+    -- En-tetes : alignes sur les colonnes Diff. et Boss
+    local hdrX = 6 + nameW + 8 + DGN_BAR_W + 8 + statusW + 8
+    raidHdrDiff:ClearAllPoints()
+    raidHdrDiff:SetPoint("TOPLEFT", raidList, "TOPLEFT", hdrX, -12)
+    if sorted[1] then
+        AnchorHdr(raidHdrDiff, raidRows[1].Diff)
+        AnchorHdr(raidHdrStatus, raidRows[1].Status)
+        raidHdrStatus:SetWidth(statusW)
+        AnchorHdr(raidHdrCount, raidRows[1].Count, "RIGHT")
+        raidHdrStatus:Show(); raidHdrCount:Show()
+    else
+        raidHdrStatus:Hide(); raidHdrCount:Hide()
+    end
+    raidHdrBoss:ClearAllPoints()
+    raidHdrBoss:SetPoint("TOPLEFT", raidHdrDiff, "TOPRIGHT", 8, 0)
+    raidHdrInst:ClearAllPoints()
+    raidHdrInst:SetPoint("TOPLEFT", raidHdrBoss, "TOPRIGHT", 8, 0)
+
+    -- ── Lignes pre-construites ──────────────────────────────────────────────
+    local maxCount = (sorted[1] and sorted[1].count) or 1
+    local visibleRows = 0
+    for i, row in ipairs(raidRows) do
+        local d = sorted[i]
+        row:SetWidth(rowW)
+        if d then
+            row.Name:SetWidth(nameW)
+            row.BarHolder:ClearAllPoints()
+            row.BarHolder:SetPoint("LEFT", row, "LEFT", 6 + nameW + 8, 0)
+            row.Status:SetWidth(statusW)
+            row.Diff:ClearAllPoints()
+            row.Diff:SetPoint("LEFT", row.Status, "RIGHT", 8, 0)
+            row.Time:ClearAllPoints()
+            row.Time:SetPoint("LEFT", row.Diff, "RIGHT", 8, 0)
+            row.InstT:ClearAllPoints()
+            row.InstT:SetPoint("LEFT", row.Time, "RIGHT", 8, 0)
+            local rt = 0
+            for _, code in ipairs(RAID_ORDER) do
+                rt = rt + ((db.raidTime or {})[d.name .. "||" .. code] or 0)
+            end
+            row.InstT:SetText(FmtDur(rt))
+
+            row.Name:SetText(d.name)
+            if i == 1 then
+                row.Name:SetTextColor(C.GOLD[1], C.GOLD[2], C.GOLD[3])
+            else
+                row.Name:SetTextColor(C.GOLD_DIM[1], C.GOLD_DIM[2], C.GOLD_DIM[3])
+            end
+            row.Count:SetText(tostring(d.count))
+            row.raidName = d.name
+
+            -- Difficultes jouees, sans chiffre (detail par difficulte : infobulle)
+            local parts = {}
+            for _, code in ipairs(RAID_ORDER) do
+                if d[code] > 0 then
+                    parts[#parts + 1] = RAID_HEX[code] .. code .. "|r"
+                end
+            end
+            row.Status:SetText(table.concat(parts, "  "))
+
+            -- Diff. : meilleure difficulte jouee
+            local best
+            for k = #RAID_ORDER, 1, -1 do
+                if d[RAID_ORDER[k]] > 0 then best = RAID_ORDER[k]; break end
+            end
+            if best then
+                row.Diff:SetText(best)
+                row.Diff:SetTextColor(RAID_RGB[best][1], RAID_RGB[best][2], RAID_RGB[best][3], 1)
+            else
+                row.Diff:SetText("--")
+                row.Diff:SetTextColor(0.44, 0.41, 0.35, 1)
+            end
+
+            -- Boss : total de boss tues dans ce raid
+            local boss = (db.raidBoss or {})[d.name] or 0
+            row.Time:SetText(boss > 0 and tostring(boss) or "--")
+            row.Time:SetTextColor(0.22, 0.72, 0.44, 1)
+
+            -- Barre : LFR / Normal / Heroique / Mythique
+            UpdateDgnRowBar(row, { count = d.count, normal = d.LFR, heroic = d.N, mythic = d.H, mp = d.M }, maxCount)
+            row:Show()
+            visibleRows = visibleRows + 1
+        else
+            row:Hide()
+        end
+    end
+
+    local h = DGN_TITLE_H + math.max(visibleRows, 1) * DGN_ROW_H + 8
+    raidList:SetHeight(h)
+    listContentH[5] = h
+    ResizeToActive()
+end
+
+-- ─────────────────────────────────────────────
+-- TAB 6 — Stats
 -- ─────────────────────────────────────────────
 
 local s5 = {}
@@ -1688,12 +2165,12 @@ local function BuildTabStats(ca)
         s5.bars[i] = b
     end
     -- Hauteur utile de l'onglet (auto-hauteur de la fenetre, chrome 186)
-    listContentH[5] = math.max(0, -(spY - 18 - SP_H - PAD) - 100)
+    listContentH[6] = math.max(0, -(spY - 18 - SP_H - PAD) - 100)
 
     return f
 end
 
-function UI.RefreshTab5()
+function UI.RefreshTab6()
     local db = LvlHistory.db
     if not db or not s5.blk then return end
 
@@ -1833,7 +2310,7 @@ local function BuildTabLevels(ca)
     return f
 end
 
-function UI.RefreshTab6()
+function UI.RefreshTab7()
     local db = LvlHistory.db
     if not db or not lvlList then return end
     local U      = LvlHistory.Utils
@@ -1896,7 +2373,7 @@ function UI.RefreshTab6()
     s6.empty:SetShown(#list == 0)
     local h = math.max(#list * rowH, 24)
     lvlList:SetHeight(h)
-    listContentH[6] = h
+    listContentH[7] = h
     ResizeToActive()
 
     for i, e in ipairs(list) do
@@ -1970,6 +2447,7 @@ local function RefreshGlobal()
         w.ftrSession:SetText(Loc("FOOTER_SESSION_PREFIX", "Session  ") .. U.FormatTime(elapsed, true))
         w.ftrTotal:SetText(Loc("FOOTER_TOTAL_PREFIX", "Total  ") .. U.FormatTime(grandTotal, true))
         w.ftrZone:SetText(db.session.zone or GetRealZoneText() or "--")
+        ApplyWidth()   -- le pied de page ne doit jamais se chevaucher
     end
 
     -- Stats grille compacte (mode reduit Option B)
@@ -2121,6 +2599,19 @@ RefreshCompactBody = function()
         Cell(4, topCount > 0 and ("x" .. topCount) or "--", Loc("LBL_TIMES_PLAYED", "Fois joue"), C.GOLD_DIM)
 
     elseif activeTab == 5 then
+        -- RAIDS : Cette session | Total | Raid favori | Fois
+        local sessCount  = db.session.raids or 0
+        local totalCount = #(db.raidLog or {})
+        local topName, topCount = "--", 0
+        for name, cnt in pairs(db.raidRuns or {}) do
+            if cnt > topCount then topName = name; topCount = cnt end
+        end
+        Cell(1, tostring(sessCount), Loc("LBL_THIS_SESSION_CAP", "Cette session"), sessCount > 0 and C.GREEN or C.MUTED)
+        Cell(2, tostring(totalCount), Loc("LBL_TOTAL_SHORT", "Total"), totalCount > 0 and C.BLUE or C.MUTED)
+        Cell(3, Trunc(topName, 14), Loc("LBL_FAVORITE_SHORT", "Favori"), C.GOLD)
+        Cell(4, topCount > 0 and ("x" .. topCount) or "--", Loc("LBL_TIMES_PLAYED", "Fois joue"), C.GOLD_DIM)
+
+    elseif activeTab == 6 then
         -- STATS : Temps total | Quetes | Donjons | Sessions
         local grandTotal = (db.totalPlayTime or 0) + elapsed
         local qt         = (db.quests and db.quests.total) or 0
@@ -2132,7 +2623,7 @@ RefreshCompactBody = function()
         Cell(3, tostring(dgnTotal), Loc("LBL_TOTAL_DUNGEONS", "Donjons totaux"), dgnTotal > 0 and C.GREEN or C.MUTED)
         Cell(4, tostring(sessCount), Loc("LBL_SESSIONS_SHORT", "Sessions"), sessCount > 0 and C.GOLD_DIM or C.MUTED)
 
-    elseif activeTab == 6 then
+    elseif activeTab == 7 then
         -- NIVEAUX : Au niveau | Niveau max dans | Niveau | Montee record
         local clk = db.levelClock
         local lvl = UnitLevel("player")
@@ -2163,7 +2654,7 @@ end
 function UI.Expand()
     if not mainFrame then return end
     isCollapsed = false
-    mainFrame:SetSize(FW, FH)
+    mainFrame:SetSize(curW, FH)
     if tabBarRef   then tabBarRef:Show()   end
     if contentRef  then contentRef:Show()  end
     if footerRef   then footerRef:Show()   end
@@ -2283,7 +2774,7 @@ local function Build()
         RefreshGlobal()
         if isCollapsed then return end
         sinceFull = sinceFull + 1
-        if activeTab == 1 or activeTab == 6 or dirty or sinceFull >= 15 then
+        if activeTab == 1 or activeTab == 7 or dirty or sinceFull >= 15 then
             dirty, sinceFull = false, 0
             local fn = UI["RefreshTab" .. activeTab]
             if fn then fn() end
@@ -2302,6 +2793,7 @@ local function Build()
         BuildTabZones,
         BuildTabAlts,
         BuildTabDungeons,
+        BuildTabRaids,
         BuildTabStats,
         BuildTabLevels,
     }

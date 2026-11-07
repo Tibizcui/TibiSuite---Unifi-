@@ -73,5 +73,6 @@ for k, v in pairs({
   OPT_HIDE_OPTIONS_BTN = "Optionen-Knopf ausblenden", OPT_HIDE_SEARCH_BTN = "Suchfeld ausblenden",
   OPT_FLOATING_NOTE = "Optionen-Knopf und Suchfeld ragen über das Fenster hinaus. Auch ausgeblendet öffnet Umschalt+Rechtsklick auf das Fenster diese Optionen.",
   OPT_NOTE = "Tipp: Rechtsklick auf die Lvl-Hist-Kachel der TibiSuite-Leiste öffnet ebenfalls diese Optionen.",
+  TAB_RAIDS = "Raids", LBL_TOP_RAIDS = "Meistgespielte Raids", LBL_FAVORITE_RAID = "Lieblingsraid", LBL_BOSSES_SUB_FMT = "Bosse getötet: %d", COL_BOSS = "Boss", LBL_DGN_RAID_DELVES_SESSION = "Dungeons / Raids / Tiefen", SEARCH_RAID = "Raid", TT_RAID_LINE_FMT = "%d Durchgänge, %d Bosse", COL_INSTTIME = "Dauer", TT_INST_TOTAL = "Verbrachte Zeit", TT_INST_AVG = "Durchschnitt pro Durchgang", TT_INST_AVG_SHORT = "Ø", LBL_TIME_SUB_FMT = "Zeit: %s", TT_RUNS_FMT = "%d Durchgänge", TT_INST_BEST = "am schnellsten", TT_BEST_KEY = "Beste Schlüssel", COL_DIFFS = "Schwierigkeit", COL_RUNS = "Läufe", COL_KEY = "Schlüssel", COL_BEST = "Max",
   SEARCH_TITLE = "Suche", SEARCH_LEVEL_FMT = "St. ", SEARCH_DUNGEON = "Dungeon", SEARCH_DELVE = "Tiefe",
 }) do L[k] = v end

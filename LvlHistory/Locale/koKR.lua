@@ -73,5 +73,6 @@ for k, v in pairs({
   OPT_HIDE_OPTIONS_BTN = "설정 버튼 숨기기", OPT_HIDE_SEARCH_BTN = "검색창 숨기기",
   OPT_FLOATING_NOTE = "설정 버튼과 검색창은 창 위쪽으로 튀어나옵니다. 숨겨도 창에서 Shift+오른쪽 클릭으로 이 설정을 열 수 있습니다.",
   OPT_NOTE = "팁: TibiSuite 바의 Lvl Hist 타일을 오른쪽 클릭해도 이 설정이 열립니다.",
+  TAB_RAIDS = "공격대", LBL_TOP_RAIDS = "가장 많이 한 공격대", LBL_FAVORITE_RAID = "선호 공격대", LBL_BOSSES_SUB_FMT = "처치한 우두머리: %d", COL_BOSS = "보스", LBL_DGN_RAID_DELVES_SESSION = "던전 / 공격대 / 구렁", SEARCH_RAID = "공격대", TT_RAID_LINE_FMT = "%d회, 우두머리 %d", COL_INSTTIME = "체류", TT_INST_TOTAL = "체류 시간", TT_INST_AVG = "런당 평균", TT_INST_AVG_SHORT = "평균", LBL_TIME_SUB_FMT = "시간: %s", TT_RUNS_FMT = "%d회", TT_INST_BEST = "최단", TT_BEST_KEY = "최고 쐐기돌", COL_DIFFS = "난이도", COL_RUNS = "횟수", COL_KEY = "쐐기돌", COL_BEST = "최고",
   SEARCH_TITLE = "검색", SEARCH_LEVEL_FMT = "Lv ", SEARCH_DUNGEON = "던전", SEARCH_DELVE = "구렁",
 }) do L[k] = v end

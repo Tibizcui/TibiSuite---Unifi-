@@ -73,5 +73,6 @@ for k, v in pairs({
   OPT_HIDE_OPTIONS_BTN = "Скрыть кнопку настроек", OPT_HIDE_SEARCH_BTN = "Скрыть поле поиска",
   OPT_FLOATING_NOTE = "Кнопка настроек и поле поиска выступают над окном. Даже скрытые, Shift+правый клик по окну открывает эти настройки.",
   OPT_NOTE = "Совет: правый клик по плитке Lvl Hist на панели TibiSuite тоже открывает эти настройки.",
+  TAB_RAIDS = "Рейды", LBL_TOP_RAIDS = "Самые частые рейды", LBL_FAVORITE_RAID = "Любимый рейд", LBL_BOSSES_SUB_FMT = "боссов убито: %d", COL_BOSS = "Боссы", LBL_DGN_RAID_DELVES_SESSION = "Подземелья / рейды / вылазки", SEARCH_RAID = "рейд", TT_RAID_LINE_FMT = "прохождений: %d, боссов: %d", COL_INSTTIME = "Время", TT_INST_TOTAL = "Проведённое время", TT_INST_AVG = "В среднем за заход", TT_INST_AVG_SHORT = "сред.", LBL_TIME_SUB_FMT = "время: %s", TT_RUNS_FMT = "заходов: %d", TT_INST_BEST = "самый быстрый", TT_BEST_KEY = "Лучший ключ", COL_DIFFS = "Сложность", COL_RUNS = "Заходы", COL_KEY = "Ключ", COL_BEST = "Макс.",
   SEARCH_TITLE = "Поиск", SEARCH_LEVEL_FMT = "ур. ", SEARCH_DUNGEON = "подземелье", SEARCH_DELVE = "вылазка",
 }) do L[k] = v end

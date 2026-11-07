@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.3.3
+- Nouvel onglet Raids, sur le modèle de l'onglet Donjons : runs par raid et par difficulté (LFR, Normal, Héroïque, Mythique), boss tués et raid favori. Un run correspond à un raid, une difficulté et un verrou hebdomadaire.
+- Temps passé en instance (donjons et raids) : colonne « Passé », total et moyenne par run dans l'infobulle, run le plus rapide par difficulté. Le chrono démarre à la prochaine entrée en instance, sans historique rétroactif.
+- Onglets Donjons et Raids : colonne Difficulté séparée, colonne Runs, titres alignés sur leurs valeurs, fenêtre qui s'adapte en largeur et en hauteur.
+- Correctif : carrés parasites dans les barres de répartition.
+- Commandes : /lvlh raids, /lvlh niveaux, /lvlh temps (diagnostic du chrono).
+
 ## 7.3.2
 - Bug correction display : « Tout fermer » et la fermeture de la barre TibiSuite ne referment plus que les fenêtres des modules, jamais les éléments affichés à l'écran (XPBar, RepBar, MiniHub).
 

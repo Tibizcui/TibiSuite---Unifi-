@@ -312,6 +312,9 @@ end
 -- collectLegendaries : lecture seule de la SavedVariable, jamais du code de
 -- LvlHistory, copie champ par champ. Par personnage, meme cle "Nom-Royaume".
 -- Ajout additif, schema inchange : un site pas a jour ignore chars[k].leveling.
+-- Ajout recent : leveling.raids / raidBoss (runs et boss tues en raid),
+-- leveling.dgnT / raidT (secondes passees en donjon / en raid) et sess[].rd
+-- (raids de la session), meme principe additif.
 local function collectLeveling()
   local db = _G.LvlHistoryDB
   local snap = db and db.dashboard
@@ -338,7 +341,7 @@ local function collectLeveling()
             sess[#sess + 1] = {
               d = num(e.d), dur = num(e.dur), m = (e.m == "f") and "f" or "l",
               xph = num(e.xph), gold = num(e.gold), l0 = num(e.l0), l1 = num(e.l1),
-              q = num(e.q), dg = num(e.dg), dv = num(e.dv),
+              q = num(e.q), dg = num(e.dg), rd = num(e.rd), dv = num(e.dv),
             }
           end
         end
@@ -353,6 +356,8 @@ local function collectLeveling()
           xpSrc = xs and { q = num(xs.q), d = num(xs.d), g = num(xs.g), o = num(xs.o) } or nil,
           best = type(c.best) == "table" and { xph = num(c.best.xph), goldh = num(c.best.goldh) } or nil,
           dgn = num(c.dgn), delves = num(c.delves),
+          raids = num(c.raids), raidBoss = num(c.raidBoss),
+          dgnT = num(c.dgnT), raidT = num(c.raidT),
           quests = { t = num(q.t), d = num(q.d), w = num(q.w) },
         }
       end

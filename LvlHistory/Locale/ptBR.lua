@@ -73,5 +73,6 @@ for k, v in pairs({
   OPT_HIDE_OPTIONS_BTN = "Ocultar o botão Opções", OPT_HIDE_SEARCH_BTN = "Ocultar o campo Busca",
   OPT_FLOATING_NOTE = "O botão Opções e o campo Busca ficam acima da janela. Mesmo ocultos, Shift+clique direito na janela abre estas opções.",
   OPT_NOTE = "Dica: clique direito no ícone Lvl Hist da barra TibiSuite também abre estas opções.",
+  TAB_RAIDS = "Raides", LBL_TOP_RAIDS = "Raides mais jogados", LBL_FAVORITE_RAID = "Raide favorito", LBL_BOSSES_SUB_FMT = "chefes derrotados: %d", COL_BOSS = "Chefes", LBL_DGN_RAID_DELVES_SESSION = "Masmorras / raides / imersões", SEARCH_RAID = "raide", TT_RAID_LINE_FMT = "%d runs, %d chefes", COL_INSTTIME = "Tempo", TT_INST_TOTAL = "Tempo gasto", TT_INST_AVG = "Média por run", TT_INST_AVG_SHORT = "méd.", LBL_TIME_SUB_FMT = "tempo: %s", TT_RUNS_FMT = "%d runs", TT_INST_BEST = "mais rápida", TT_BEST_KEY = "Melhor chave", COL_DIFFS = "Dificuldade", COL_RUNS = "Runs", COL_KEY = "Chave", COL_BEST = "Máx.",
   SEARCH_TITLE = "Busca", SEARCH_LEVEL_FMT = "nv ", SEARCH_DUNGEON = "masmorra", SEARCH_DELVE = "imersão",
 }) do L[k] = v end

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.3
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.3.2
 - Bug correction display : « Tout fermer » et la fermeture de la barre TibiSuite ne referment plus que les fenêtres des modules, jamais les éléments affichés à l'écran (XPBar, RepBar, MiniHub).
 

@@ -655,6 +655,22 @@ luaparse (copie en cache npx, appelée via node). Tests d'exécution : fengari
 (Lua 5.3, entiers 32 bits : `%08x` d'un nombre > 2^31 échoue dans le mock mais
 pas en jeu) + faux client WoW, reconstruit par session dans le scratchpad.
 
+## LvlHistory : onglet Raids (non testé en jeu)
+
+Fenêtre à 7 onglets : 1 Session, 2 Zones, 3 Alts, 4 Donjons, 5 **Raids**, 6 Stats,
+7 Niveaux (`LvlHistoryAPI.Open(tab)`, `/lvlh raids`, `/lvlh niveaux`). Un run de
+raid = un raid + une difficulté (`LFR|N|H|M`, déduite du `difficultyID` de
+`ENCOUNTER_END`, jamais du nom localisé) + un verrou hebdomadaire : le premier
+boss tué ouvre le run, les suivants s'y ajoutent (`T.RecordRaidKill`, état dans
+`raidWeek`, aucun état à réconcilier au login). Données par personnage :
+`raidRuns`, `raidDetails` (`"Nom||Diff"`), `raidBoss`, `raidBossDiff`, `raidLog`.
+L'onglet réutilise les lignes de l'onglet Donjons (segments LFR / N / H / M).
+Branché sur : le résumé Dashboard (`raids`, `raidBoss`, `sess[].rd`, repris
+par `Stats/Export.lua`, ajout additif), la recherche de la suite, l'API
+(`GetRaidStats`, événement `onRaidBossKilled`). Toute nouvelle entrée de tab
+décale les numéros : vérifier `OpenTab`, `RefreshTabN`, `listContentH[N]` et le
+mode réduit (`activeTab == N`).
+
 ## Lien avec le site (Tibiscui.fr)
 
 Le module **Stats** produit un code d'export (`SX.Export.Generate()`,
@@ -666,3 +682,11 @@ Standby, rapprochées par nom + royaume sans espace, tiret ni apostrophe) pour l
 carte Absences du Dashboard et de Tibi Companion. Si tu
 touches `LZW.lua` ou le format d'export, reporte-le dans
 `Tibiscui.fr/dashboard-shared.js` (décodeur miroir bit à bit).
+
+## LvlHistory : temps passé en instance (non testé en jeu)
+
+- Chrono persistant `db._inst` (Core.lua, bloc « Temps passé en instance ») : `T.InstSync()` à chaque `PLAYER_ENTERING_WORLD`, `T.InstPause()` à `PLAYER_LEAVING_WORLD` (le hors-jeu et les écrans de chargement ne comptent pas), `T.InstTick()` toutes les 5 min.
+- Donjons : `dgnTime[nom]` (toutes visites), `dgnTimeRuns` / `dgnTimeDone` (runs terminés, base de la moyenne). Une clé M+ utilise la durée exacte `ms` de `CHALLENGE_MODE_COMPLETED`, les autres la durée de la visite.
+- Raids : `raidTime["Nom||Diff"]` et `raidTimeRuns` (un verrou hebdo chronométré = un run, drapeau `timed` dans `raidWeek`).
+- Pas d'historique rétroactif ; le temps inclut wipes, AFK et pillage. Colonne « Passé » (onglets Donjons et Raids), infobulle total + moyenne, total dans le bandeau. Largeurs de colonnes rééquilibrées (barre 48, nom max 150).
+- Largeur auto (UI.lua) : `ApplyWidth()` élargit la fenêtre (plancher `FW`, plafond écran - 40) selon `listContentW[onglet]` (Donjons/Raids : nom + statut + colonnes) et `FooterNeedW()` (le bouton Opacité est ancré à gauche du nom de zone). `curW` remplace `FW` pour les lignes Donjons/Raids/Gouffres. Les onglets 1 à 3, 6 et 7 gardent leur mise en page de base (non étirée). Non testé en jeu.

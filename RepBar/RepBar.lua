@@ -1,4 +1,4 @@
--- RepBar.lua v7.3.2
+-- RepBar.lua v7.3.3
 -- Barre de reputation avancee - Tibiscui
 -- Remplace la barre de reputation native, suit la faction par zone (via
 -- RenTracker) et bascule a la validation d'une quete.
@@ -128,6 +128,10 @@ D("OPT_VLENGTH",        "Longueur (vertical)")
 D("OPT_SEC_SESSION",    "Session et position")
 D("OPT_RESETSESS",      "Réinitialiser la session")
 D("OPT_RESETPOS",       "Réinitialiser la position")
+D("OPT_SEC_POSITION",   "Position")
+D("OPT_CENTER_BOTTOM",  "Centrer en bas de l'écran")
+D("OPT_CENTER_TOP",     "Centrer en haut de l'écran")
+D("OPT_CENTER_TT",      "Centre la barre horizontalement et la colle au bord choisi. Maj + glisser ne règle plus que la hauteur. Désactive l'aimantation sous XPBar.")
 D("OPT_SEC_FLOATING",   "Bouton flottant")
 D("OPT_HIDE_OPTIONS_BTN","Masquer le bouton Options")
 
@@ -582,6 +586,26 @@ end
 -- ══════════════════════════════════════════════════
 -- POSITION (sauvegarde + aimantation sous XPBar)
 -- ══════════════════════════════════════════════════
+-- Centrage horizontal : db.centerMode vaut nil (libre), "TOP" ou "BOTTOM".
+-- La barre est ancree au milieu de l'ecran (x = 0) sur le bord choisi ; seule
+-- la hauteur (distance au bord) reste reglable par Maj + glisser. La hauteur
+-- actuelle est conservee a l'activation.
+local function CenterFrame(mode)
+    if not (containerFrame and db) then return end
+    local pt, y
+    if mode == "BOTTOM" then
+        pt = "BOTTOM"
+        y  = (containerFrame:GetBottom() or 0) - (UIParent:GetBottom() or 0)
+    else
+        pt = "TOP"
+        y  = (containerFrame:GetTop() or 0) - (UIParent:GetTop() or 0)
+    end
+    y = math.floor(y + 0.5)
+    containerFrame:ClearAllPoints()
+    containerFrame:SetPoint(pt, UIParent, pt, 0, y)
+    db.anchor, db.posX, db.posY = pt, 0, y
+end
+
 local function SavePosition()
     if not containerFrame then return end
     local point, rel, _, x, y = containerFrame:GetPoint()
@@ -595,6 +619,8 @@ local function SavePosition()
     db.anchor = point
     db.posX   = math.floor((x or 0) + 0.5)
     db.posY   = math.floor((y or 0) + 0.5)
+    -- Mode centre : on remet la barre au milieu apres un deplacement.
+    if db.centerMode then CenterFrame(db.centerMode) end
 end
 
 local function SnapTarget()
@@ -1690,7 +1716,11 @@ local function BuildMidnightOptions()
     P:Section(L.OPT_SEC_BEHAVIOR)
     check(L.OPT_SWITCHQ,    "switchOnQuest")
     check(L.OPT_CLICKCYCLE, "clickCycle")
-    check(L.OPT_SNAP,       "snapToXPBar", function() ApplyPosition() end, L.OPT_SNAP_TT)
+    check(L.OPT_SNAP,       "snapToXPBar", function()
+        -- L'aimantation sous XPBar remplace le centrage libre
+        if db and db.snapToXPBar then db.centerMode = nil ; P:Refresh() end
+        ApplyPosition()
+    end, L.OPT_SNAP_TT)
 
     -- Visibilite
     P:Section(L.OPT_SEC_VISIBILITY)
@@ -1717,6 +1747,26 @@ local function BuildMidnightOptions()
         function(v) if db then db.vHeight = v end
             if IsVertical() then ApplySize() end ; UpdateBar() end)
 
+    -- Position : centrage horizontal (haut ou bas), cases exclusives
+    P:Section(L.OPT_SEC_POSITION)
+    local function centerCheck(label, mode)
+        P:Check(label,
+            function() return db and db.centerMode == mode end,
+            function(v)
+                if not db then return end
+                db.centerMode = v and mode or nil
+                if v then
+                    db.snapToXPBar = false      -- le centrage libre remplace l'aimantation
+                    ApplyPosition()             -- repart de la position libre avant de mesurer
+                    CenterFrame(mode)
+                end
+                P:Refresh()                     -- decoche l'autre case
+            end,
+            L.OPT_CENTER_TT)
+    end
+    centerCheck(L.OPT_CENTER_BOTTOM, "BOTTOM")
+    centerCheck(L.OPT_CENTER_TOP,    "TOP")
+
     -- Session et position
     P:Section(L.OPT_SEC_SESSION)
     P:Button(L.OPT_RESETSESS, function()
@@ -1727,6 +1777,7 @@ local function BuildMidnightOptions()
         if not (db and containerFrame) then return end
         db.posX, db.posY, db.anchor = DEFAULTS.posX, DEFAULTS.posY, DEFAULTS.anchor
         db.snapToXPBar = false
+        db.centerMode = nil
         ApplyPosition()
         P:Refresh()
         print("|cffFFD700[RepBar]|r " .. L.POS_RESET)

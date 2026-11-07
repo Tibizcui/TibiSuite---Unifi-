@@ -11,7 +11,7 @@ local function Loc(key, default) return L[key] or default end
 -- ─────────────────────────────────────────────
 -- Constantes
 -- ─────────────────────────────────────────────
-local ADDON_VERSION = "7.3.2"
+local ADDON_VERSION = "7.3.3"
 local SAVE_INTERVAL = 300  -- sauvegarde incrémentale toutes les 5 minutes
 local RESUME_WINDOW = 600  -- /reload ou reconnexion en moins de 10 min : meme session
 T.VERSION = ADDON_VERSION
@@ -30,6 +30,18 @@ local CHAR_DEFAULTS = {
     dgnBestTime  = {},          -- { ["Nom Donjon"] = { key=N, ms=N } } — meilleur temps sur la plus haute clé timée
     dgnMapID     = {},          -- { ["Nom Donjon"] = mapChallengeModeID } — lien direct vers les records Blizzard
     dgnLog       = {},          -- [ { name, diff, ts } ] — historique individuel persistant
+    raidRuns     = {},          -- { ["Nom Raid"] = count } — 1 run par raid, difficulte et verrou hebdo
+    raidDetails  = {},          -- { ["Nom||LFR|N|H|M"] = count } — detail par difficulte
+    raidBoss     = {},          -- { ["Nom Raid"] = boss tues (total) }
+    raidBossDiff = {},          -- { ["Nom||LFR|N|H|M"] = boss tues }
+    raidLog      = {},          -- [ { name, diff, ts, boss } ] — historique individuel persistant
+    raidWeek     = {},          -- { ["Nom||Diff"] = { reset, ts, bosses = { [id] = true } } } verrou en cours
+    dgnTime      = {},          -- { ["Nom Donjon"] = secondes passees en instance (toutes visites) }
+    dgnTimeRuns  = {},          -- { ["Nom Donjon"] = nb de runs termines et chronometres }
+    dgnTimeBest  = {},          -- { ["Nom||Difficulte"] = secondes du run termine le plus rapide }
+    dgnTimeDone  = {},          -- { ["Nom Donjon"] = secondes cumulees de ces runs termines }
+    raidTime     = {},          -- { ["Nom||LFR|N|H|M"] = secondes passees en instance }
+    raidTimeRuns = {},          -- { ["Nom||LFR|N|H|M"] = nb de runs (verrous) chronometres }
     delveRuns    = {},          -- { ["Nom Gouffre"] = count }
     delveBest    = {},          -- { ["Nom Gouffre"] = palier max }
     delveLog     = {},          -- [ { name, tier, ts } ]
@@ -184,6 +196,7 @@ local function NewSession(db)
         questCount     = 0,
         dailyCount     = 0,
         dungeons       = 0,
+        raids          = 0,
         delves         = 0,
         xph            = 0,
         xpGain         = 0,
@@ -252,6 +265,7 @@ local function BuildSnapshot()
         levelEnd   = UnitLevel("player"),
         quests     = s.questCount or 0,
         dungeons   = s.dungeons or 0,
+        raids      = s.raids or 0,
         delves     = s.delves or 0,
         goldGained = math.max(0, GetMoney() - (s.goldAtStart or GetMoney())),
         goldEarned = goldEarned > 0 and goldEarned or nil,   -- gains bruts (mode farming)
@@ -464,6 +478,10 @@ local function OnLogin()
         end
     end
 
+    for rName in pairs(db.raidRuns or {}) do
+        if db.zones[rName] then db.zones[rName] = nil end
+    end
+
     -- Réconciliation après reload : si on était dans une instance et qu'on n'y est plus,
     -- le run peut avoir été complété entre le logout et le reload
     if db._dgn.inInstance then
@@ -492,6 +510,7 @@ local function OnLogin()
     -- Accumulation incrémentale du temps de jeu toutes les 5 minutes (crash-safe).
     -- N'insère PAS de snapshot : le snapshot n'est créé qu'en fin de session réelle.
     C_Timer.NewTicker(SAVE_INTERVAL, function()
+        T.InstTick()
         AccruePlayTime()
         if T.API and T.API.WriteDashboard then T.API.WriteDashboard() end
     end)
@@ -544,6 +563,7 @@ coreFrame:SetScript("OnEvent", function(self, event, ...)
     if event == "PLAYER_LEAVING_WORLD" then
         -- Arrive avant PLAYER_LOGOUT pour TOUS les addons : le resume Dashboard
         -- est donc a jour quand Stats genere son code d'export au logout.
+        T.InstPause()
         AccruePlayTime()
         if T.API and T.API.WriteDashboard then T.API.WriteDashboard() end
 
@@ -618,12 +638,15 @@ local function GetDifficultyLabel()
     return diffName
 end
 
-function T.RecordDungeon(name, diffName)
+function T.RecordDungeon(name, diffName, runSecs)
     local db = T.db
     if not db then return end
     if not name or name == "" then return end
 
     diffName = diffName or GetDifficultyLabel()
+
+    -- Le chrono d'instance en cours (s'il y en a un) devient un run termine
+    if T.InstMarkRun then T.InstMarkRun(name, runSecs, diffName) end
 
     -- Total toutes difficultés
     db.dgnRuns[name]    = (db.dgnRuns[name] or 0) + 1
@@ -639,6 +662,231 @@ function T.RecordDungeon(name, diffName)
 
     T.Bridge.Emit("onDungeonCompleted", name, db.dgnRuns[name], diffName)
     T.Utils.Log("Donjon: %s [%s] | Total: %d", name, diffName, db.dgnRuns[name])
+end
+
+-- ─────────────────────────────────────────────
+-- Temps passe en instance (donjons et raids)
+-- Etat persistant db._inst = { name, kind = "party"|"raid", diff, t0, acc,
+-- counted, runSecs }. t0 = nil tant que le chrono est en pause (ecran de
+-- chargement, deconnexion) : le temps hors-jeu n'est donc jamais compte.
+-- Le temps inclut wipes, AFK et pillage : c'est le temps reellement passe
+-- dans l'instance. Aucun historique avant l'installation de cette version.
+-- ─────────────────────────────────────────────
+
+local INST_MAX_STEP = 12 * 3600   -- garde-fou : un intervalle plus long est ignore
+
+-- Verse le temps ecoule depuis t0 dans les totaux, puis relance t0.
+local function InstAccrue()
+    local db = T.db
+    local v = db and db._inst
+    if not v or not v.t0 or not v.name then return end
+    local now = time()
+    local dt = now - v.t0
+    v.t0 = now
+    if dt <= 0 or dt > INST_MAX_STEP then return end
+    v.acc = (v.acc or 0) + dt
+    if v.kind == "party" then
+        db.dgnTime[v.name] = (db.dgnTime[v.name] or 0) + dt
+    elseif v.kind == "raid" and v.diff then
+        local key = v.name .. "||" .. v.diff
+        db.raidTime[key] = (db.raidTime[key] or 0) + dt
+        -- Un run de raid = un verrou hebdomadaire : on le compte une seule fois
+        local w = db.raidWeek and db.raidWeek[key]
+        if w and (w.reset or 0) > now and not w.timed then
+            w.timed = true
+            db.raidTimeRuns[key] = (db.raidTimeRuns[key] or 0) + 1
+        end
+    end
+end
+
+-- Ferme la visite : un donjon termine alimente la moyenne par run.
+local function InstClose()
+    local db = T.db
+    local v = db and db._inst
+    if not v then return end
+    InstAccrue()
+    if v.kind == "party" and v.counted and v.name then
+        local secs = v.runSecs or v.acc or 0
+        if secs > 0 then
+            db.dgnTimeRuns[v.name] = (db.dgnTimeRuns[v.name] or 0) + 1
+            db.dgnTimeDone[v.name] = (db.dgnTimeDone[v.name] or 0) + secs
+            -- Run le plus rapide, par difficulte (meme cle que dgnDetails)
+            if v.runDiff then
+                local bk = v.name .. "||" .. v.runDiff
+                local cur = db.dgnTimeBest[bk]
+                if not cur or secs < cur then db.dgnTimeBest[bk] = secs end
+            end
+        end
+    end
+    db._inst = nil
+end
+
+--- Pause (avant un ecran de chargement ou une deconnexion).
+function T.InstPause()
+    InstAccrue()
+    local v = T.db and T.db._inst
+    if v then v.t0 = nil end
+end
+
+--- Tick periodique (sauvegarde incrementale) : verse le temps sans pause.
+function T.InstTick() InstAccrue() end
+
+--- Un donjon vient d'etre comptabilise : le chrono en cours est un run termine.
+function T.InstMarkRun(name, runSecs, diffName)
+    local db = T.db
+    local v = db and db._inst
+    if v and v.kind == "party" then
+        -- Nom different (zone lue a l'entree vs nom du donjon enregistre) : le
+        -- temps deja cumule suit le nom du donjon enregistre
+        if v.name ~= name then
+            local acc = v.acc or 0
+            if v.t0 then InstAccrue(); acc = v.acc or 0 end
+            if v.name and acc > 0 then
+                db.dgnTime[v.name] = math.max(0, (db.dgnTime[v.name] or 0) - acc)
+                if db.dgnTime[v.name] == 0 then db.dgnTime[v.name] = nil end
+                db.dgnTime[name] = (db.dgnTime[name] or 0) + acc
+            end
+            v.name = name
+        end
+        v.counted = true
+        v.runDiff = diffName
+        if runSecs and runSecs > 0 then v.runSecs = runSecs end
+    end
+end
+
+--- Synchronise le chrono avec l'etat reel (appele a chaque PLAYER_ENTERING_WORLD,
+--- apres l'enregistrement eventuel du donjon qu'on vient de quitter).
+-- Nettoyage unique : les premieres versions rangeaient le temps sous la zone
+-- d'avant l'entree (ex. "Dalaran"). On supprime les temps de noms qui ne sont
+-- ni un donjon ni un raid connus de l'historique.
+local function InstCleanupOnce(db)
+    if db._instFix == 2 then return end
+    for name in pairs(db.dgnTime) do
+        if not db.dgnRuns[name] then db.dgnTime[name] = nil end
+    end
+    for key in pairs(db.raidTime) do
+        local nm = key:match("^(.+)||")
+        if not (nm and db.raidRuns[nm]) then db.raidTime[key] = nil end
+    end
+    db._instFix = 2
+end
+
+--- Un boss de raid vient d'etre tue : le nom de zone fait foi (alignement du chrono).
+function T.InstMarkRaid(zoneName, diffCode)
+    local db = T.db
+    local v = db and db._inst
+    if not (v and v.kind == "raid" and zoneName and zoneName ~= "") then return end
+    if v.name == zoneName and v.diff == diffCode then return end
+    InstAccrue()
+    local acc = v.acc or 0
+    if v.name and acc > 0 then
+        local old = v.name .. "||" .. (v.diff or "N")
+        local left = (db.raidTime[old] or 0) - acc
+        db.raidTime[old] = left > 0 and left or nil
+        local new = zoneName .. "||" .. diffCode
+        db.raidTime[new] = (db.raidTime[new] or 0) + acc
+    end
+    v.name, v.diff = zoneName, diffCode
+end
+
+function T.InstSync()
+    local db = T.db
+    if not db then return end
+    InstCleanupOnce(db)
+    local inInst, instType = IsInInstance()
+    local kind = inInst and (instType == "party" or instType == "raid") and instType or nil
+    local name, diff
+    if kind then
+        -- A PLAYER_ENTERING_WORLD, GetRealZoneText() renvoie encore la zone
+        -- d'avant (Dalaran, Desolation des dragons...) : le nom de l'instance
+        -- vient de GetInstanceInfo(), fiable des l'entree.
+        local iname, _, diffID = GetInstanceInfo()
+        name = iname
+        if not name or name == "" then name = GetRealZoneText() end
+        if kind == "raid" then diff = T.RaidDiffCode(diffID) end
+    end
+    local v = db._inst
+    if v and kind and name and v.kind == kind and v.name == name and v.diff == diff then
+        -- Meme instance (reload, reconnexion, couloir de chargement) : on reprend
+        v.t0 = time()
+        return
+    end
+    if v then InstClose() end
+    if kind and name and name ~= "" then
+        db._inst = { name = name, kind = kind, diff = diff, t0 = time(), acc = 0 }
+    end
+end
+
+-- ─────────────────────────────────────────────
+-- Tracking raids (mode-agnostic)
+-- Un "run" = un raid, une difficulte (LFR / N / H / M) et un verrou
+-- hebdomadaire : le premier boss tue dans ce verrou ouvre le run, les
+-- suivants (meme soir, jours suivants, apres un depart ou un crash) s'y
+-- ajoutent sans le recompter. Aucun etat a reconcilier au login : tout est
+-- dans db.raidWeek, qui survit aux /reload.
+-- ─────────────────────────────────────────────
+
+-- difficultyID (ENCOUNTER_END) -> code stable, independant de la langue
+local RAID_DIFF = {
+    [7] = "LFR", [17] = "LFR", [151] = "LFR",
+    [14] = "N", [3] = "N", [4] = "N", [9] = "N", [33] = "N", [148] = "N",
+    [15] = "H", [5] = "H", [6] = "H",
+    [16] = "M",
+}
+function T.RaidDiffCode(difficultyID) return RAID_DIFF[difficultyID or 0] or "N" end
+
+-- Fin du verrou hebdomadaire courant (epoch). Repli : 6 jours.
+local function NextWeeklyReset()
+    local secs
+    if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+        local ok, v = pcall(C_DateAndTime.GetSecondsUntilWeeklyReset)
+        if ok and type(v) == "number" and v > 0 then secs = v end
+    end
+    return time() + (secs or 6 * 86400)
+end
+
+function T.RecordRaidKill(zoneName, diffCode, encounterID, encounterName)
+    local db = T.db
+    if not db then return end
+    if not zoneName or zoneName == "" then return end
+    diffCode = diffCode or "N"
+    if T.InstMarkRaid then T.InstMarkRaid(zoneName, diffCode) end
+
+    db.raidWeek = db.raidWeek or {}
+    local key = zoneName .. "||" .. diffCode
+    local now = time()
+    local w = db.raidWeek[key]
+
+    -- Verrou expire (ou premier boss) : nouveau run
+    if not w or (w.reset or 0) < now then
+        for k, e in pairs(db.raidWeek) do
+            if type(e) ~= "table" or (e.reset or 0) < now then db.raidWeek[k] = nil end
+        end
+        w = { reset = NextWeeklyReset(), ts = now, bosses = {} }
+        db.raidWeek[key] = w
+
+        db.raidRuns[zoneName]    = (db.raidRuns[zoneName] or 0) + 1
+        db.raidDetails[key]      = (db.raidDetails[key] or 0) + 1
+        db.session.raids         = (db.session.raids or 0) + 1
+        table.insert(db.raidLog, { name = zoneName, diff = diffCode, ts = now, boss = 0 })
+        while #db.raidLog > 500 do table.remove(db.raidLog, 1) end
+        T.Utils.Log("Raid: %s [%s] | Total: %d", zoneName, diffCode, db.raidRuns[zoneName])
+    end
+
+    -- Boss : un meme boss n'est compte qu'une fois par run
+    local bid = encounterID or encounterName
+    if bid == nil then bid = #w.bosses + 1 end
+    if w.bosses[bid] then return end
+    w.bosses[bid] = true
+    db.raidBoss[zoneName] = (db.raidBoss[zoneName] or 0) + 1
+    db.raidBossDiff[key]  = (db.raidBossDiff[key] or 0) + 1
+    local last = db.raidLog[#db.raidLog]
+    if last and last.name == zoneName and last.diff == diffCode and last.ts == w.ts then
+        last.boss = (last.boss or 0) + 1
+    end
+
+    T.Bridge.Emit("onRaidBossKilled", zoneName, diffCode, encounterName, db.raidBoss[zoneName], db.raidRuns[zoneName])
+    T.Utils.Log("Raid boss: %s [%s] %s", zoneName, diffCode, tostring(encounterName))
 end
 
 -- Lecture de la fin d'une cle M+. API 11.0+ : GetChallengeCompletionInfo()
@@ -743,7 +991,7 @@ dgnFrame:SetScript("OnEvent", function(self, event, ...)
         if d and d.countedByLFG then return end
         -- Libelle neutre "M+" : le nom Blizzard de la difficulte varie selon
         -- la langue et ne contient pas toujours de "+".
-        T.RecordDungeon(zoneName, "M+")
+        T.RecordDungeon(zoneName, "M+", (ms and ms > 0) and (ms / 1000) or nil)
         if d then d.countedByLFG = true end
 
     -- ── Groupes manuels : boss tué avec succès ─────────────────────────────
@@ -752,6 +1000,14 @@ dgnFrame:SetScript("OnEvent", function(self, event, ...)
         if success ~= 1 and success ~= true then return end
 
         local inInst, instType = IsInInstance()
+
+        -- Raids : suivi dans son propre jeu de donnees (voir T.RecordRaidKill)
+        if inInst and instType == "raid" then
+            local encID, encName, diffID = ...
+            T.RecordRaidKill(GetRealZoneText() or "", T.RaidDiffCode(diffID), encID, encName)
+            return
+        end
+
         if not inInst or instType ~= "party" then return end
 
         local d = Dgn()
@@ -780,10 +1036,13 @@ dgnFrame:SetScript("OnEvent", function(self, event, ...)
         local isInitialLogin, isReloadingUi = ...
 
         -- Au reload/login : PLAYER_LOGIN gère la réconciliation via db._dgn persisté.
-        if isInitialLogin or isReloadingUi then return end
+        if isInitialLogin or isReloadingUi then
+            T.InstSync()   -- reprend (ou ouvre) le chrono d'instance
+            return
+        end
 
         local d = Dgn()
-        if not d then return end
+        if not d then T.InstSync() return end
 
         local inInst, instType = IsInInstance()
 
@@ -807,6 +1066,9 @@ dgnFrame:SetScript("OnEvent", function(self, event, ...)
         elseif not inInst then
             T.DgnReset()
         end
+
+        -- Chrono d'instance : apres l'enregistrement eventuel du donjon quitte
+        T.InstSync()
     end
 end)
 
@@ -829,8 +1091,32 @@ SlashCmdList["LVLHISTORY"] = function(msg)
     elseif cmd == "options" or cmd == "config" then
         if LvlHistory_OpenOptions then LvlHistory_OpenOptions() end
 
+    elseif cmd == "temps" or cmd == "time" then
+        -- Diagnostic du chrono d'instance
+        local v = T.db and T.db._inst
+        if v then
+            print(string.format("|cFF5EE223LvlHistory|r chrono : %s [%s%s] cumule %ds, %s",
+                tostring(v.name), tostring(v.kind), v.diff and ("/" .. v.diff) or "",
+                v.acc or 0, v.t0 and "en cours" or "en pause"))
+        else
+            print("|cFF5EE223LvlHistory|r chrono : aucun (pas en instance de donjon ou de raid)")
+        end
+        local n = 0
+        for name, secs in pairs(T.db and T.db.dgnTime or {}) do
+            n = n + 1
+            print(string.format("  donjon %s : %ds", name, secs))
+        end
+        for key, secs in pairs(T.db and T.db.raidTime or {}) do
+            n = n + 1
+            print(string.format("  raid %s : %ds", key, secs))
+        end
+        if n == 0 then print("  aucun temps enregistre pour l'instant") end
+
     elseif cmd == "levels" or cmd == "niveaux" then
-        if T.UI.OpenTab then T.UI.OpenTab(6) end
+        if T.UI.OpenTab then T.UI.OpenTab(7) end
+
+    elseif cmd == "raids" or cmd == "raid" then
+        if T.UI.OpenTab then T.UI.OpenTab(5) end
 
     elseif cmd == "debug" then
         T.debug = not T.debug

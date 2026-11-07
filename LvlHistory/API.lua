@@ -63,7 +63,7 @@ _G.LvlHistoryAPI = pub
 
 pub.VERSION = 1
 
---- Abonnement aux evenements (onLevelUp, onDungeonCompleted, onDelveCompleted,
+--- Abonnement aux evenements (onLevelUp, onDungeonCompleted, onRaidBossKilled, onDelveCompleted,
 --- onSessionEnd, onQuestTurnIn, onRepGain, onModeSwitch).
 function pub.Register(event, addonName, fn) return T.Bridge.Register(event, addonName, fn) end
 
@@ -78,7 +78,7 @@ function pub.GetSession()
         xpGained = s.xpGain or 0, xph = s.xph or 0,
         liveXPH = T.Leveling.GetLiveXPH and T.Leveling.GetLiveXPH() or nil,
         goldPerHour = db.farming.goldPerHour or 0,
-        quests = s.questCount or 0, dungeons = s.dungeons or 0, delves = s.delves or 0,
+        quests = s.questCount or 0, dungeons = s.dungeons or 0, raids = s.raids or 0, delves = s.delves or 0,
         zone = s.zone,
     }
 end
@@ -109,13 +109,36 @@ function pub.GetCharSummary(key)
     }
 end
 
+--- Raids d'un perso ("Nom-Royaume", perso connecte par defaut), lecture seule :
+--- { runs, bosses, byRaid = { [nom] = { runs, bosses, LFR, N, H, M } } }.
+--- Un run = un raid, une difficulte et un verrou hebdomadaire.
+function pub.GetRaidStats(key)
+    local c = Chars()[key or T.charKey]
+    if not c then return nil end
+    local out = { runs = 0, bosses = 0, byRaid = {} }
+    for name, n in pairs(c.raidRuns or {}) do
+        out.runs = out.runs + n
+        out.byRaid[name] = { runs = n, bosses = (c.raidBoss or {})[name] or 0, LFR = 0, N = 0, H = 0, M = 0 }
+    end
+    for name, b in pairs(c.raidBoss or {}) do
+        out.bosses = out.bosses + b
+        if not out.byRaid[name] then out.byRaid[name] = { runs = 0, bosses = b, LFR = 0, N = 0, H = 0, M = 0 } end
+    end
+    for k, n in pairs(c.raidDetails or {}) do
+        local name, code = k:match("^(.+)||(.+)$")
+        local r = name and out.byRaid[name]
+        if r and r[code] ~= nil and code ~= "runs" and code ~= "bosses" then r[code] = n end
+    end
+    return out
+end
+
 --- Chronologie des niveaux : { [niveau] = { t, at, partial } } (copie).
 function pub.GetLevelLog(key)
     local c = Chars()[key or T.charKey]
     return c and CopyTable(c.levelLog or {}) or nil
 end
 
---- Ouvre la fenetre sur un onglet (1 Session, 2 Zones, 3 Alts, 4 Donjons, 5 Stats, 6 Niveaux).
+--- Ouvre la fenetre sur un onglet (1 Session, 2 Zones, 3 Alts, 4 Donjons, 5 Raids, 6 Stats, 7 Niveaux).
 function pub.Open(tab)
     if T.UI and T.UI.OpenTab then T.UI.OpenTab(tab or 1) end
 end
@@ -158,7 +181,7 @@ local function BuildCharDash(key, c, maxLvl)
         sess[#sess + 1] = {
             d = s.date, dur = s.duration, m = s.mode == "farming" and "f" or "l",
             xph = s.xph or 0, gold = s.goldEarned or s.goldGained or 0,
-            l0 = s.levelStart, l1 = s.levelEnd, q = s.quests, dg = s.dungeons, dv = s.delves,
+            l0 = s.levelStart, l1 = s.levelEnd, q = s.quests, dg = s.dungeons, rd = s.raids, dv = s.delves,
         }
     end
     if #sess > 0 then out.sess = sess end
@@ -169,6 +192,21 @@ local function BuildCharDash(key, c, maxLvl)
     for _, n in pairs(c.dgnRuns or {}) do dgn = dgn + n end
     for _, n in pairs(c.delveRuns or {}) do dv = dv + n end
     out.dgn, out.delves = dgn, dv
+    -- Raids : runs (un par raid, difficulte et verrou hebdo) et boss tues
+    local rd, rb = 0, 0
+    for _, n in pairs(c.raidRuns or {}) do rd = rd + n end
+    for _, n in pairs(c.raidBoss or {}) do rb = rb + n end
+    out.raids, out.raidBoss = rd, rb
+    -- Temps passe en instance (secondes), limite aux donjons et raids de l'historique
+    local dt, rt = 0, 0
+    for name, secs in pairs(c.dgnTime or {}) do
+        if (c.dgnRuns or {})[name] then dt = dt + secs end
+    end
+    for key, secs in pairs(c.raidTime or {}) do
+        local nm = key:match("^(.+)||")
+        if nm and (c.raidRuns or {})[nm] then rt = rt + secs end
+    end
+    out.dgnT, out.raidT = dt, rt
     local q = c.quests or {}
     out.quests = { t = q.total or 0, d = q.daily or 0, w = q.weekly or 0 }
     return out

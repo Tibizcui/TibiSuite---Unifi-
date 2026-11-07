@@ -19,6 +19,7 @@ local hooks = {
     onSessionEnd       = {},  -- (sessionSnapshot)
     onDungeonCompleted = {},  -- (dungeonName, totalRuns, difficultyName)
     onDelveCompleted   = {},  -- (delveName, tier|nil, totalRuns)
+    onRaidBossKilled   = {},  -- (raidName, diffCode "LFR|N|H|M", bossName|nil, totalBossKills, totalRuns)
     onLevelUp          = {},  -- (newLevel, secondsSpentOnPreviousLevel|nil)
 }
 

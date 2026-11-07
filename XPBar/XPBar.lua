@@ -1,4 +1,4 @@
--- XPBar.lua v7.3.2
+-- XPBar.lua v7.3.3
 -- Barre XP avancée - Tibiscui
 -- Maj+Drag pour déplacer | Maj+Clic droit pour les options
 
@@ -129,6 +129,10 @@ L.OPT_SEC_PRESETS    = L.OPT_SEC_PRESETS    or "Styles prêts à l'emploi"
 L.OPT_PRESET_THIN    = L.OPT_PRESET_THIN    or "Style Fine (8 px)"
 L.OPT_PRESET_CLASSIC = L.OPT_PRESET_CLASSIC or "Style Classique"
 L.OPT_PRESET_VERTICAL= L.OPT_PRESET_VERTICAL or "Style Verticale"
+L.OPT_SEC_POSITION   = L.OPT_SEC_POSITION   or "Position"
+L.OPT_CENTER_BOTTOM  = L.OPT_CENTER_BOTTOM  or "Centrer en bas de l'écran"
+L.OPT_CENTER_TOP     = L.OPT_CENTER_TOP     or "Centrer en haut de l'écran"
+L.OPT_CENTER_TT      = L.OPT_CENTER_TT      or "Centre la barre horizontalement et la colle au bord choisi. Maj + glisser ne règle plus que la hauteur."
 -- Textes de la barre
 L.LEVEL_SHORT        = L.LEVEL_SHORT        or "Nv"
 L.COLON              = L.COLON              or " : "   -- espace avant les deux-points en francais
@@ -545,12 +549,34 @@ end
 -- ══════════════════════════════════════════════════
 -- SAVE POSITION
 -- ══════════════════════════════════════════════════
+-- Centrage horizontal : db.centerMode vaut nil (libre), "TOP" ou "BOTTOM".
+-- La barre est alors ancree au milieu de l'ecran (x = 0) sur le bord choisi ;
+-- seule la hauteur (distance au bord) reste reglable par Maj + glisser.
+-- Conserve la hauteur actuelle de la barre au moment de l'activation.
+local function CenterFrame(mode)
+    if not (containerFrame and db) then return end
+    local pt, y
+    if mode == "BOTTOM" then
+        pt = "BOTTOM"
+        y  = (containerFrame:GetBottom() or 0) - (UIParent:GetBottom() or 0)
+    else
+        pt = "TOP"
+        y  = (containerFrame:GetTop() or 0) - (UIParent:GetTop() or 0)
+    end
+    y = math.floor(y + 0.5)
+    containerFrame:ClearAllPoints()
+    containerFrame:SetPoint(pt, UIParent, pt, 0, y)
+    db.anchor, db.posX, db.posY = pt, 0, y
+end
+
 local function SavePosition()
     if not containerFrame then return end
     local point, _, _, x, y = containerFrame:GetPoint()
     db.anchor = point
     db.posX   = math.floor(x + 0.5)
     db.posY   = math.floor(y + 0.5)
+    -- Mode centre : on remet la barre au milieu apres un deplacement.
+    if db.centerMode then CenterFrame(db.centerMode) end
 end
 
 -- ══════════════════════════════════════════════════
@@ -1610,6 +1636,7 @@ CreateOptionsPanel = function()
     resetBtn:SetText(L.OPT_RESETPOS)
     resetBtn:SetScript("OnClick", function()
         db.posX = 0 ; db.posY = -120 ; db.anchor = "TOP"
+        db.centerMode = nil
         containerFrame:ClearAllPoints()
         containerFrame:SetPoint("TOP", UIParent, "TOP", 0, -120)
         SavePosition()
@@ -2050,6 +2077,22 @@ local function BuildMidnightOptions()
         function(v) if db then db.vHeight = v end
             if IsVertical() then ApplySize() end; UpdateBar() end)
 
+    -- ── Position : centrage horizontal (haut ou bas), cases exclusives ──
+    P:Section(L.OPT_SEC_POSITION)
+    local function centerCheck(label, mode)
+        P:Check(label,
+            function() return db and db.centerMode == mode end,
+            function(v)
+                if not db then return end
+                db.centerMode = v and mode or nil
+                if v then CenterFrame(mode) end
+                P:Refresh()   -- decoche l'autre case
+            end,
+            L.OPT_CENTER_TT)
+    end
+    centerCheck(L.OPT_CENTER_BOTTOM, "BOTTOM")
+    centerCheck(L.OPT_CENTER_TOP,    "TOP")
+
     -- ── Session ────────────────────────────────────
     P:Section(L.OPT_SEC_SESSION)
     P:Check(L.OPT_RESETRELOAD,
@@ -2063,6 +2106,8 @@ local function BuildMidnightOptions()
     P:Button(L.OPT_RESETPOS, function()
         if not (db and containerFrame) then return end
         db.posX, db.posY, db.anchor = DEFAULTS.posX, DEFAULTS.posY, DEFAULTS.anchor
+        db.centerMode = nil
+        P:Refresh()
         containerFrame:ClearAllPoints()
         containerFrame:SetPoint(db.anchor, UIParent, db.anchor, db.posX, db.posY)
         print("|cffFFD700[XPBar]|r " .. L.POS_RESET)

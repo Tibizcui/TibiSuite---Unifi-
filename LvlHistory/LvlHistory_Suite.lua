@@ -53,7 +53,7 @@ local function BuildOptions()
     function() local s = Settings(); return not s or s.sessionAlert ~= false end,
     function(v) local s = Settings(); if s then s.sessionAlert = v and true or false end end)
   panel:Button(T("OPT_OPEN_LEVELS", "Ouvrir la chronologie des niveaux"), function()
-    if LvlHistory.UI and LvlHistory.UI.OpenTab then LvlHistory.UI.OpenTab(6) end
+    if LvlHistory.UI and LvlHistory.UI.OpenTab then LvlHistory.UI.OpenTab(7) end
   end)
 
   panel:Section(T("OPT_SEC_FLOATING", "Boutons flottants (barre TibiSuite)"))
@@ -74,7 +74,7 @@ function LvlHistory_OpenOptions()
 end
 
 -- ---------------------------------------------------------------- Recherche
--- On cherche parmi les personnages suivis, leurs zones, donjons et gouffres ;
+-- On cherche parmi les personnages suivis, leurs zones, donjons, raids et gouffres ;
 -- un clic ouvre la fenetre sur l'onglet correspondant.
 local function OpenOn(tab)
   return function()
@@ -107,6 +107,11 @@ local function provider(q)
       for dname in pairs(type(char.dgnRuns) == "table" and char.dgnRuns or {}) do
         if type(dname) == "string" and ui.Match(dname, q) then
           add(dname .. "  |cff808080" .. T("SEARCH_DUNGEON", "donjon") .. "|r", 4)
+        end
+      end
+      for rname in pairs(type(char.raidRuns) == "table" and char.raidRuns or {}) do
+        if type(rname) == "string" and ui.Match(rname, q) then
+          add(rname .. "  |cff808080" .. T("SEARCH_RAID", "raid") .. "|r", 5)
         end
       end
       for vname in pairs(type(char.delveRuns) == "table" and char.delveRuns or {}) do
