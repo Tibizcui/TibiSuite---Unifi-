@@ -585,6 +585,14 @@ scale 0.90, grille toggles 2x5, mmAngle 200, locked false, vertical false.
   fenetre de la suite) pose au survol, hors combat, retire par OnUpdate.
   `TibiSuite.Reload()` reste le repli (pcall, puis message « tape /reload »).
   `ShowConfirm(text, fn, isReload)` : 3e argument pour une demande de reload.
+- **Annonce dans le chat (non testée en jeu).** Fin de `TibiSuiteCore.lua` :
+  70 s après `PLAYER_LOGIN` (connexion ou /reload : `isInitialLogin` ne
+  partait pas sur Forever), un /reload < 30 min après une annonce ne compte
+  pas, 3 annonces par personnage et par version (`announceSeen = {v, n, at}`),
+  `/ts annonce [test|reset]`, 2e ligne = autres versions du jeu, attend
+  la fin du combat, coupée par `announceChat == false` (SET_KEYS) ou
+  `loginMsg == "none"`. Lien `|Haddon:TibiSuite:news|h` (EventRegistry
+  « SetItemRef » + crochet SetItemRef). `ANNOUNCE_ON = false` pour la retirer.
 - **Fichier socle refusé en écriture** : si SEUL `TibiSuiteUI.lua` est refusé alors
   que ses voisins passent, c'est l'attribut Windows "Lecture seule" ou un handle
   ouvert, pas Controlled Folder Access.

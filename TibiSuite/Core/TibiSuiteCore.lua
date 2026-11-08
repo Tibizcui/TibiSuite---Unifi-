@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.4.2
+-- TibiSuiteCore v7.4.3
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.4.2"
+local VERSION = "7.4.3"
 
 -- ================================================================
 -- LOCALISATION
@@ -255,6 +255,12 @@ L.WELCOME_LOCK    = L.WELCOME_LOCK    or "verrouiller"
 L.WELCOME_HELP    = L.WELCOME_HELP    or "aide complète"
 L.ADDONCOMPT_SUBTITLE = L.ADDONCOMPT_SUBTITLE or "Suite de trackers, par Tibiscui"
 -- Activation reelle dans la liste d'addons de WoW
+L.MSG_ANNOUNCE_NEW   = L.MSG_ANNOUNCE_NEW   or "Nouveau :"
+L.MSG_ANNOUNCE_RETAIL = L.MSG_ANNOUNCE_RETAIL or "10 addons de la suite sont compatibles WoW Forever et WoW Classic. Détails :"
+L.MSG_ANNOUNCE_CLASSIC_FMT = L.MSG_ANNOUNCE_CLASSIC_FMT or "Bienvenue sur %s : 10 addons de la suite fonctionnent ici. La liste :"
+L.MSG_ANNOUNCE_ALSO_RETAIL  = L.MSG_ANNOUNCE_ALSO_RETAIL  or "Les mêmes addons tournent aussi sur WoW Forever et sur Classic (Era, TBC, Wrath, Cataclysm, Mists) : un seul téléchargement, le jeu choisit le bon fichier."
+L.MSG_ANNOUNCE_ALSO_CLASSIC = L.MSG_ANNOUNCE_ALSO_CLASSIC or "Les mêmes addons tournent aussi sur Retail (Midnight) et sur WoW Forever : un seul téléchargement, le jeu choisit le bon fichier."
+L.MSG_ANNOUNCE_ALSO_FOREVER = L.MSG_ANNOUNCE_ALSO_FOREVER or "Les mêmes addons tournent aussi sur Retail (Midnight) et sur Classic (Era, TBC, Wrath, Cataclysm, Mists) : un seul téléchargement, le jeu choisit le bon fichier."
 L.MSG_TYPE_RELOAD    = L.MSG_TYPE_RELOAD    or "tape |cFFFFD700/reload|r pour recharger l'interface."
 L.MSG_TAB_NEEDRELOAD  = L.MSG_TAB_NEEDRELOAD  or " est maintenant coché.\n\nWoW ne peut le charger qu'après un rechargement de l'interface. Recharger maintenant ?"
 L.MSG_SYNC_REENABLED  = L.MSG_SYNC_REENABLED  or "réactivé(s) dans la liste d'addons, actif(s) après |cFFFFD700/reload|r :"
@@ -3242,6 +3248,9 @@ SlashCmdList["TIBISUITE"] = function(msg)
   elseif msg == "setup" or msg == "install" then
     if TibiSuite.RunSetup then TibiSuite.RunSetup() end
 
+  elseif msg == "annonce" or msg:match("^annonce ") or msg == "announce" or msg:match("^announce ") then
+    TibiSuite.AnnounceStatus(msg:match("^%a+ (%a+)"))
+
   elseif msg == "version" or msg == "ver" then
     TibiSuite.PrintVersionInfo()
 
@@ -3396,7 +3405,7 @@ local function SetEnabledInWoW(addon, on)
 end
 
 function TibiSuite.NeedsReload() return next(TibiSuite.pendingReload) ~= nil end
--- Rechargement (7.4.2, non teste en jeu) : un appel direct (C_UI.Reload /
+-- Rechargement (7.4.3, non teste en jeu) : un appel direct (C_UI.Reload /
 -- ReloadUI) depuis le code d'un addon peut etre refuse ou lever une erreur
 -- muette selon la version du jeu (constate en jeu 2026-11-08 : « Recharger
 -- l'interface » ne faisait rien). On tente quand meme, sous pcall, puis on
@@ -4474,3 +4483,132 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     UpdateTabHighlights()
   end
 end)
+
+-- ================================================================
+-- ANNONCE DANS LE CHAT (7.4.3, non testee en jeu)
+-- ----------------------------------------------------------------
+-- Une ligne 70 s apres le chargement de l'interface (connexion ou /reload :
+-- le signal « vraie connexion » ne partait pas en jeu sur Forever, constate
+-- le 2026-11-08). Un /reload moins de 30 min apres une annonce ne compte
+-- pas (TibiSuiteCharDB.announceSeen.at). Sur les 3 premieres connexions de chaque personnage pour chaque version
+-- de la suite (TibiSuiteCharDB.announceSeen = { v, n }). Jamais en combat :
+-- la ligne attend PLAYER_REGEN_ENABLED. Coupee par loginMsg = "none" ou
+-- par la case du Centre (TibiSuiteDB.announceChat == false). Le texte
+-- depend du jeu en cours (Retail ou Classic / Forever). ANNOUNCE_ON = false
+-- pour retirer l'annonce lors d'une future version.
+-- ================================================================
+local ANNOUNCE_ON, ANNOUNCE_DELAY, ANNOUNCE_MAX = true, 70, 3
+
+local function GameFlavorName()
+  local iface = select(4, GetBuildInfo())
+  if type(iface) ~= "number" or iface >= 60000 then return nil end   -- Retail
+  if iface >= 16000 and iface < 20000 then return "WoW Forever" end
+  if iface < 20000 then return "Classic Era" end
+  if iface < 30000 then return "TBC Anniversary" end
+  if iface < 40000 then return "Wrath Classic" end
+  if iface < 50000 then return "Cataclysm Classic" end
+  return "Mists of Pandaria Classic"
+end
+
+-- Lien de chat cliquable « /ts news » : type « addon » (gere par le client
+-- recent) + crochet sur SetItemRef pour les clients qui ne le gerent pas.
+local NEWS_LINK = "addon:TibiSuite:news"
+local lastNewsClick = 0
+local function OpenNewsFromLink(link)
+  if type(link) ~= "string" or link:sub(1, #NEWS_LINK) ~= NEWS_LINK then return end
+  local now = GetTime and GetTime() or 0
+  if now - lastNewsClick < 0.4 then return end   -- deux chemins, un seul effet
+  lastNewsClick = now
+  if TibiSuite.ShowWhatsNew then TibiSuite.ShowWhatsNew(true) end
+end
+if EventRegistry and EventRegistry.RegisterCallback then
+  pcall(EventRegistry.RegisterCallback, EventRegistry, "SetItemRef",
+    function(_, link) OpenNewsFromLink(link) end, "TibiSuiteAnnounce")
+end
+if hooksecurefunc and SetItemRef then
+  pcall(hooksecurefunc, "SetItemRef", function(link) OpenNewsFromLink(link) end)
+end
+
+local function AnnounceAllowed()
+  if not ANNOUNCE_ON then return false end
+  if type(TibiSuiteDB) ~= "table" or type(TibiSuiteCharDB) ~= "table" then return false end
+  if TibiSuiteDB.announceChat == false or TibiSuiteDB.loginMsg == "none" then return false end
+  local seen = TibiSuiteCharDB.announceSeen
+  if type(seen) ~= "table" or seen.v ~= VERSION then return true end
+  return (tonumber(seen.n) or 0) < ANNOUNCE_MAX
+end
+
+local function AnnounceLine()
+  local flavor = GameFlavorName()
+  local link = "|cFFFFD700|H" .. NEWS_LINK .. "|h[/ts news]|h|r"
+  local head = "|cFFC41F3BTibiSuite|r v" .. VERSION .. " · "
+  if flavor then
+    return head .. string.format(L.MSG_ANNOUNCE_CLASSIC_FMT, "|cFFFFD700" .. flavor .. "|r") .. " " .. link
+  end
+  return head .. "|cFFFFD700" .. L.MSG_ANNOUNCE_NEW .. "|r " .. L.MSG_ANNOUNCE_RETAIL .. " " .. link
+end
+
+-- Ligne complementaire : les AUTRES versions ou les memes addons tournent.
+local function AnnounceAlso()
+  local flavor = GameFlavorName()
+  local txt
+  if not flavor then txt = L.MSG_ANNOUNCE_ALSO_RETAIL
+  elseif flavor == "WoW Forever" then txt = L.MSG_ANNOUNCE_ALSO_FOREVER
+  else txt = L.MSG_ANNOUNCE_ALSO_CLASSIC end
+  return "|cFFC41F3BTibiSuite|r · |cFFAAAAAA" .. txt .. "|r"
+end
+
+local ANNOUNCE_GAP = 30 * 60   -- un /reload juste apres ne re-annonce pas
+
+local function RecentlyAnnounced()
+  local seen = type(TibiSuiteCharDB) == "table" and TibiSuiteCharDB.announceSeen
+  return type(seen) == "table" and seen.v == VERSION and tonumber(seen.at)
+    and (time() - seen.at) < ANNOUNCE_GAP or false
+end
+
+local function DoAnnounce(force)
+  if not AnnounceAllowed() then return end
+  if not force and RecentlyAnnounced() then return end
+  local seen = TibiSuiteCharDB.announceSeen
+  if type(seen) ~= "table" or seen.v ~= VERSION then seen = { v = VERSION, n = 0 } end
+  seen.n = (tonumber(seen.n) or 0) + 1
+  seen.at = time()
+  TibiSuiteCharDB.announceSeen = seen
+  print(AnnounceLine())
+  print(AnnounceAlso())
+end
+
+local announceFrame = CreateFrame("Frame")
+pcall(announceFrame.RegisterEvent, announceFrame, "PLAYER_LOGIN")
+announceFrame:SetScript("OnEvent", function(self, event)
+  if event == "PLAYER_LOGIN" then
+    self:UnregisterEvent("PLAYER_LOGIN")
+    C_Timer.After(ANNOUNCE_DELAY, function()
+      if not AnnounceAllowed() then return end
+      if InCombatLockdown() then
+        pcall(self.RegisterEvent, self, "PLAYER_REGEN_ENABLED")
+      else
+        DoAnnounce()
+      end
+    end)
+  elseif event == "PLAYER_REGEN_ENABLED" then
+    self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+    C_Timer.After(2, DoAnnounce)
+  end
+end)
+TibiSuite.AnnounceNow = function() DoAnnounce(true) end   -- test : /ts annonce test
+
+-- /ts annonce : etat (diagnostic) ; /ts annonce test : affiche maintenant ;
+-- /ts annonce reset : remet le compteur de cette version a zero.
+function TibiSuite.AnnounceStatus(arg)
+  if arg == "test" then TibiSuite.AnnounceNow() return end
+  if arg == "reset" then TibiSuiteCharDB.announceSeen = nil end
+  local seen = TibiSuiteCharDB and TibiSuiteCharDB.announceSeen
+  local n = (type(seen) == "table" and seen.v == VERSION) and (tonumber(seen.n) or 0) or 0
+  local why = (TibiSuiteDB.announceChat == false and "case décochée")
+    or (TibiSuiteDB.loginMsg == "none" and "messages de connexion : aucun")
+    or (n >= ANNOUNCE_MAX and "3 annonces déjà faites pour cette version")
+    or (RecentlyAnnounced() and "annonce de moins de 30 min")
+    or ("prochaine annonce " .. ANNOUNCE_DELAY .. " s après la connexion")
+  print("|cFFC41F3BTibiSuite|r annonce v" .. VERSION .. " : " .. n .. "/" .. ANNOUNCE_MAX .. " · " .. why)
+end

@@ -329,6 +329,7 @@ L.WN_58_0  = L.WN_58_0  or "Correction d'affichage : « Tout fermer » et la fer
 L.WN_59_0  = L.WN_59_0  or "XPBar et RepBar : nouvelle case « Centrer en bas / en haut de l'écran » dans les options (section Position). La barre se place au milieu de l'écran ; seule sa hauteur reste réglable."
 L.WN_59_1  = L.WN_59_1  or "LvlHistory : nouvel onglet Raids (runs par difficulté, boss tués, raid favori) et temps passé en instance pour les donjons et les raids, avec total, moyenne par run et run le plus rapide."
 L.WN_59_2  = L.WN_59_2  or "Dashboard : les raids et le temps en instance de LvlHistory apparaissent dans la carte Leveling (site et Tibi Companion), via l'export de Stats."
+L.WN_64_0  = L.WN_64_0  or "Corrections de traduction. Une ligne dans le chat, 70 secondes après la connexion, annonce les versions du jeu prises en charge (désactivable dans le Centre, Barre et accès)."
 L.WN_63_0  = L.WN_63_0  or "Corrections de compatibilité. « Quoi de neuf » met en avant la compatibilité WoW Forever et Classic."
 L.WN_CLASSIC_HEAD = L.WN_CLASSIC_HEAD or "Compatible WoW Forever et WoW Classic"
 L.WN_62_0  = L.WN_62_0  or "Corrections d'affichage sur tous les addons. « Recharger l'interface » recharge de nouveau depuis le Centre, les confirmations et l'installateur."
@@ -435,6 +436,10 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.4.3"] = {
+    { key = "Suite", title = "TibiSuite", headline = L.WN_CLASSIC_HEAD, text = L.WN_61_0, new = true },
+    { key = "Suite", title = "TibiSuite", text = L.WN_64_0, new = false },
+  },
   ["7.4.2"] = {
     { key = "Suite", title = "TibiSuite", headline = L.WN_CLASSIC_HEAD, text = L.WN_61_0, new = true },
     { key = "Suite", title = "TibiSuite", text = L.WN_63_0, new = false },

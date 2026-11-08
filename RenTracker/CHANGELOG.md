@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.4.3
+- Fix bug translate : corrections de traduction.
+
 ## 7.4.2
 - Fix bug compatibilité : corrections de compatibilité.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.4.3
+- Fix bug translate : corrections de traduction.
+- Nouveau : 70 secondes après la connexion, une ligne dans le chat annonce la compatibilité WoW Forever et Classic (lien cliquable vers « Quoi de neuf »), sur les 3 premières connexions de chaque personnage pour chaque version. Jamais en combat, un /reload dans les 30 minutes ne la répète pas. `/ts annonce` (état), `test`, `reset`. Une 2e ligne rappelle les autres versions du jeu prises en charge (Retail, Classic, Forever selon le jeu en cours). Case dans Centre > Barre et accès, coupée aussi par « Messages de connexion : aucun ».
+
 ## 7.4.2
 - Fix bug compatibilité : corrections de compatibilité.
 - « Quoi de neuf » : la compatibilité WoW Forever et Classic s'affiche en gros caractères dorés, en gras.
