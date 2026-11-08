@@ -63,6 +63,7 @@
 | 7.3.0 | 2026-10-20 | `631660a` | Chat unifié, session guidée, patrimoine, bilan, M+, visite, partage en groupe |
 | 7.3.1/7.3.2 | 2026-10-31 | `85aeb4f`, `316ae2e` | Correctifs (affichage) |
 | 7.3.3 | 2026-11-07 | `5fe1c80` | LvlHistory raids et temps en instance, centrage XPBar/RepBar |
+| 7.3.4 | 2026-11-08 | `3a89460` | « Fix bugs UI and fix bug dev », Vénithes ascendantes par ID (site `571b85e`) |
 
 ## État par module (au 2026-11-08)
 
