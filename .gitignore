@@ -1,0 +1,6 @@
+# Builds Tibi Companion : ils vivent hors du dépôt
+# (rangés dans Documents\GitHub\_archives\TibiSuite)
+TibiCompanion-*/
+*.appx
+*.exe
+*.zip
