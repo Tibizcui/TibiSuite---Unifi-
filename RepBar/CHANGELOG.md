@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.4
+- Fix bugs UI and fix bug dev
+
 ## 7.3.3
 - Nouveau : centrage horizontal de la barre, en bas ou en haut de l'écran, par case à cocher dans les options (section Position). Le centrage remplace l'aimantation sous XPBar.
 

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.4
+- Fix bugs UI and fix bug dev
+
 ## 7.3.3
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

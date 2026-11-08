@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.4
+- Fix bugs UI and fix bug dev
+
 ## 7.3.3
 - Nouveauté XPBar et RepBar : centrage horizontal en bas ou en haut de l'écran.
 - Nouveauté LvlHistory : onglet Raids et temps passé en instance (donjons et raids).

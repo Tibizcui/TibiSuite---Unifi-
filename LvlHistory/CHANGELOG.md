@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.4
+- Fix bugs UI and fix bug dev
+
 ## 7.3.3
 - Nouvel onglet Raids, sur le modèle de l'onglet Donjons : runs par raid et par difficulté (LFR, Normal, Héroïque, Mythique), boss tués et raid favori. Un run correspond à un raid, une difficulté et un verrou hebdomadaire.
 - Temps passé en instance (donjons et raids) : colonne « Passé », total et moyenne par run dans l'infobulle, run le plus rapide par difficulté. Le chrono démarre à la prochaine entrée en instance, sans historique rétroactif.

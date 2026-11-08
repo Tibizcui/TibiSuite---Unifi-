@@ -329,6 +329,7 @@ L.WN_58_0  = L.WN_58_0  or "Correction d'affichage : « Tout fermer » et la fer
 L.WN_59_0  = L.WN_59_0  or "XPBar et RepBar : nouvelle case « Centrer en bas / en haut de l'écran » dans les options (section Position). La barre se place au milieu de l'écran ; seule sa hauteur reste réglable."
 L.WN_59_1  = L.WN_59_1  or "LvlHistory : nouvel onglet Raids (runs par difficulté, boss tués, raid favori) et temps passé en instance pour les donjons et les raids, avec total, moyenne par run et run le plus rapide."
 L.WN_59_2  = L.WN_59_2  or "Dashboard : les raids et le temps en instance de LvlHistory apparaissent dans la carte Leveling (site et Tibi Companion), via l'export de Stats."
+L.WN_60_0  = L.WN_60_0  or "Corrections d'interface et correctif de développement. WeeklyCompass reconnaît désormais les Vénithes ascendantes par leur identifiant."
 L.WN_56_6  = L.WN_56_6  or "L'overlay de pêche et de récolte affiche le temps cumulé du métier, toutes sessions confondues."
 L.WN_55_0  = L.WN_55_0  or "Métiers : la récolte rejoint la pêche. Le Dépeçage est suivi (cuirs, peaux et écailles ramassés sur une créature), avec son propre temps de farm. La Récolte gagne les onglets Lieux (ce que donne chaque zone) et Zones (tes habitudes). L'overlay suit aussi ta récolte, avec le métier en titre. Les sessions sont maintenant propres à chaque personnage : changer de personnage ne mélange plus les récoltes."
 L.WN_54_0  = L.WN_54_0  or "Nouveau dans LegTracker : le légendaire épinglé. Clique sur la punaise du panneau détail (ou clic droit sur une ligne) : une petite fenêtre suit ton farm en direct, avec le temps passé dans ses raids, les boss tués, les composants gagnés pendant la séance, la quête en cours et ses objectifs, et les raids encore libres cette semaine. Après deux passages, elle estime le nombre de passages restants. Le Conseiller propose ses raids libres, la ligne d'état de la barre suit sa progression. /lt pin, /lt farm, /lt overlay."
@@ -429,6 +430,9 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.3.4"] = {
+    { key = "Suite", title = "TibiSuite", text = L.WN_60_0, new = false },
+  },
   ["7.3.3"] = {
     { key = "XPBar", title = "XPBar / RepBar", text = L.WN_59_0, new = true },
     { key = "Lvl", title = "LvlHistory", text = L.WN_59_1, new = true },

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.3.4
+- Fix bugs UI and fix bug dev
+
 ## 7.3.3
 - Export du Dashboard : raids (runs et boss tués) et temps passé en donjon et en raid par personnage, lus depuis LvlHistory. Format inchangé et additif : un site ou Tibi Companion non mis à jour ignore simplement ces champs.
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.3.4
+- Fix bugs UI and fix bug dev
+- Les Vénithes ascendantes de la fiche sont reconnues par leur identifiant (280562), le nom reste en secours.
+
 ## 7.3.3
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

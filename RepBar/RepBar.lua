@@ -1,4 +1,4 @@
--- RepBar.lua v7.3.3
+-- RepBar.lua v7.3.4
 -- Barre de reputation avancee - Tibiscui
 -- Remplace la barre de reputation native, suit la faction par zone (via
 -- RenTracker) et bascule a la validation d'une quete.
