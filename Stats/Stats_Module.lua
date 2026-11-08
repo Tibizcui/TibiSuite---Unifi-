@@ -29,7 +29,7 @@ end
 
 local function HideOwnMinimap()
   if not HasCore() then return end
-  local btn = _G["StatsMinimapBtn"]
+  local btn = _G["LibDBIcon10_Stats"] or _G["StatsMinimapBtn"]
   if btn and btn.Hide then
     btn:Hide()
     if not btn.__tibiHooked then
@@ -158,9 +158,89 @@ function Stats_Summary(from, to)
   }
 end
 
--- Stats n'a pas de bouton minimap propre pour l'instant (fenetre ouverte
--- depuis la barre TibiSuite ou /ts stats) ; HideOwnMinimap reste un
--- garde-fou si un futur bouton minimap standalone est ajoute.
+-- ============================================================================
+-- MODE STANDALONE (Classic, Forever, ou Retail sans le core) : bouton
+-- minimap propre, meme modele que XPBar et RepBar. Clic gauche : fenetre,
+-- clic droit : options, glisser : deplacer. En suite, le core porte le seul
+-- bouton de la suite et HideOwnMinimap masque celui-ci.
+-- Position : StatsDB.minimapAngle / minimapMoved sont des NOMBRE / BOOLEEN de
+-- premier niveau, jamais des tables (une table de premier niveau serait prise
+-- pour un personnage, cf. SX.GetCharKeys).
+-- ============================================================================
+local MM_ANGLE = 175   -- XPBar 200, RepBar 225 : trois boutons cote a cote
+local function BuildStandaloneMinimapButton()
+  if _G.LibDBIcon10_Stats then return end
+  local fr = (GetLocale and GetLocale() == "frFR")
+  local btn = CreateFrame("Button", "LibDBIcon10_Stats", Minimap)
+  btn:SetSize(31, 31)
+  btn:SetFrameStrata("MEDIUM")
+  btn:SetFrameLevel(8)
+  btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  btn:RegisterForDrag("LeftButton")
+  btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+
+  local overlay = btn:CreateTexture(nil, "OVERLAY")
+  overlay:SetSize(53, 53)
+  overlay:SetPoint("TOPLEFT", 0, 0)
+  overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+
+  local icon = btn:CreateTexture(nil, "BACKGROUND")
+  icon:SetSize(20, 20)
+  icon:SetPoint("CENTER", 0, 1)
+  icon:SetTexture("Interface\\AddOns\\Stats\\medias\\Logo")
+
+  local function UpdatePosition()
+    StatsDB = StatsDB or {}
+    if not StatsDB.minimapMoved then StatsDB.minimapAngle = MM_ANGLE end
+    local angle = math.rad(tonumber(StatsDB.minimapAngle) or MM_ANGLE)
+    local radius = 105
+    btn:ClearAllPoints()
+    btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
+  end
+
+  btn:SetScript("OnDragStart", function(self) self.dragging = true end)
+  btn:SetScript("OnDragStop", function(self) self.dragging = false end)
+  btn:SetScript("OnUpdate", function(self)
+    if not self.dragging then return end
+    local mx, my = Minimap:GetCenter()
+    local cx, cy = GetCursorPosition()
+    local scale = Minimap:GetEffectiveScale()
+    cx, cy = cx / scale, cy / scale
+    StatsDB.minimapAngle = math.deg(math.atan2(cy - my, cx - mx))
+    StatsDB.minimapMoved = true
+    UpdatePosition()
+  end)
+
+  btn:SetScript("OnClick", function(_, button)
+    if button == "RightButton" then
+      if SX.OpenOptions then SX.OpenOptions() end
+    elseif SX.Toggle then
+      SX.Toggle()
+    end
+  end)
+  btn:SetScript("OnEnter", function(self)
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    GameTooltip:AddLine("Stats")
+    GameTooltip:AddLine(fr and "Clic gauche : ouvrir / fermer" or "Left-click: open / close", 0.9, 0.9, 0.95)
+    GameTooltip:AddLine(fr and "Clic droit : options" or "Right-click: options", 0.9, 0.9, 0.95)
+    GameTooltip:Show()
+  end)
+  btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+  UpdatePosition()
+end
+
+if not HasCore() then
+  -- A la connexion : StatsDB n'est pas encore chargee a la lecture du fichier.
+  if IsLoggedIn and IsLoggedIn() then
+    BuildStandaloneMinimapButton()
+  else
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_LOGIN")
+    f:SetScript("OnEvent", function(self) self:UnregisterAllEvents(); BuildStandaloneMinimapButton() end)
+  end
+end
+
 C_Timer.After(0.2, HideOwnMinimap)
 C_Timer.After(1.0, HideOwnMinimap)
 C_Timer.After(3.0, HideOwnMinimap)

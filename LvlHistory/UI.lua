@@ -2578,7 +2578,7 @@ RefreshCompactBody = function()
                 topName = key:match("^([^%-]+)") or key
             end
         end
-        local maxLvl = GetMaxPlayerLevel()
+        local maxLvl = LvlHistory.MaxLevel()
         Cell(1, tostring(altCount), Loc("LBL_ALTS_TRACKED", "Alts suivis"), altCount > 0 and C.BLUE or C.MUTED)
         Cell(2, topLvl > 0 and tostring(topLvl) or "--", Loc("LBL_MAX_LEVEL", "Niveau max"),
             topLvl >= maxLvl and C.GREEN or C.PURP_LT)

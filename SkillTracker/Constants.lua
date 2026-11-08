@@ -207,7 +207,9 @@ function ST.ResolveLineIndexes(prof, learn)
   local unresolved = {}
   for id, ln in pairs(prof.lines) do
     local idx = ST.NameToIndex(ln.exp)
-    if idx ~= nil then
+    if ln.fixedIdx ~= nil then
+      ln.idx, ln.inferred = ln.fixedIdx, nil   -- palier Classic / Forever (Core.lua)
+    elseif idx ~= nil then
       ln.idx, ln.inferred = idx, nil
       if learn then learn[id] = idx end
     else

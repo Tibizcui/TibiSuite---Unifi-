@@ -409,8 +409,8 @@ end
 ST.IsSkinItem = IsSkinItem
 
 local learnFrame = CreateFrame("Frame")
-learnFrame:RegisterEvent("UNIT_SPELLCAST_SENT")
-learnFrame:RegisterEvent("LOOT_READY")
+pcall(learnFrame.RegisterEvent, learnFrame, "UNIT_SPELLCAST_SENT")
+pcall(learnFrame.RegisterEvent, learnFrame, "LOOT_READY")
 local FarmRecord   -- defini plus bas (session de recolte)
 local lastSkinLoot = 0
 learnFrame:SetScript("OnEvent", function(_, event, a1, a2, _, a4)
@@ -867,7 +867,7 @@ end
 
 -- Fin automatique apres 10 min d'inactivite (et session perimee au login).
 local farmFrame = CreateFrame("Frame")
-farmFrame:RegisterEvent("PLAYER_LOGIN")
+pcall(farmFrame.RegisterEvent, farmFrame, "PLAYER_LOGIN")
 farmFrame:SetScript("OnEvent", function()
   C_Timer.After(5, function()
     pcall(ST.FarmCleanup)

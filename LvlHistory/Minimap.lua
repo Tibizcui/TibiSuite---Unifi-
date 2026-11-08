@@ -177,7 +177,7 @@ local function BuildButton()
     -- Certains addons (Dominos, SexyMap) redimensionnent la minimap.
     -- On recalcule le rayon à chaque changement de zoom/taille.
     local resizeWatcher = CreateFrame("Frame")
-    resizeWatcher:RegisterEvent("MINIMAP_UPDATE_ZOOM")
+    pcall(resizeWatcher.RegisterEvent, resizeWatcher, "MINIMAP_UPDATE_ZOOM")
     resizeWatcher:SetScript("OnEvent", function()
         local angle = (LvlHistoryDB and LvlHistoryDB.settings and LvlHistoryDB.settings.minimapAngle)
             or DEFAULT_ANGLE

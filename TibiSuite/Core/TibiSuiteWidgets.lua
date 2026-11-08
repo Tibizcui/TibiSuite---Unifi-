@@ -288,7 +288,7 @@ TibiSuite._WidgetsChanged = WidgetsChanged
 if TibiSuite.OnStatusChanged then TibiSuite.OnStatusChanged(RefreshWidgets) end
 
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_LOGIN")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
 ev:SetScript("OnEvent", function()
   -- Les modules s'inscrivent pendant le chargement : un instant plus tard.
   C_Timer.After(2, function() TibiSuite.ApplyWidgets() end)

@@ -64,6 +64,7 @@
 | 7.3.1/7.3.2 | 2026-10-31 | `85aeb4f`, `316ae2e` | Correctifs (affichage) |
 | 7.3.3 | 2026-11-07 | `5fe1c80` | LvlHistory raids et temps en instance, centrage XPBar/RepBar |
 | 7.3.4 | 2026-11-08 | `3a89460` | « Fix bugs UI and fix bug dev », Vénithes ascendantes par ID (site `571b85e`) |
+| 7.4.0 | 2026-11-08 | (ce commit) | Compatibilité WoW Forever et Classic (Era, TBC, Wrath, Cata, Mists) pour le core, XPBar, RepBar, Stats, MiniHub, Opacity, Standby, SkillTracker, LvlHistory, RenTracker ; les 6 autres alignés |
 
 ## État par module (au 2026-11-08)
 
@@ -93,7 +94,7 @@
 - **Tibi Companion 2.0.26** : installeur direct en ligne sur le site (`1ff1601`) ; soumission au Store à confirmer. Dossier `dist_download/` non suivi dans le dépôt Companion.
 - **Vénithes ascendantes** (WeeklyCompass) : itemID 280562 relevé en jeu le 2026-11-08 et écrit en dur, à confirmer par un `/reload` (part dans la prochaine release).
 - **Lot 3 pêche** (lancer au double-clic) : reporté volontairement (code sécurisé).
-- **WoW Forever** : rien à faire tant qu'il n'y a pas d'accès client.
+- **Core, XPBar, RepBar, Stats, MiniHub, Opacity, Standby, SkillTracker, LvlHistory, RenTracker Forever + Classic** : un seul code, `.toc` par jeu, à tester en jeu (voir `_dev/XPBar_MultiVersions.md`). Le reste de la suite reste Midnight uniquement.
 
 ## Conversations (barre latérale de Claude)
 

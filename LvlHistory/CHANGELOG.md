@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.4.0
+- Nouveau : LvlHistory se charge aussi sur WoW Forever et sur les versions Classic (Classic Era, TBC Anniversary, Wrath, Cataclysm Classic, Mists Classic). Sessions, XP, quêtes, niveaux, zones et alts fonctionnent ; Mythique+ et Gouffres restent vides là où le jeu ne les propose pas.
+
 ## 7.3.4
 - Fix bugs UI and fix bug dev
 

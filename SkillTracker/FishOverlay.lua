@@ -566,8 +566,8 @@ ticker:SetScript("OnUpdate", function(_, dt)
 end)
 
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_LOGIN")
-ev:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+pcall(ev.RegisterEvent, ev, "GET_ITEM_INFO_RECEIVED")
 local pendingInfo = false
 ev:SetScript("OnEvent", function(_, event)
   if event == "PLAYER_LOGIN" then

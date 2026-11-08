@@ -513,9 +513,9 @@ end
 -- EVENEMENTS
 -- ================================================================
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_LOGIN")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
 pcall(ev.RegisterEvent, ev, "PLAYER_SPECIALIZATION_CHANGED")
-ev:RegisterEvent("PLAYER_LEVEL_UP")
+pcall(ev.RegisterEvent, ev, "PLAYER_LEVEL_UP")
 ev:SetScript("OnEvent", function(_, event, unit)
   if event == "PLAYER_LOGIN" then
     TibiSuite.ApplyReadability(true)
@@ -778,7 +778,7 @@ function TibiSuite.ExportSuite()
 end
 
 local evOut = CreateFrame("Frame")
-evOut:RegisterEvent("PLAYER_LOGOUT")
+pcall(evOut.RegisterEvent, evOut, "PLAYER_LOGOUT")
 evOut:SetScript("OnEvent", function() pcall(TakeWeekSnap) end)
 
 -- ================================================================

@@ -573,13 +573,13 @@ end
 -- EVENEMENTS
 -- ============================================================================
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("ADDON_LOADED")
-ev:RegisterEvent("PLAYER_LOGIN")
-ev:RegisterEvent("PLAYER_REGEN_ENABLED")
-ev:RegisterEvent("PLAYER_REGEN_DISABLED")
-ev:RegisterEvent("ADDON_ACTION_BLOCKED")
-ev:RegisterEvent("SCREENSHOT_SUCCEEDED")
-ev:RegisterEvent("SCREENSHOT_FAILED")
+pcall(ev.RegisterEvent, ev, "ADDON_LOADED")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
+pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_DISABLED")
+pcall(ev.RegisterEvent, ev, "ADDON_ACTION_BLOCKED")
+pcall(ev.RegisterEvent, ev, "SCREENSHOT_SUCCEEDED")
+pcall(ev.RegisterEvent, ev, "SCREENSHOT_FAILED")
 
 -- Frames pas encore creees (fenetres Blizzard a la demande, addons qui
 -- construisent leur interface tard) : on repasse toutes les 5 s pendant la

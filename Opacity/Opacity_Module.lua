@@ -106,7 +106,7 @@ if HasCore() and IsEnabledByCore() then
 elseif not HasCore() then
   -- Le bouton lit OpacityDB : on attend le login (SavedVariables chargees).
   local f = CreateFrame("Frame")
-  f:RegisterEvent("PLAYER_LOGIN")
+  pcall(f.RegisterEvent, f, "PLAYER_LOGIN")
   f:SetScript("OnEvent", function(self) self:UnregisterAllEvents(); BuildStandaloneMinimapButton() end)
 end
 

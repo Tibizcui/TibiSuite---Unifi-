@@ -347,13 +347,13 @@ end
 
 local lastLoot = 0
 local frame = CreateFrame("Frame")
-frame:RegisterEvent("PLAYER_LOGIN")
-frame:RegisterEvent("PLAYER_LOGOUT")
-frame:RegisterEvent("PLAYER_REGEN_DISABLED")
-frame:RegisterEvent("UNIT_SPELLCAST_CHANNEL_START")
-frame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-frame:RegisterEvent("LOOT_READY")
-frame:RegisterEvent("LOOT_OPENED")
+pcall(frame.RegisterEvent, frame, "PLAYER_LOGIN")
+pcall(frame.RegisterEvent, frame, "PLAYER_LOGOUT")
+pcall(frame.RegisterEvent, frame, "PLAYER_REGEN_DISABLED")
+pcall(frame.RegisterEvent, frame, "UNIT_SPELLCAST_CHANNEL_START")
+pcall(frame.RegisterEvent, frame, "UNIT_SPELLCAST_SUCCEEDED")
+pcall(frame.RegisterEvent, frame, "LOOT_READY")
+pcall(frame.RegisterEvent, frame, "LOOT_OPENED")
 
 local function ReadLoot()
   if not GetNumLootItems then return nil end

@@ -2741,7 +2741,7 @@ end
 -- le Centre (strate DIALOG) s'ouvre par-dessus, Echap le referme d'abord.
 do
   local f = CreateFrame("Frame")
-  f:RegisterEvent("PLAYER_LOGIN")
+  pcall(f.RegisterEvent, f, "PLAYER_LOGIN")
   f:SetScript("OnEvent", function(self)
     self:UnregisterAllEvents()
     if not (Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory) then return end

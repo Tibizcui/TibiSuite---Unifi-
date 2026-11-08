@@ -406,8 +406,8 @@ end
 local function Shown(name) local x = _G[name]; return x and x.IsShown and x:IsShown() or false end
 
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_ENTERING_WORLD")
-ev:RegisterEvent("PLAYER_LOGOUT")
+pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGOUT")
 ev:SetScript("OnEvent", function(_, e, isLogin)
   if e == "PLAYER_LOGOUT" then pcall(TibiSuite.FreezeWeek); return end
   ev:UnregisterEvent("PLAYER_ENTERING_WORLD")

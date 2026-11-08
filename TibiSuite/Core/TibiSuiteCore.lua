@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.3.4
+-- TibiSuiteCore v7.4.0
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.3.4"
+local VERSION = "7.4.0"
 
 -- ================================================================
 -- LOCALISATION
@@ -2667,7 +2667,7 @@ local function BuildMinimapButton()
 
   -- ── Recalcul si la minimap change de taille (ElvUI / Dominos) ─
   local resizeWatcher = CreateFrame("Frame")
-  resizeWatcher:RegisterEvent("MINIMAP_UPDATE_ZOOM")
+  pcall(resizeWatcher.RegisterEvent, resizeWatcher, "MINIMAP_UPDATE_ZOOM")
   resizeWatcher:SetScript("OnEvent", function()
     SetMinimapPos(TibiSuiteDB.mmAngle or 200)
   end)
@@ -3060,7 +3060,7 @@ end
 
 do
   local f = CreateFrame("Frame")
-  f:RegisterEvent("PLAYER_ENTERING_WORLD")
+  pcall(f.RegisterEvent, f, "PLAYER_ENTERING_WORLD")
   f:SetScript("OnEvent", function(self)
     self:UnregisterAllEvents()
     -- Reliquat de la sonde du lot 0 : plus utilise.
@@ -4262,12 +4262,12 @@ end
 -- INITIALISATION
 -- ================================================================
 local evFrame = CreateFrame("Frame")
-evFrame:RegisterEvent("ADDON_LOADED")
-evFrame:RegisterEvent("PLAYER_LOGIN")
+pcall(evFrame.RegisterEvent, evFrame, "ADDON_LOADED")
+pcall(evFrame.RegisterEvent, evFrame, "PLAYER_LOGIN")
 -- Meme evenement natif que l'icone de courrier de la minicarte Blizzard :
 -- se declenche exactement quand HasNewMail() change, sans avoir a sonder
 -- en boucle. Pilote la pastille "courrier non lu" sur la vignette PostBox.
-evFrame:RegisterEvent("UPDATE_PENDING_MAIL")
+pcall(evFrame.RegisterEvent, evFrame, "UPDATE_PENDING_MAIL")
 
 evFrame:SetScript("OnEvent", function(_, event, arg1)
 

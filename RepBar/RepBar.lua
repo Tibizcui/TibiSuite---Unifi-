@@ -1,4 +1,4 @@
--- RepBar.lua v7.3.4
+-- RepBar.lua v7.4.0
 -- Barre de reputation avancee - Tibiscui
 -- Remplace la barre de reputation native, suit la faction par zone (via
 -- RenTracker) et bascule a la validation d'une quete.
@@ -206,12 +206,67 @@ local ApplySize, ApplyAppearance, ApplyFont, ApplyVisibility, EnforceNativeRepBa
 local ApplyOrientation, LayoutLabels, LayoutTicks, ApplyPosition, UpdateChestIcon
 
 -- ══════════════════════════════════════════════════
+-- COMPATIBILITE CLASSIC (Classic Era, TBC, Mists)
+-- Les clients Classic n'ont pas toutes les fonctions C_Reputation de
+-- Retail. Plutot que d'ecrire dans la table GLOBALE (les autres addons s'en
+-- servent pour savoir sur quel client ils tournent), ce fichier lit une
+-- copie LOCALE : les fonctions natives passent devant, les manquantes sont
+-- reconstruites avec l'ancienne API (GetFactionInfo, GetFactionInfoByID,
+-- SetWatchedFactionIndex). Sur Retail et Forever, rien ne change.
+-- ══════════════════════════════════════════════════
+local C_Reputation = setmetatable({}, { __index = _G.C_Reputation or {} })
+do
+    -- name, description, standingID, barMin, barMax, barValue, atWar,
+    -- canToggle, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID
+    local function toData(name, _, standing, barMin, barMax, barValue, _, _, isHeader, _, hasRep, isWatched, _, factionID)
+        if not name then return nil end
+        return { name = name, reaction = standing, currentReactionThreshold = barMin,
+            nextReactionThreshold = barMax, currentStanding = barValue, isHeader = isHeader,
+            isHeaderWithRep = hasRep, isWatched = isWatched, factionID = factionID }
+    end
+    local function findIndex(factionID)
+        if not (GetNumFactions and GetFactionInfo) then return nil end
+        for i = 1, GetNumFactions() or 0 do
+            local ok, name, _, _, _, _, _, _, _, _, _, _, _, _, id = pcall(GetFactionInfo, i)
+            if ok and name and id == factionID then return i end
+        end
+    end
+    if not C_Reputation.GetFactionDataByID then
+        C_Reputation.GetFactionDataByID = function(factionID)
+            if GetFactionInfoByID then
+                local d = toData(GetFactionInfoByID(factionID))
+                if d then d.factionID = d.factionID or factionID; return d end
+            end
+            local i = findIndex(factionID)
+            return i and toData(GetFactionInfo(i)) or nil
+        end
+    end
+    if not C_Reputation.GetNumFactions and GetNumFactions then
+        C_Reputation.GetNumFactions = function() return GetNumFactions() end
+    end
+    if not C_Reputation.GetFactionDataByIndex and GetFactionInfo then
+        C_Reputation.GetFactionDataByIndex = function(i) return toData(GetFactionInfo(i)) end
+    end
+    if not C_Reputation.SetWatchedFactionByID and SetWatchedFactionIndex then
+        C_Reputation.SetWatchedFactionByID = function(factionID)
+            local i = findIndex(factionID)
+            -- Faction absente de la liste (categorie repliee, inconnue de ce
+            -- client) : rien a suivre, sans erreur (les appelants ne protegent
+            -- pas tous l'appel).
+            if not i then return false end
+            SetWatchedFactionIndex(i)
+        end
+    end
+end
+
+-- ══════════════════════════════════════════════════
 -- HELPERS
 -- ══════════════════════════════════════════════════
 local function HasCore() return _G.TibiSuite and _G.TibiSuite.RegisterModule and true or false end
 
 local function IsLoaded(name)
-    return C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded(name) and true or false
+    local fn = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+    return fn and fn(name) and true or false
 end
 
 -- XPBar masque-t-il deja les barres natives ? (option cochee par defaut chez
@@ -227,7 +282,9 @@ local function IsSecret(v)
 end
 
 local function IsAtMaxLevel()
-    local maxLvl = (GetMaxPlayerLevel and GetMaxPlayerLevel()) or 999
+    local maxLvl = (GetMaxPlayerLevel and GetMaxPlayerLevel())
+        or (GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion())
+        or _G.MAX_PLAYER_LEVEL or 999
     return UnitLevel("player") >= maxLvl
 end
 
@@ -588,9 +645,56 @@ end
 -- ══════════════════════════════════════════════════
 -- Centrage horizontal : db.centerMode vaut nil (libre), "TOP" ou "BOTTOM".
 -- La barre est ancree au milieu de l'ecran (x = 0) sur le bord choisi ; seule
--- la hauteur (distance au bord) reste reglable par Maj + glisser. La hauteur
--- actuelle est conservee a l'activation.
-local function CenterFrame(mode)
+-- la hauteur (distance au bord) reste reglable par Maj + glisser.
+-- snap = true (case cochee) : en bas, la barre se pose juste au-dessus des
+-- barres natives visibles (et de XPBar) ; en haut, contre le bord ou juste
+-- sous XPBar s'il y est. Sans snap (apres Maj + glisser) : hauteur conservee.
+
+-- Frames qui bornent la place libre au centre de l'ecran. Seules comptent
+-- celles qui sont visibles (alpha > 5 %) et qui croisent la zone horizontale
+-- de la barre centree.
+local EDGE_FRAMES = { "XPBarContainer", "MainMenuBar", "MainActionBar", "MultiBarBottomLeft",
+    "MainMenuExpBar", "ReputationWatchBar", "MainMenuBarMaxLevelBar",
+    "MultiBarBottomRight", "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer",
+    "MicroMenuContainer", "BagsBar" }
+
+-- Renvoie l'offset y (echelle de containerFrame) pour le bord donne, avec
+-- 4 px de marge ; 0 si rien ne gene.
+local function EdgeOffset(pt)
+    local cs = containerFrame:GetEffectiveScale()
+    if not cs or cs <= 0 then return 0 end
+    local us = UIParent:GetEffectiveScale()
+    local half = (containerFrame:GetWidth() or 0) * cs / 2
+    local mid  = (UIParent:GetWidth() or 0) * us / 2
+    local screenH = (UIParent:GetHeight() or 0) * us
+    local best = 0   -- distance au bord en pixels ecran
+    for _, name in ipairs(EDGE_FRAMES) do
+        local f = _G[name]
+        if f and f ~= containerFrame and f.IsVisible and not (f.IsForbidden and f:IsForbidden()) then
+            local ok, vis = pcall(f.IsVisible, f)
+            local alpha = f.GetEffectiveAlpha and f:GetEffectiveAlpha() or 1
+            if ok and vis and alpha > 0.05 then
+                local s = f:GetEffectiveScale() or 1
+                local top, bottom = f:GetTop(), f:GetBottom()
+                local left, right = f:GetLeft(), f:GetRight()
+                if top and bottom and left and right then
+                    top, bottom, left, right = top * s, bottom * s, left * s, right * s
+                    if right > mid - half and left < mid + half then
+                        local d
+                        if pt == "BOTTOM" and bottom < screenH / 3 then d = top
+                        elseif pt == "TOP" and top > screenH * 2 / 3 then d = screenH - bottom end
+                        if d and d > best then best = d end
+                    end
+                end
+            end
+        end
+    end
+    if best <= 0 then return 0 end
+    local y = best / cs + 4
+    return pt == "TOP" and -y or y
+end
+
+local function CenterFrame(mode, snap)
     if not (containerFrame and db) then return end
     local pt, y
     if mode == "BOTTOM" then
@@ -600,6 +704,7 @@ local function CenterFrame(mode)
         pt = "TOP"
         y  = (containerFrame:GetTop() or 0) - (UIParent:GetTop() or 0)
     end
+    if snap then y = EdgeOffset(pt) end
     y = math.floor(y + 0.5)
     containerFrame:ClearAllPoints()
     containerFrame:SetPoint(pt, UIParent, pt, 0, y)
@@ -623,6 +728,13 @@ local function SavePosition()
     if db.centerMode then CenterFrame(db.centerMode) end
 end
 
+-- XPBar centre en bas garde la place de RepBar quand il y est colle :
+-- on le previent de tout changement d'aimantation ou de taille (no-op si
+-- XPBar est absent, ancien, ou pas en mode centre en bas).
+local function NotifyXPBar()
+    if _G.XPBar_UpdateRepReserve then pcall(_G.XPBar_UpdateRepReserve) end
+end
+
 local function SnapTarget()
     if not db.snapToXPBar then return nil end
     local x = _G.XPBarContainer
@@ -639,6 +751,7 @@ ApplyPosition = function()
         containerFrame:SetPoint(db.anchor, UIParent, db.anchor, db.posX, db.posY)
     end
     snapApplied = target and true or false
+    NotifyXPBar()
 end
 
 local function CheckSnap()
@@ -665,6 +778,7 @@ local function StopMove()
     mainBar:SetAlpha(1.0)
     SavePosition()
     snapApplied = false
+    NotifyXPBar()   -- l'aimantation a pu etre coupee par StartMove
     print("|cffFFD700[RepBar]|r " .. L.POS_SAVED)
 end
 
@@ -680,6 +794,7 @@ ApplySize = function()
     mainBar:SetSize(w, h)
     dragFrame:SetSize(w, h + extra)
     if LayoutTicks then LayoutTicks() end
+    NotifyXPBar()   -- la place reservee par XPBar suit la hauteur
 end
 
 -- Replace les 4 labels selon l'orientation (et l'option "texte a cote").
@@ -823,6 +938,8 @@ end
 --   * XPBar masque deja tout (option par defaut) : RepBar n'ecrit rien.
 -- ══════════════════════════════════════════════════
 local NATIVE_MAIN, NATIVE_SEC = "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer"
+-- Classic : la reputation suivie a sa propre barre, ReputationWatchBar.
+if not _G[NATIVE_SEC] and _G.ReputationWatchBar then NATIVE_SEC = "ReputationWatchBar" end
 local nativeAlphaByUs, nativeMouseByUs, mouseSaved = {}, {}, {}
 
 local function NativeFrame(name)
@@ -1758,7 +1875,7 @@ local function BuildMidnightOptions()
                 if v then
                     db.snapToXPBar = false      -- le centrage libre remplace l'aimantation
                     ApplyPosition()             -- repart de la position libre avant de mesurer
-                    CenterFrame(mode)
+                    CenterFrame(mode, true)
                 end
                 P:Refresh()                     -- decoche l'autre case
             end,
@@ -1848,7 +1965,8 @@ evFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 evFrame:RegisterEvent("UPDATE_FACTION")
 evFrame:RegisterEvent("QUEST_TURNED_IN")
 evFrame:RegisterEvent("CHAT_MSG_COMBAT_FACTION_CHANGE")
-evFrame:RegisterEvent("MAJOR_FACTION_RENOWN_LEVEL_CHANGED")
+-- Absent de Classic : un evenement inconnu leve une erreur a l'inscription.
+pcall(evFrame.RegisterEvent, evFrame, "MAJOR_FACTION_RENOWN_LEVEL_CHANGED")
 evFrame:RegisterEvent("ZONE_CHANGED")
 evFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 evFrame:RegisterEvent("ZONE_CHANGED_INDOORS")
@@ -1884,7 +2002,8 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
         -- En mode suite, c'est le core qui annonce la suite (reglage
         -- « Messages de connexion ») : pas de ligne par module.
         if not HasCore() then
-            local ver = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version") or ""
+            local getMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+            local ver = getMeta and getMeta(ADDON, "Version") or ""
             print("|cFF5CADF5RepBar|r v" .. ver .. " " .. L.LOGIN_LOADED .. " |cFFFFD700/repbar|r " .. L.LOGIN_TO_OPEN)
         end
 

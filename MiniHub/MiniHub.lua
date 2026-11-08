@@ -1715,13 +1715,13 @@ end
 
 local function SetupContextRules()
     local f = CreateFrame("Frame")
-    f:RegisterEvent("PLAYER_REGEN_DISABLED")
-    f:RegisterEvent("PLAYER_REGEN_ENABLED")
-    f:RegisterEvent("PLAYER_ENTERING_WORLD")
-    f:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+    pcall(f.RegisterEvent, f, "PLAYER_REGEN_DISABLED")
+    pcall(f.RegisterEvent, f, "PLAYER_REGEN_ENABLED")
+    pcall(f.RegisterEvent, f, "PLAYER_ENTERING_WORLD")
+    pcall(f.RegisterEvent, f, "ZONE_CHANGED_NEW_AREA")
     if C_PetBattles then
-        f:RegisterEvent("PET_BATTLE_OPENING_START")
-        f:RegisterEvent("PET_BATTLE_CLOSE")
+        pcall(f.RegisterEvent, f, "PET_BATTLE_OPENING_START")
+        pcall(f.RegisterEvent, f, "PET_BATTLE_CLOSE")
     end
     f:SetScript("OnEvent", function() MiniHub.UpdateContextVisibility() end)
 end
@@ -1748,7 +1748,7 @@ local function ScheduleDeferredScans()
         end)
     end
     local watcher = CreateFrame("Frame")
-    watcher:RegisterEvent("ADDON_LOADED")
+    pcall(watcher.RegisterEvent, watcher, "ADDON_LOADED")
     watcher:SetScript("OnEvent", function()
         conflictCache = nil
         MiniHub.RequestScan(0.5)
@@ -2026,7 +2026,7 @@ local function Initialize()
 end
 
 local loader = CreateFrame("Frame")
-loader:RegisterEvent("PLAYER_LOGIN")
+pcall(loader.RegisterEvent, loader, "PLAYER_LOGIN")
 loader:SetScript("OnEvent", function(self)
     Initialize()
     self:UnregisterEvent("PLAYER_LOGIN")

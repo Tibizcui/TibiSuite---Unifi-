@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.4.0
+- Version alignée sur la suite (7.4.0) : aucun changement pour cet addon, qui reste réservé à WoW Midnight.
+
 ## 7.3.4
 - Fix bugs UI and fix bug dev
 

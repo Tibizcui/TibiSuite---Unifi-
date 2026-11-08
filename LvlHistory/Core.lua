@@ -11,7 +11,7 @@ local function Loc(key, default) return L[key] or default end
 -- ─────────────────────────────────────────────
 -- Constantes
 -- ─────────────────────────────────────────────
-local ADDON_VERSION = "7.3.4"
+local ADDON_VERSION = "7.4.0"
 local SAVE_INTERVAL = 300  -- sauvegarde incrémentale toutes les 5 minutes
 local RESUME_WINDOW = 600  -- /reload ou reconnexion en moins de 10 min : meme session
 T.VERSION = ADDON_VERSION
@@ -92,7 +92,8 @@ function T.MaxLevel()
         local ok, v = pcall(GetMaxLevelForPlayerExpansion)
         if ok and type(v) == "number" and v > 0 then return v end
     end
-    return GetMaxPlayerLevel()
+    -- Classic : GetMaxPlayerLevel peut manquer, repli sur MAX_PLAYER_LEVEL.
+    return (GetMaxPlayerLevel and GetMaxPlayerLevel()) or _G.MAX_PLAYER_LEVEL or 60
 end
 
 local function FillDefaults(dst, src)
@@ -420,15 +421,15 @@ end
 -- ─────────────────────────────────────────────
 local coreFrame = CreateFrame("Frame", "LvlHistoryCoreFrame", UIParent)
 
-coreFrame:RegisterEvent("PLAYER_LOGIN")
-coreFrame:RegisterEvent("PLAYER_LOGOUT")
-coreFrame:RegisterEvent("PLAYER_LEAVING_WORLD")
-coreFrame:RegisterEvent("PLAYER_LEVEL_UP")
-coreFrame:RegisterEvent("PLAYER_UPDATE_RESTING")
-coreFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-coreFrame:RegisterEvent("QUEST_COMPLETE")
-coreFrame:RegisterEvent("QUEST_TURNED_IN")
-coreFrame:RegisterEvent("ADDON_LOADED")   -- Rattrapage LoadOnDemand (voir plus bas)
+pcall(coreFrame.RegisterEvent, coreFrame, "PLAYER_LOGIN")
+pcall(coreFrame.RegisterEvent, coreFrame, "PLAYER_LOGOUT")
+pcall(coreFrame.RegisterEvent, coreFrame, "PLAYER_LEAVING_WORLD")
+pcall(coreFrame.RegisterEvent, coreFrame, "PLAYER_LEVEL_UP")
+pcall(coreFrame.RegisterEvent, coreFrame, "PLAYER_UPDATE_RESTING")
+pcall(coreFrame.RegisterEvent, coreFrame, "ZONE_CHANGED_NEW_AREA")
+pcall(coreFrame.RegisterEvent, coreFrame, "QUEST_COMPLETE")
+pcall(coreFrame.RegisterEvent, coreFrame, "QUEST_TURNED_IN")
+pcall(coreFrame.RegisterEvent, coreFrame, "ADDON_LOADED")   -- Rattrapage LoadOnDemand (voir plus bas)
 
 local function OnLogin()
     -- Init défensive : ne jamais écraser des données existantes
@@ -941,12 +942,12 @@ local function RecordDelve()
 end
 
 local dgnFrame = CreateFrame("Frame", "LvlHistoryDgnFrame", UIParent)
-dgnFrame:RegisterEvent("LFG_COMPLETION_REWARD")    -- LFD : N / H / M group finder
-dgnFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED") -- Mythic+
-dgnFrame:RegisterEvent("ENCOUNTER_END")            -- tout boss (groupes manuels)
-dgnFrame:RegisterEvent("PLAYER_ENTERING_WORLD")    -- détection sortie d'instance
-dgnFrame:RegisterEvent("SCENARIO_COMPLETED")       -- gouffres
-dgnFrame:RegisterEvent("SCENARIO_CRITERIA_UPDATE") -- palier du gouffre en cours
+pcall(dgnFrame.RegisterEvent, dgnFrame, "LFG_COMPLETION_REWARD")    -- LFD : N / H / M group finder
+pcall(dgnFrame.RegisterEvent, dgnFrame, "CHALLENGE_MODE_COMPLETED") -- Mythic+
+pcall(dgnFrame.RegisterEvent, dgnFrame, "ENCOUNTER_END")            -- tout boss (groupes manuels)
+pcall(dgnFrame.RegisterEvent, dgnFrame, "PLAYER_ENTERING_WORLD")    -- détection sortie d'instance
+pcall(dgnFrame.RegisterEvent, dgnFrame, "SCENARIO_COMPLETED")       -- gouffres
+pcall(dgnFrame.RegisterEvent, dgnFrame, "SCENARIO_CRITERIA_UPDATE") -- palier du gouffre en cours
 
 dgnFrame:SetScript("OnEvent", function(self, event, ...)
     if not T.db then return end

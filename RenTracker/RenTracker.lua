@@ -1,5 +1,5 @@
 -- ================================================================
--- RenTracker v7.3.4
+-- RenTracker v7.4.0
 -- Suivi des reputations | Toutes les extensions depuis vanilla
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
@@ -7,6 +7,60 @@
 local ADDON = "RenTracker"
 local L = RenTrackerL or {}
 local function T(key, default) return L[key] or default end
+
+-- ══════════════════════════════════════════════════
+-- COMPATIBILITE CLASSIC (Classic Era, TBC, Wrath, Cata, Mists) - meme bloc que RepBar
+-- Les clients Classic n'ont pas toutes les fonctions C_Reputation de
+-- Retail. Plutot que d'ecrire dans la table GLOBALE (les autres addons s'en
+-- servent pour savoir sur quel client ils tournent), ce fichier lit une
+-- copie LOCALE : les fonctions natives passent devant, les manquantes sont
+-- reconstruites avec l'ancienne API (GetFactionInfo, GetFactionInfoByID,
+-- SetWatchedFactionIndex). Sur Retail et Forever, rien ne change.
+-- ══════════════════════════════════════════════════
+local C_Reputation = setmetatable({}, { __index = _G.C_Reputation or {} })
+do
+    -- name, description, standingID, barMin, barMax, barValue, atWar,
+    -- canToggle, isHeader, isCollapsed, hasRep, isWatched, isChild, factionID
+    local function toData(name, _, standing, barMin, barMax, barValue, _, _, isHeader, _, hasRep, isWatched, _, factionID)
+        if not name then return nil end
+        return { name = name, reaction = standing, currentReactionThreshold = barMin,
+            nextReactionThreshold = barMax, currentStanding = barValue, isHeader = isHeader,
+            isHeaderWithRep = hasRep, isWatched = isWatched, factionID = factionID }
+    end
+    local function findIndex(factionID)
+        if not (GetNumFactions and GetFactionInfo) then return nil end
+        for i = 1, GetNumFactions() or 0 do
+            local ok, name, _, _, _, _, _, _, _, _, _, _, _, _, id = pcall(GetFactionInfo, i)
+            if ok and name and id == factionID then return i end
+        end
+    end
+    if not C_Reputation.GetFactionDataByID then
+        C_Reputation.GetFactionDataByID = function(factionID)
+            if GetFactionInfoByID then
+                local d = toData(GetFactionInfoByID(factionID))
+                if d then d.factionID = d.factionID or factionID; return d end
+            end
+            local i = findIndex(factionID)
+            return i and toData(GetFactionInfo(i)) or nil
+        end
+    end
+    if not C_Reputation.GetNumFactions and GetNumFactions then
+        C_Reputation.GetNumFactions = function() return GetNumFactions() end
+    end
+    if not C_Reputation.GetFactionDataByIndex and GetFactionInfo then
+        C_Reputation.GetFactionDataByIndex = function(i) return toData(GetFactionInfo(i)) end
+    end
+    if not C_Reputation.SetWatchedFactionByID and SetWatchedFactionIndex then
+        C_Reputation.SetWatchedFactionByID = function(factionID)
+            local i = findIndex(factionID)
+            -- Faction absente de la liste (categorie repliee, inconnue de ce
+            -- client) : rien a suivre, sans erreur (les appelants ne protegent
+            -- pas tous l'appel).
+            if not i then return false end
+            SetWatchedFactionIndex(i)
+        end
+    end
+end
 
 -- RenTrackerData est rempli par les fichiers data/
 RenTrackerData = RenTrackerData or {}
@@ -347,6 +401,42 @@ end
 -- Ordre d'affichage des extensions (du plus recent au plus ancien)
 local EXT_ROW1  = { "Midnight","TheWarWithin","Dragonflight","Shadowlands","BattleForAzeroth","Legion" }
 local EXT_ROW2  = { "WarlordsOfDraenor","MistsOfPandaria","Cataclysme","WrathOfTheLichKing","TheBurningCrusade","Vanilla" }
+-- ================================================================
+-- MULTI-VERSIONS : seules les extensions du jeu en cours sont proposees.
+-- Classic Era et WoW Forever (contenu Vanilla) : Vanilla seul ; TBC
+-- Anniversary : + TBC ; Wrath : + Wrath ; Cataclysm : + Cata ; Mists :
+-- + Mists ; Retail : tout. Le contenu d'une version est une propriete du
+-- jeu, pas d'une API : on lit le numero d'interface (Forever 16001, meme
+-- plage qu'EllesmereUI). Les listes ci-dessus sont filtrees SUR PLACE, donc
+-- toute la mise en page (qui lit #EXT_ROW1 / #EXT_ROW2) suit.
+-- ================================================================
+local EXT_INDEX = {
+  Vanilla = 0, TheBurningCrusade = 1, WrathOfTheLichKing = 2, Cataclysme = 3,
+  MistsOfPandaria = 4, WarlordsOfDraenor = 5, Legion = 6, BattleForAzeroth = 7,
+  Shadowlands = 8, Dragonflight = 9, TheWarWithin = 10, Midnight = 11,
+}
+local function GameMaxExpansion()
+  local iface = select(4, GetBuildInfo())
+  if type(iface) ~= "number" then return 99 end
+  if iface < 20000 then return 0 end     -- Classic Era 115xx, Forever 160xx
+  if iface < 30000 then return 1 end     -- TBC
+  if iface < 40000 then return 2 end     -- Wrath (30405, 38002)
+  if iface < 50000 then return 3 end     -- Cataclysm
+  if iface < 60000 then return 4 end     -- Mists
+  return 99                              -- Retail
+end
+local MAX_EXP = GameMaxExpansion()
+local EXT_ALLOWED = {}
+local function KeepAllowed(list)
+  for i = #list, 1, -1 do
+    if (EXT_INDEX[list[i]] or 0) > MAX_EXP then table.remove(list, i) else EXT_ALLOWED[list[i]] = true end
+  end
+end
+KeepAllowed(EXT_ROW1); KeepAllowed(EXT_ROW2)
+-- Hors Retail : les fiches ont ete ecrites pour le jeu actuel (voir mention
+-- dans le detail d'une faction).
+local IS_CLASSIC_CONTENT = MAX_EXP < 99
+
 local EXT_ORDER = {}
 for _, v in ipairs(EXT_ROW1) do table.insert(EXT_ORDER, v) end
 for _, v in ipairs(EXT_ROW2) do table.insert(EXT_ORDER, v) end
@@ -423,6 +513,12 @@ local function EnsureDB()
   for k, v in pairs(OPTION_DEFAULTS) do
     if RenTrackerDB.options[k] == nil then RenTrackerDB.options[k] = v end
   end
+  -- Extension absente de cette version du jeu (defaut « Midnight » sur
+  -- Classic, ou sauvegarde venue d'ailleurs) : premiere extension proposee.
+  if not EXT_ALLOWED[RenTrackerDB.extension or ""] then
+    RenTrackerDB.extension = EXT_ORDER[1] or "Vanilla"
+    RenTrackerDB.selectedFac = nil
+  end
 end
 
 -- ================================================================
@@ -498,6 +594,9 @@ local function AutoTrackFactionByZone()
   if not mapID then return end
   local entry = ZONE_FACTION_MAP[mapID]
   if not entry then return end
+  -- Identifiants de carte releves sur Retail : en Classic, un meme numero
+  -- peut designer une autre zone. Extension absente de ce jeu => ignore.
+  if not EXT_ALLOWED[entry.ext] then return end
 
   -- Changer l'extension affichee dans l'addon si besoin
   if RenTrackerDB.extension ~= entry.ext then
@@ -1136,6 +1235,8 @@ local function BuildUI()
   sepDiv1:SetPoint("TOPRIGHT", tabColBg,  "TOPRIGHT", -3, divOffsetY)
   sepDiv1:SetHeight(2)
   sepDiv1:SetVertexColor(0.72, 0.60, 0.28, 1.0)
+  -- Classic / Forever : pas d'extension moderne, donc rien a separer.
+  if MODERN_COUNT == 0 then sepDiv1:Hide() end
 
   -- Rangee classiques (7-12) : positions calees juste sous le separateur
   local classicYBase = divOffsetY - 5
@@ -1358,7 +1459,7 @@ local function BuildUI()
     row.nameFS:SetWordWrap(false)
     -- Mini-barre de progression
     row.mbarBg = row:CreateTexture(nil, "ARTWORK")
-    row.mbarBg:SetPoint("RIGHT", row, "RIGHT", -44, 0)
+    row.mbarBg:SetPoint("RIGHT", row, "RIGHT", -64, 0)
     row.mbarBg:SetSize(MBAR_W, 5)
     row.mbarBg:SetTexture("Interface\\BUTTONS\\WHITE8X8")
     row.mbarBg:SetVertexColor(0.08, 0.06, 0.12, 0.9)
@@ -1380,7 +1481,8 @@ local function BuildUI()
     -- Label de niveau
     row.lvlFS = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     row.lvlFS:SetPoint("RIGHT", row, "RIGHT", -4, 0)
-    row.lvlFS:SetWidth(38)
+    row.lvlFS:SetWidth(58)
+    if row.lvlFS.SetWordWrap then row.lvlFS:SetWordWrap(false) end
     row.lvlFS:SetJustifyH("RIGHT")
     row.lvlFS:SetHeight(ROW_H)
     return row
@@ -1487,7 +1589,7 @@ local function BuildUI()
             row.chest:SetPoint("RIGHT", row.mbarBg, "LEFT", -3, 0)
           end
           row.nameFS:SetPoint("RIGHT", row, "RIGHT",
-            -105 - (hasWeekly and 30 or 0) - (chestReady and 15 or 0), 0)
+            -125 - (hasWeekly and 30 or 0) - (chestReady and 15 or 0), 0)
           local nameCol = isSel
             and string.format("|cFF%02X%02X%02X", r8, g8, b8)
             or  string.format("|cFF%02X%02X%02X",
@@ -1615,7 +1717,10 @@ local function BuildUI()
   -- ================================================================
   local questHeader = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   mainFrame._questHeader = questHeader
-  questHeader:SetText("|cFFFFD700" .. T("QUESTS_AVAILABLE", "Quêtes disponibles") .. "|r")
+  questHeader:SetText("|cFFFFD700" .. T("QUESTS_AVAILABLE", "Quêtes disponibles") .. "|r"
+    -- Classic / Forever : fiches ecrites pour le jeu actuel (montants,
+    -- quetes journalieres...) ; la barre de progression, elle, lit le jeu.
+    .. (IS_CLASSIC_CONTENT and ("  |cFF888888" .. T("QUESTS_RETAIL_NOTE", "(conseils écrits pour le jeu actuel)") .. "|r") or ""))
 
   local legend = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   mainFrame._legend = legend
@@ -2377,7 +2482,7 @@ local function BuildMinimapButton()
   -- Certains addons (Dominos, SexyMap) redimensionnent la minimap dynamiquement.
   -- On écoute MINIMAP_UPDATE_ZOOM comme signal de changement de taille.
   local resizeWatcher = CreateFrame("Frame")
-  resizeWatcher:RegisterEvent("MINIMAP_UPDATE_ZOOM")
+  pcall(resizeWatcher.RegisterEvent, resizeWatcher, "MINIMAP_UPDATE_ZOOM")
   resizeWatcher:SetScript("OnEvent", function()
     SetMinimapPos((RenTrackerDB and RenTrackerDB.mmAngle) or 220)
   end)
@@ -2629,15 +2734,15 @@ local function ScheduleParagonScan(delay)
 end
 
 local evFrame = CreateFrame("Frame")
-evFrame:RegisterEvent("ADDON_LOADED")
-evFrame:RegisterEvent("PLAYER_LOGIN")
-evFrame:RegisterEvent("MAJOR_FACTION_RENOWN_LEVEL_CHANGED")
-evFrame:RegisterEvent("UPDATE_FACTION")
-evFrame:RegisterEvent("QUEST_TURNED_IN")
-evFrame:RegisterEvent("QUEST_LOG_UPDATE")
-evFrame:RegisterEvent("ZONE_CHANGED")
-evFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-evFrame:RegisterEvent("ZONE_CHANGED_INDOORS")
+pcall(evFrame.RegisterEvent, evFrame, "ADDON_LOADED")
+pcall(evFrame.RegisterEvent, evFrame, "PLAYER_LOGIN")
+pcall(evFrame.RegisterEvent, evFrame, "MAJOR_FACTION_RENOWN_LEVEL_CHANGED")
+pcall(evFrame.RegisterEvent, evFrame, "UPDATE_FACTION")
+pcall(evFrame.RegisterEvent, evFrame, "QUEST_TURNED_IN")
+pcall(evFrame.RegisterEvent, evFrame, "QUEST_LOG_UPDATE")
+pcall(evFrame.RegisterEvent, evFrame, "ZONE_CHANGED")
+pcall(evFrame.RegisterEvent, evFrame, "ZONE_CHANGED_NEW_AREA")
+pcall(evFrame.RegisterEvent, evFrame, "ZONE_CHANGED_INDOORS")
 
 local loginAnnounced = false
 evFrame:SetScript("OnEvent", function(_, event, arg1)
@@ -2674,7 +2779,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       if not loginAnnounced and not (_G.TibiSuite and _G.TibiSuite.RegisterModule)
          and not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
         loginAnnounced = true
-        print("|cFF4D99FFRenTracker|r v7.3.4 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+        print("|cFF4D99FFRenTracker|r v7.4.0 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
       ScheduleParagonScan(3)
@@ -2686,7 +2791,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     if not loginAnnounced and not (_G.TibiSuite and _G.TibiSuite.RegisterModule)
        and not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
       loginAnnounced = true
-      print("|cFF4D99FFRenTracker|r v7.3.4 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFRenTracker|r v7.4.0 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)

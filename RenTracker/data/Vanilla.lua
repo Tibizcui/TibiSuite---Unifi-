@@ -384,7 +384,7 @@ RenTrackerData["Vanilla"] = {
     {
       id       = 576,
       category = "secondaire",
-      name     = "Timbermaw Hold",
+      name     = "Les Grumegueules",
       zone     = "Felwood / Moonglade / Winterspring",
       qm_name  = "Meilosh",
       qm_coord = "63.4, 60.8",

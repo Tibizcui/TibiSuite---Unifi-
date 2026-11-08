@@ -214,8 +214,8 @@ function TibiSuite.ExportWorth()
 end
 
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_LOGIN")
-ev:RegisterEvent("PLAYER_LOGOUT")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGOUT")
 ev:SetScript("OnEvent", function(_, e)
   if e == "PLAYER_LOGOUT" then pcall(Record); return end
   C_Timer.After(30, function()

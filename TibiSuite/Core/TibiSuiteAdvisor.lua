@@ -618,7 +618,7 @@ end
 local function Shown(name) local x = _G[name]; return x and x.IsShown and x:IsShown() or false end
 
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_ENTERING_WORLD")
+pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
 ev:SetScript("OnEvent", function(_, _, isLogin)
   ev:UnregisterEvent("PLAYER_ENTERING_WORLD")
   if not isLogin then return end              -- vraie connexion seulement, pas /reload

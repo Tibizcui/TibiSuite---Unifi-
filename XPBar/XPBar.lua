@@ -1,4 +1,4 @@
--- XPBar.lua v7.3.4
+-- XPBar.lua v7.4.0
 -- Barre XP avancée - Tibiscui
 -- Maj+Drag pour déplacer | Maj+Clic droit pour les options
 
@@ -324,7 +324,22 @@ local function GetQuestData()
     questDirty = false
     local completed, total = 0, 0
     local completeXP, incompleteXP = 0, 0
-    if C_QuestLog and C_QuestLog.GetNumQuestLogEntries then
+    if not (C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo)
+        and GetNumQuestLogEntries and GetQuestLogTitle then
+        -- Classic : ancienne API du journal. GetQuestLogTitle renvoie
+        -- titre, niveau, groupe, isHeader, replie, isComplete (1 / -1 / nil),
+        -- frequence, questID. L'XP de recompense n'y est pas lue :
+        -- GetQuestLogRewardXP y vise la quete selectionnee, pas un questID,
+        -- et la selectionner modifierait le journal du joueur.
+        local n = GetNumQuestLogEntries() or 0
+        for i = 1, n do
+            local ok, title, _, _, isHeader, _, isComplete = pcall(GetQuestLogTitle, i)
+            if ok and title and not isHeader then
+                total = total + 1
+                if isComplete == 1 or isComplete == true then completed = completed + 1 end
+            end
+        end
+    elseif C_QuestLog and C_QuestLog.GetNumQuestLogEntries then
         local n = C_QuestLog.GetNumQuestLogEntries()
         for i = 1, n do
             local info = C_QuestLog.GetInfo(i)
@@ -415,6 +430,26 @@ local function ReadWatchedReputation()
     if C_Reputation and C_Reputation.GetWatchedFactionData then
         local ok, d = pcall(C_Reputation.GetWatchedFactionData)
         if ok and d and d.factionID and d.factionID ~= 0 then factionID = d.factionID end
+    elseif GetWatchedFactionInfo then
+        -- Classic : ancienne API (nom, reaction, seuil bas, seuil haut,
+        -- valeur, factionID), seuils en valeurs absolues.
+        local ok, name, reaction, minv, maxv, value = pcall(GetWatchedFactionInfo)
+        if not (ok and name) then return nil end
+        reaction = reaction or 4
+        local c = _G.FACTION_BAR_COLORS and _G.FACTION_BAR_COLORS[reaction]
+        local out = {
+            name  = name,
+            label = _G["FACTION_STANDING_LABEL" .. reaction] or "",
+            color = c and { c.r, c.g, c.b } or { 0.6, 0.6, 0.6 },
+        }
+        minv, maxv, value = minv or 0, maxv or 0, value or 0
+        if maxv > minv then
+            out.cur, out.max = value - minv, maxv - minv
+            out.pct = out.cur / out.max
+        else
+            out.cur, out.max, out.pct = 1, 1, 1
+        end
+        return out
     end
     if not factionID then return nil end
     local out = {}
@@ -476,7 +511,11 @@ local function ReadWatchedReputation()
 end
 
 local function IsAtMaxLevel()
-    local maxLvl = (GetMaxPlayerLevel and GetMaxPlayerLevel()) or 999
+    -- Classic : GetMaxPlayerLevel peut manquer, replis sur l'extension du
+    -- compte puis sur la constante MAX_PLAYER_LEVEL.
+    local maxLvl = (GetMaxPlayerLevel and GetMaxPlayerLevel())
+        or (GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion())
+        or _G.MAX_PLAYER_LEVEL or 999
     return UnitLevel("player") >= maxLvl
 end
 
@@ -552,8 +591,63 @@ end
 -- Centrage horizontal : db.centerMode vaut nil (libre), "TOP" ou "BOTTOM".
 -- La barre est alors ancree au milieu de l'ecran (x = 0) sur le bord choisi ;
 -- seule la hauteur (distance au bord) reste reglable par Maj + glisser.
--- Conserve la hauteur actuelle de la barre au moment de l'activation.
-local function CenterFrame(mode)
+-- snap = true (case cochee) : la barre est collee au bord choisi (y = 0).
+-- Sans snap (apres Maj + glisser) : la hauteur actuelle est conservee.
+-- Avant, l'activation gardait toujours la hauteur : la barre par defaut
+-- etant deja centree en haut, « Centrer en bas » ne la bougeait pas.
+-- Barres natives du bas de l'ecran : Classic (MainMenuBar et sa barre XP,
+-- barre de reputation), Retail (MainActionBar / MainMenuBar), barres du bas
+-- des deux. Seules comptent celles qui sont visibles (alpha > 5 %, donc pas
+-- la barre XP masquee par XPBar) et qui croisent la zone horizontale de la
+-- barre centree. Renvoie la hauteur de leur bord haut, dans l'echelle de
+-- containerFrame, + 4 px de marge ; 0 si rien n'est trouve.
+local BOTTOM_BARS = { "MainMenuBar", "MainActionBar", "MultiBarBottomLeft", "MultiBarBottomRight",
+    "MainMenuExpBar", "ReputationWatchBar", "MainMenuBarMaxLevelBar", "MicroMenuContainer", "BagsBar",
+    "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }
+local function BottomBarsTop()
+    local cs = containerFrame:GetEffectiveScale()
+    if not cs or cs <= 0 then return 0 end
+    local half = (containerFrame:GetWidth() or 0) * cs / 2
+    local mid  = (UIParent:GetWidth() or 0) * UIParent:GetEffectiveScale() / 2
+    local screenH = (UIParent:GetHeight() or 0) * UIParent:GetEffectiveScale()
+    local best = 0
+    for _, name in ipairs(BOTTOM_BARS) do
+        local f = _G[name]
+        if f and f.IsVisible and not (f.IsForbidden and f:IsForbidden()) then
+            local ok, vis = pcall(f.IsVisible, f)
+            local alpha = f.GetEffectiveAlpha and f:GetEffectiveAlpha() or 1
+            if ok and vis and alpha > 0.05 then
+                local s = f:GetEffectiveScale() or 1
+                local top, bottom = f:GetTop(), f:GetBottom()
+                local left, right = f:GetLeft(), f:GetRight()
+                if top and bottom and left and right then
+                    top, bottom, left, right = top * s, bottom * s, left * s, right * s
+                    -- bas de l'ecran seulement, et chevauchement horizontal
+                    if bottom < screenH / 3 and right > mid - half and left < mid + half and top > best then
+                        best = top
+                    end
+                end
+            end
+        end
+    end
+    if best <= 0 then return 0 end
+    return best / cs + 4
+end
+
+-- Place gardee sous XPBar pour RepBar quand il y est colle (« Coller sous
+-- XPBar », ancre TOP de RepBar sur BOTTOM de XPBar, 2 px d'ecart) : sinon,
+-- XPBar centre en bas pousse RepBar hors de l'ecran et les deux se
+-- chevauchent. Hauteur de RepBar dans l'echelle de containerFrame, 0 sinon.
+local function RepReserve()
+    local r, rdb = _G.RepBarContainer, _G.RepBarDB
+    if not (r and r ~= containerFrame and type(rdb) == "table" and rdb.snapToXPBar) then return 0 end
+    local cs = containerFrame:GetEffectiveScale()
+    local h = r.GetHeight and r:GetHeight() or 0
+    if not (cs and cs > 0 and h > 0) then return 0 end
+    return h * (r:GetEffectiveScale() or 1) / cs + 2
+end
+
+local function CenterFrame(mode, snap)
     if not (containerFrame and db) then return end
     local pt, y
     if mode == "BOTTOM" then
@@ -563,10 +657,34 @@ local function CenterFrame(mode)
         pt = "TOP"
         y  = (containerFrame:GetTop() or 0) - (UIParent:GetTop() or 0)
     end
+    if snap then
+        if pt == "BOTTOM" then
+            local reserve = RepReserve()
+            db.centerRepReserve = reserve
+            y = BottomBarsTop() + reserve
+        else
+            y = 0
+        end
+    end
     y = math.floor(y + 0.5)
     containerFrame:ClearAllPoints()
     containerFrame:SetPoint(pt, UIParent, pt, 0, y)
     db.anchor, db.posX, db.posY = pt, 0, y
+end
+
+-- Appele par RepBar (aimantation cochee ou non, taille changee) et une fois
+-- apres la connexion : en mode « centre en bas », XPBar monte ou descend de
+-- la difference de place reservee a RepBar. Un reglage de hauteur fait a la
+-- main (Maj + glisser) est conserve, seul l'ecart change.
+function XPBar_UpdateRepReserve()
+    if not (db and containerFrame and db.centerMode == "BOTTOM") then return end
+    local new, old = RepReserve(), db.centerRepReserve or 0
+    if math.abs(new - old) < 1 then return end
+    db.centerRepReserve = new
+    db.anchor, db.posX = "BOTTOM", 0
+    db.posY = math.max(0, math.floor((db.posY or 0) - old + new + 0.5))
+    containerFrame:ClearAllPoints()
+    containerFrame:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, db.posY)
 end
 
 local function SavePosition()
@@ -728,7 +846,12 @@ end
 -- l'alpha 1 ecraserait EllesmereUI, Opacity ou un fondu de Blizzard). Une
 -- seule restauration, et seulement si c'est XPBar qui avait masque.
 -- ══════════════════════════════════════════════════
-local NATIVE_BARS = { "StatusTrackingBarManager", "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }
+-- Classic Era / anciennes barres : MainMenuExpBar (XP) et ReputationWatchBar
+-- (reputation suivie). Absentes en Retail : NativeFrame les ignore.
+local NATIVE_BARS = { "StatusTrackingBarManager", "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer",
+    "MainMenuExpBar", "ReputationWatchBar" }
+-- Le manager porte toute la zone : sa souris n'est jamais coupee.
+local NATIVE_NO_MOUSE = { StatusTrackingBarManager = true }
 
 local function NativeFrame(name)
     local f = _G[name]
@@ -766,8 +889,8 @@ local function SetNativeMouse(on)
             pcall(fr.EnableMouse, fr, false)
         end
     end
-    for i = 2, #NATIVE_BARS do
-        local f = NativeFrame(NATIVE_BARS[i])
+    for i = 1, #NATIVE_BARS do
+        local f = not NATIVE_NO_MOUSE[NATIVE_BARS[i]] and NativeFrame(NATIVE_BARS[i])
         if f then
             apply(f)
             local n = f.GetNumChildren and f:GetNumChildren() or 0
@@ -1636,7 +1759,7 @@ CreateOptionsPanel = function()
     resetBtn:SetText(L.OPT_RESETPOS)
     resetBtn:SetScript("OnClick", function()
         db.posX = 0 ; db.posY = -120 ; db.anchor = "TOP"
-        db.centerMode = nil
+        db.centerMode, db.centerRepReserve = nil, nil
         containerFrame:ClearAllPoints()
         containerFrame:SetPoint("TOP", UIParent, "TOP", 0, -120)
         SavePosition()
@@ -1776,10 +1899,17 @@ evFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 evFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 -- Mode reputation au niveau max (lot 3) : ignores hors de ce mode.
 evFrame:RegisterEvent("UPDATE_FACTION")
-evFrame:RegisterEvent("MAJOR_FACTION_RENOWN_LEVEL_CHANGED")
+-- Classic / Forever : un evenement inconnu du client leve une erreur a
+-- l'inscription (Renom absent avant Dragonflight, vehicules absents de
+-- Classic Era). Inscription sous pcall, l'evenement est simplement ignore.
+pcall(evFrame.RegisterEvent, evFrame, "MAJOR_FACTION_RENOWN_LEVEL_CHANGED")
 -- Filtre au niveau du client : seuls les vehicules du joueur nous reveillent.
-evFrame:RegisterUnitEvent("UNIT_ENTERED_VEHICLE", "player")
-evFrame:RegisterUnitEvent("UNIT_EXITED_VEHICLE", "player")
+if not pcall(evFrame.RegisterUnitEvent, evFrame, "UNIT_ENTERED_VEHICLE", "player") then
+    pcall(evFrame.RegisterEvent, evFrame, "UNIT_ENTERED_VEHICLE")
+end
+if not pcall(evFrame.RegisterUnitEvent, evFrame, "UNIT_EXITED_VEHICLE", "player") then
+    pcall(evFrame.RegisterEvent, evFrame, "UNIT_EXITED_VEHICLE")
+end
 
 evFrame:SetScript("OnEvent", function(self, event, arg1, arg2)
     if event == "ADDON_LOADED" and arg1 and string.lower(arg1) == string.lower(ADDON) then
@@ -1801,7 +1931,8 @@ evFrame:SetScript("OnEvent", function(self, event, arg1, arg2)
         UpdateBar()
         -- En mode suite, c'est le core qui annonce la suite : pas de ligne par module.
         if not HasCore() then
-            local ver = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ADDON, "Version") or ""
+            local getMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+            local ver = getMeta and getMeta(ADDON, "Version") or ""
             print("|cFFBC38FAXPBar|r v" .. ver .. " " .. L.LOGIN_LOADED .. " |cFFFFD700/xpbar|r " .. L.LOGIN_TO_OPEN)
         end
 
@@ -2085,7 +2216,7 @@ local function BuildMidnightOptions()
             function(v)
                 if not db then return end
                 db.centerMode = v and mode or nil
-                if v then CenterFrame(mode) end
+                if v then CenterFrame(mode, true) end
                 P:Refresh()   -- decoche l'autre case
             end,
             L.OPT_CENTER_TT)
@@ -2106,7 +2237,7 @@ local function BuildMidnightOptions()
     P:Button(L.OPT_RESETPOS, function()
         if not (db and containerFrame) then return end
         db.posX, db.posY, db.anchor = DEFAULTS.posX, DEFAULTS.posY, DEFAULTS.anchor
-        db.centerMode = nil
+        db.centerMode, db.centerRepReserve = nil, nil
         P:Refresh()
         containerFrame:ClearAllPoints()
         containerFrame:SetPoint(db.anchor, UIParent, db.anchor, db.posX, db.posY)
@@ -2146,6 +2277,8 @@ local tibiEv = CreateFrame("Frame")
 tibiEv:RegisterEvent("PLAYER_LOGIN")
 tibiEv:SetScript("OnEvent", function()
     C_Timer.After(1.0, XPBar_Decorate)
+    -- RepBar charge (ou retire) depuis la derniere session : on recale.
+    C_Timer.After(1.5, XPBar_UpdateRepReserve)
 end)
 
 -- API publique minimale pour la suite (lecture seule). LvlHistory y lit

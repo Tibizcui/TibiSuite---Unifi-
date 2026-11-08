@@ -157,7 +157,7 @@ end
 do local _u = GetUI(); if _u and _u.RegisterSearch then _u.RegisterSearch(KEY, T("MODULE_LABEL", "Lvl Hist"), provider) end end
 
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_LOGIN")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
 ev:SetScript("OnEvent", function()
   local ui = GetUI()
   if ui and ui.RegisterSearch then ui.RegisterSearch(KEY, T("MODULE_LABEL", "Lvl Hist"), provider) end

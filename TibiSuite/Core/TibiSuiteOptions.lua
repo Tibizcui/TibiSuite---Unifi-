@@ -329,6 +329,8 @@ L.WN_58_0  = L.WN_58_0  or "Correction d'affichage : « Tout fermer » et la fer
 L.WN_59_0  = L.WN_59_0  or "XPBar et RepBar : nouvelle case « Centrer en bas / en haut de l'écran » dans les options (section Position). La barre se place au milieu de l'écran ; seule sa hauteur reste réglable."
 L.WN_59_1  = L.WN_59_1  or "LvlHistory : nouvel onglet Raids (runs par difficulté, boss tués, raid favori) et temps passé en instance pour les donjons et les raids, avec total, moyenne par run et run le plus rapide."
 L.WN_59_2  = L.WN_59_2  or "Dashboard : les raids et le temps en instance de LvlHistory apparaissent dans la carte Leveling (site et Tibi Companion), via l'export de Stats."
+L.WN_61_0  = L.WN_61_0  or "Nouveau : TibiSuite, XPBar, RepBar, Stats, MiniHub, Opacity, Standby, SkillTracker, LvlHistory et RenTracker se chargent aussi sur WoW Forever et sur toutes les versions Classic (Classic Era, TBC, Wrath, Cataclysm, Mists). Une seule installation, le jeu choisit le bon fichier."
+L.WN_61_1  = L.WN_61_1  or "Sur Classic et Forever, SkillTracker lit les métiers dans la liste des compétences et RenTracker ne propose que les extensions du jeu en cours. XPBar et RepBar se centrent au-dessus des barres d'action natives."
 L.WN_60_0  = L.WN_60_0  or "Corrections d'interface et correctif de développement. WeeklyCompass reconnaît désormais les Vénithes ascendantes par leur identifiant."
 L.WN_56_6  = L.WN_56_6  or "L'overlay de pêche et de récolte affiche le temps cumulé du métier, toutes sessions confondues."
 L.WN_55_0  = L.WN_55_0  or "Métiers : la récolte rejoint la pêche. Le Dépeçage est suivi (cuirs, peaux et écailles ramassés sur une créature), avec son propre temps de farm. La Récolte gagne les onglets Lieux (ce que donne chaque zone) et Zones (tes habitudes). L'overlay suit aussi ta récolte, avec le métier en titre. Les sessions sont maintenant propres à chaque personnage : changer de personnage ne mélange plus les récoltes."
@@ -430,6 +432,10 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.4.0"] = {
+    { key = "Suite", title = "TibiSuite", text = L.WN_61_0, new = true },
+    { key = "Skill", title = "SkillTracker / RenTracker", text = L.WN_61_1, new = true },
+  },
   ["7.3.4"] = {
     { key = "Suite", title = "TibiSuite", text = L.WN_60_0, new = false },
   },

@@ -484,9 +484,9 @@ local ALERT_TEXT = {
 
 local ev = CreateFrame("Frame")
 SB.eventFrame = ev
-ev:RegisterEvent("ADDON_LOADED")
-ev:RegisterEvent("PLAYER_LOGIN")
-ev:RegisterEvent("PLAYER_LOGOUT")
+pcall(ev.RegisterEvent, ev, "ADDON_LOADED")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGOUT")
 
 local function RegisterRuntime()
   for _, e in ipairs({

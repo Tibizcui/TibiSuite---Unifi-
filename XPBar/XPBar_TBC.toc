@@ -1,0 +1,49 @@
+## Interface: 20506, 20505
+## Title: XPBar
+## Title-frFR: XPBar
+## Notes: Barre XP avancée - Niveau, XP, Repos, Quêtes, Stats de session
+## Author: Tibizcui - Kirin Tor
+## Version: 7.4.0
+## X-Curse-Project-ID: 1585015
+# MULTI-VERSIONS : ce fichier sert Midnight (12xxxx) et WoW Forever (16001,
+# meme API que Mainline, numero releve sur le client Forever et dans
+# EllesmereUI). Classic a ses propres .toc, MEME CONTENU, seule la ligne
+# Interface change : XPBar_Vanilla.toc (Classic Era), XPBar_TBC.toc (TBC
+# Anniversary), XPBar_Wrath.toc (Wrath, Titan Reforged), XPBar_Cata.toc
+# (Cataclysm Classic), XPBar_Mists.toc (Mists Classic). Le client prend le .toc a
+# son suffixe avant celui-ci. Toute modification de la liste des fichiers
+# ci-dessous est a reporter dans les 5 autres. Le code choisit ses API par
+# detection (fonction presente ou non), jamais par numero de version.
+# Sur Classic et Forever, le core TibiSuite ne se charge pas : XPBar y
+# tourne en autonome (son propre bouton minimap).
+# MODE DOUBLE (standalone ou integre) : pas de LoadOnDemand (ce module doit
+# pouvoir se charger seul, sans le core) ; dependance SOUPLE sur TibiSuite.
+# Voir XPBar_Module.lua pour la detection a l'execution (HasCore()).
+## OptionalDeps: TibiSuite
+## Group: TibiSuite
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+## X-Website: https://www.tibiscui.fr
+## SavedVariables: XPBarDB
+## IconTexture: Interface\AddOns\XPBar\medias\TibiSuiteIcon
+
+# Copie embarquee du socle (no-op si le core en charge deja une version
+# egale ou superieure)
+Core\TibiSuiteUI.lua
+
+# Localisation : FR par defaut (en dur dans XPBar.lua). enUS sert de base a
+# tout client non francais, puis la langue du client surcharge. Ces fichiers
+# doivent rester AVANT XPBar.lua.
+Locale\enUS.lua
+Locale\deDE.lua
+Locale\esES.lua
+Locale\itIT.lua
+Locale\ptBR.lua
+Locale\ruRU.lua
+Locale\zhCN.lua
+Locale\zhTW.lua
+Locale\koKR.lua
+
+XPBar.lua
+XPBar_Module.lua

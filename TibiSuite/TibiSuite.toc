@@ -1,11 +1,17 @@
-## Interface: 120105, 120100, 120007
+## Interface: 120105, 120100, 120007, 16001
 ## Title: TibiSuite
 ## Title-frFR: TibiSuite
 ## Notes: Coeur de la suite Tibiscui. Charge le socle une seule fois, un seul bouton minimap, barre d'onglets unifiee, et chargement a la demande des modules coches.
 ## Notes-frFR: Coeur de la suite Tibiscui. Socle charge une seule fois, un seul bouton minimap, barre d'onglets unifiee, chargement a la demande (LoadOnDemand) des modules coches.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.3.4
+## Version: 7.4.0
 ## X-Curse-Project-ID: 1550823
+# MULTI-VERSIONS (comme XPBar, RepBar, Stats) : ce fichier sert Midnight et
+# WoW Forever (16001). Classic a ses propres .toc, MEME CONTENU, seule la
+# ligne Interface change : TibiSuite_Vanilla.toc, TibiSuite_TBC.toc, TibiSuite_Wrath.toc,
+# TibiSuite_Cata.toc, TibiSuite_Mists.toc. Toute modification de la liste des fichiers
+# est a reporter dans les 6. Le code choisit ses API par presence de la
+# fonction, jamais par numero de version.
 
 ## IconTexture: Interface\AddOns\TibiSuite\medias\TibiSuite
 

@@ -441,8 +441,8 @@ local function Build()
   f.replan:SetScript("OnClick", Replan)
 
   -- En combat : la fenetre s'efface, elle revient apres.
-  f:RegisterEvent("PLAYER_REGEN_DISABLED")
-  f:RegisterEvent("PLAYER_REGEN_ENABLED")
+  pcall(f.RegisterEvent, f, "PLAYER_REGEN_DISABLED")
+  pcall(f.RegisterEvent, f, "PLAYER_REGEN_ENABLED")
   f:SetScript("OnEvent", function(s, ev)
     if ev == "PLAYER_REGEN_DISABLED" then s:SetAlpha(0.25)
     else s:SetAlpha(1) end
@@ -522,7 +522,7 @@ end
 -- Reprise apres /reload ou reconnexion : la session en cours continue si
 -- son temps n'est pas depasse de plus de 10 min, sinon elle est close.
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_LOGIN")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
 ev:SetScript("OnEvent", function()
   local s = TibiSuite.GetSession()
   if not s then return end

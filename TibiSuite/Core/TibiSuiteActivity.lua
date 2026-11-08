@@ -238,11 +238,11 @@ local function ScanStatus()
 end
 
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_LOGIN")
-ev:RegisterEvent("PLAYER_REGEN_ENABLED")
-ev:RegisterEvent("UPDATE_PENDING_MAIL")
-ev:RegisterEvent("PLAYER_LEVEL_UP")
-ev:RegisterEvent("MAJOR_FACTION_RENOWN_LEVEL_CHANGED")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_ENABLED")
+pcall(ev.RegisterEvent, ev, "UPDATE_PENDING_MAIL")
+pcall(ev.RegisterEvent, ev, "PLAYER_LEVEL_UP")
+pcall(ev.RegisterEvent, ev, "MAJOR_FACTION_RENOWN_LEVEL_CHANGED")
 local hadMail
 ev:SetScript("OnEvent", function(_, event, a1, a2)
   if event == "PLAYER_LOGIN" then

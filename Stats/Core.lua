@@ -2227,26 +2227,42 @@ SX.externalEnrichHooks = SX.externalEnrichHooks or {}
 -- CADRE D'EVENEMENTS
 -- ============================================================================
 local evFrame = CreateFrame("Frame")
-evFrame:RegisterEvent("ADDON_LOADED")
-evFrame:RegisterEvent("PLAYER_LOGIN")
-evFrame:RegisterEvent("PLAYER_MONEY")
-evFrame:RegisterEvent("QUEST_TURNED_IN")
-evFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
-evFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-evFrame:RegisterEvent("ENCOUNTER_END")
-evFrame:RegisterEvent("PLAYER_LOGOUT")
-evFrame:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")
-evFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
-evFrame:RegisterEvent("PLAYER_LEVEL_UP")
-evFrame:RegisterEvent("PVP_MATCH_COMPLETE")
-evFrame:RegisterEvent("ACHIEVEMENT_EARNED")
-evFrame:RegisterEvent("SCENARIO_COMPLETED")
-evFrame:RegisterEvent("PLAYER_DEAD")
-evFrame:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED")
-evFrame:RegisterEvent("UPDATE_FACTION")
-evFrame:RegisterEvent("PLAYER_PVP_KILLS_CHANGED")
-evFrame:RegisterEvent("SKILL_LINES_CHANGED")
-evFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
+-- Inscriptions sous pcall (ici et dans tout le module) : Classic n'a ni
+-- Mythique+, ni specialisations (avant Mists), ni hauts faits (avant Wrath),
+-- ni fin de match JcJ ; un evenement inconnu du client leve une erreur et
+-- arreterait le chargement. Il est simplement ignore.
+pcall(evFrame.RegisterEvent, evFrame, "ADDON_LOADED")
+pcall(evFrame.RegisterEvent, evFrame, "PLAYER_LOGIN")
+pcall(evFrame.RegisterEvent, evFrame, "PLAYER_MONEY")
+pcall(evFrame.RegisterEvent, evFrame, "QUEST_TURNED_IN")
+pcall(evFrame.RegisterEvent, evFrame, "CHALLENGE_MODE_COMPLETED")
+pcall(evFrame.RegisterEvent, evFrame, "PLAYER_ENTERING_WORLD")
+pcall(evFrame.RegisterEvent, evFrame, "ENCOUNTER_END")
+pcall(evFrame.RegisterEvent, evFrame, "PLAYER_LOGOUT")
+pcall(evFrame.RegisterEvent, evFrame, "PLAYER_SPECIALIZATION_CHANGED")
+pcall(evFrame.RegisterEvent, evFrame, "PLAYER_EQUIPMENT_CHANGED")
+pcall(evFrame.RegisterEvent, evFrame, "PLAYER_LEVEL_UP")
+pcall(evFrame.RegisterEvent, evFrame, "PVP_MATCH_COMPLETE")
+pcall(evFrame.RegisterEvent, evFrame, "ACHIEVEMENT_EARNED")
+pcall(evFrame.RegisterEvent, evFrame, "SCENARIO_COMPLETED")
+pcall(evFrame.RegisterEvent, evFrame, "PLAYER_DEAD")
+-- WoW Forever (moteur 12.1, contenu Vanilla) INTERDIT l'inscription au
+-- journal de combat : ADDON_ACTION_FORBIDDEN « UNKNOWN() » et fenetre « Stats
+-- a ete bloque », releve par la sonde de Constants.lua le 2026-11-08 (pile :
+-- cette ligne). Ce n'est pas une erreur Lua : le pcall ne l'arrete pas.
+-- Aucune API ne dit a l'avance que l'inscription sera refusee, d'ou la seule
+-- detection par numero de version du module (meme plage qu'EllesmereUI :
+-- Forever rapporte 16001, Classic 115xx a 505xx, Retail 12xxxx). Sur Forever,
+-- seul le decompte des morts infligees par des joueurs (JcJ) est perdu.
+local IFACE = select(4, GetBuildInfo())
+SX.IS_FOREVER = type(IFACE) == "number" and IFACE >= 16000 and IFACE < 20000
+if not SX.IS_FOREVER then
+  pcall(evFrame.RegisterEvent, evFrame, "COMBAT_LOG_EVENT_UNFILTERED")
+end
+pcall(evFrame.RegisterEvent, evFrame, "UPDATE_FACTION")
+pcall(evFrame.RegisterEvent, evFrame, "PLAYER_PVP_KILLS_CHANGED")
+pcall(evFrame.RegisterEvent, evFrame, "SKILL_LINES_CHANGED")
+pcall(evFrame.RegisterEvent, evFrame, "ZONE_CHANGED_NEW_AREA")
 
 evFrame:SetScript("OnEvent", function(_, event, ...)
   if event == "ADDON_LOADED" then
@@ -2728,9 +2744,9 @@ local function QueueRefresh()
 end
 
 local achEv = CreateFrame("Frame")
-achEv:RegisterEvent("ACHIEVEMENT_EARNED")
-achEv:RegisterEvent("CRITERIA_UPDATE")
-achEv:RegisterEvent("PLAYER_ENTERING_WORLD")
+pcall(achEv.RegisterEvent, achEv, "ACHIEVEMENT_EARNED")
+pcall(achEv.RegisterEvent, achEv, "CRITERIA_UPDATE")
+pcall(achEv.RegisterEvent, achEv, "PLAYER_ENTERING_WORLD")
 achEv:SetScript("OnEvent", function(_, event, id)
   -- Parcours lance 30 s apres le chargement (une fois), seulement quand le
   -- Conseiller de TibiSuite est actif : sinon la premiere demande (/ts
@@ -3067,8 +3083,8 @@ end
 SX.SessionTick = SessionTick
 
 local sessionFrame = CreateFrame("Frame")
-sessionFrame:RegisterEvent("PLAYER_LOGIN")
-sessionFrame:RegisterEvent("PLAYER_LOGOUT")
+pcall(sessionFrame.RegisterEvent, sessionFrame, "PLAYER_LOGIN")
+pcall(sessionFrame.RegisterEvent, sessionFrame, "PLAYER_LOGOUT")
 sessionFrame:SetScript("OnEvent", function(_, event)
   if event == "PLAYER_LOGOUT" then pcall(SessionTick, true); return end
   C_Timer.After(3, function()

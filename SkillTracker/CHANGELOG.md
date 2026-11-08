@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.4.0
+- Nouveau : SkillTracker se charge aussi sur WoW Forever et sur les versions Classic (Classic Era, TBC Anniversary, Wrath, Cataclysm Classic, Mists Classic). En Classic Era, TBC, Wrath et sur Forever, les niveaux de métier sont lus dans la liste des compétences du personnage (un palier par métier) ; récolte, pêche, valeur des sacs et prix fonctionnent.
+- Correction : « Tout est au max » ne s'affiche plus pour un personnage sans aucun métier.
+
 ## 7.3.4
 - Fix bugs UI and fix bug dev
 

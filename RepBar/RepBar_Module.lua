@@ -83,10 +83,14 @@ local function BuildStandaloneMinimapButton()
   icon:SetPoint("CENTER", 0, 1)
   icon:SetTexture("Interface\\AddOns\\RepBar\\medias\\Logo")
 
-  RepBarDB = RepBarDB or {}
-  RepBarDB.minimapAngle = RepBarDB.minimapAngle or 200
+  -- Angle propre a chaque addon (XPBar 200, RepBar 225, Stats 175) : avant,
+  -- XPBar et RepBar partageaient 200 et leurs boutons se superposaient. Tant
+  -- que le joueur n'a pas deplace le bouton (minimapMoved), l'angle par
+  -- defaut s'applique, ce qui separe aussi les anciennes sauvegardes.
   local function UpdatePosition()
-    local angle = math.rad(RepBarDB.minimapAngle)
+    RepBarDB = RepBarDB or {}
+    if not RepBarDB.minimapMoved then RepBarDB.minimapAngle = 225 end
+    local angle = math.rad(RepBarDB.minimapAngle or 225)
     local radius = 105
     btn:ClearAllPoints()
     btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
@@ -101,6 +105,7 @@ local function BuildStandaloneMinimapButton()
     local scale = Minimap:GetEffectiveScale()
     cx, cy = cx / scale, cy / scale
     RepBarDB.minimapAngle = math.deg(math.atan2(cy - my, cx - mx))
+    RepBarDB.minimapMoved = true
     UpdatePosition()
   end)
 
@@ -149,7 +154,15 @@ if HasCore() and IsEnabledByCore() then
     end,
   })
 elseif not HasCore() then
-  BuildStandaloneMinimapButton()
+  -- Construit a la connexion : a la lecture de ce fichier, RepBarDB n'est pas
+  -- encore chargee (la position deplacee n'etait jamais restauree).
+  if IsLoggedIn and IsLoggedIn() then
+    BuildStandaloneMinimapButton()
+  else
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("PLAYER_LOGIN")
+    f:SetScript("OnEvent", function(self) self:UnregisterAllEvents(); BuildStandaloneMinimapButton() end)
+  end
 end
 
 -- La barre RepBarContainer est construite par RepBar.lua sur son ADDON_LOADED,

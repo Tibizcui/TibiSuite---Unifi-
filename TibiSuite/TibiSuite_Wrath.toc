@@ -1,0 +1,56 @@
+## Interface: 38002, 30405
+## Title: TibiSuite
+## Title-frFR: TibiSuite
+## Notes: Coeur de la suite Tibiscui. Charge le socle une seule fois, un seul bouton minimap, barre d'onglets unifiee, et chargement a la demande des modules coches.
+## Notes-frFR: Coeur de la suite Tibiscui. Socle charge une seule fois, un seul bouton minimap, barre d'onglets unifiee, chargement a la demande (LoadOnDemand) des modules coches.
+## Author: Tibizcui - Kirin Tor
+## Version: 7.4.0
+## X-Curse-Project-ID: 1550823
+# MULTI-VERSIONS (comme XPBar, RepBar, Stats) : ce fichier sert Midnight et
+# WoW Forever (16001). Classic a ses propres .toc, MEME CONTENU, seule la
+# ligne Interface change : TibiSuite_Vanilla.toc, TibiSuite_TBC.toc, TibiSuite_Wrath.toc,
+# TibiSuite_Cata.toc, TibiSuite_Mists.toc. Toute modification de la liste des fichiers
+# est a reporter dans les 6. Le code choisit ses API par presence de la
+# fonction, jamais par numero de version.
+
+## IconTexture: Interface\AddOns\TibiSuite\medias\TibiSuite
+
+# Le core ne declare QUE sa propre base. Chaque module garde sa propre
+# SavedVariables dans son .toc (RenTrackerDB, SkillTrackerDB, etc.) : aucune
+# progression n'est deplacee ni fusionnee, donc aucune perte de donnees.
+## SavedVariables: TibiSuiteDB
+## SavedVariablesPerCharacter: TibiSuiteCharDB
+
+## AddonCompartmentFunc: TibiSuite_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: TibiSuite_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: TibiSuite_OnAddonCompartmentLeave
+
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+## X-Website: https://www.tibiscui.fr
+## X-Curse: https://www.curseforge.com/wow/addons/tibisuite
+## X-Discord: https://discord.gg/tibiscui
+
+# Ordre de chargement : le socle d'abord (il expose _G.TibiMidnight), PUIS
+# la localisation FR (par defaut, en dur dans le code) / EN - AVANT le coeur,
+# car TibiSuiteCore.lua construit certains libelles d'onglet (table MODULES)
+# une seule fois, de facon synchrone, des son execution - puis le coeur
+# (barre + minimap + chargement conditionnel), puis le panneau des cases a
+# cocher.
+Core\TibiSuiteUI.lua
+Locale\enUS.lua
+Core\TibiSuiteCore.lua
+Core\TibiSuiteOptions.lua
+Core\TibiSuiteActivity.lua
+Core\TibiSuiteWidgets.lua
+Core\TibiSuiteComfort.lua
+Core\TibiSuitePalette.lua
+Core\TibiSuiteCentre.lua
+Core\TibiSuiteAdvisor.lua
+Core\TibiSuitePlanner.lua
+Core\TibiSuiteWorth.lua
+Core\TibiSuiteRecap.lua
+Core\TibiSuiteTour.lua
+Core\TibiSuiteGroupProbe.lua
+Core\TibiSuiteGroup.lua

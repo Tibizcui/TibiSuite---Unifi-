@@ -177,10 +177,12 @@ local function BuildInstanceIndex()
   local idx = {}
   if not (EJ_GetNumTiers and EJ_SelectTier and EJ_GetInstanceByIndex and EJ_GetTierInfo) then return idx end
   local okN, n = pcall(EJ_GetNumTiers)
-  if (not okN or not n or n == 0) and C_AddOns and C_AddOns.LoadAddOn then
-    pcall(C_AddOns.LoadAddOn, "Blizzard_EncounterJournal")
-    okN, n = pcall(EJ_GetNumTiers)
-  end
+  -- Plus de LoadAddOn("Blizzard_EncounterJournal") ici : charge depuis notre
+  -- code, le journal s'execute dans un contexte contamine et WoW bloque Stats
+  -- (« action reservee a l'IU de Blizzard », constate sur WoW Forever le
+  -- 2026-11-08, sauvegarde neuve => premier rattrapage 20 s apres connexion).
+  -- Journal pas encore charge : on saute l'index des instances (le reste du
+  -- rattrapage tourne, et une correction manuelle reste possible).
   if not okN or not n or n == 0 then return idx end
   -- Ne jamais changer le palier sous les yeux du joueur.
   if _G.EncounterJournal and _G.EncounterJournal:IsShown() then return idx end
@@ -400,7 +402,7 @@ end)
 -- Premier passage automatique, une seule fois par version de l'algorithme,
 -- 20 s apres la connexion (laisse le jeu finir de charger ses donnees).
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("PLAYER_LOGIN")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
 ev:SetScript("OnEvent", function()
   C_Timer.After(20, function()
     if type(StatsDB) == "table" and StatsDB.expBackfill ~= SX.EXP_BACKFILL_VERSION then

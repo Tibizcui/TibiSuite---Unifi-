@@ -1013,7 +1013,22 @@ local function renderTodo(allChars)
   end
 
   if #todo == 0 then
-    placeNote("|cFF66FF98" .. L.TODO_NONE .. "|r", 8)
+    -- « Tout est au max » seulement si au moins un palier existe : sans
+    -- aucun metier (perso neuf, Classic avant la 1re lecture), on le dit.
+    local anyLine = false
+    for _, c in ipairs(allChars or {}) do
+      if sel[c.key] and type(c.rec) == "table" then
+        for _, p in pairs(c.rec.professions or {}) do
+          if type(p) == "table" and next(p.lines or {}) then anyLine = true break end
+        end
+      end
+      if anyLine then break end
+    end
+    if anyLine then
+      placeNote("|cFF66FF98" .. L.TODO_NONE .. "|r", 8)
+    else
+      placeNote("|cFFAAAAAA" .. L.NO_PROFESSIONS .. "|r", 8)
+    end
     return
   end
   local nShown = 0; for _ in pairs(sel) do nShown = nShown + 1 end

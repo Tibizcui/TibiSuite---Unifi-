@@ -138,7 +138,7 @@ function L.Start(resume)
     end
 
     levelingFrame = levelingFrame or CreateFrame("Frame", "LvlHistoryLevelingFrame", UIParent)
-    levelingFrame:RegisterEvent("PLAYER_XP_UPDATE")
+    pcall(levelingFrame.RegisterEvent, levelingFrame, "PLAYER_XP_UPDATE")
     levelingFrame:SetScript("OnEvent", function() OnXPUpdate() end)
 
     LvlHistory.Utils.Log("Mode LEVELING démarré")

@@ -177,9 +177,70 @@ end
 -- l'ouverture d'une fenetre de metier : on fusionne quand il est la et on
 -- conserve le cache sinon (jamais de perte de donnees).
 -- ================================================================
+-- Repli Classic / Forever (pas de GetProfessions avant Cataclysm) : la
+-- liste des competences du personnage (GetSkillLineInfo). Metier principal =
+-- competence abandonnable ; secondaires = Cuisine, Peche, Secourisme reconnus
+-- par le nom de leur sort. L'identifiant est le skillLine officiel quand le
+-- nom est reconnu, sinon un identifiant stable tire du nom (>= 900000). Un
+-- palier unique par metier, rattache a l'extension du client (fixedIdx).
+local LEGACY_PROFS = {
+  -- skillLine = sort dont le nom est celui du metier
+  [171] = 2259,  [164] = 2018,  [333] = 7411,  [202] = 4036,
+  [165] = 2108,  [197] = 3908,  [186] = 2575,  [393] = 8613,
+  [755] = 25229, [773] = 45357, [182] = 2366,
+  [185] = 2550,  [356] = 7620,  [129] = 3273,
+}
+local LEGACY_SECONDARY = { [185] = true, [356] = true, [129] = true }
+local legacyNames
+local function SpellName(id)
+  if C_Spell and C_Spell.GetSpellName then
+    local ok, n = pcall(C_Spell.GetSpellName, id)
+    if ok and type(n) == "string" then return n end
+  end
+  if GetSpellInfo then
+    local ok, n = pcall(GetSpellInfo, id)
+    if ok and type(n) == "string" then return n end
+  end
+end
+local function LegacyIdFor(name)
+  if not legacyNames then
+    legacyNames = {}
+    for sl, spell in pairs(LEGACY_PROFS) do
+      local n = SpellName(spell)
+      if n then legacyNames[n:lower()] = sl end
+    end
+  end
+  local sl = legacyNames[name:lower()]
+  if sl then return sl end
+  local h = 0
+  for i = 1, #name do h = (h * 31 + name:byte(i)) % 99991 end
+  return 900000 + h
+end
+ST.LEGACY_SECONDARY = LEGACY_SECONDARY
+
+local function GatherLegacyProfessions(known)
+  if type(GetNumSkillLines) ~= "function" or type(GetSkillLineInfo) ~= "function" then return end
+  local ok, n = pcall(GetNumSkillLines)
+  if not ok or type(n) ~= "number" then return end
+  for i = 1, n do
+    local ok2, name, isHeader, _, rank, _, _, maxRank, abandonable = pcall(GetSkillLineInfo, i)
+    if ok2 and type(name) == "string" and name ~= "" and not isHeader then
+      local id = LegacyIdFor(name)
+      local secondary = LEGACY_SECONDARY[id]
+      if abandonable or secondary then
+        known[id] = { name = name, cur = rank or 0, max = maxRank or 0,
+                      isPrimary = (not secondary) and true or false, legacy = true }
+      end
+    end
+  end
+end
+
 local function GatherKnownProfessions()
   local known, arch = {}, nil
-  if type(GetProfessions) ~= "function" then return known, arch end
+  if type(GetProfessions) ~= "function" then
+    GatherLegacyProfessions(known)
+    return known, arch
+  end
   local p1, p2, archIdx, fishIdx, cookIdx = GetProfessions()
 
   local function readInto(idx, isPrimary)
@@ -199,6 +260,8 @@ local function GatherKnownProfessions()
     local name, _, cur, max = GetProfessionInfo(archIdx)
     if name then arch = { name = name, cur = cur or 0, max = max or 0 } end
   end
+  -- Forever : GetProfessions peut exister sans rien renvoyer.
+  if next(known) == nil then GatherLegacyProfessions(known) end
   return known, arch
 end
 
@@ -438,6 +501,14 @@ function ST.ScanProfessions()
       p.parent    = parent
       p.isPrimary = kinfo.isPrimary and true or false
       p.base      = { cur = kinfo.cur or 0, max = kinfo.max or 0 }
+      if kinfo.legacy and (kinfo.max or 0) > 0 then
+        -- Classic / Forever : un seul palier, celui de l'extension du client.
+        local ln = p.lines[parent] or {}
+        ln.cur, ln.max = kinfo.cur or 0, kinfo.max
+        ln.fixedIdx = ST.CurrentExpIndex()
+        ln.exp = ln.exp or ST.ExpansionNameByIndex(ln.fixedIdx)
+        p.lines[parent] = ln
+      end
     end
   end
 
@@ -1210,19 +1281,19 @@ local function OnLogin()
 end
 
 local ev = CreateFrame("Frame")
-ev:RegisterEvent("ADDON_LOADED")
-ev:RegisterEvent("PLAYER_LOGIN")
-ev:RegisterEvent("PLAYER_ENTERING_WORLD")
-ev:RegisterEvent("TRADE_SKILL_SHOW")
-ev:RegisterEvent("TRADE_SKILL_LIST_UPDATE")
-ev:RegisterEvent("SKILL_LINES_CHANGED")
-ev:RegisterEvent("CHAT_MSG_SKILL")
-ev:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
-ev:RegisterEvent("TRAIT_CONFIG_UPDATED")
-ev:RegisterEvent("QUEST_TURNED_IN")
-ev:RegisterEvent("QUEST_DATA_LOAD_RESULT")
-ev:RegisterEvent("TRADE_SKILL_CLOSE")
-ev:RegisterEvent("NEW_RECIPE_LEARNED")
+pcall(ev.RegisterEvent, ev, "ADDON_LOADED")
+pcall(ev.RegisterEvent, ev, "PLAYER_LOGIN")
+pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
+pcall(ev.RegisterEvent, ev, "TRADE_SKILL_SHOW")
+pcall(ev.RegisterEvent, ev, "TRADE_SKILL_LIST_UPDATE")
+pcall(ev.RegisterEvent, ev, "SKILL_LINES_CHANGED")
+pcall(ev.RegisterEvent, ev, "CHAT_MSG_SKILL")
+pcall(ev.RegisterEvent, ev, "CURRENCY_DISPLAY_UPDATE")
+pcall(ev.RegisterEvent, ev, "TRAIT_CONFIG_UPDATED")
+pcall(ev.RegisterEvent, ev, "QUEST_TURNED_IN")
+pcall(ev.RegisterEvent, ev, "QUEST_DATA_LOAD_RESULT")
+pcall(ev.RegisterEvent, ev, "TRADE_SKILL_CLOSE")
+pcall(ev.RegisterEvent, ev, "NEW_RECIPE_LEARNED")
 
 ev:SetScript("OnEvent", function(_, event, arg1, arg2)
   if event == "ADDON_LOADED" then

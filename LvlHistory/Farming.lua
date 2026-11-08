@@ -142,8 +142,8 @@ function F.StartRep()
         end)
     end
     repFrame = repFrame or CreateFrame("Frame", "LvlHistoryRepFrame", UIParent)
-    repFrame:RegisterEvent("UPDATE_FACTION")
-    repFrame:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
+    pcall(repFrame.RegisterEvent, repFrame, "UPDATE_FACTION")
+    pcall(repFrame.RegisterEvent, repFrame, "CURRENCY_DISPLAY_UPDATE")
     repFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "UPDATE_FACTION" then QueueRepScan()
         else OnCurrencyUpdate(...) end
@@ -166,7 +166,7 @@ function F.Start(resume)
     end
 
     farmingFrame = farmingFrame or CreateFrame("Frame", "LvlHistoryFarmingFrame", UIParent)
-    farmingFrame:RegisterEvent("PLAYER_MONEY")
+    pcall(farmingFrame.RegisterEvent, farmingFrame, "PLAYER_MONEY")
     farmingFrame:SetScript("OnEvent", function() OnMoneyUpdate() end)
 
     LvlHistory.Utils.Log("Mode FARMING démarré")

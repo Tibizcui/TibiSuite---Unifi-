@@ -66,7 +66,7 @@ end
 -- ─────────────────────────────────────────────
 --[[
 local f = CreateFrame("Frame")
-f:RegisterEvent("ADDON_LOADED")
+pcall(f.RegisterEvent, f, "ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, addonName)
     if addonName == "LvlHistory" then
         LvlHistory.Bridge.Register("onRepGain", "RenTracker", function(faction, gained, perHour)
@@ -83,7 +83,7 @@ end)
 -- ─────────────────────────────────────────────
 --[[
 local f = CreateFrame("Frame")
-f:RegisterEvent("ADDON_LOADED")
+pcall(f.RegisterEvent, f, "ADDON_LOADED")
 f:SetScript("OnEvent", function(self, event, addonName)
     if addonName == "LvlHistory" then
         LvlHistory.Bridge.Register("onQuestTurnIn", "dailyTracker", function(questID, isDaily)

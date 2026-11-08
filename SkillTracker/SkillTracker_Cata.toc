@@ -1,0 +1,56 @@
+## Interface: 40402, 40401
+## Title: SkillTracker
+## Title-frFR: SkillTracker
+## Notes: Profession progress by expansion, concentration of all your characters and weekly knowledge. Module of the TibiSuite suite by Tibiscui.
+## Notes-frFR: Progression des métiers par extension, concentration de tous tes personnages et connaissances de la semaine. Module de la suite TibiSuite par Tibiscui.
+## Author: Tibizcui - Kirin Tor
+## Version: 7.4.0
+## X-Curse-Project-ID: 1651940
+# MULTI-VERSIONS (comme le core et XPBar) : ce fichier sert Midnight et
+# WoW Forever (16001). Classic a ses propres .toc, MEME CONTENU, seule la
+# ligne Interface change : SkillTracker_Vanilla.toc, SkillTracker_TBC.toc, SkillTracker_Wrath.toc,
+# SkillTracker_Cata.toc, SkillTracker_Mists.toc. Toute modification de la liste des
+# fichiers est a reporter dans les 6. Le code choisit ses API par presence
+# de la fonction, jamais par numero de version.
+## IconTexture: Interface\AddOns\SkillTracker\media\TibiSuiteIcon
+
+# ----------------------------------------------------------------
+# MODULE DE LA SUITE TibiSuite - MODE DOUBLE (standalone ou integre)
+# ----------------------------------------------------------------
+# Pas de LoadOnDemand : ce module doit pouvoir se charger seul, sans le
+# core, pour fonctionner en addon independant. Dependance SOUPLE sur
+# TibiSuite (OptionalDeps, fusionnee avec LibStub/LibDataBroker existants -
+# une seule directive OptionalDeps par .toc) : voir SkillTracker_Module.lua
+# pour la detection a l'execution (HasCore()).
+## OptionalDeps: TibiSuite
+## Group: TibiSuite
+
+# INTOUCHABLE : le nom de dossier reste "SkillTracker", donc WoW continue de
+# lire WTF\...\SavedVariables\SkillTracker.lua et de recharger SkillTrackerDB a
+# l'identique. Aucune migration, aucune perte de progression.
+## SavedVariables: SkillTrackerDB
+
+## Category: TibiSuite - Tracker
+## Category-frFR: TibiSuite - Tracker
+
+## X-Website: https://www.tibiscui.fr
+
+## X-Website: https://www.curseforge.com/wow/addons/tibisuite
+## X-Discord: https://discord.gg/tibiscui
+
+# Copie embarquee du socle (no-op si le core en charge deja une version
+# egale ou superieure)
+Core\TibiSuiteUI.lua
+
+Locales.lua
+Constants.lua
+Core.lua
+Concentration.lua
+Knowledge.lua
+Recipes.lua
+Gathering.lua
+Fishing.lua
+FishOverlay.lua
+UI.lua
+## Glue TibiSuite : inscription comme onglet du catalogue unifie
+SkillTracker_Module.lua

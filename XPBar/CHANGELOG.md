@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.4.0
+- Correction : en addon autonome, les boutons minimap d'XPBar et de RepBar ne se superposent plus (angles distincts) et retrouvent leur position après un /reload.
+- Nouveau : XPBar se charge aussi sur WoW Forever et sur les versions Classic (Classic Era, TBC Anniversary, Wrath, Cataclysm Classic, Mists Classic), en addon autonome.
+- Nouveau : XPBar centré en bas monte de la hauteur de RepBar quand celui-ci est collé dessous (« Coller sous XPBar »), pour que RepBar reste au-dessus des barres d'action au lieu de chevaucher XPBar. La barre évite aussi le micro-menu et les sacs.
+- Correction : « Centrer en bas / en haut de l'écran » pose maintenant la barre juste au-dessus des barres d'action natives (en bas) ou contre le bord (en haut). Avant, elle gardait sa hauteur et, déjà centrée par défaut, ne bougeait pas.
+
 ## 7.3.4
 - Fix bugs UI and fix bug dev
 

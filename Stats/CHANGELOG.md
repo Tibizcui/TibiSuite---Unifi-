@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.4.0
+- Correction : sur WoW Forever, Stats ne s’inscrit plus au journal de combat, que ce client interdit aux addons. C’était la cause du message « Stats a été bloqué à cause d’une action qui n’est utilisable que par l’IU de Blizzard ». Seul le décompte des morts infligées par d’autres joueurs est absent sur Forever.
+- Nouveau : Stats signale dans le chat toute action bloquée par le jeu, avec la ligne de code en cause (sonde de diagnostic, 10 dernières gardées dans la sauvegarde).
+- Correction : Stats ne charge plus lui-même le journal d’aventure de Blizzard lors de son premier rattrapage (sauvegarde neuve, 20 s après la connexion). Ce chargement provoquait le message « Stats a été bloqué à cause d’une action qui n’est utilisable que par l’IU de Blizzard » (constaté sur WoW Forever).
+- Nouveau : en addon autonome (Classic, Forever, ou sans le core TibiSuite), Stats a son propre bouton minimap : clic gauche pour la fenêtre, clic droit pour les options.
+- Nouveau : Stats se charge aussi sur WoW Forever et sur les versions Classic (Classic Era, TBC Anniversary, Wrath, Cataclysm Classic, Mists Classic), en addon autonome. Historique des sessions, temps de jeu, or, quêtes, niveaux, morts et donjons dans la fenêtre /stats ; ce que le jeu ne propose pas (Gouffres, Mythique+, Renom, hauts faits selon la version) reste vide. Pas encore relié au Dashboard.
+
 ## 7.3.4
 - Fix bugs UI and fix bug dev
 
