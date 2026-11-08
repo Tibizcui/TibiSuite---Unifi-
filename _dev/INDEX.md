@@ -65,7 +65,8 @@
 | 7.3.3 | 2026-11-07 | `5fe1c80` | LvlHistory raids et temps en instance, centrage XPBar/RepBar |
 | 7.3.4 | 2026-11-08 | `3a89460` | « Fix bugs UI and fix bug dev », Vénithes ascendantes par ID (site `571b85e`) |
 | 7.4.0 | 2026-11-08 | `2a89862` | Compatibilité WoW Forever et Classic (Era, TBC, Wrath, Cata, Mists) pour le core, XPBar, RepBar, Stats, MiniHub, Opacity, Standby, SkillTracker, LvlHistory, RenTracker ; les 6 autres alignés |
-| 7.4.1 | 2026-11-08 | (ce commit) | « Fix bug display », bouton Recharger sécurisé (/reload) dans le core |
+| 7.4.1 | 2026-11-08 | `63384c1` | « Fix bug display », bouton Recharger sécurisé (/reload) dans le core |
+| 7.4.2 | 2026-11-08 | (ce commit) | « Fix bug compatibilité », Quoi de neuf : compatibilité Forever et Classic en gros caractères |
 
 ## État par module (au 2026-11-08)
 

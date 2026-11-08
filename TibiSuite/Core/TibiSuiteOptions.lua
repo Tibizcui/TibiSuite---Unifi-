@@ -329,6 +329,8 @@ L.WN_58_0  = L.WN_58_0  or "Correction d'affichage : « Tout fermer » et la fer
 L.WN_59_0  = L.WN_59_0  or "XPBar et RepBar : nouvelle case « Centrer en bas / en haut de l'écran » dans les options (section Position). La barre se place au milieu de l'écran ; seule sa hauteur reste réglable."
 L.WN_59_1  = L.WN_59_1  or "LvlHistory : nouvel onglet Raids (runs par difficulté, boss tués, raid favori) et temps passé en instance pour les donjons et les raids, avec total, moyenne par run et run le plus rapide."
 L.WN_59_2  = L.WN_59_2  or "Dashboard : les raids et le temps en instance de LvlHistory apparaissent dans la carte Leveling (site et Tibi Companion), via l'export de Stats."
+L.WN_63_0  = L.WN_63_0  or "Corrections de compatibilité. « Quoi de neuf » met en avant la compatibilité WoW Forever et Classic."
+L.WN_CLASSIC_HEAD = L.WN_CLASSIC_HEAD or "Compatible WoW Forever et WoW Classic"
 L.WN_62_0  = L.WN_62_0  or "Corrections d'affichage sur tous les addons. « Recharger l'interface » recharge de nouveau depuis le Centre, les confirmations et l'installateur."
 L.WN_61_0  = L.WN_61_0  or "Nouveau : TibiSuite, XPBar, RepBar, Stats, MiniHub, Opacity, Standby, SkillTracker, LvlHistory et RenTracker se chargent aussi sur WoW Forever et sur toutes les versions Classic (Classic Era, TBC, Wrath, Cataclysm, Mists). Une seule installation, le jeu choisit le bon fichier."
 L.WN_61_1  = L.WN_61_1  or "Sur Classic et Forever, SkillTracker lit les métiers dans la liste des compétences et RenTracker ne propose que les extensions du jeu en cours. XPBar et RepBar se centrent au-dessus des barres d'action natives."
@@ -433,11 +435,16 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.4.2"] = {
+    { key = "Suite", title = "TibiSuite", headline = L.WN_CLASSIC_HEAD, text = L.WN_61_0, new = true },
+    { key = "Suite", title = "TibiSuite", text = L.WN_63_0, new = false },
+  },
   ["7.4.1"] = {
+    { key = "Suite", title = "TibiSuite", headline = L.WN_CLASSIC_HEAD, text = L.WN_61_0, new = true },
     { key = "Suite", title = "TibiSuite", text = L.WN_62_0, new = false },
   },
   ["7.4.0"] = {
-    { key = "Suite", title = "TibiSuite", text = L.WN_61_0, new = true },
+    { key = "Suite", title = "TibiSuite", headline = L.WN_CLASSIC_HEAD, text = L.WN_61_0, new = true },
     { key = "Skill", title = "SkillTracker / RenTracker", text = L.WN_61_1, new = true },
   },
   ["7.3.4"] = {
@@ -2392,9 +2399,19 @@ function TibiSuite.ShowWhatsNew(force)
     local col = m and rgb(m) or COL.ACCHI
     local tt = Text(r, "GameFontNormal", it.title .. (it.new and ("   " .. HX.OK .. L.WN_NEW .. "|r") or ""), col)
     tt:SetPoint("TOPLEFT", ic, "TOPRIGHT", 10, 0)
+    -- Titre fort facultatif (it.headline) : gros caracteres en gras, en or,
+    -- entre le nom du module et le texte (7.4.1 : compatibilite Classic).
+    local anchor, extra = tt, 0
+    if it.headline then
+      local hl = Text(r, "GameFontNormalHuge", it.headline, COL.GOLD, 476)
+      local path = (GameFontNormalHuge and GameFontNormalHuge:GetFont()) or STANDARD_TEXT_FONT
+      if path then pcall(hl.SetFont, hl, path, 22, "OUTLINE") end
+      hl:SetPoint("TOPLEFT", tt, "BOTTOMLEFT", 0, -6)
+      anchor, extra = hl, (hl:GetStringHeight() or 24) + 10
+    end
     local d = Text(r, "GameFontHighlightSmall", it.text, COL.MUT, 476)
-    d:SetPoint("TOPLEFT", tt, "BOTTOMLEFT", 0, -3)
-    local h = math.max(36, (d:GetStringHeight() or 12) + 26)
+    d:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, it.headline and -6 or -3)
+    local h = math.max(36, (d:GetStringHeight() or 12) + 26 + extra)
     r:SetHeight(h)
     r:SetPoint("TOPLEFT", 0, y)
     if i < #items then

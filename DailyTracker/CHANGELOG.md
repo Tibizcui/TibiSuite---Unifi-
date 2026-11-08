@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.4.2
+- Fix bug compatibilité : corrections de compatibilité.
+
 ## 7.4.1
 - Fix bug display : corrections d'affichage.
 

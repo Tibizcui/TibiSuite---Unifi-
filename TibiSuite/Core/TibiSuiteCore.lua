@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.4.1
+-- TibiSuiteCore v7.4.2
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.4.1"
+local VERSION = "7.4.2"
 
 -- ================================================================
 -- LOCALISATION
@@ -3396,7 +3396,7 @@ local function SetEnabledInWoW(addon, on)
 end
 
 function TibiSuite.NeedsReload() return next(TibiSuite.pendingReload) ~= nil end
--- Rechargement (7.4.1, non teste en jeu) : un appel direct (C_UI.Reload /
+-- Rechargement (7.4.2, non teste en jeu) : un appel direct (C_UI.Reload /
 -- ReloadUI) depuis le code d'un addon peut etre refuse ou lever une erreur
 -- muette selon la version du jeu (constate en jeu 2026-11-08 : « Recharger
 -- l'interface » ne faisait rien). On tente quand meme, sous pcall, puis on

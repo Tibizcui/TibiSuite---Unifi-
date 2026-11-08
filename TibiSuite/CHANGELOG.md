@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.4.2
+- Fix bug compatibilité : corrections de compatibilité.
+- « Quoi de neuf » : la compatibilité WoW Forever et Classic s'affiche en gros caractères dorés, en gras.
+
 ## 7.4.1
 - Fix bug display : corrections d'affichage.
 - Correction : « Recharger l'interface » (Centre, confirmations, installateur) recharge vraiment. Le bouton passe par un /reload sécurisé, seul chemin accepté par le jeu depuis un addon ; en combat, un message invite à taper /reload.
