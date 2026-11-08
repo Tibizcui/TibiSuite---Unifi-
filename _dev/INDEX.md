@@ -90,7 +90,7 @@
 - **7.3.3 en jeu** : vérifier l'onglet Raids et la colonne « Passé » de LvlHistory, le centrage de XPBar et RepBar, avec un `/reload`.
 - **CurseForge 7.3.3** : les 16 tags ont été relancés deux fois le 2026-11-07 (toutes les exécutions réussies). Vérifier sur CurseForge qu'il n'y a pas de fichiers en double.
 - **Tibi Companion 2.0.26** : installeur direct en ligne sur le site (`1ff1601`) ; soumission au Store à confirmer. Dossier `dist_download/` non suivi dans le dépôt Companion.
-- **Vénithes ascendantes** (WeeklyCompass) : toujours reconnues par leur nom (`id = nil` dans `Data/Activities.lua`), l'itemID réel reste à relever en jeu puis à écrire en dur.
+- **Vénithes ascendantes** (WeeklyCompass) : itemID 280562 relevé en jeu le 2026-11-08 et écrit en dur, à confirmer par un `/reload` (part dans la prochaine release).
 - **Lot 3 pêche** (lancer au double-clic) : reporté volontairement (code sécurisé).
 - **WoW Forever** : rien à faire tant qu'il n'y a pas d'accès client.
 

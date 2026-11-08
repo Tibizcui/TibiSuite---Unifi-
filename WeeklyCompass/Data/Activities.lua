@@ -42,9 +42,10 @@ ns.SheetCurrencies = { 3442, 3443, 3444, 3445, 3446 }
 --   venomstone : venithes ascendantes (12.1.5), obtenables a partir de la
 --   semaine du 21/10/2026. Ce n'est pas une monnaie : le balayage des
 --   monnaies 3300-4500 du 14/10 ne trouve que 3511 « [DNT, Unused] Venomous
---   Voidcore ». A remplacer par l'identifiant reel des qu'il est releve.
+--   Voidcore ». Identifiant 280562 releve en jeu par Tibiscui le 08/11/2026 ;
+--   les noms restent en secours si l'ID changeait a un patch.
 ns.SheetItems = {
-    { key = "venomstone", id = nil, labelKey = "SHEET_VENOMSTONE",
+    { key = "venomstone", id = 280562, labelKey = "SHEET_VENOMSTONE",
       names = { "venithe ascendante", "venithes ascendantes", "ascendant venomstone" } },
 }
 
