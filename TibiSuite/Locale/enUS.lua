@@ -164,6 +164,7 @@ L.WELCOME_HELP    = "full help"
 L.ADDONCOMPT_SUBTITLE = "Suite of trackers, by Tibiscui"
 
 -- Activation reelle dans la liste d'addons de WoW
+L.MSG_TYPE_RELOAD = "type |cFFFFD700/reload|r to reload the UI."
 L.MSG_TAB_NEEDRELOAD = " is now checked.\n\nWoW can only load it after a UI reload. Reload now?"
 L.MSG_SYNC_REENABLED = "re-enabled in the addon list, active after |cFFFFD700/reload|r:"
 L.MSG_SYNC_DISABLED  = "unchecked in TibiSuite, disabled in the addon list (|cFFFFD700/ts modules|r to re-enable):"
@@ -485,6 +486,7 @@ L.WN_58_0  = "Display fix: \"Close all\" and closing TibiSuite now only close mo
 L.WN_59_0  = "XPBar and RepBar: new \"Center at the bottom / top of the screen\" checkbox in the options (Position section). The bar sits in the middle of the screen; only its height stays adjustable."
 L.WN_59_1  = "LvlHistory: new Raids tab (runs per difficulty, bosses killed, favorite raid) and time spent in instances for dungeons and raids, with total, average per run and fastest run."
 L.WN_59_2  = "Dashboard: LvlHistory raids and instance time now show in the Leveling card (website and Tibi Companion), through the Stats export."
+L.WN_62_0  = "Display fixes across all addons. \"Reload UI\" reloads again from the Centre, confirmations and the installer."
 L.WN_61_0  = "New: TibiSuite, XPBar, RepBar, Stats, MiniHub, Opacity, Standby, SkillTracker, LvlHistory and RenTracker now also load on WoW Forever and every Classic version (Classic Era, TBC, Wrath, Cataclysm, Mists). One install, the game picks the right file."
 L.WN_61_1  = "On Classic and Forever, SkillTracker reads professions from the skills list and RenTracker only offers the expansions of the running game. XPBar and RepBar center above the native action bars."
 L.WN_60_0  = "UI fixes and a dev fix. WeeklyCompass now recognises Ascendant Venomstones by their item ID."

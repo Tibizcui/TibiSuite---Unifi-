@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.4.1
+- Fix bug display : corrections d'affichage.
+
 ## 7.4.0
 - Correction : sur WoW Forever, Stats ne s’inscrit plus au journal de combat, que ce client interdit aux addons. C’était la cause du message « Stats a été bloqué à cause d’une action qui n’est utilisable que par l’IU de Blizzard ». Seul le décompte des morts infligées par d’autres joueurs est absent sur Forever.
 - Nouveau : Stats signale dans le chat toute action bloquée par le jeu, avec la ligne de code en cause (sonde de diagnostic, 10 dernières gardées dans la sauvegarde).

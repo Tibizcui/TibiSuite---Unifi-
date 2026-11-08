@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.4.1
+- Fix bug display : corrections d'affichage.
+
 ## 7.4.0
 - Correction : en addon autonome, les boutons minimap d'XPBar et de RepBar ne se superposent plus (angles distincts) et retrouvent leur position après un /reload.
 - Nouveau : RepBar se charge aussi sur WoW Forever et sur les versions Classic (Classic Era, TBC Anniversary, Wrath, Cataclysm Classic, Mists Classic), en addon autonome, sans le suivi de faction par zone (RenTracker absent).

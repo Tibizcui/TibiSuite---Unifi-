@@ -329,6 +329,7 @@ L.WN_58_0  = L.WN_58_0  or "Correction d'affichage : « Tout fermer » et la fer
 L.WN_59_0  = L.WN_59_0  or "XPBar et RepBar : nouvelle case « Centrer en bas / en haut de l'écran » dans les options (section Position). La barre se place au milieu de l'écran ; seule sa hauteur reste réglable."
 L.WN_59_1  = L.WN_59_1  or "LvlHistory : nouvel onglet Raids (runs par difficulté, boss tués, raid favori) et temps passé en instance pour les donjons et les raids, avec total, moyenne par run et run le plus rapide."
 L.WN_59_2  = L.WN_59_2  or "Dashboard : les raids et le temps en instance de LvlHistory apparaissent dans la carte Leveling (site et Tibi Companion), via l'export de Stats."
+L.WN_62_0  = L.WN_62_0  or "Corrections d'affichage sur tous les addons. « Recharger l'interface » recharge de nouveau depuis le Centre, les confirmations et l'installateur."
 L.WN_61_0  = L.WN_61_0  or "Nouveau : TibiSuite, XPBar, RepBar, Stats, MiniHub, Opacity, Standby, SkillTracker, LvlHistory et RenTracker se chargent aussi sur WoW Forever et sur toutes les versions Classic (Classic Era, TBC, Wrath, Cataclysm, Mists). Une seule installation, le jeu choisit le bon fichier."
 L.WN_61_1  = L.WN_61_1  or "Sur Classic et Forever, SkillTracker lit les métiers dans la liste des compétences et RenTracker ne propose que les extensions du jeu en cours. XPBar et RepBar se centrent au-dessus des barres d'action natives."
 L.WN_60_0  = L.WN_60_0  or "Corrections d'interface et correctif de développement. WeeklyCompass reconnaît désormais les Vénithes ascendantes par leur identifiant."
@@ -432,6 +433,9 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  ["7.4.1"] = {
+    { key = "Suite", title = "TibiSuite", text = L.WN_62_0, new = false },
+  },
   ["7.4.0"] = {
     { key = "Suite", title = "TibiSuite", text = L.WN_61_0, new = true },
     { key = "Skill", title = "SkillTracker / RenTracker", text = L.WN_61_1, new = true },
@@ -657,7 +661,7 @@ local function SkinLikeSuite(f, accent)
 end
 
 local confirmFrame
-local function ShowConfirm(text, onAccept)
+local function ShowConfirm(text, onAccept, isReload)
   if not confirmFrame then
     confirmFrame = CreateFrame("Frame", "TibiSuiteConfirmFrame", UIParent, "BackdropTemplate")
     confirmFrame:SetSize(380, 150)
@@ -691,6 +695,10 @@ local function ShowConfirm(text, onAccept)
       confirmFrame:Hide()
       if confirmFrame._onAccept then confirmFrame._onAccept() end
     end)
+    -- « Oui » d'une demande de rechargement = bouton securise /reload (core).
+    if TibiSuite.AttachReload then
+      TibiSuite.AttachReload(yesBtn, function() return confirmFrame._reload end)
+    end
 
     local noBtn = MakeThemedButton(confirmFrame, 90, 24, "|cFFFF7777" .. (NO or "Non") .. "|r")
     noBtn:SetPoint("BOTTOMLEFT", confirmFrame, "BOTTOM", 10, 16)
@@ -701,6 +709,7 @@ local function ShowConfirm(text, onAccept)
   -- Hauteur adaptee au texte (messages de 2 a 5 lignes).
   confirmFrame:SetHeight(math.max(150, (confirmFrame._msg:GetStringHeight() or 40) + 90))
   confirmFrame._onAccept = onAccept
+  confirmFrame._reload = isReload and true or false
   confirmFrame:Show()
   confirmFrame:Raise()
 end
@@ -2236,6 +2245,11 @@ local function BuildWizard()
       if TibiSuite.NeedsReload and TibiSuite.NeedsReload() then TibiSuite.Reload() end
     end
   end)
+  if TibiSuite.AttachReload then
+    TibiSuite.AttachReload(nextB, function()
+      return W.step >= 5 and W.finished and TibiSuite.NeedsReload and TibiSuite.NeedsReload() or false
+    end)
+  end
   closeB:SetScript("OnClick", function()
     if W.running then return end            -- installation en cours : on laisse finir
     if not W.finished then CommitAllNow() end
@@ -2454,7 +2468,7 @@ function TibiSuite.OpenProfileWindow()
       msg:SetTextColor(COL.OK[1], COL.OK[2], COL.OK[3])
       msg:SetText(L.PF_APPLIED)
       if TibiSuite.NeedsReload() then
-        ShowConfirm(L.PF_RELOAD_ASK, function() TibiSuite.Reload() end)
+        ShowConfirm(L.PF_RELOAD_ASK, function() TibiSuite.Reload() end, true)
       end
     end)
     pf = { frame = f, ex = ex, im = im, msg = msg }

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.4.1
+- Fix bug display : corrections d'affichage.
+
 ## 7.4.0
 - Nouveau : RenTracker se charge aussi sur WoW Forever et sur les versions Classic (Classic Era, TBC Anniversary, Wrath, Cataclysm Classic, Mists Classic). Seules les extensions du jeu en cours sont proposées (Vanilla seul sur Classic Era et Forever, jusqu'à Mists sur Mists Classic). Les barres lisent le jeu ; hors Retail, les fiches de quêtes portent la mention « conseils écrits pour le jeu actuel ».
 - Correction : la colonne d'état (Aimable, Honoré...) est plus large et ne se coupe plus avec la police de Classic. « Timbermaw Hold » s'appelle maintenant « Les Grumegueules ».

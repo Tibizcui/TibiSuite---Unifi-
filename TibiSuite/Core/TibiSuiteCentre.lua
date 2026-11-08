@@ -433,6 +433,7 @@ local function ShowNote(text, btnLabel, onClick)
   if btnLabel then
     note.btn._label:SetText(btnLabel)
     note.btn:SetScript("OnClick", onClick)
+    note.btn._reload = (onClick == TibiSuite.Reload)
     note.btn:Show()
   else
     note.btn:Hide()
@@ -2351,7 +2352,7 @@ function Select(id)
   elseif st == "off" then
     ShowNote(L.CTR_NOTE_OFF, L.CTR_ENABLE, function() ToggleModule(mod) end)
   elseif st == "load" then
-    ShowNote(L.CTR_NOTE_LOAD, L.CTR_RELOAD, function() TibiSuite.Reload() end)
+    ShowNote(L.CTR_NOTE_LOAD, L.CTR_RELOAD, TibiSuite.Reload)
   else
     local p = Page(mod.key)
     p:Show()
@@ -2508,6 +2509,7 @@ local function Build()
   note.text = K.Text(note, "GameFontHighlight", "", K.COL.MUT, PaneW() - 20)
   note.text:SetPoint("TOPLEFT", 4, -10)
   note.btn = K.Btn(note, 200, 28, "", "pri")
+  if TibiSuite.AttachReload then TibiSuite.AttachReload(note.btn, function() return note.btn._reload end) end
   note.btn:SetPoint("TOPLEFT", note.text, "BOTTOMLEFT", 0, -16)
 
   for i = 1, 3 do
@@ -2551,6 +2553,7 @@ local function Build()
   reloadBtn = K.Btn(f, 190, 26, L.CTR_RELOAD, "pri")
   reloadBtn:SetPoint("RIGHT", closeBtn, "LEFT", -10, 0)
   reloadBtn:SetScript("OnClick", function() TibiSuite.Reload() end)
+  if TibiSuite.AttachReload then TibiSuite.AttachReload(reloadBtn) end
   pendingTxt = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   pendingTxt:SetPoint("BOTTOMLEFT", 16, 16)
   undoBtn = K.Btn(f, 220, 26, "")

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.4.1
+- Fix bug display : corrections d'affichage.
+
 ## 7.4.0
 - Version alignée sur la suite (7.4.0) : aucun changement pour cet addon, qui reste réservé à WoW Midnight.
 

@@ -96,7 +96,7 @@ end
 
 local function AskReload()
   if TibiSuite.NeedsReload and TibiSuite.NeedsReload() and TibiSuite.ShowConfirm then
-    TibiSuite.ShowConfirm(L.RP_RELOAD_ASK, function() TibiSuite.Reload() end)
+    TibiSuite.ShowConfirm(L.RP_RELOAD_ASK, function() TibiSuite.Reload() end, true)
     return true
   end
   return false

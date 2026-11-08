@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.4.0
+-- TibiSuiteCore v7.4.1
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.4.0"
+local VERSION = "7.4.1"
 
 -- ================================================================
 -- LOCALISATION
@@ -255,6 +255,7 @@ L.WELCOME_LOCK    = L.WELCOME_LOCK    or "verrouiller"
 L.WELCOME_HELP    = L.WELCOME_HELP    or "aide complète"
 L.ADDONCOMPT_SUBTITLE = L.ADDONCOMPT_SUBTITLE or "Suite de trackers, par Tibiscui"
 -- Activation reelle dans la liste d'addons de WoW
+L.MSG_TYPE_RELOAD    = L.MSG_TYPE_RELOAD    or "tape |cFFFFD700/reload|r pour recharger l'interface."
 L.MSG_TAB_NEEDRELOAD  = L.MSG_TAB_NEEDRELOAD  or " est maintenant coché.\n\nWoW ne peut le charger qu'après un rechargement de l'interface. Recharger maintenant ?"
 L.MSG_SYNC_REENABLED  = L.MSG_SYNC_REENABLED  or "réactivé(s) dans la liste d'addons, actif(s) après |cFFFFD700/reload|r :"
 L.MSG_SYNC_DISABLED   = L.MSG_SYNC_DISABLED   or "décoché(s) dans TibiSuite, désactivé(s) dans la liste d'addons (|cFFFFD700/ts modules|r pour réactiver) :"
@@ -975,7 +976,7 @@ local function OnTabClick(mod)
         UpdateTabHighlights()
         if TibiSuite.ShowConfirm then
           TibiSuite.ShowConfirm(ColorCode(mod.col.r, mod.col.g, mod.col.b) .. mod.addonName .. "|r"
-            .. L.MSG_TAB_NEEDRELOAD, function() TibiSuite.Reload() end)
+            .. L.MSG_TAB_NEEDRELOAD, function() TibiSuite.Reload() end, true)
         end
         return
       end
@@ -3395,8 +3396,79 @@ local function SetEnabledInWoW(addon, on)
 end
 
 function TibiSuite.NeedsReload() return next(TibiSuite.pendingReload) ~= nil end
+-- Rechargement (7.4.1, non teste en jeu) : un appel direct (C_UI.Reload /
+-- ReloadUI) depuis le code d'un addon peut etre refuse ou lever une erreur
+-- muette selon la version du jeu (constate en jeu 2026-11-08 : « Recharger
+-- l'interface » ne faisait rien). On tente quand meme, sous pcall, puis on
+-- invite a taper /reload.
 function TibiSuite.Reload()
-  if C_UI and C_UI.Reload then C_UI.Reload() else ReloadUI() end
+  if C_UI and C_UI.Reload and pcall(C_UI.Reload) then return end
+  if ReloadUI and pcall(ReloadUI) then return end
+  print("|cFFC41F3BTibiSuite|r : " .. (L.MSG_TYPE_RELOAD or "tape |cFFFFD700/reload|r pour recharger l'interface."))
+end
+
+-- Le vrai remede : un bouton securise « /reload » (macro), seul chemin
+-- garanti sur toutes les versions. Un seul pour toute la suite, parente a
+-- UIParent (jamais enfant d'une fenetre de la suite : un enfant protege
+-- empecherait d'ouvrir cette fenetre en combat). Il se pose SOUS LA SOURIS,
+-- par-dessus le bouton « Recharger » survole, hors combat ; le clic est
+-- alors celui du joueur, sur un bouton securise. En combat : repli sur
+-- TibiSuite.Reload (le OnClick normal du bouton).
+local reloadSecure
+local function ReloadSecure()
+  if reloadSecure then return reloadSecure end
+  local ok, b = pcall(CreateFrame, "Button", "TibiSuiteReloadSecure", UIParent, "SecureActionButtonTemplate")
+  if not ok or not b then return nil end
+  b:SetAttribute("type", "macro")
+  b:SetAttribute("macrotext", "/reload")
+  b:RegisterForClicks("AnyUp", "AnyDown")
+  b:SetFrameStrata("TOOLTIP")
+  b:Hide()
+  b:SetScript("OnEnter", function(self)
+    local o = self.owner
+    if o and o:GetScript("OnEnter") then pcall(o:GetScript("OnEnter"), o) end
+    if o and o.LockHighlight then o:LockHighlight() end
+  end)
+  b:SetScript("OnLeave", function(self)
+    local o = self.owner
+    if o and o.UnlockHighlight then o:UnlockHighlight() end
+    if o and o:GetScript("OnLeave") then pcall(o:GetScript("OnLeave"), o) end
+    if not InCombatLockdown() then self:ClearAllPoints(); self:Hide() end
+    self.owner = nil
+  end)
+  -- Garde-fou : jamais de bouton invisible qui recharge. Des que le bouton
+  -- d'origine disparait (Echap, fenetre fermee) ou n'est plus survole, ou
+  -- que la condition ne tient plus, on retire le bouton securise.
+  b:SetScript("OnUpdate", function(self)
+    if InCombatLockdown() then return end
+    local o = self.owner
+    if not (o and o:IsVisible() and self:IsMouseOver()) or (self.cond and not self.cond()) then
+      if o and o.UnlockHighlight then o:UnlockHighlight() end
+      self.owner, self.cond = nil, nil
+      self:ClearAllPoints(); self:Hide()
+    end
+  end)
+  reloadSecure = b
+  return b
+end
+
+-- btn : bouton de la suite qui recharge l'interface. cond() facultatif :
+-- le bouton ne recharge que dans certains cas (fenetre de confirmation
+-- partagee, note du Centre).
+function TibiSuite.AttachReload(btn, cond)
+  if not btn or btn._tsReload then return end
+  btn._tsReload = true
+  btn:HookScript("OnEnter", function(self)
+    if InCombatLockdown() or not self:IsVisible() then return end
+    if cond and not cond() then return end
+    local b = ReloadSecure()
+    if not b then return end
+    b.owner, b.cond = self, cond
+    b:ClearAllPoints()
+    b:SetPoint("TOPLEFT", self, "TOPLEFT")
+    b:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT")
+    b:Show()
+  end)
 end
 
 -- Repasse differee (et regroupee) sur les fenetres de module : Echap natif +

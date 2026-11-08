@@ -578,6 +578,13 @@ scale 0.90, grille toggles 2x5, mmAngle 200, locked false, vertical false.
   Contrepartie assumée : Échap ne referme plus la barre en même temps.
   Ne jamais écrire non plus dans `StaticPopupDialogs` (fenêtres maison
   `TibiSuite.ShowConfirm` / `ShowURL`).
+- **Recharger l'interface (2026-11-08, non testé en jeu).** Un `C_UI.Reload()`
+  appelé par un bouton de la suite ne rechargeait pas. Tout bouton « Recharger »
+  passe par `TibiSuite.AttachReload(btn, cond)` : un seul bouton securise
+  `TibiSuiteReloadSecure` (macro `/reload`, parent UIParent, jamais enfant d'une
+  fenetre de la suite) pose au survol, hors combat, retire par OnUpdate.
+  `TibiSuite.Reload()` reste le repli (pcall, puis message « tape /reload »).
+  `ShowConfirm(text, fn, isReload)` : 3e argument pour une demande de reload.
 - **Fichier socle refusé en écriture** : si SEUL `TibiSuiteUI.lua` est refusé alors
   que ses voisins passent, c'est l'attribut Windows "Lecture seule" ou un handle
   ouvert, pas Controlled Folder Access.

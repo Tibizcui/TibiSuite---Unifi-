@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.4.1
+- Fix bug display : corrections d'affichage.
+- Correction : « Recharger l'interface » (Centre, confirmations, installateur) recharge vraiment. Le bouton passe par un /reload sécurisé, seul chemin accepté par le jeu depuis un addon ; en combat, un message invite à taper /reload.
+
 ## 7.4.0
 - Nouveau : TibiSuite se charge aussi sur WoW Forever et sur les versions Classic (Classic Era, TBC Anniversary, Wrath, Cataclysm Classic, Mists Classic). La barre, le Centre et le bouton minimap unique y regroupent XPBar, RepBar, Stats et MiniHub ; les fonctions propres au jeu moderne (menu Échap, page d'options Blizzard, menus contextuels) s'effacent là où le jeu ne les propose pas.
 

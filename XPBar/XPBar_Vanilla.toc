@@ -3,7 +3,7 @@
 ## Title-frFR: XPBar
 ## Notes: Barre XP avancée - Niveau, XP, Repos, Quêtes, Stats de session
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.4.0
+## Version: 7.4.1
 ## X-Curse-Project-ID: 1585015
 # MULTI-VERSIONS : ce fichier sert Midnight (12xxxx) et WoW Forever (16001,
 # meme API que Mainline, numero releve sur le client Forever et dans
