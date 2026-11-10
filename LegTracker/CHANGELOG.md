@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.2
+- Correctif : le bouton de la minicarte reste dans la grille d'EllesmereUI ou le conteneur de MiniHub au lieu de revenir autour de la minicarte quand il s'affiche.
+
 ## 7.5.1
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

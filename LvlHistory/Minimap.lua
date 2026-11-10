@@ -140,7 +140,10 @@ local function BuildButton()
     UpdatePosition(minimapButton, savedAngle)
 
     -- Repositionne si la minimap change de taille (ElvUI, Dominos, etc.)
-    minimapButton:SetScript("OnShow", function()
+    minimapButton:SetScript("OnShow", function(self)
+        -- Range par un collecteur (grille EllesmereUI, conteneur MiniHub) :
+        -- ne pas le recoller sur la minicarte, il sortirait de sa place.
+        if self:GetParent() ~= Minimap then return end
         local angle = (LvlHistoryDB and LvlHistoryDB.settings and LvlHistoryDB.settings.minimapAngle)
             or DEFAULT_ANGLE
         UpdatePosition(minimapButton, angle)

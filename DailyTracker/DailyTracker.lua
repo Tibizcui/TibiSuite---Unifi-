@@ -1956,7 +1956,10 @@ local function BuildMinimapButton()
   local savedAngle = (DailyTrackerDB and DailyTrackerDB.mmAngle) or 220
   SetMinimapPos(savedAngle)
 
-  minimapBtn:SetScript("OnShow", function()
+  minimapBtn:SetScript("OnShow", function(self)
+    -- Range par un collecteur (grille EllesmereUI, conteneur MiniHub) :
+    -- ne pas le recoller sur la minicarte, il sortirait de sa place.
+    if self:GetParent() ~= Minimap then return end
     SetMinimapPos((DailyTrackerDB and DailyTrackerDB.mmAngle) or 220)
   end)
 

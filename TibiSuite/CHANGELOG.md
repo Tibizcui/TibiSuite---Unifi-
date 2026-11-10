@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.2
+- RenTracker, LegTracker, DailyTracker, LvlHistory et DgnTracker : leur bouton de minicarte reste rangé par EllesmereUI ou MiniHub.
+
 ## 7.5.1
 - Opacity : nouvelle section Minicarte dans ses options (masquer l'icône Opacity ou l'icône TibiSuite).
 

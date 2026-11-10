@@ -1,5 +1,5 @@
 -- ================================================================
--- RenTracker v7.5.1
+-- RenTracker v7.5.2
 -- Suivi des reputations | Toutes les extensions depuis vanilla
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
@@ -2449,7 +2449,10 @@ local function BuildMinimapButton()
   SetMinimapPos(savedAngle)
 
   -- Repositionne si la minimap change de taille (ElvUI, Dominos, etc.)
-  minimapBtn:SetScript("OnShow", function()
+  minimapBtn:SetScript("OnShow", function(self)
+    -- Range par un collecteur (grille EllesmereUI, conteneur MiniHub) :
+    -- ne pas le recoller sur la minicarte, il sortirait de sa place.
+    if self:GetParent() ~= Minimap then return end
     SetMinimapPos((RenTrackerDB and RenTrackerDB.mmAngle) or 220)
   end)
 
@@ -2779,7 +2782,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       if not loginAnnounced and not (_G.TibiSuite and _G.TibiSuite.RegisterModule)
          and not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
         loginAnnounced = true
-        print("|cFF4D99FFRenTracker|r v7.5.1 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+        print("|cFF4D99FFRenTracker|r v7.5.2 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
       ScheduleParagonScan(3)
@@ -2791,7 +2794,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     if not loginAnnounced and not (_G.TibiSuite and _G.TibiSuite.RegisterModule)
        and not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
       loginAnnounced = true
-      print("|cFF4D99FFRenTracker|r v7.5.1 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFRenTracker|r v7.5.2 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)
