@@ -247,6 +247,7 @@ L.DESC_Post    = "Complete mailbox: safe bulk taking, automatic mule, mail of al
 L.DESC_Stats   = "Quests, gold, dungeons and M+, playtime per day and per character. Feeds the Dashboard and Tibi Companion."
 L.DESC_Opacity = "Window transparency on hover, in combat or mounted, per-specialization profiles, mouse-wheel tuning."
 L.DESC_Standby = "AFK screen: your hero, your week and your gear at a glance. Steps aside on its own for a queue, a ready check or combat."
+L.DESC_Anchor  = "Moves the game windows: snapping, grid, undo, one layout per screen and per character, loot placement."
 
 -- Vitrine de l'installateur
 L.DETAIL_Daily   = "DailyTracker lists the daily and weekly quests of Midnight and The War Within, and ticks them off on its own when you turn them in. Tracking is per character: you see at a glance what is left to do on your main and on your alts."
@@ -279,6 +280,8 @@ L.DETAIL_Opacity = "Opacity makes the windows of the game and of your addons tra
 L.FEAT_Opacity   = "Contexts: combat, raid, instance, mounted...\nPer-character and per-specialization profiles\nMouse-wheel tuning, right on the screen\nLinked window groups"
 L.DETAIL_Standby = "Standby takes over when your character goes Away: the interface fades out and your hero takes center stage. When you come back, you see what is left to do tonight, read from the other modules of the suite. It steps aside on its own as soon as the game needs you."
 L.FEAT_Standby   = "Showcase, Character sheet, Minimal, Power saving, as a slideshow\nTonight\'s to-do and My characters tiles, read from the suite\nScene, expansion artwork or black background\nSteps aside on its own, settings always restored"
+L.DETAIL_Anchor  = "Anchor lets you place the game windows wherever you want: character, bags, map, loot, loot rolls... It snaps to the edges and to other windows, and steps aside for ElvUI, EllesmereUI or BlizzMove when they already handle a window."
+L.FEAT_Anchor    = "Snapping, alignment guides and grid\nUndo the last move\nOne layout per screen resolution and per character\nLoot, loot rolls and bonus roll placement"
 
 L.URL_HINT = "Ctrl+C to copy"
 
@@ -346,7 +349,7 @@ L.WIZ_IMPORT_TITLE  = "Import a profile"
 L.WIZ_IMPORT_DESC   = "Paste a TS1: code to reuse an existing setup."
 L.WIZ_IMPORT_LABEL  = "Profile code (Ctrl+V in the box):"
 L.WIZ_IMPORT_APPLY  = "Apply this profile"
-L.WIZ_HERO_RIBBON   = "v%s: new Standby module, the AFK screen"
+L.WIZ_HERO_RIBBON   = "v%s: new Anchor module, moves the game windows"
 L.WIZ_NEW_TAG       = "NEW"
 L.WIZ_SHOW_NEW      = "NEW THIS WEEK"
 L.WIZ_SHOW_ON       = "Enabled"
@@ -492,6 +495,8 @@ L.WN_58_0  = "Display fix: \"Close all\" and closing TibiSuite now only close mo
 L.WN_59_0  = "XPBar and RepBar: new \"Center at the bottom / top of the screen\" checkbox in the options (Position section). The bar sits in the middle of the screen; only its height stays adjustable."
 L.WN_59_1  = "LvlHistory: new Raids tab (runs per difficulty, bosses killed, favorite raid) and time spent in instances for dungeons and raids, with total, average per run and fastest run."
 L.WN_59_2  = "Dashboard: LvlHistory raids and instance time now show in the Leveling card (website and Tibi Companion), through the Stats export."
+L.WN_65_0  = "New Anchor module: place the game windows wherever you want. Snapping and alignment guides, grid, undo, one layout per screen resolution and per character, loot and loot roll placement. Steps aside for ElvUI, EllesmereUI or BlizzMove when they already handle a window."
+L.WN_ANCHOR_HEAD = "New module: Anchor"
 L.WN_64_0  = "Translation fixes. A chat line, 70 seconds after login, lists the supported game versions (can be turned off in the Centre, Bar and access)."
 L.WN_63_0  = "Compatibility fixes. \"What's new\" now highlights WoW Forever and Classic support."
 L.WN_CLASSIC_HEAD = "Works on WoW Forever and WoW Classic"

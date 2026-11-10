@@ -2671,6 +2671,7 @@ local PANEL_PAGE = {
   PostBoxOptionsFrame          = "Post",
   StatsOptions                 = "Stats",
   OpacityOptions               = "Opacity",
+  TibiAnchorOptions            = "Anchor",
   TibiSuiteModulesPanel        = "maint",
 }
 TibiSuite.PANEL_PAGE = PANEL_PAGE

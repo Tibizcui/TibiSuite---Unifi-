@@ -12,13 +12,13 @@ suite modulaire, sans perdre la progression des joueurs.
 
 Chaque dossier de premier niveau est un **addon WoW autonome** (le dossier donne
 son nom au fichier SavedVariables). `TibiSuite/` est le **core**. Modules :
-DailyTracker, DgnTracker, LairLens, LegTracker, LvlHistory, MiniHub, Opacity,
+Anchor, DailyTracker, DgnTracker, LairLens, LegTracker, LvlHistory, MiniHub, Opacity,
 PostBox, RenTracker, RepBar, SkillTracker, Standby, Stats, WeeklyCompass, XPBar.
 
 - Core : `TibiSuite/Core/TibiSuiteCore.lua`
 - Options (cases à cocher) : `TibiSuite/Core/TibiSuiteOptions.lua`
 - Socle UI partagé : `TibiSuite/Core/TibiSuiteUI.lua`
-- TOC : voir `TibiSuite/TibiSuite.toc` (source de vérité). Au 9 novembre 2026 : `## Interface: 120105, 120100, 120007, 16001`, `## Version: 7.4.3`.
+- TOC : voir `TibiSuite/TibiSuite.toc` (source de vérité). Au 10 novembre 2026 : `## Interface: 120105, 120100, 120007, 16001`, `## Version: 7.5.0`.
 
 Un module type contient : `<Nom>.toc`, `Core.lua` (logique + events), `UI.lua`,
 `<Nom>_Module.lua` (glue TibiSuite, voir plus bas), une copie du socle sous
@@ -46,7 +46,8 @@ Un module type contient : `<Nom>.toc`, `Core.lua` (logique + events), `UI.lua`,
 Daily=DailyTrackerDB, Dgn=DgnTrackerDB, Leg=LegTrackerDB, Rep=RenTrackerDB,
 Lvl=LvlHistoryDB, Weekly=WeeklyCompassDB, MiniHub=MiniHubDB, XPBar=XPBarDB,
 Lair=LairLensDB (+LairLensCharDB), Skill=SkillTrackerDB, Stats=StatsDB,
-RepBar=RepBarDB, PostBox=PostBoxDB, Opacity=OpacityDB, Standby=StandbyDB.
+RepBar=RepBarDB, PostBox=PostBoxDB, Opacity=OpacityDB, Standby=StandbyDB,
+Anchor=TibiAnchorDB (préfixe Tibi : nom générique, risque de collision).
 Core=TibiSuiteDB (+TibiSuiteCharDB).
 
 ## Architecture du core (`TibiSuiteCore.lua`)
@@ -125,7 +126,7 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   notes, champs ; remonte tout objet ancré TOPLEFT sur `content` sous une note
   raccourcie, y compris les widgets maison de MiniHub/Standby), `panel:IsDocked()`.
   Registre `UI.panels` (+ par `cfg.name`) et `UI.lastShownPanel`. Toute
-  évolution du socle (actuellement v19) : bump `NS_VERSION` + recopie dans les 16 copies en gardant
+  évolution du socle (actuellement v20) : bump `NS_VERSION` + recopie dans les 17 copies en gardant
   leur bloc d'en-tête « COPIE EMBARQUEE (module X) ».
 - Alerte de nouvelle version (v17, non testée en jeu, plan `_dev/VersionCheck.md`) :
   préfixe addon `TibiSuite`, message `V1:<version>:S|M` en guilde / groupe /
@@ -138,7 +139,7 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   celle de nos `.toc` (`C_AddOns.GetAddOnInterfaceVersion`, sinon métadonnée
   `Interface`, sinon constante `TOC_INTERFACE` du socle), une ligne « date d'avant
   la mise à jour X du jeu ». L'alerte exacte passe devant. **Monter
-  `TOC_INTERFACE` à chaque passage de compatibilité** (16 copies du socle).
+  `TOC_INTERFACE` à chaque passage de compatibilité** (17 copies du socle).
 - En-tête : `UI.AddHeaderControls(frame,cfg)` pose les boutons flottants Options
   (roue) et Recherche (loupe) au coin haut-droit, applique l'état masqué dès la
   création via `_G.TibiSuite.IsCtrlHidden`, et câble Maj+clic droit -> `cfg.onOptions`.
@@ -167,7 +168,8 @@ search=}`. Frames concernées (Options+Recherche sauf indication) : Daily
 `WeeklyCompassFrame`, Rep `RNTMainFrame`, Lair `LairLensAuditFrame`, Leg
 `LegTrackerMainFrame`, MiniHub `MiniHubContainer` (cases visibles en mode
 suite seulement) ; XPBar `XPBarContainer` et RepBar `RepBarContainer`
-(Options seul). SkillTracker n'a pas de boutons flottants.
+(Options seul) ; Anchor `TibiAnchorMainFrame`. SkillTracker n'a pas de
+boutons flottants.
 Le raccourci Maj+clic droit ouvre les options ; il est câblé UNIQUEMENT par le
 socle (ne pas le re-câbler dans le core, sinon double-toggle).
 
@@ -248,5 +250,5 @@ touches `LZW.lua` ou le format d'export, reporte-le dans
 Pour garder ce fichier court, le détail est rangé dans `docs/`. Ne le charge que si la tâche le concerne :
 
 - `docs/CENTRE-ET-BARRE.md` : styles de la barre (Dock, Panneau vivant) et Centre TibiSuite.
-- `docs/MODULES.md` : modules Opacity, Standby et PostBox.
+- `docs/MODULES.md` : modules Opacity, Standby, PostBox et Anchor.
 - `docs/JOURNAL-DEV.md` : journal de développement (multi-versions Classic et Forever, LvlHistory Raids et temps en instance).

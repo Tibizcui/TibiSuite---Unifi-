@@ -29,7 +29,7 @@
   le socle du core evolue (bump NS_VERSION cote core -> reporter ici).
 ============================================================================]]
 
-local NS_VERSION = 19
+local NS_VERSION = 20
 
 if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
   return
@@ -1172,14 +1172,15 @@ end
 -- Jamais en meme temps que l'alerte exacte (elle a la priorite).
 -- v19 : diagnostics (prefixe, envois, echo de nos propres messages en
 -- guilde, messages recus) et UI.VersionTest() pour /ts version test.
+-- v20 : module Anchor ajoute a la liste des dossiers de la suite.
 -- ============================================================================
 do
   local PREFIX   = "TibiSuite"
   local PROTO    = "V1"
   local THROTTLE = 60   -- secondes entre deux envois sur un meme canal
-  -- Les 16 dossiers de la suite, core en tete puis ordre alphabetique.
+  -- Les 17 dossiers de la suite, core en tete puis ordre alphabetique.
   local ADDONS = {
-    "TibiSuite", "DailyTracker", "DgnTracker", "LairLens", "LegTracker",
+    "TibiSuite", "Anchor", "DailyTracker", "DgnTracker", "LairLens", "LegTracker",
     "LvlHistory", "MiniHub", "Opacity", "PostBox", "RenTracker", "RepBar",
     "SkillTracker", "Standby", "Stats", "WeeklyCompass", "XPBar",
   }

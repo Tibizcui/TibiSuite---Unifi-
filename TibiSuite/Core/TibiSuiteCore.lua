@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.4.3
+-- TibiSuiteCore v7.5.0
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.4.3"
+local VERSION = "7.5.0"
 
 -- ================================================================
 -- LOCALISATION
@@ -599,6 +599,24 @@ local MODULES = {
     permanent   = true,  -- element permanent : jamais masque par "Tout fermer" ni par la fermeture de la barre
   },
   {
+    key         = "Anchor",
+    addonName   = "Anchor",
+    label       = "Anchor",
+    frameGlobal = "TibiAnchorMainFrame",
+    mmBtnGlobal = "TibiAnchorMinimapBtn",  -- propre bouton minimap seulement en mode autonome (masque si TibiSuite present)
+    toggleFn    = "TibiAnchor_Toggle",
+    optionsFn   = "TibiAnchor_OpenOptions",
+    doctorFn    = "TibiAnchor_DoctorNote",
+    slashList   = "TIBIANCHOR",  -- secours : /anchor si la fonction Toggle est absente
+    col         = { r=0.431, g=0.447, b=0.941 },  -- indigo boussole #6E72F0 (identite Anchor)
+    curseUrl    = "https://www.curseforge.com/projects/1795734",  -- projet CurseForge Anchor (adresse par identifiant)
+    saved       = { "TibiAnchorDB" },
+    escClose    = true,
+    -- Depuis 7.5.0 (2026-11-10) : meme regle que Standby, pas de migration
+    -- ponctuelle (decoche pour les joueurs existants, actif pour une
+    -- nouvelle installation).
+  },
+  {
     key         = "RepBar",
     addonName   = "RepBar",
     label       = "RepBar",
@@ -721,6 +739,7 @@ local MODULE_LOGO = {
   Stats   = "Interface\\AddOns\\Stats\\medias\\Logo",
   Opacity = "Interface\\AddOns\\Opacity\\medias\\Logo",
   Standby = "Interface\\AddOns\\Standby\\medias\\Logo",
+  Anchor  = "Interface\\AddOns\\Anchor\\medias\\Logo",
   Suite   = "Interface\\AddOns\\TibiSuite\\medias\\TibiSuite",
 }
 TibiSuite.MODULE_LOGO = MODULE_LOGO
@@ -1946,7 +1965,7 @@ end
 local PANEL_GROUPS = {
   { label = "PANEL_GRP_TODO", keys = { "Daily", "Weekly", "Post" } },
   { label = "PANEL_GRP_PROG", keys = { "Rep", "Skill", "Lvl", "Stats", "Dgn", "Leg", "Lair" } },
-  { label = "PANEL_GRP_UI",   keys = { "XPBar", "RepBar", "MiniHub", "Opacity", "Standby" }, icons = true },
+  { label = "PANEL_GRP_UI",   keys = { "XPBar", "Anchor", "RepBar", "MiniHub", "Opacity", "Standby" }, icons = true },
 }
 TibiSuite.PANEL_GROUPS = PANEL_GROUPS
 local panelRows, panelIcons, panelHeads = {}, {}, {}
@@ -2743,6 +2762,7 @@ local INDIVIDUAL_MM_BTNS = {
   "LairLensMinimapBtn",      -- LairLens (mode standalone uniquement)
   "OpacityMinimapBtn",       -- Opacity (mode standalone uniquement)
   "StandbyMinimapBtn",       -- Standby (mode standalone uniquement)
+  "TibiAnchorMinimapBtn",         -- Anchor (mode autonome uniquement)
 }
 
 local function HideIndividualMinimapButtons()

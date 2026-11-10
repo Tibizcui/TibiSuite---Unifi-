@@ -33,14 +33,14 @@ local MODULE_LOGO = TibiSuite.MODULE_LOGO
 local MODULE_NEWS = {
   Weekly = 2, Rep = 3, RepBar = 4, XPBar = 5, Leg = 6, Daily = 7, Lvl = 8,
   Skill = 9, Dgn = 10, Lair = 11, Post = 12, MiniHub = 13, Opacity = 14, Stats = 15,
-  Standby = "WN_40_1",
+  Standby = "WN_40_1", Anchor = "WN_65_0",
 }
 
 -- Raccourci de chaque module, affiche dans la vitrine.
 local MODULE_SLASH = {
   Daily = "/dt", Dgn = "/dg", Leg = "/lt", Rep = "/rt", Lvl = "/lvlh", Weekly = "/wc",
   MiniHub = "/mh", XPBar = "/xpbar", RepBar = "/repbar", Lair = "/ll", Skill = "/skt",
-  Post = "/pb", Stats = "/stats", Opacity = "/opa", Standby = "/standby",
+  Post = "/pb", Stats = "/stats", Opacity = "/opa", Standby = "/standby", Anchor = "/anchor",
 }
 
 -- ================================================================
@@ -71,6 +71,7 @@ L.DESC_Post    = L.DESC_Post    or "Boîte aux lettres complète : prise en mass
 L.DESC_Stats   = L.DESC_Stats   or "Quêtes, or, donjons et M+, temps de jeu par jour et par personnage. Alimente le Dashboard et Tibi Companion."
 L.DESC_Opacity = L.DESC_Opacity or "Transparence des fenêtres au survol, en combat ou en monture, profils par spécialisation, réglage à la molette."
 L.DESC_Standby = L.DESC_Standby or "Écran d'absence : ton héros, ta semaine et ton équipement d'un coup d'œil. S'écarte tout seul pour une file, un appel ou un combat."
+L.DESC_Anchor  = L.DESC_Anchor  or "Déplace les fenêtres du jeu : magnétisme, grille, annulation, une disposition par écran et par personnage, placement du butin."
 
 -- Vitrine de l'installateur : explication detaillee (DETAIL_) et points forts
 -- (FEAT_, un par ligne, 4 maximum) de chaque module.
@@ -104,6 +105,8 @@ L.DETAIL_Opacity = L.DETAIL_Opacity or "Opacity rend transparentes les fenêtres
 L.FEAT_Opacity   = L.FEAT_Opacity   or "Contextes : combat, raid, instance, monture...\nProfils par personnage et par spécialisation\nRéglage à la molette, directement sur l'écran\nGroupes de fenêtres liées"
 L.DETAIL_Standby = L.DETAIL_Standby or "Standby prend le relais quand ton personnage passe Absent : l'interface s'efface et ton héros passe au premier plan. À ton retour, tu vois ce qu'il reste à faire ce soir, lu dans les autres modules de la suite. Il s'écarte tout seul dès que le jeu a besoin de toi."
 L.FEAT_Standby   = L.FEAT_Standby   or "Vitrine, Fiche du personnage, Épurée, Économie, en diaporama\nTuiles À faire ce soir et Mes personnages, lues dans la suite\nFond Scène, illustration d\'extension ou noir\nS\'écarte tout seul, réglages toujours rétablis"
+L.DETAIL_Anchor  = L.DETAIL_Anchor  or "Anchor te laisse placer les fenêtres du jeu où tu veux : personnage, sacs, carte, butin, lancers de dés... Il s'aimante aux bords et aux autres fenêtres, et laisse la main à ElvUI, EllesmereUI ou BlizzMove quand ils gèrent déjà une fenêtre."
+L.FEAT_Anchor    = L.FEAT_Anchor    or "Magnétisme, repères d'alignement et grille\nAnnuler le dernier déplacement\nUne disposition par résolution d'écran et par personnage\nPlacement du butin, des lancers de dés et du jet de bonus"
 
 L.URL_HINT = L.URL_HINT or "Ctrl+C pour copier"
 
@@ -175,7 +178,7 @@ L.WIZ_IMPORT_TITLE  = L.WIZ_IMPORT_TITLE  or "Importer un profil"
 L.WIZ_IMPORT_DESC   = L.WIZ_IMPORT_DESC   or "Colle un code TS1: pour reprendre une configuration existante."
 L.WIZ_IMPORT_LABEL  = L.WIZ_IMPORT_LABEL  or "Code de profil (Ctrl+V dans la case) :"
 L.WIZ_IMPORT_APPLY  = L.WIZ_IMPORT_APPLY  or "Appliquer ce profil"
-L.WIZ_HERO_RIBBON   = L.WIZ_HERO_RIBBON   or "v%s : nouveau module Standby, l'écran d'absence"
+L.WIZ_HERO_RIBBON   = L.WIZ_HERO_RIBBON   or "v%s : nouveau module Anchor, déplace les fenêtres du jeu"
 L.WIZ_NEW_TAG       = L.WIZ_NEW_TAG       or "NOUVEAU"
 -- Etape 2 : vitrine du module selectionne
 L.WIZ_SHOW_NEW      = L.WIZ_SHOW_NEW      or "NOUVEAU CETTE SEMAINE"
@@ -329,6 +332,8 @@ L.WN_58_0  = L.WN_58_0  or "Correction d'affichage : « Tout fermer » et la fer
 L.WN_59_0  = L.WN_59_0  or "XPBar et RepBar : nouvelle case « Centrer en bas / en haut de l'écran » dans les options (section Position). La barre se place au milieu de l'écran ; seule sa hauteur reste réglable."
 L.WN_59_1  = L.WN_59_1  or "LvlHistory : nouvel onglet Raids (runs par difficulté, boss tués, raid favori) et temps passé en instance pour les donjons et les raids, avec total, moyenne par run et run le plus rapide."
 L.WN_59_2  = L.WN_59_2  or "Dashboard : les raids et le temps en instance de LvlHistory apparaissent dans la carte Leveling (site et Tibi Companion), via l'export de Stats."
+L.WN_65_0  = L.WN_65_0  or "Nouveau module Anchor : place les fenêtres du jeu où tu veux. Magnétisme et repères d'alignement, grille, annuler, une disposition par résolution d'écran et par personnage, placement du butin et des lancers de dés. Laisse la main à ElvUI, EllesmereUI ou BlizzMove quand ils gèrent déjà une fenêtre."
+L.WN_ANCHOR_HEAD = L.WN_ANCHOR_HEAD or "Nouveau module : Anchor"
 L.WN_64_0  = L.WN_64_0  or "Corrections de traduction. Une ligne dans le chat, 70 secondes après la connexion, annonce les versions du jeu prises en charge (désactivable dans le Centre, Barre et accès)."
 L.WN_63_0  = L.WN_63_0  or "Corrections de compatibilité. « Quoi de neuf » met en avant la compatibilité WoW Forever et Classic."
 L.WN_CLASSIC_HEAD = L.WN_CLASSIC_HEAD or "Compatible WoW Forever et WoW Classic"
@@ -412,7 +417,7 @@ L.PF_RELOAD_ASK = L.PF_RELOAD_ASK or "Profil appliqué.\n\nCertains modules ne c
 
 -- Categorie pour l'installateur : "h" = barre permanente, "o" = outil, sinon
 -- "t" (tracker, fenetre).
-local GROUP = { XPBar = "h", RepBar = "h", MiniHub = "o", Post = "o", Opacity = "o", Standby = "o" }
+local GROUP = { XPBar = "h", RepBar = "h", MiniHub = "o", Post = "o", Opacity = "o", Standby = "o", Anchor = "o" }
 
 -- Prereglages de l'etape Modules (cles du catalogue).
 local PRESETS = {
@@ -436,6 +441,11 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- 7.5.0 : nouveau module Anchor (la cle doit egaler TibiSuite.VERSION
+  -- pour que cette entree s'affiche).
+  ["7.5.0"] = {
+    { key = "Anchor", title = "Anchor", headline = L.WN_ANCHOR_HEAD, text = L.WN_65_0, new = true },
+  },
   ["7.4.3"] = {
     { key = "Suite", title = "TibiSuite", headline = L.WN_CLASSIC_HEAD, text = L.WN_61_0, new = true },
     { key = "Suite", title = "TibiSuite", text = L.WN_64_0, new = false },

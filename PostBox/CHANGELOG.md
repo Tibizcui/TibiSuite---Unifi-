@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.0
+- Socle d'interface v20 : l'alerte de nouvelle version connaît le nouveau module Anchor.
+
 ## 7.4.3
 - Fix bug translate : corrections de traduction.
 

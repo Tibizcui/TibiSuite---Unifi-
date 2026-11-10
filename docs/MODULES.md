@@ -1,4 +1,4 @@
-# TibiSuite : modules Opacity, Standby et PostBox
+# TibiSuite : modules Opacity, Standby, PostBox et Anchor
 
 > Extrait de CLAUDE.md, déplacé tel quel (texte non modifié). À lire quand on travaille sur ce sujet.
 
@@ -65,3 +65,47 @@ L'or ne compte qu'à `PLAYER_MONEY`. Les envois se suivent via `P.OnSendResult`
 (MAIL_SEND_SUCCESS / MAIL_FAILED). Workflow validé : **présenter le PLAN avant
 d'écrire le code**.
 
+
+## Module Anchor (déplacer les fenêtres, depuis 7.5.0)
+
+Accent indigo `#6E72F0` = `{0.431, 0.447, 0.941}`, clé de module `Anchor`,
+juste après XPBar dans le catalogue et le groupe Interface. Slash `/anchor` et
+`/anc` (`loot`, `undo`, `reset`, `probe`, `on`, `off`, `options`). Projet
+CurseForge 1795734. Ancien nom de prototype « Nomad », abandonné car un addon
+Nomad existe déjà sur CurseForge. **Tous les noms globaux portent le préfixe
+`TibiAnchor`** (sauvegarde `TibiAnchorDB`, `TibiAnchorMainFrame`,
+`TibiAnchorOptions`, `TibiAnchor_Toggle`...) : « Anchor » est trop générique.
+Même règle d'activation que Standby (pas de migration ponctuelle).
+
+Fichiers : `Core.lua` (sauvegarde, dispositions, géométrie, refus des frames
+protégées, interdites, à ancrage restreint ou à valeur secrète), `Frames.lua`
+(catalogue multi-versions, cohabitation), `Engine.lua` (crochets, glisser,
+magnétisme, grille, molette, annulation), `Loot.lua` (mode Placement),
+`UI.lua`, `Bridge.lua` (recherche, `/ts doctor`, aperçu, sonde).
+
+Règles : jamais de `SetScript` sur une frame Blizzard (`HookScript`,
+`hooksecurefunc` seulement), jamais de clé écrite sur elle (état externe à clés
+faibles). Le crochet `SetPoint` ne fait que **noter** la frame : le placement
+se fait depuis notre `OnUpdate`, hors de la pile d'appel de Blizzard. Une
+colonne gérée (`layoutParent`, lancers de dés en 12.x) est replacée en
+post-crochet de son `Layout`, comme EllesmereUI. `SetUserPlaced` est remis tel
+qu'on l'a trouvé. Pas de crochet `OnHide` sur les fenêtres Blizzard : la fin
+d'un glisser est surveillée par notre calque. Ctrl + molette passe par un
+capteur à nous posé sur la fenêtre le temps que Ctrl est tenu.
+
+Positions : `TibiAnchorDB.layouts[disposition][résolution][fenêtre] = {p, x, y,
+s}`, disposition `"*"` (compte) ou `Nom-Royaume`, résolution `"2560x1440"`
+(`GetPhysicalScreenSize`) ou `"*"`. Ancre choisie par tiers d'écran (coin ou
+bord le plus proche) sur UIParent.
+
+Cohabitation : BlizzMove ou MoveAny chargés => Anchor en retrait (option
+« Forcer »). Shifter d'EllesmereUI actif (`EllesmereUIDB.shifterEnabled`) =>
+ses fenêtres (liste recopiée de `EllesmereUIQoL_Shifter.lua` 9.8.3, **à relire
+à chaque mise à jour d'EllesmereUI**) ; `shifterLootUnlock` => lancers de dés
+et jet de bonus. ElvUI : `ElvLootFrame` présent => butin, lancers de dés
+toujours, `ElvUI_ContainerFrame` => sacs, frame ancrée sur un « Mover » ElvUI.
+Limite connue : `PVEFrame` (Recherche de groupe Retail) est protégée, donc non
+prise en charge (pas de poignée sécurisée).
+
+Validé en jeu par Tibiscui le 10 novembre 2026. Textes CurseForge :
+`_dev/Anchor_CurseForge.md`.
