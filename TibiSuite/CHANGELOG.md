@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.1
+- Opacity : nouvelle section Minicarte dans ses options (masquer l'icône Opacity ou l'icône TibiSuite).
+
 ## 7.5.0
 - Nouveau module Anchor : déplace les fenêtres du jeu (magnétisme et repères, grille, annuler, une disposition par résolution d'écran et par personnage, placement du butin et des lancers de dés). Onglet juste après XPBar, page dans le Centre, recherche globale, ligne dans /ts doctor, « Quoi de neuf » et installateur.
 - Socle d'interface v20 : l'alerte de nouvelle version connaît Anchor.

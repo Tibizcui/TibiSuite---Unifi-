@@ -281,6 +281,10 @@ L.OPT_NO_SUITE         = "ElvUI와 EllesmereUI 모두 감지되지 않았습니�
 L.OPT_SUITE            = "감지됨: %s. 해당 애드온이 관리하는 창은 줄에서 \"강제\"를 체크하지 않는 한 건드리지 않습니다. Opacity는 WoW 편집 모드를 절대 바꾸지 않으며, 기존 불투명도에 곱할 뿐입니다."
 L.OPT_SEC_FLOAT        = "떠 있는 버튼"
 L.OPT_HIDE_OPTIONS_BTN = "설정 버튼 숨기기 (Shift+오른쪽 클릭은 계속 작동)"
+L.OPT_SEC_MINIMAP      = "미니맵"
+L.OPT_MM_HIDE_SOLO     = "Opacity 아이콘 숨기기 (Opacity 단독)"
+L.OPT_MM_HIDE_SUITE    = "TibiSuite 아이콘 숨기기"
+L.OPT_MM_NOTE          = "TibiSuite와 함께 사용하면 Opacity는 자체 아이콘이 없으며 TibiSuite 아이콘을 사용합니다 (센터 > 바 및 접근과 같은 설정). 아이콘을 숨겨도 /opacity 또는 /opa로 창을 열 수 있습니다."
 L.OPT_SEC_RESET        = "초기화"
 L.OPT_RESET            = "목록 비우기 (모두 100%로)"
 

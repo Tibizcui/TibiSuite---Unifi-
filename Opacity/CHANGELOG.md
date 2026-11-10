@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.1
+- Nouveau : section Minicarte dans les options. Une case masque l'icône Opacity quand le module est installé seul, une autre masque l'icône TibiSuite quand la suite est installée (même réglage que Centre > Barre et accès). Icône masquée, /opacity ou /opa ouvre toujours la fenêtre. L'icône reste rangée par EllesmereUI, ElvUI ou MiniHub quand ils gèrent la minicarte.
+
 ## 7.5.0
 - Socle d'interface v20 : l'alerte de nouvelle version connaît le nouveau module Anchor.
 

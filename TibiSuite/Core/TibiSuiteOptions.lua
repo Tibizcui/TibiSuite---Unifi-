@@ -334,6 +334,7 @@ L.WN_59_1  = L.WN_59_1  or "LvlHistory : nouvel onglet Raids (runs par difficult
 L.WN_59_2  = L.WN_59_2  or "Dashboard : les raids et le temps en instance de LvlHistory apparaissent dans la carte Leveling (site et Tibi Companion), via l'export de Stats."
 L.WN_65_0  = L.WN_65_0  or "Nouveau module Anchor : place les fenêtres du jeu où tu veux. Magnétisme et repères d'alignement, grille, annuler, une disposition par résolution d'écran et par personnage, placement du butin et des lancers de dés. Laisse la main à ElvUI, EllesmereUI ou BlizzMove quand ils gèrent déjà une fenêtre."
 L.WN_ANCHOR_HEAD = L.WN_ANCHOR_HEAD or "Nouveau module : Anchor"
+L.WN_66_0  = L.WN_66_0  or "Opacity : nouvelle section Minicarte dans ses options. Une case masque l'icône Opacity quand il est installé seul, une autre l'icône TibiSuite. L'icône reste rangée par EllesmereUI, ElvUI ou MiniHub quand ils gèrent la minicarte."
 L.WN_64_0  = L.WN_64_0  or "Corrections de traduction. Une ligne dans le chat, 70 secondes après la connexion, annonce les versions du jeu prises en charge (désactivable dans le Centre, Barre et accès)."
 L.WN_63_0  = L.WN_63_0  or "Corrections de compatibilité. « Quoi de neuf » met en avant la compatibilité WoW Forever et Classic."
 L.WN_CLASSIC_HEAD = L.WN_CLASSIC_HEAD or "Compatible WoW Forever et WoW Classic"
@@ -441,6 +442,11 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- 7.5.1 : Anchor reste en vedette, option Minicarte d'Opacity.
+  ["7.5.1"] = {
+    { key = "Anchor", title = "Anchor", headline = L.WN_ANCHOR_HEAD, text = L.WN_65_0, new = true },
+    { key = "Opacity", title = "Opacity", text = L.WN_66_0, new = false },
+  },
   -- 7.5.0 : nouveau module Anchor (la cle doit egaler TibiSuite.VERSION
   -- pour que cette entree s'affiche).
   ["7.5.0"] = {

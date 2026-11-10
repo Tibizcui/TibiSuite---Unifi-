@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.1
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.5.0
 - Socle d'interface v20 : l'alerte de nouvelle version connaît le nouveau module Anchor.
 

@@ -18,7 +18,7 @@ PostBox, RenTracker, RepBar, SkillTracker, Standby, Stats, WeeklyCompass, XPBar.
 - Core : `TibiSuite/Core/TibiSuiteCore.lua`
 - Options (cases à cocher) : `TibiSuite/Core/TibiSuiteOptions.lua`
 - Socle UI partagé : `TibiSuite/Core/TibiSuiteUI.lua`
-- TOC : voir `TibiSuite/TibiSuite.toc` (source de vérité). Au 10 novembre 2026 : `## Interface: 120105, 120100, 120007, 16001`, `## Version: 7.5.0`.
+- TOC : voir `TibiSuite/TibiSuite.toc` (source de vérité). Au 10 novembre 2026 : `## Interface: 120105, 120100, 120007, 16001`, `## Version: 7.5.1`.
 
 Un module type contient : `<Nom>.toc`, `Core.lua` (logique + events), `UI.lua`,
 `<Nom>_Module.lua` (glue TibiSuite, voir plus bas), une copie du socle sous

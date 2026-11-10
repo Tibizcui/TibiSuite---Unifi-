@@ -843,6 +843,21 @@ local function BuildOptions()
       .. "Opacity ne modifie jamais le mode Édition de WoW : il multiplie l'opacité existante."), table.concat(suites, ", ")))
   end
 
+  -- Minicarte : deux reglages separes. OpacityDB.minimapHidden pour l'icone
+  -- propre (Opacity seul) ; TibiSuiteDB.mmHidden (via le core) pour l'icone
+  -- TibiSuite, la seule presente quand le core est installe.
+  p:Section(T("OPT_SEC_MINIMAP", "Minicarte"))
+  p:Check(T("OPT_MM_HIDE_SOLO", "Masquer l'icône Opacity (Opacity seul)"),
+    function() return OpacityDB.minimapHidden end,
+    function(v) if OP.SetMinimapHidden then OP.SetMinimapHidden(v) end end)
+  if _G.TibiSuite and _G.TibiSuite.SetMinimapHidden then
+    p:Check(T("OPT_MM_HIDE_SUITE", "Masquer l'icône TibiSuite"),
+      function() return TibiSuiteDB and TibiSuiteDB.mmHidden end,
+      function(v) _G.TibiSuite.SetMinimapHidden(v) end)
+  end
+  p:Note(T("OPT_MM_NOTE", "Avec TibiSuite, Opacity n'a pas d'icône propre : c'est celle de TibiSuite qui sert "
+    .. "(même réglage que Centre > Barre et accès). Icône masquée, /opacity ou /opa ouvre toujours la fenêtre."))
+
   if _G.TibiSuite and _G.TibiSuite.IsCtrlHidden then
     p:Section(T("OPT_SEC_FLOAT", "Boutons flottants"))
     p:Check(T("OPT_HIDE_OPTIONS_BTN", "Masquer le bouton Options (Maj+clic droit reste actif)"),

@@ -91,6 +91,47 @@ local function BuildStandaloneMinimapButton()
   end)
   btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
   UpdatePosition()
+  -- Choix « masquer l'icone » (OpacityDB.minimapHidden), pose AVANT que les
+  -- collecteurs ne scannent la minicarte : ils decouvrent alors un bouton
+  -- cache et le gerent comme tel.
+  if OpacityDB and OpacityDB.minimapHidden then OP.ApplyMinimapHidden() end
+end
+
+-- Masquage de l'icone propre (mode autonome).
+-- UNIQUEMENT Hide() / Show() : jamais de SetParent ni de SetPoint, pour que le
+-- bouton reste la ou un collecteur l'a range (grille EllesmereUIMinimap,
+-- conteneur MiniHub) ou a sa place sur la minicarte (seul, ElvUI). Ces
+-- collecteurs suivent Hide/Show et retirent ou remettent le bouton d'eux-memes.
+-- Cas particulier : EllesmereUIMinimap re-affiche un bouton cache pendant que
+-- sa grille est ouverte. On retente alors toutes les 0,5 s jusqu'a ce que le
+-- masquage tienne (grille refermee), puis on s'arrete.
+local hideRetry
+function OP.ApplyMinimapHidden()
+  local btn = _G.OpacityMinimapBtn
+  if not btn then return end
+  if hideRetry then hideRetry:Cancel(); hideRetry = nil end
+  if OpacityDB and OpacityDB.minimapHidden then
+    btn:Hide()
+    if btn:IsShown() then
+      hideRetry = C_Timer.NewTicker(0.5, function()
+        if not (OpacityDB and OpacityDB.minimapHidden) then
+          hideRetry:Cancel(); hideRetry = nil; return
+        end
+        btn:Hide()
+        if not btn:IsShown() then hideRetry:Cancel(); hideRetry = nil end
+      end)
+    end
+  else
+    btn:Show()
+  end
+end
+
+-- En mode suite, le bouton n'est jamais construit : on enregistre seulement
+-- le choix, qui s'appliquera si Opacity tourne un jour sans le core.
+function OP.SetMinimapHidden(hidden)
+  if not OpacityDB then return end
+  OpacityDB.minimapHidden = hidden and true or false
+  OP.ApplyMinimapHidden()
 end
 
 if HasCore() and IsEnabledByCore() then
