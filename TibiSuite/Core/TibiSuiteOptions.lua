@@ -444,6 +444,11 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- 7.5.4 : Clean code langages (traductions inutilisees retirees), memes cartes que la 7.5.3.
+  ["7.5.4"] = {
+    { key = "Anchor", title = "Anchor", headline = L.WN_ANCHOR_HEAD, text = L.WN_65_0, new = true },
+    { key = "Suite", title = "TibiSuite", text = L.WN_68_0, new = false },
+  },
   -- 7.5.3 : Anchor reste en vedette, section Bouton flottant uniformisee.
   ["7.5.3"] = {
     { key = "Anchor", title = "Anchor", headline = L.WN_ANCHOR_HEAD, text = L.WN_65_0, new = true },

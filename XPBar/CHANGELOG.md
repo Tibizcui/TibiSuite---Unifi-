@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.4
+- Clean code langages
+
 ## 7.5.3
 - Options : la section « Bouton flottant » (masquer le bouton Options) est désormais tout en bas des options, au même endroit et avec les mêmes libellés dans tous les addons.
 - Le masquage fonctionne aussi sans TibiSuite (addon seul) et suit le passage de l'un à l'autre.

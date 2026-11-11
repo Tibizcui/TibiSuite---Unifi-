@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.4
+- Clean code langages
+
 ## 7.5.3
 - Options : nouvelle section « Bouton flottant », tout en bas, pour masquer le bouton Options de la fenêtre, avec ou sans TibiSuite.
 

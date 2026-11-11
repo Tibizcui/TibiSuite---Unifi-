@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.4
+- Clean code langages
+
 ## 7.5.3
 - Version alignée sur la suite TibiSuite (socle d'interface v22), sans changement visible pour ce module.
 
