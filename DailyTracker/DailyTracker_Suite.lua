@@ -23,6 +23,15 @@ local function GetUI() return _G.TibiMidnight end
 local function DB() return _G.DailyTrackerDB or {} end
 local function Refresh() if NS.RefreshAll then NS.RefreshAll() end end
 
+-- Masquage des boutons flottants, en suite ET en standalone (socle v21) :
+-- l'etat est aussi garde dans DailyTrackerDB.floatHidden.
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FRAME, function() return _G.DailyTrackerDB end) end
+  return u
+end
+FloatUI()
+
 -- ---------------------------------------------------------------- Options
 local panel
 local function BuildOptions()
@@ -94,14 +103,9 @@ local function BuildOptions()
   panel:Check(L.OPT_BADGE,
     function() return DB().badge ~= false end,
     function(v) if _G.DailyTrackerDB then _G.DailyTrackerDB.badge = v end; Refresh() end)
-  panel:Check(L.OPT_HIDE_OPTS,
-    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "options") end,
-    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "options", v) end end)
-  panel:Check(L.OPT_HIDE_SEARCH,
-    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "search") end,
-    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "search", v) end end)
-  panel:Note(L.OPT_FLOAT_NOTE)
   panel:Note(L.OPT_TIP_NOTE)
+  -- Section standard, toujours en dernier (socle v22).
+  if panel.FloatControls then panel:FloatControls(FRAME, { search = true }) end
   return panel
 end
 

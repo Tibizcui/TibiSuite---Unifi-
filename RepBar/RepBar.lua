@@ -1,4 +1,4 @@
--- RepBar.lua v7.5.2
+-- RepBar.lua v7.5.3
 -- Barre de reputation avancee - Tibiscui
 -- Remplace la barre de reputation native, suit la faction par zone (via
 -- RenTracker) et bascule a la validation d'une quete.
@@ -1756,6 +1756,16 @@ function RepBar_Toggle()
 end
 
 local midnightPanel
+-- Masquage des boutons flottants, en suite ET en standalone (socle v21) :
+-- l'etat est aussi garde dans RepBarDB.floatHidden.
+local FLOAT_FRAME = "RepBarContainer"
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FLOAT_FRAME, function() return _G.RepBarDB end) end
+  return u
+end
+FloatUI()
+
 local function BuildMidnightOptions()
     local ui = TibiUI() ; if not (ui and ui.CreateOptionsPanel) then return nil end
     if midnightPanel then return midnightPanel end
@@ -1900,14 +1910,8 @@ local function BuildMidnightOptions()
         print("|cffFFD700[RepBar]|r " .. L.POS_RESET)
     end)
 
-    -- Bouton flottant (mode suite uniquement : l'etat vit dans TibiSuiteDB)
-    if _G.TibiSuite and _G.TibiSuite.SetCtrlHidden then
-        P:Section(L.OPT_SEC_FLOATING)
-        P:Check(L.OPT_HIDE_OPTIONS_BTN,
-            function() return TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("RepBarContainer", "options") end,
-            function(v) TibiSuite.SetCtrlHidden("RepBarContainer", "options", v) end)
-    end
-
+    -- Section standard, toujours en dernier (socle v22).
+    if P.FloatControls then P:FloatControls(FLOAT_FRAME) end
     return midnightPanel
 end
 

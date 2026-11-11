@@ -15,6 +15,15 @@
 local ADDON, LL = ...
 
 local FRAME       = "LairLensAuditFrame"        -- frame principale (AuditFrame.lua)
+
+-- Masquage des boutons flottants, en suite ET en standalone (socle v21) :
+-- l'etat est aussi garde dans LairLensDB.floatHidden.
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FRAME, function() return _G.LairLensDB end) end
+  return u
+end
+FloatUI()
 local ACCENT      = { 1.000, 1.000, 1.000 }     -- blanc pretre (#FFFFFF), accent LairLens
 local LOGO        = "Interface\\AddOns\\LairLens\\Media\\Logo"
 local KEY         = "Lair"                       -- cle du module cote TibiSuite
@@ -108,15 +117,6 @@ local function BuildOptions()
             if LL.modules.groupAudit then LL.modules.groupAudit:ApplyScale() end
         end)
 
-    panel:Section(L["OPT_SEC_FLOAT"])
-    panel:Check(L["OPT_HIDE_OPTBTN"],
-        function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "options") end,
-        function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "options", v) end end,
-        L["OPT_HIDE_OPTBTN_TT"])
-    panel:Check(L["OPT_HIDE_SEARCH"],
-        function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "search") end,
-        function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "search", v) end end)
-
     panel:Section(L["OPT_SEC_TOOLS"])
     panel:Button(L["OPT_DEMO"], function()
         local a = LL.modules.groupAudit
@@ -125,6 +125,8 @@ local function BuildOptions()
     panel:Button(L["OPT_PROBE"], function() if LL.Probe then LL.Probe:Run() end end)
     panel:Note(L["OPT_PROBE_NOTE"])
     panel:Note(L["OPT_TIP"])
+    -- Section standard, toujours en dernier (socle v22).
+    if panel.FloatControls then panel:FloatControls(FRAME, { search = true }) end
     return panel
 end
 

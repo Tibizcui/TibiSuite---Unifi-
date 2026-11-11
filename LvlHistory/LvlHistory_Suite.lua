@@ -4,6 +4,15 @@
 ============================================================================]]
 
 local FRAME    = "LvlHistoryMainFrame"
+
+-- Masquage des boutons flottants, en suite ET en standalone (socle v21) :
+-- l'etat est aussi garde dans LvlHistoryDB.floatHidden.
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FRAME, function() return _G.LvlHistoryDB end) end
+  return u
+end
+FloatUI()
 local ACCENT   = { 0.369, 0.886, 0.137 }   -- vert (logo #5EE223)
 local LOGO     = "Interface\\AddOns\\LvlHistory\\Media\\icon"
 local KEY      = "Lvl"
@@ -56,16 +65,9 @@ local function BuildOptions()
     if LvlHistory.UI and LvlHistory.UI.OpenTab then LvlHistory.UI.OpenTab(7) end
   end)
 
-  panel:Section(T("OPT_SEC_FLOATING", "Boutons flottants (barre TibiSuite)"))
-  panel:Check(T("OPT_HIDE_OPTIONS_BTN", "Masquer le bouton Options"),
-    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("LvlHistoryMainFrame", "options") end,
-    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("LvlHistoryMainFrame", "options", v) end end)
-  panel:Check(T("OPT_HIDE_SEARCH_BTN", "Masquer le champ Recherche"),
-    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("LvlHistoryMainFrame", "search") end,
-    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("LvlHistoryMainFrame", "search", v) end end)
-  panel:Note(T("OPT_FLOATING_NOTE", "Le bouton Options et le champ Recherche debordent au-dessus de la fenetre. Meme masques, Maj+clic droit sur la fenetre ouvre ces options."))
-
   panel:Note(T("OPT_NOTE", "Astuce : clic droit sur la vignette Lvl Hist dans la barre TibiSuite ouvre aussi ces options."))
+  -- Section standard, toujours en dernier (socle v22).
+  if panel.FloatControls then panel:FloatControls(FRAME, { search = true }) end
   return panel
 end
 

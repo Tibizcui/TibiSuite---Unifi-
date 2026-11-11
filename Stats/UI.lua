@@ -4599,6 +4599,16 @@ function SX.IsShown() return mainFrame and mainFrame:IsShown() end
 -- PANNEAU D'OPTIONS (convention commune : bouton "Options" de l'en-tete,
 -- clic droit sur la vignette de la barre)
 -- ============================================================================
+-- Masquage du bouton flottant Options, en suite ET en standalone (socle
+-- v21) : l'etat est aussi garde dans StatsDB.floatHidden.
+local FLOAT_FRAME = "StatsMainFrame"
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FLOAT_FRAME, function() return _G.StatsDB end) end
+  return u
+end
+FloatUI()
+
 local optPanel
 local function BuildOptions()
   if optPanel then return end
@@ -4610,6 +4620,8 @@ local function BuildOptions()
   optPanel:Section(L["EVENTS_COL_EXPANSION"])
   optPanel:Note(L["EXP_BACKFILL_NOTE"])
   optPanel:Button(L["EXP_BACKFILL_BTN"], function() if SX.RunExpBackfill then SX.RunExpBackfill(true) end end)
+  -- Section standard, toujours en dernier (socle v22).
+  if optPanel.FloatControls then optPanel:FloatControls(FLOAT_FRAME) end
 end
 
 function SX.OpenOptions()

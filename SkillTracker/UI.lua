@@ -1921,6 +1921,16 @@ end
 -- ================================================================
 -- PANNEAU D'OPTIONS
 -- ================================================================
+-- Masquage du bouton flottant Options, en suite ET en standalone (socle
+-- v21) : l'etat est aussi garde dans SkillTrackerDB.floatHidden.
+local FLOAT_FRAME = "SkillTrackerMainFrame"
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FLOAT_FRAME, function() return _G.SkillTrackerDB end) end
+  return u
+end
+FloatUI()
+
 local optPanel
 local function BuildOptions()
   if optPanel then return end
@@ -1938,7 +1948,6 @@ local function BuildOptions()
   optPanel:Check(L.OPT_MINIMAP,
     function() return ST.settings.minimap end,
     function(v) ST.settings.minimap = v; ST.UpdateMinimap() end)
-
   optPanel:Section(L.OPT_VIEW)
   optPanel:Check(L.OPT_HIDE_MAXED,
     function() return ST.settings.hideMaxed end,
@@ -2070,6 +2079,8 @@ local function BuildOptions()
   optPanel:Button(L.OPT_EXPORT, DoExport)
   optPanel:Button(L.OPT_IMPORT, DoImport)
   optPanel:Button(L.OPT_WIPE_CHAR, function() ST.WipeCurrentChar() end)
+  -- Section standard, toujours en dernier (socle v22).
+  if optPanel.FloatControls then optPanel:FloatControls(FLOAT_FRAME) end
 end
 
 function ST.OpenOptions()

@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.5.3
+- Tous les addons : la section « Bouton flottant » (masquer le bouton Options, et le champ Recherche s'il existe) est tout en bas des options, au même endroit partout.
+- Le masquage fonctionne aussi pour un addon utilisé sans TibiSuite. Stats et SkillTracker gagnent cette option.
+- Socle d'interface v22.
+
 ## 7.5.2
 - RenTracker, LegTracker, DailyTracker, LvlHistory et DgnTracker : leur bouton de minicarte reste rangé par EllesmereUI ou MiniHub.
 

@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.5.2
+-- TibiSuiteCore v7.5.3
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.5.2"
+local VERSION = "7.5.3"
 
 -- ================================================================
 -- LOCALISATION
@@ -2894,6 +2894,11 @@ local function ApplyCtrlVisibility(frameName)
   if not f then return end
   local c = f._tibiControls
   if type(c) ~= "table" then return end   -- pas (encore) decore, ou flag booleen
+  -- Socle v21+ : il connait aussi l'etat standalone (SavedVariables du module),
+  -- on lui delegue pour ne jamais reafficher un bouton masque hors suite.
+  if c.ApplyHidden and _G.TibiMidnight and _G.TibiMidnight.ctrlStores then
+    c.ApplyHidden(); return
+  end
   if c.options and c.options.Show then
     if TibiSuite.IsCtrlHidden(frameName, "options") then c.options:Hide() else c.options:Show() end
   end

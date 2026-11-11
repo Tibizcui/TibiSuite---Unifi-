@@ -1,4 +1,4 @@
--- XPBar.lua v7.5.2
+-- XPBar.lua v7.5.3
 -- Barre XP avancée - Tibiscui
 -- Maj+Drag pour déplacer | Maj+Clic droit pour les options
 
@@ -2080,6 +2080,16 @@ end
 
 -- Panneau d'options flottant Midnight
 local midnightPanel
+-- Masquage des boutons flottants, en suite ET en standalone (socle v21) :
+-- l'etat est aussi garde dans XPBarDB.floatHidden.
+local FLOAT_FRAME = "XPBarContainer"
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FLOAT_FRAME, function() return _G.XPBarDB end) end
+  return u
+end
+FloatUI()
+
 local function BuildMidnightOptions()
     local ui = TibiUI(); if not ui then return nil end
     if midnightPanel then return midnightPanel end
@@ -2244,15 +2254,8 @@ local function BuildMidnightOptions()
         print("|cffFFD700[XPBar]|r " .. L.POS_RESET)
     end)
 
-    -- ── Bouton flottant (mode suite uniquement : l'etat vit dans TibiSuiteDB,
-    -- absent en autonome, ou la case n'aurait aucun effet) ──
-    if _G.TibiSuite and _G.TibiSuite.SetCtrlHidden then
-        P:Section(L.OPT_SEC_FLOATING)
-        P:Check(L.OPT_HIDE_OPTIONS_BTN,
-            function() return TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("XPBarContainer", "options") end,
-            function(v) TibiSuite.SetCtrlHidden("XPBarContainer", "options", v) end)
-    end
-
+    -- Section standard, toujours en dernier (socle v22).
+    if P.FloatControls then P:FloatControls(FLOAT_FRAME) end
     return midnightPanel
 end
 

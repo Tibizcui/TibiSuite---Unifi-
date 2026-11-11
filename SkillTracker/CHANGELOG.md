@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.3
+- Options : nouvelle section « Bouton flottant », tout en bas, pour masquer le bouton Options de la fenêtre, avec ou sans TibiSuite.
+
 ## 7.5.2
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

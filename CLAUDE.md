@@ -18,7 +18,7 @@ PostBox, RenTracker, RepBar, SkillTracker, Standby, Stats, WeeklyCompass, XPBar.
 - Core : `TibiSuite/Core/TibiSuiteCore.lua`
 - Options (cases à cocher) : `TibiSuite/Core/TibiSuiteOptions.lua`
 - Socle UI partagé : `TibiSuite/Core/TibiSuiteUI.lua`
-- TOC : voir `TibiSuite/TibiSuite.toc` (source de vérité). Au 10 novembre 2026 : `## Interface: 120105, 120100, 120007, 16001`, `## Version: 7.5.2`.
+- TOC : voir `TibiSuite/TibiSuite.toc` (source de vérité). Au 11 novembre 2026 : `## Interface: 120105, 120100, 120007, 16001`, `## Version: 7.5.3`.
 
 Un module type contient : `<Nom>.toc`, `Core.lua` (logique + events), `UI.lua`,
 `<Nom>_Module.lua` (glue TibiSuite, voir plus bas), une copie du socle sous
@@ -126,7 +126,7 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   notes, champs ; remonte tout objet ancré TOPLEFT sur `content` sous une note
   raccourcie, y compris les widgets maison de MiniHub/Standby), `panel:IsDocked()`.
   Registre `UI.panels` (+ par `cfg.name`) et `UI.lastShownPanel`. Toute
-  évolution du socle (actuellement v20) : bump `NS_VERSION` + recopie dans les 17 copies en gardant
+  évolution du socle (actuellement v22) : bump `NS_VERSION` + recopie dans les 17 copies en gardant
   leur bloc d'en-tête « COPIE EMBARQUEE (module X) ».
 - Alerte de nouvelle version (v17, non testée en jeu, plan `_dev/VersionCheck.md`) :
   préfixe addon `TibiSuite`, message `V1:<version>:S|M` en guilde / groupe /
@@ -142,7 +142,8 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   `TOC_INTERFACE` à chaque passage de compatibilité** (17 copies du socle).
 - En-tête : `UI.AddHeaderControls(frame,cfg)` pose les boutons flottants Options
   (roue) et Recherche (loupe) au coin haut-droit, applique l'état masqué dès la
-  création via `_G.TibiSuite.IsCtrlHidden`, et câble Maj+clic droit -> `cfg.onOptions`.
+  création via `UI.IsCtrlHidden` (réappliqué à chaque `OnShow`), et câble
+  Maj+clic droit -> `cfg.onOptions`.
 - Personnage : `UI.ClassColor(token)`, `UI.CharBannerText(data)`, `UI.CharBanner`.
 
 ## Patron d'un `<Nom>_Module.lua`
@@ -161,15 +162,26 @@ SLASH_TIBISTATS1 = "/stats"; SlashCmdList["TIBISTATS"] = function() SX.Toggle() 
 
 ## Boutons flottants masquables
 
-Cases DANS le panneau d'options de chaque module (deux cases séparées Options /
-Recherche), persistées dans `TibiSuiteDB.floatHidden[frameName] = {options=,
-search=}`. Frames concernées (Options+Recherche sauf indication) : Daily
+Section standard posée par le socle, **toujours en DERNIER** dans le panneau
+d'options de chaque module : `panel:FloatControls(frameName, {search=true})`
+(v22). Libellés fournis par le socle, traduits en 10 langues
+(`UI.FloatStrings()`) : « Bouton flottant » + « Masquer le bouton Options »,
+au pluriel avec « Masquer le champ Recherche » si `search`. Actives en suite ET
+en standalone depuis le socle v21 (v21 validé en jeu le 11 novembre 2026, v22
+non testé). Chaque module inscrit sa SavedVariables au chargement avec
+`UI.RegisterCtrlStore(frameName, fn)` (helper local `FloatUI`). L'état est
+écrit à deux endroits : `TibiSuiteDB.floatHidden[frameName] = {options=,
+search=}` (core) et `<ModuleDB>.floatHidden = {options=, search=}` (clé plate
+dans la SV du module, aucune nouvelle SavedVariables). Lecture : masqué si l'un
+des deux le dit, donc le choix suit le passage suite <-> standalone.
+`ApplyCtrlVisibility` du core délègue à `ctrls.ApplyHidden` du socle.
+Frames concernées (Options+Recherche sauf indication) : Daily
 `DTMainFrame`, Dgn `DGNMainFrame`, Lvl `LvlHistoryMainFrame`, Weekly
 `WeeklyCompassFrame`, Rep `RNTMainFrame`, Lair `LairLensAuditFrame`, Leg
-`LegTrackerMainFrame`, MiniHub `MiniHubContainer` (cases visibles en mode
-suite seulement) ; XPBar `XPBarContainer` et RepBar `RepBarContainer`
-(Options seul) ; Anchor `TibiAnchorMainFrame`. SkillTracker n'a pas de
-boutons flottants.
+`LegTrackerMainFrame`, MiniHub `MiniHubContainer`, PostBox `PostBoxMainFrame`,
+Anchor `TibiAnchorMainFrame` ; Options seul : XPBar `XPBarContainer`, RepBar
+`RepBarContainer`, Opacity `OpacityMainFrame`, Stats `StatsMainFrame`,
+SkillTracker `SkillTrackerMainFrame`. Standby n'a pas de bouton flottant.
 Le raccourci Maj+clic droit ouvre les options ; il est câblé UNIQUEMENT par le
 socle (ne pas le re-câbler dans le core, sinon double-toggle).
 

@@ -1132,6 +1132,16 @@ function PostBox_Toggle()
   end
 end
 
+-- Masquage des boutons flottants, en suite ET en standalone (socle v21) :
+-- l'etat est aussi garde dans PostBoxDB.floatHidden.
+local FLOAT_FRAME = "PostBoxMainFrame"
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FLOAT_FRAME, function() return _G.PostBoxDB end) end
+  return u
+end
+FloatUI()
+
 function PostBox_OpenOptions()
   if P.BuildOptionsPanel then P.BuildOptionsPanel() end
   if _G.PostBoxOptions then _G.PostBoxOptions:Toggle() end
@@ -1871,16 +1881,7 @@ function P.BuildOptionsPanel()
   panel:Note(L.OPT_SESSION_NOTE)
   panel:Button(L.OPT_RESET_RAKE, function() P.ResetRake(); P.RefreshWindow() end)
 
-  if _G.TibiSuite and _G.TibiSuite.SetCtrlHidden then
-    panel:Section(L.OPT_SEC_SUITE)
-    panel:Check(L.OPT_HIDE_OPTS,
-      function() return TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("PostBoxMainFrame", "options") end,
-      function(v) TibiSuite.SetCtrlHidden("PostBoxMainFrame", "options", v) end)
-    panel:Check(L.OPT_HIDE_SEARCH,
-      function() return TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("PostBoxMainFrame", "search") end,
-      function(v) TibiSuite.SetCtrlHidden("PostBoxMainFrame", "search", v) end)
-    panel:Note(L.OPT_FLOAT_NOTE)
-  end
-
+  -- Section standard, toujours en dernier (socle v22).
+  if panel.FloatControls then panel:FloatControls(FLOAT_FRAME, { search = true }) end
   _G.PostBoxOptions = panel
 end

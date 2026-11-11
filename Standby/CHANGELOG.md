@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.3
+- Version alignée sur la suite TibiSuite (socle d'interface v22), sans changement visible pour ce module.
+
 ## 7.5.2
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

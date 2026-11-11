@@ -144,6 +144,16 @@ local function RefreshList()
 end
 AN.RefreshUI = RefreshList
 
+-- Masquage des boutons flottants, en suite ET en standalone (socle v21) :
+-- l'etat est aussi garde dans TibiAnchorDB.floatHidden.
+local FLOAT_FRAME = "TibiAnchorMainFrame"
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FLOAT_FRAME, function() return _G.TibiAnchorDB end) end
+  return u
+end
+FloatUI()
+
 local function BuildMain()
   local UI = GetUI()
   main = Window("TibiAnchorMainFrame", 680, 520, "Anchor")
@@ -292,15 +302,8 @@ local function BuildOptions()
     function() return db.force end, function(v) db.force = v; AN.Scan(); AN.ReapplyAll(); AN.OnChanged() end,
     T("TT_FORCE", "Anchor agit même sur les fenêtres gérées par un autre addon : les deux se disputeront la position."))
 
-  if _G.TibiSuite and _G.TibiSuite.IsCtrlHidden then
-    p:Section(T("OPT_SEC_FLOAT", "Boutons flottants"))
-    p:Check(T("OPT_HIDE_OPT", "Masquer le bouton Options"),
-      function() return _G.TibiSuite.IsCtrlHidden("TibiAnchorMainFrame", "options") end,
-      function(v) _G.TibiSuite.SetCtrlHidden("TibiAnchorMainFrame", "options", v) end)
-    p:Check(T("OPT_HIDE_SEARCH", "Masquer la recherche"),
-      function() return _G.TibiSuite.IsCtrlHidden("TibiAnchorMainFrame", "search") end,
-      function(v) _G.TibiSuite.SetCtrlHidden("TibiAnchorMainFrame", "search", v) end)
-  end
+  -- Section standard, toujours en dernier (socle v22).
+  if p.FloatControls then p:FloatControls(FLOAT_FRAME, { search = true }) end
   return p
 end
 

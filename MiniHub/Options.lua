@@ -20,6 +20,15 @@ local FRAME  = "MiniHubContainer"
 
 local function GetUI() return _G.TibiMidnight end
 local function DB() return _G.MiniHubDB end
+
+-- Masquage des boutons flottants, en suite ET en standalone (socle v21) :
+-- l'etat est aussi garde dans MiniHubDB.floatHidden.
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FRAME, function() return _G.MiniHubDB end) end
+  return u
+end
+FloatUI()
 local function Relayout()
     if MiniHub.SortCollected then MiniHub.SortCollected() end
     if MiniHub.RequestLayout then MiniHub.RequestLayout() end
@@ -210,15 +219,7 @@ local function BuildOptions()
         function(v) MiniHub.SetIgnoreConflict(v) end, L["OPT_IGNORE_CONFLICT_TT"])
 
     -- ------------------------------------------------------------ Suite / autonome
-    if _G.TibiSuite and _G.TibiSuite.SetCtrlHidden then
-        panel:Section(L["SEC_FLOATING"])
-        panel:Check(L["OPT_HIDE_FLOAT_OPTIONS"],
-            function() return _G.TibiSuite.IsCtrlHidden(FRAME, "options") end,
-            function(v) _G.TibiSuite.SetCtrlHidden(FRAME, "options", v) end)
-        panel:Check(L["OPT_HIDE_FLOAT_SEARCH"],
-            function() return _G.TibiSuite.IsCtrlHidden(FRAME, "search") end,
-            function(v) _G.TibiSuite.SetCtrlHidden(FRAME, "search", v) end)
-    else
+    if not (_G.TibiSuite and _G.TibiSuite.SetCtrlHidden) then
         panel:Section(L["SEC_MAIN_BUTTON"])
         panel:Check(L["OPT_SHOW_MINIMAP"],
             function() return not DB().minimap.hide end,
@@ -261,6 +262,8 @@ local function BuildOptions()
         MiniHub.Print(L["MSG_RESET"])
     end)
     panel:Button(L["OPT_RESET_ORDER"], function() MiniHub.ResetOrder() end)
+    -- Section standard, toujours en dernier (socle v22).
+    if panel.FloatControls then panel:FloatControls(FRAME, { search = true }) end
 
     return panel
 end

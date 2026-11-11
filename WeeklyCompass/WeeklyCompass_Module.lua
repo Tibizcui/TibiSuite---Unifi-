@@ -14,6 +14,15 @@
 local addonName, ns = ...
 
 local FRAME  = "WeeklyCompassFrame"
+
+-- Masquage des boutons flottants, en suite ET en standalone (socle v21) :
+-- l'etat est aussi garde dans WeeklyCompassDB.floatHidden.
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FRAME, function() return _G.WeeklyCompassDB end) end
+  return u
+end
+FloatUI()
 local ACCENT = { 0.039, 1.000, 0.745 }   -- turquoise (logo #0AFFBE)
 local KEY    = "Weekly"
 
@@ -82,16 +91,9 @@ local function BuildOptions()
   panel:Button(L["OPT_UNHIDE_COLS"], function() ns.DB:UnhideAllCols(); refreshView() end)
   panel:Note(L["OPT_TABLE_NOTE"])
 
-  panel:Section(L["OPT_SECTION_FLOAT"])
-  panel:Check(L["OPT_HIDE_OPTIONS"],
-    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("WeeklyCompassFrame", "options") end,
-    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("WeeklyCompassFrame", "options", v) end end)
-  panel:Check(L["OPT_HIDE_SEARCH"],
-    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden("WeeklyCompassFrame", "search") end,
-    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden("WeeklyCompassFrame", "search", v) end end)
-  panel:Note(L["OPT_FLOAT_NOTE"])
-
   panel:Note(L["OPT_TAB_TIP"])
+  -- Section standard, toujours en dernier (socle v22).
+  if panel.FloatControls then panel:FloatControls(FRAME, { search = true }) end
   return panel
 end
 

@@ -21,7 +21,7 @@
   Auteur : Tibiscui - Kirin Tor
 ============================================================================]]
 
-local NS_VERSION = 20
+local NS_VERSION = 22
 
 if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
   return
@@ -476,6 +476,83 @@ function UI.MakeSearchField(parent, cfg)
   return h
 end
 
+-- ============================================================================
+-- MASQUAGE DES CONTROLES FLOTTANTS (v21) : suite ET standalone
+-- ----------------------------------------------------------------------------
+-- Avant v21, l'etat masque vivait seulement dans le core (TibiSuiteDB) : en
+-- standalone, la case ne faisait rien. Desormais chaque module inscrit sa
+-- propre SavedVariables (UI.RegisterCtrlStore) et l'etat y est aussi ecrit,
+-- sous la cle plate floatHidden = { options = true, search = true }.
+-- Lecture : masque si le core OU la base du module le dit. Ecriture : les
+-- deux a la fois, donc le choix survit au passage suite <-> standalone.
+-- ============================================================================
+UI.ctrlStores = UI.ctrlStores or {}
+
+function UI.RegisterCtrlStore(frameName, getDB)
+  if type(frameName) == "string" and type(getDB) == "function" then
+    UI.ctrlStores[frameName] = getDB
+  end
+end
+
+local function CtrlStore(frameName, create)
+  local fn = frameName and UI.ctrlStores[frameName]
+  if not fn then return nil end
+  local ok, db = pcall(fn)
+  if not ok or type(db) ~= "table" then return nil end
+  if type(db.floatHidden) ~= "table" then
+    if not create then return nil end
+    db.floatHidden = {}
+  end
+  return db.floatHidden
+end
+
+function UI.IsCtrlHidden(frameName, which)
+  local TS = _G.TibiSuite
+  if TS and TS.IsCtrlHidden and TS.IsCtrlHidden(frameName, which) then return true end
+  local s = CtrlStore(frameName)
+  return (s and s[which]) and true or false
+end
+
+function UI.SetCtrlHidden(frameName, which, hidden)
+  local s = CtrlStore(frameName, true)
+  if s then s[which] = hidden and true or nil end
+  local TS = _G.TibiSuite
+  if TS and TS.SetCtrlHidden then pcall(TS.SetCtrlHidden, frameName, which, hidden) end
+  local f = frameName and _G[frameName]
+  local c = f and f._tibiControls
+  if type(c) == "table" and c.ApplyHidden then c.ApplyHidden() end
+end
+
+-- Libelles de la section standard (panel:FloatControls), identiques dans
+-- tous les addons. Langue du client, anglais par defaut.
+local FLOAT_STRINGS = {
+  enUS = { title1 = "Floating button", titleN = "Floating buttons", hideOpt = "Hide the Options button",
+           hideSearch = "Hide the Search field", tip = "Shift + right-click on the window always opens the options." },
+  frFR = { title1 = "Bouton flottant", titleN = "Boutons flottants", hideOpt = "Masquer le bouton Options",
+           hideSearch = "Masquer le champ Recherche", tip = "Maj + clic droit sur la fenêtre ouvre toujours les options." },
+  deDE = { title1 = "Schwebende Schaltfläche", titleN = "Schwebende Schaltflächen", hideOpt = "Optionen-Schaltfläche ausblenden",
+           hideSearch = "Suchfeld ausblenden", tip = "Umschalt + Rechtsklick auf das Fenster öffnet immer die Optionen." },
+  esES = { title1 = "Botón flotante", titleN = "Botones flotantes", hideOpt = "Ocultar el botón Opciones",
+           hideSearch = "Ocultar el campo Búsqueda", tip = "Mayús + clic derecho en la ventana siempre abre las opciones." },
+  itIT = { title1 = "Pulsante mobile", titleN = "Pulsanti mobili", hideOpt = "Nascondi il pulsante Opzioni",
+           hideSearch = "Nascondi il campo Ricerca", tip = "Maiusc + clic destro sulla finestra apre sempre le opzioni." },
+  ptBR = { title1 = "Botão flutuante", titleN = "Botões flutuantes", hideOpt = "Ocultar o botão Opções",
+           hideSearch = "Ocultar o campo Busca", tip = "Shift + botão direito na janela sempre abre as opções." },
+  ruRU = { title1 = "Плавающая кнопка", titleN = "Плавающие кнопки", hideOpt = "Скрыть кнопку настроек",
+           hideSearch = "Скрыть поле поиска", tip = "Shift + ПКМ по окну всегда открывает настройки." },
+  koKR = { title1 = "떠 있는 버튼", titleN = "떠 있는 버튼", hideOpt = "설정 버튼 숨기기",
+           hideSearch = "검색창 숨기기", tip = "창에서 Shift + 우클릭하면 언제나 설정이 열립니다." },
+  zhCN = { title1 = "浮动按钮", titleN = "浮动按钮", hideOpt = "隐藏选项按钮",
+           hideSearch = "隐藏搜索框", tip = "在窗口上 Shift + 右键总能打开设置。" },
+  zhTW = { title1 = "浮動按鈕", titleN = "浮動按鈕", hideOpt = "隱藏選項按鈕",
+           hideSearch = "隱藏搜尋框", tip = "在視窗上 Shift + 右鍵永遠會開啟設定。" },
+}
+FLOAT_STRINGS.esMX = FLOAT_STRINGS.esES
+function UI.FloatStrings()
+  local loc = GetLocale and GetLocale() or "enUS"
+  return FLOAT_STRINGS[loc] or FLOAT_STRINGS.enUS
+end
+
 function UI.AddHeaderControls(frame, cfg)
   cfg = cfg or {}
   if frame._tibiControls then return frame._tibiControls end
@@ -497,18 +574,19 @@ function UI.AddHeaderControls(frame, cfg)
   end
 
   -- Masquage persistant des controles (Options / Recherche). L'etat par fenetre
-  -- vit dans le core (TibiSuite.IsCtrlHidden, cle = nom global de la fenetre) ;
-  -- on l'applique des la creation, donc sans clignotement. ctrls.ApplyHidden
-  -- permet de reappliquer apres coup (le core l'appelle aussi via SetCtrlHidden).
+  -- (cle = nom global de la fenetre) est lu par UI.IsCtrlHidden : core en mode
+  -- suite, SavedVariables du module en standalone (v21). On l'applique des la
+  -- creation, donc sans clignotement. ctrls.ApplyHidden permet de reappliquer
+  -- apres coup (UI.SetCtrlHidden et le core l'appellent).
   local frameName = frame.GetName and frame:GetName()
+  if cfg.store and frameName then UI.RegisterCtrlStore(frameName, cfg.store) end
   ctrls.ApplyHidden = function()
-    local TS = _G.TibiSuite
-    if not (TS and TS.IsCtrlHidden and frameName) then return end
+    if not frameName then return end
     if ctrls.options and ctrls.options.SetShown then
-      ctrls.options:SetShown(not TS.IsCtrlHidden(frameName, "options"))
+      ctrls.options:SetShown(not UI.IsCtrlHidden(frameName, "options"))
     end
     if ctrls.search then
-      if TS.IsCtrlHidden(frameName, "search") then
+      if UI.IsCtrlHidden(frameName, "search") then
         if ctrls.search.Hide then ctrls.search.Hide() end
       else
         if ctrls.search.Show then ctrls.search.Show() end
@@ -516,6 +594,9 @@ function UI.AddHeaderControls(frame, cfg)
     end
   end
   ctrls.ApplyHidden()
+  -- Filet (v21) : si la base du module n'etait pas encore lisible a la
+  -- creation, on reapplique a chaque affichage de la fenetre (additif).
+  if frame.HookScript then frame:HookScript("OnShow", function() ctrls.ApplyHidden() end) end
 
   -- Maj+clic droit sur la fenetre -> ouvre le panneau d'options du module.
   -- Place au socle (une seule fois, effet immediat) ; additif (HookScript),
@@ -773,6 +854,27 @@ function UI.CreateOptionsPanel(cfg)
     panel._refresh[#panel._refresh + 1] = function() cb:SetChecked(getFn()) end
     it = index("check", label, cb, getFn, setFn)
     advance(28); fit(); return self
+  end
+
+  -- v22 : section standard "Bouton(s) flottant(s)", a appeler EN DERNIER
+  -- dans chaque panneau d'options, pour qu'elle soit toujours au meme
+  -- endroit et avec les memes libelles dans tous les addons.
+  -- opts.search = true ajoute la case du champ Recherche ; opts.store
+  -- (fonction -> SavedVariables du module) inscrit la base standalone.
+  function panel:FloatControls(frameName, opts)
+    opts = opts or {}
+    if opts.store then UI.RegisterCtrlStore(frameName, opts.store) end
+    local S = UI.FloatStrings()
+    self:Section(opts.search and S.titleN or S.title1)
+    self:Check(S.hideOpt,
+      function() return UI.IsCtrlHidden(frameName, "options") end,
+      function(v) UI.SetCtrlHidden(frameName, "options", v) end, S.tip)
+    if opts.search then
+      self:Check(S.hideSearch,
+        function() return UI.IsCtrlHidden(frameName, "search") end,
+        function(v) UI.SetCtrlHidden(frameName, "search", v) end)
+    end
+    return self
   end
 
   function panel:Slider(label, minV, maxV, step, getFn, setFn)

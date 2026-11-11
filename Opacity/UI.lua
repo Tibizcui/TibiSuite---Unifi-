@@ -666,6 +666,16 @@ local function SavePosition()
   OpacityDB.win = { point = point, relPoint = relPoint, x = x, y = y }
 end
 
+-- Masquage des boutons flottants, en suite ET en standalone (socle v21) :
+-- l'etat est aussi garde dans OpacityDB.floatHidden.
+local FLOAT_FRAME = "OpacityMainFrame"
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FLOAT_FRAME, function() return _G.OpacityDB end) end
+  return u
+end
+FloatUI()
+
 local function BuildMain()
   main = Window("OpacityMainFrame", 860, 540, "Opacity")
   main:SetScript("OnDragStop", function(s) s:StopMovingOrSizing(); SavePosition() end)
@@ -858,15 +868,10 @@ local function BuildOptions()
   p:Note(T("OPT_MM_NOTE", "Avec TibiSuite, Opacity n'a pas d'icône propre : c'est celle de TibiSuite qui sert "
     .. "(même réglage que Centre > Barre et accès). Icône masquée, /opacity ou /opa ouvre toujours la fenêtre."))
 
-  if _G.TibiSuite and _G.TibiSuite.IsCtrlHidden then
-    p:Section(T("OPT_SEC_FLOAT", "Boutons flottants"))
-    p:Check(T("OPT_HIDE_OPTIONS_BTN", "Masquer le bouton Options (Maj+clic droit reste actif)"),
-      function() return _G.TibiSuite.IsCtrlHidden("OpacityMainFrame", "options") end,
-      function(v) _G.TibiSuite.SetCtrlHidden("OpacityMainFrame", "options", v) end)
-  end
-
   p:Section(T("OPT_SEC_RESET", "Réinitialiser"))
   p:Button(T("OPT_RESET", "Vider la liste (tout revient à 100 %)"), function() OP.ResetProfile() end)
+  -- Section standard, toujours en dernier (socle v22).
+  if p.FloatControls then p:FloatControls(FLOAT_FRAME) end
   return p
 end
 

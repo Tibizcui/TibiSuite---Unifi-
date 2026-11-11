@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.5.3
+- Options : la section « Boutons flottants » (masquer le bouton Options et le champ Recherche) est désormais tout en bas des options, au même endroit et avec les mêmes libellés dans tous les addons.
+- Le masquage fonctionne aussi sans TibiSuite (addon seul) et suit le passage de l'un à l'autre.
+
 ## 7.5.2
 - Correctif : le bouton de la minicarte reste dans la grille d'EllesmereUI ou le conteneur de MiniHub au lieu de revenir autour de la minicarte quand il s'affiche.
 

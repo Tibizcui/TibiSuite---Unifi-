@@ -4,6 +4,15 @@
 
 local _, LTNS  = ...   -- table privee de l'addon (LegFarm.lua, LegOverlay.lua)
 local FRAME    = "LegTrackerMainFrame"
+
+-- Masquage des boutons flottants, en suite ET en standalone (socle v21) :
+-- l'etat est aussi garde dans LegTrackerDB.floatHidden.
+local function FloatUI()
+  local u = _G.TibiMidnight
+  if u and u.RegisterCtrlStore then u.RegisterCtrlStore(FRAME, function() return _G.LegTrackerDB end) end
+  return u
+end
+FloatUI()
 local ACCENT   = { 1.000, 0.427, 0.043 }   -- orange (logo #FF6D0B)
 local LOGO     = "Interface\\AddOns\\LegTracker\\medias\\LegTracker"
 local KEY      = "Leg"
@@ -126,16 +135,6 @@ local function BuildOptions()
     if NS.Unpin then NS.Unpin(true) end
   end)
 
-  panel:Section(T("OPT_SEC_FLOATING", "Boutons flottants"))
-  panel:Check(T("OPT_HIDE_OPTIONS_BTN", "Masquer le bouton Options"),
-    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "options") end,
-    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "options", v) end end,
-    T("OPT_HIDE_OPTIONS_BTN_TT", "Masque le bouton Options qui deborde au-dessus de la fenetre. Meme masque, Maj+clic droit sur la fenetre l'ouvre."))
-  panel:Check(T("OPT_HIDE_SEARCH_BTN", "Masquer le champ Recherche"),
-    function() return TibiSuite and TibiSuite.IsCtrlHidden and TibiSuite.IsCtrlHidden(FRAME, "search") end,
-    function(v) if TibiSuite and TibiSuite.SetCtrlHidden then TibiSuite.SetCtrlHidden(FRAME, "search", v) end end,
-    T("OPT_HIDE_SEARCH_BTN_TT", "Masque le champ Recherche qui deborde au-dessus de la fenetre."))
-
   panel:Section(T("OPT_SEC_RESET", "Réinitialisation"))
   panel:Button(T("OPT_RECENTER", "Recentrer la fenêtre"), function()
     local f = _G[FRAME]
@@ -154,6 +153,8 @@ local function BuildOptions()
   end)
 
   panel:Note(T("OPT_NOTE", "Astuce : clic droit sur la vignette LegTracker dans la barre TibiSuite ouvre aussi ces options."))
+  -- Section standard, toujours en dernier (socle v22).
+  if panel.FloatControls then panel:FloatControls(FRAME, { search = true }) end
   return panel
 end
 
