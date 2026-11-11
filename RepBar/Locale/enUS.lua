@@ -78,5 +78,4 @@ for k, v in pairs({
     OPT_RESETPOS = "Reset position",
     OPT_SEC_POSITION = "Position", OPT_CENTER_BOTTOM = "Center at the bottom of the screen", OPT_CENTER_TOP = "Center at the top of the screen",
     OPT_CENTER_TT = "Centers the bar horizontally and pins it to the chosen edge. Shift + drag then only adjusts the height. Turns off snapping under XPBar.",
-    OPT_SEC_FLOATING = "Floating button", OPT_HIDE_OPTIONS_BTN = "Hide the Options button",
 }) do L[k] = v end

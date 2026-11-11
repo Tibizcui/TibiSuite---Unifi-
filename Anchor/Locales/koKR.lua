@@ -136,9 +136,6 @@ L.OPT_SEC_COMPAT = "호환성"
 L.NOTE_COMPAT = "Anchor는 BlizzMove와 MoveAny가 있으면 양보하고, EllesmereUI Shifter 목록의 창과 ElvUI의 전리품, 주사위, 가방, 무버도 양보합니다."
 L.OPT_FORCE = "강제 (권장하지 않음)"
 L.TT_FORCE = "다른 애드온이 관리하는 창에도 적용합니다: 서로 위치를 두고 다투게 됩니다."
-L.OPT_SEC_FLOAT = "떠 있는 버튼"
-L.OPT_HIDE_OPT = "설정 버튼 숨기기"
-L.OPT_HIDE_SEARCH = "검색 숨기기"
 
 -- Messages
 L.MSG_CONFLICT = "%s 로드됨: Anchor가 창을 양보합니다 (설정의 '강제' 옵션)."

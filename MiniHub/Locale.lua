@@ -85,7 +85,6 @@ local enUS = {
     SEC_DRAWER       = "Drawer mode",
     OPT_BEHAVIOR     = "Behavior",
     SEC_SOURCES      = "Extra sources",
-    SEC_FLOATING     = "Floating controls",
     SEC_MAIN_BUTTON  = "Minimap button and main button",
     OPT_PROFILE_TITLE = "Profile sharing",
     SEC_ACTIONS      = "Actions",
@@ -152,8 +151,6 @@ local enUS = {
     OPT_COMPARTMENT_TT = "Addons that only live in the Blizzard addon compartment get their own button in the hub. Addons already in the hub are not duplicated.",
 
     -- Options: floating controls / main button
-    OPT_HIDE_FLOAT_OPTIONS = "Hide the floating Options button",
-    OPT_HIDE_FLOAT_SEARCH  = "Hide the floating search field",
     OPT_SHOW_MINIMAP = "Show the minimap button",
     OPT_SHOW_MAIN    = "Show the movable main button (logo)",
     OPT_SHOW_MAIN_TT = "A logo button, movable anywhere in the UI, that opens/closes the container.",
@@ -255,7 +252,6 @@ local frFR = {
     SEC_DRAWER       = "Mode tiroir",
     OPT_BEHAVIOR     = "Comportement",
     SEC_SOURCES      = "Sources supplémentaires",
-    SEC_FLOATING     = "Contrôles flottants",
     SEC_MAIN_BUTTON  = "Bouton de minicarte et bouton principal",
     OPT_PROFILE_TITLE = "Partage de profil",
     SEC_ACTIONS      = "Actions",
@@ -314,8 +310,6 @@ local frFR = {
     OPT_COMPARTMENT  = "Inclure les addons du compartiment",
     OPT_COMPARTMENT_TT = "Les addons présents seulement dans le compartiment d'addons de Blizzard reçoivent leur propre bouton dans le hub. Les addons déjà présents ne sont pas dupliqués.",
 
-    OPT_HIDE_FLOAT_OPTIONS = "Masquer le bouton flottant Options",
-    OPT_HIDE_FLOAT_SEARCH  = "Masquer le champ de recherche flottant",
     OPT_SHOW_MINIMAP = "Afficher le bouton de minicarte",
     OPT_SHOW_MAIN    = "Afficher le bouton principal déplaçable (logo)",
     OPT_SHOW_MAIN_TT = "Un bouton logo, déplaçable partout dans l'interface, qui ouvre / ferme le conteneur.",

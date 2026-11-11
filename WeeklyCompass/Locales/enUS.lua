@@ -93,10 +93,6 @@ ns:AddLocale("enUS", {
     OPT_SHOW_HIDDEN       = "Show hidden characters",
     OPT_UNHIDE_ALL        = "Show all characters again",
     OPT_CHARS_NOTE        = "Right click a character's name in the dashboard to hide or forget it.",
-    OPT_SECTION_FLOAT     = "Floating buttons (TibiSuite bar)",
-    OPT_HIDE_OPTIONS      = "Hide the Options button",
-    OPT_HIDE_SEARCH       = "Hide the Search field",
-    OPT_FLOAT_NOTE        = "The Options button and the Search field stick out above the window. Even hidden, Shift+right click on the window opens these options.",
     OPT_TAB_TIP           = "Tip: right clicking the Weekly tab in the TibiSuite bar also opens these options.",
 
     -- Onglet Personnages, tri, total

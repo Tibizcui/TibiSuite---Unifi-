@@ -91,8 +91,6 @@ L.OPT_SEC_VISIBILITY = L.OPT_SEC_VISIBILITY or "Visibilité"
 L.OPT_VERTTEXT_2     = L.OPT_VERTTEXT_2     or "Texte à côté de la barre (vertical)"
 L.OPT_VTHICK_2       = L.OPT_VTHICK_2       or "Épaisseur (vertical)"
 L.OPT_VLENGTH_2      = L.OPT_VLENGTH_2      or "Longueur (vertical)"
-L.OPT_SEC_FLOATING   = L.OPT_SEC_FLOATING   or "Bouton flottant"
-L.OPT_HIDE_OPTIONS_BTN= L.OPT_HIDE_OPTIONS_BTN or "Masquer le bouton Options"
 -- Panneau unifie (lot 2) : reglages auparavant reserves a l'ancien panneau.
 L.OPT_SEC_APPEARANCE = L.OPT_SEC_APPEARANCE or "Apparence"
 L.OPT_OPACITY_2      = L.OPT_OPACITY_2      or "Opacité du fond (%)"

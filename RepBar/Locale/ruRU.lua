@@ -65,5 +65,4 @@ for k, v in pairs({
     OPT_VLENGTH = "Длина (вертикально)",
     OPT_SEC_SESSION = "Сеанс и позиция", OPT_RESETSESS = "Сбросить сеанс",
     OPT_RESETPOS = "Сбросить позицию",
-    OPT_SEC_FLOATING = "Плавающая кнопка", OPT_HIDE_OPTIONS_BTN = "Скрыть кнопку настроек",
 }) do L[k] = v end

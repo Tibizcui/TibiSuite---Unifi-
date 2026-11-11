@@ -82,10 +82,6 @@ PostBox._LOC = { L = {
   OPT_SEC_SESSION = "세션",
   OPT_SESSION_NOTE = "이번 세션에 수령한 골드는 기본 창에 실시간으로 표시됩니다.",
   OPT_RESET_RAKE = "세션 카운터 초기화",
-  OPT_SEC_SUITE = "TibiSuite",
-  OPT_HIDE_OPTS = "떠 있는 설정 버튼 숨기기",
-  OPT_HIDE_SEARCH = "떠 있는 검색창 숨기기",
-  OPT_FLOAT_NOTE = "창에서 Shift + 우클릭하면 언제나 설정이 열립니다.",
 
   BB_TITLE = "주소록",
   BB_ADD = "추가",

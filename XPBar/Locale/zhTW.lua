@@ -37,7 +37,6 @@ for k, v in pairs({
     OPT_VTHICK_2 = "粗細（直向）", OPT_VLENGTH_2 = "長度（直向）",
     OPT_SEC_SESSION = "本次遊戲", OPT_RESETRELOAD = "每次 /reload 時重置統計",
     OPT_RESETSESS = "重置本次統計", OPT_RESETPOS = "重置位置",
-    OPT_SEC_FLOATING = "浮動按鈕", OPT_HIDE_OPTIONS_BTN = "隱藏選項按鈕",
 
     SLASH_HIDDEN = "已隱藏。輸入 /xpbar show 重新顯示。",
     SLASH_HELP = " /xpbar - 選項  |  /xpbar hide/show  |  /xpbar session  |  /xpbar reset",

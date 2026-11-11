@@ -65,5 +65,4 @@ for k, v in pairs({
     OPT_VLENGTH = "长度（竖直）",
     OPT_SEC_SESSION = "会话和位置", OPT_RESETSESS = "重置会话",
     OPT_RESETPOS = "重置位置",
-    OPT_SEC_FLOATING = "浮动按钮", OPT_HIDE_OPTIONS_BTN = "隐藏选项按钮",
 }) do L[k] = v end

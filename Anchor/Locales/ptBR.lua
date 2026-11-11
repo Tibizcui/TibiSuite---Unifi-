@@ -136,9 +136,6 @@ L.OPT_SEC_COMPAT = "Compatibilidade"
 L.NOTE_COMPAT = "O Anchor cede o controle ao BlizzMove e ao MoveAny se estiverem carregados, ao Shifter do EllesmereUI nas janelas da lista dele, e ao ElvUI no saque, rolagens, bolsas e movers."
 L.OPT_FORCE = "Forçar (não recomendado)"
 L.TT_FORCE = "O Anchor age mesmo em janelas gerenciadas por outro addon: os dois vão disputar a posição."
-L.OPT_SEC_FLOAT = "Botões flutuantes"
-L.OPT_HIDE_OPT = "Ocultar o botão Opções"
-L.OPT_HIDE_SEARCH = "Ocultar a busca"
 
 -- Messages
 L.MSG_CONFLICT = "%s está carregado: o Anchor deixa as janelas com ele (opção 'Forçar' nas configurações)."

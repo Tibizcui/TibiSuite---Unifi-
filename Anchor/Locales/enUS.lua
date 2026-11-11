@@ -137,9 +137,6 @@ L.OPT_SEC_COMPAT = "Compatibility"
 L.NOTE_COMPAT = "Anchor steps aside for BlizzMove and MoveAny when they are loaded, for EllesmereUI's Shifter on the windows of its list, and for ElvUI on its loot, loot rolls, bags and movers."
 L.OPT_FORCE = "Force (not recommended)"
 L.TT_FORCE = "Anchor acts even on windows managed by another addon: both will fight over the position."
-L.OPT_SEC_FLOAT = "Floating buttons"
-L.OPT_HIDE_OPT = "Hide the Options button"
-L.OPT_HIDE_SEARCH = "Hide the search field"
 
 -- Messages
 L.MSG_CONFLICT = "%s is loaded: Anchor leaves the windows to it (\"Force\" option in the settings)."

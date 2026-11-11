@@ -82,10 +82,6 @@ PostBox._LOC = { L = {
   OPT_SEC_SESSION = "Session",
   OPT_SESSION_NOTE = "L'or ramassé cette session s'affiche en direct dans la fenêtre principale.",
   OPT_RESET_RAKE = "Remettre à zéro le compteur de session",
-  OPT_SEC_SUITE = "TibiSuite",
-  OPT_HIDE_OPTS = "Masquer le bouton flottant Options",
-  OPT_HIDE_SEARCH = "Masquer le champ de recherche flottant",
-  OPT_FLOAT_NOTE = "Maj + clic droit sur la fenêtre ouvre toujours les options.",
 
   BB_TITLE = "Carnet",
   BB_ADD = "Ajouter",

@@ -132,8 +132,6 @@ D("OPT_SEC_POSITION",   "Position")
 D("OPT_CENTER_BOTTOM",  "Centrer en bas de l'écran")
 D("OPT_CENTER_TOP",     "Centrer en haut de l'écran")
 D("OPT_CENTER_TT",      "Centre la barre horizontalement et la colle au bord choisi. Maj + glisser ne règle plus que la hauteur. Désactive l'aimantation sous XPBar.")
-D("OPT_SEC_FLOATING",   "Bouton flottant")
-D("OPT_HIDE_OPTIONS_BTN","Masquer le bouton Options")
 
 -- ══════════════════════════════════════════════════
 -- DEFAULTS

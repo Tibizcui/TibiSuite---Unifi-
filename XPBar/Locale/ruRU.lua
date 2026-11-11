@@ -36,7 +36,6 @@ for k, v in pairs({
     OPT_VTHICK_2 = "Толщина (вертикально)", OPT_VLENGTH_2 = "Длина (вертикально)",
     OPT_SEC_SESSION = "Сеанс", OPT_RESETRELOAD = "Сбрасывать сеанс при каждом /reload",
     OPT_RESETSESS = "Сбросить сеанс", OPT_RESETPOS = "Сбросить позицию",
-    OPT_SEC_FLOATING = "Плавающая кнопка", OPT_HIDE_OPTIONS_BTN = "Скрыть кнопку настроек",
 
     SLASH_HIDDEN = "Скрыто. /xpbar show, чтобы показать снова.",
     SLASH_HELP = " /xpbar - настройки  |  /xpbar hide/show  |  /xpbar session  |  /xpbar reset",

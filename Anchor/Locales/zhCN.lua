@@ -136,9 +136,6 @@ L.OPT_SEC_COMPAT = "兼容性"
 L.NOTE_COMPAT = "若已加载 BlizzMove 或 MoveAny，Anchor 会让出控制；EllesmereUI 的 Shifter 列表中的窗口，以及 ElvUI 的拾取、掷骰、背包和移动器也同样让出。"
 L.OPT_FORCE = "强制（不推荐）"
 L.TT_FORCE = "Anchor 也会作用于其他插件管理的窗口：两者会争夺位置。"
-L.OPT_SEC_FLOAT = "浮动按钮"
-L.OPT_HIDE_OPT = "隐藏选项按钮"
-L.OPT_HIDE_SEARCH = "隐藏搜索"
 
 -- Messages
 L.MSG_CONFLICT = "%s 已加载：Anchor 将窗口交给它（设置中的“强制”选项）。"

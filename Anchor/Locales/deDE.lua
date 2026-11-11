@@ -136,9 +136,6 @@ L.OPT_SEC_COMPAT = "Kompatibilität"
 L.NOTE_COMPAT = "Anchor überlässt BlizzMove und MoveAny das Feld, wenn sie geladen sind, dem Shifter von EllesmereUI die Fenster seiner Liste und ElvUI dessen Beute, Beutewürfe, Taschen und Mover."
 L.OPT_FORCE = "Erzwingen (nicht empfohlen)"
 L.TT_FORCE = "Anchor greift auch bei Fenstern ein, die ein anderes Addon verwaltet: beide kämpfen dann um die Position."
-L.OPT_SEC_FLOAT = "Schwebende Schaltflächen"
-L.OPT_HIDE_OPT = "Optionen-Schaltfläche ausblenden"
-L.OPT_HIDE_SEARCH = "Suchfeld ausblenden"
 
 -- Messages
 L.MSG_CONFLICT = "%s ist geladen: Anchor überlässt ihm die Fenster (Option 'Erzwingen' in den Einstellungen)."

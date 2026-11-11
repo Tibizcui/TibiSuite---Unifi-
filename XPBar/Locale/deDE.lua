@@ -36,7 +36,6 @@ for k, v in pairs({
     OPT_VTHICK_2 = "Dicke (vertikal)", OPT_VLENGTH_2 = "Länge (vertikal)",
     OPT_SEC_SESSION = "Sitzung", OPT_RESETRELOAD = "Sitzung bei jedem /reload zurücksetzen",
     OPT_RESETSESS = "Sitzung zurücksetzen", OPT_RESETPOS = "Position zurücksetzen",
-    OPT_SEC_FLOATING = "Schwebende Schaltfläche", OPT_HIDE_OPTIONS_BTN = "Optionen-Schaltfläche ausblenden",
 
     SLASH_HIDDEN = "Ausgeblendet. /xpbar show zum erneuten Anzeigen.",
     SLASH_HELP = " /xpbar - Optionen  |  /xpbar hide/show  |  /xpbar session  |  /xpbar reset",

@@ -65,5 +65,4 @@ for k, v in pairs({
     OPT_VLENGTH = "長度（直立）",
     OPT_SEC_SESSION = "階段與位置", OPT_RESETSESS = "重設階段",
     OPT_RESETPOS = "重設位置",
-    OPT_SEC_FLOATING = "浮動按鈕", OPT_HIDE_OPTIONS_BTN = "隱藏選項按鈕",
 }) do L[k] = v end

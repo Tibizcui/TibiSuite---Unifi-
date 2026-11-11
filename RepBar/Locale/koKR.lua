@@ -65,5 +65,4 @@ for k, v in pairs({
     OPT_VLENGTH = "길이 (세로)",
     OPT_SEC_SESSION = "세션 및 위치", OPT_RESETSESS = "세션 초기화",
     OPT_RESETPOS = "위치 초기화",
-    OPT_SEC_FLOATING = "떠 있는 버튼", OPT_HIDE_OPTIONS_BTN = "설정 버튼 숨기기",
 }) do L[k] = v end

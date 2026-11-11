@@ -136,9 +136,6 @@ L.OPT_SEC_COMPAT = "Compatibilità"
 L.NOTE_COMPAT = "Anchor lascia il controllo a BlizzMove e MoveAny se caricati, allo Shifter di EllesmereUI per le finestre della sua lista, e a ElvUI per bottino, tiri, borse e mover."
 L.OPT_FORCE = "Forza (sconsigliato)"
 L.TT_FORCE = "Anchor agisce anche sulle finestre gestite da un altro addon: i due si contenderanno la posizione."
-L.OPT_SEC_FLOAT = "Pulsanti flottanti"
-L.OPT_HIDE_OPT = "Nascondi il pulsante Opzioni"
-L.OPT_HIDE_SEARCH = "Nascondi la ricerca"
 
 -- Messages
 L.MSG_CONFLICT = "%s è caricato: Anchor gli lascia le finestre (opzione 'Forza' nelle impostazioni)."

@@ -77,10 +77,6 @@ L["OPT_RECENTER"]         = "Recenter the window"
 L["OPT_SEC_BEHAVIOR"]     = "Behavior"
 L["OPT_LOGINMSG_2"]       = "Welcome message on login"
 L["OPT_SOUND_2"]          = "Notification sound"
-L["OPT_SEC_FLOATING"]     = "Floating buttons (TibiSuite bar)"
-L["OPT_HIDE_OPTIONS_BTN"] = "Hide the Options button"
-L["OPT_HIDE_SEARCH_BTN"]  = "Hide the Search field"
-L["OPT_FLOATING_NOTE"]    = "The Options button and Search field overflow above the window. Even hidden, Shift+right-click on the window opens these options."
 L["OPT_NOTE"]             = "Tip: right-clicking the Rep. tab in the TibiSuite bar also opens these options."
 
 -- Divers

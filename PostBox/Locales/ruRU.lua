@@ -82,10 +82,6 @@ PostBox._LOC = { L = {
   OPT_SEC_SESSION = "Сеанс",
   OPT_SESSION_NOTE = "Собранное за сеанс золото показывается в главном окне.",
   OPT_RESET_RAKE = "Сбросить счётчик сеанса",
-  OPT_SEC_SUITE = "TibiSuite",
-  OPT_HIDE_OPTS = "Скрыть плавающую кнопку настроек",
-  OPT_HIDE_SEARCH = "Скрыть плавающее поле поиска",
-  OPT_FLOAT_NOTE = "Shift + ПКМ по окну всегда открывает настройки.",
 
   BB_TITLE = "Адресная книга",
   BB_ADD = "Добавить",

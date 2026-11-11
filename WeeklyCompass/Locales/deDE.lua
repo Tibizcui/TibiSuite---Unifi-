@@ -90,10 +90,6 @@ ns:AddLocale("deDE", {
     OPT_SHOW_HIDDEN       = "Ausgeblendete Charaktere anzeigen",
     OPT_UNHIDE_ALL        = "Alle Charaktere wieder anzeigen",
     OPT_CHARS_NOTE        = "Rechtsklick auf den Namen eines Charakters in der Übersicht, um ihn auszublenden oder zu vergessen.",
-    OPT_SECTION_FLOAT     = "Schwebende Schaltflächen (TibiSuite-Leiste)",
-    OPT_HIDE_OPTIONS      = "Optionen-Schaltfläche ausblenden",
-    OPT_HIDE_SEARCH       = "Suchfeld ausblenden",
-    OPT_FLOAT_NOTE        = "Die Optionen-Schaltfläche und das Suchfeld ragen über das Fenster hinaus. Auch ausgeblendet öffnet Umschalt+Rechtsklick auf das Fenster diese Optionen.",
     OPT_TAB_TIP           = "Tipp: Ein Rechtsklick auf den Reiter Weekly in der TibiSuite-Leiste öffnet ebenfalls diese Optionen.",
 
     -- Onglet Personnages, tri, total

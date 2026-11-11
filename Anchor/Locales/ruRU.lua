@@ -136,9 +136,6 @@ L.OPT_SEC_COMPAT = "Совместимость"
 L.NOTE_COMPAT = "Anchor уступает BlizzMove и MoveAny, если они загружены, Shifter из EllesmereUI для окон из его списка, а ElvUI для его добычи, розыгрышей, сумок и муверов."
 L.OPT_FORCE = "Принудительно (не рекомендуется)"
 L.TT_FORCE = "Anchor действует и на окна другого аддона: они будут спорить за позицию."
-L.OPT_SEC_FLOAT = "Плавающие кнопки"
-L.OPT_HIDE_OPT = "Скрыть кнопку настроек"
-L.OPT_HIDE_SEARCH = "Скрыть поиск"
 
 -- Messages
 L.MSG_CONFLICT = "%s загружен: Anchor оставляет ему окна (параметр 'Принудительно' в настройках)."

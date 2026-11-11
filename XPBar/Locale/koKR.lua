@@ -36,7 +36,6 @@ for k, v in pairs({
     OPT_VTHICK_2 = "두께 (세로)", OPT_VLENGTH_2 = "길이 (세로)",
     OPT_SEC_SESSION = "세션", OPT_RESETRELOAD = "/reload 할 때마다 세션 초기화",
     OPT_RESETSESS = "세션 초기화", OPT_RESETPOS = "위치 초기화",
-    OPT_SEC_FLOATING = "떠 있는 버튼", OPT_HIDE_OPTIONS_BTN = "설정 버튼 숨기기",
 
     SLASH_HIDDEN = "숨겨졌습니다. /xpbar show 로 다시 표시합니다.",
     SLASH_HELP = " /xpbar - 설정  |  /xpbar hide/show  |  /xpbar session  |  /xpbar reset",

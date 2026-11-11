@@ -65,5 +65,4 @@ for k, v in pairs({
     OPT_VLENGTH = "Lunghezza (verticale)",
     OPT_SEC_SESSION = "Sessione e posizione", OPT_RESETSESS = "Reimposta la sessione",
     OPT_RESETPOS = "Reimposta la posizione",
-    OPT_SEC_FLOATING = "Pulsante fluttuante", OPT_HIDE_OPTIONS_BTN = "Nascondi il pulsante Opzioni",
 }) do L[k] = v end

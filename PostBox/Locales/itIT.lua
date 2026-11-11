@@ -82,10 +82,6 @@ PostBox._LOC = { L = {
   OPT_SEC_SESSION = "Sessione",
   OPT_SESSION_NOTE = "L'oro raccolto in questa sessione è mostrato in diretta nella finestra principale.",
   OPT_RESET_RAKE = "Azzera il contatore di sessione",
-  OPT_SEC_SUITE = "TibiSuite",
-  OPT_HIDE_OPTS = "Nascondi il pulsante mobile Opzioni",
-  OPT_HIDE_SEARCH = "Nascondi il campo di ricerca mobile",
-  OPT_FLOAT_NOTE = "Maiusc + clic destro sulla finestra apre sempre le opzioni.",
 
   BB_TITLE = "Rubrica",
   BB_ADD = "Aggiungi",

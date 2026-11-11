@@ -82,10 +82,6 @@ PostBox._LOC = { L = {
   OPT_SEC_SESSION = "Sitzung",
   OPT_SESSION_NOTE = "Das in dieser Sitzung eingesammelte Gold wird live im Hauptfenster angezeigt.",
   OPT_RESET_RAKE = "Sitzungszähler zurücksetzen",
-  OPT_SEC_SUITE = "TibiSuite",
-  OPT_HIDE_OPTS = "Schwebende Optionen-Schaltfläche ausblenden",
-  OPT_HIDE_SEARCH = "Schwebendes Suchfeld ausblenden",
-  OPT_FLOAT_NOTE = "Umschalt + Rechtsklick auf das Fenster öffnet immer die Optionen.",
 
   BB_TITLE = "Adressbuch",
   BB_ADD = "Hinzufügen",

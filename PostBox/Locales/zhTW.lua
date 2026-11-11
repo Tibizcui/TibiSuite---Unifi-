@@ -82,10 +82,6 @@ PostBox._LOC = { L = {
   OPT_SEC_SESSION = "本次登入",
   OPT_SESSION_NOTE = "本次收取的金幣會即時顯示在主視窗。",
   OPT_RESET_RAKE = "重設本次計數",
-  OPT_SEC_SUITE = "TibiSuite",
-  OPT_HIDE_OPTS = "隱藏浮動的設定按鈕",
-  OPT_HIDE_SEARCH = "隱藏浮動的搜尋框",
-  OPT_FLOAT_NOTE = "在視窗上 Shift + 右鍵永遠會開啟設定。",
 
   BB_TITLE = "通訊錄",
   BB_ADD = "新增",

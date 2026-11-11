@@ -88,10 +88,6 @@ ns:AddLocale("frFR", {
     OPT_SHOW_HIDDEN       = "Afficher les personnages masqués",
     OPT_UNHIDE_ALL        = "Réafficher tous les personnages",
     OPT_CHARS_NOTE        = "Clic droit sur le nom d'un personnage dans le tableau pour le masquer ou l'oublier.",
-    OPT_SECTION_FLOAT     = "Boutons flottants (barre TibiSuite)",
-    OPT_HIDE_OPTIONS      = "Masquer le bouton Options",
-    OPT_HIDE_SEARCH       = "Masquer le champ Recherche",
-    OPT_FLOAT_NOTE        = "Le bouton Options et le champ Recherche débordent au-dessus de la fenêtre. Même masqués, Maj+clic droit sur la fenêtre ouvre ces options.",
     OPT_TAB_TIP           = "Astuce : clic droit sur l'onglet Weekly dans la barre TibiSuite ouvre aussi ces options.",
 
     -- Onglet Personnages, tri, total

@@ -113,10 +113,6 @@ local BASE = {
   OPT_SEC_SESSION         = "Session",
   OPT_SESSION_NOTE        = "Gold collected this session is shown live in the main window.",
   OPT_RESET_RAKE          = "Reset the session counter",
-  OPT_SEC_SUITE           = "TibiSuite",
-  OPT_HIDE_OPTS           = "Hide the floating Options button",
-  OPT_HIDE_SEARCH         = "Hide the floating search field",
-  OPT_FLOAT_NOTE          = "Shift + right-click on the window always opens the options.",
 
   -- Carnet
   BB_TITLE                = "BlackBook",

@@ -90,10 +90,6 @@ local tbl = {
     OPT_SHOW_HIDDEN       = "Mostrar personajes ocultos",
     OPT_UNHIDE_ALL        = "Mostrar de nuevo todos los personajes",
     OPT_CHARS_NOTE        = "Clic derecho en el nombre de un personaje en el panel para ocultarlo u olvidarlo.",
-    OPT_SECTION_FLOAT     = "Botones flotantes (barra TibiSuite)",
-    OPT_HIDE_OPTIONS      = "Ocultar el botón Opciones",
-    OPT_HIDE_SEARCH       = "Ocultar el campo Búsqueda",
-    OPT_FLOAT_NOTE        = "El botón Opciones y el campo Búsqueda sobresalen por encima de la ventana. Aunque estén ocultos, Mayús+clic derecho en la ventana abre estas opciones.",
     OPT_TAB_TIP           = "Consejo: clic derecho en la pestaña Weekly de la barra TibiSuite también abre estas opciones.",
 
     -- Onglet Personnages, tri, total

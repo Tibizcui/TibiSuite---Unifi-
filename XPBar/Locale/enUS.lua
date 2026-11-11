@@ -94,8 +94,6 @@ L["OPT_SEC_POSITION"]     = "Position"
 L["OPT_CENTER_BOTTOM"]    = "Center at the bottom of the screen"
 L["OPT_CENTER_TOP"]       = "Center at the top of the screen"
 L["OPT_CENTER_TT"]        = "Centers the bar horizontally and pins it to the chosen edge. Shift + drag then only adjusts the height."
-L["OPT_SEC_FLOATING"]    = "Floating button"
-L["OPT_HIDE_OPTIONS_BTN"] = "Hide the Options button"
 
 -- Slash / login / debug
 L["SLASH_HIDDEN"]   = "Hidden. /xpbar show to show it again."

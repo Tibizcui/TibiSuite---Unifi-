@@ -83,10 +83,6 @@ PostBox._LOC = { L = {
   OPT_SEC_SESSION = "Sesión",
   OPT_SESSION_NOTE = "El oro recogido en esta sesión se muestra en directo en la ventana principal.",
   OPT_RESET_RAKE = "Reiniciar el contador de sesión",
-  OPT_SEC_SUITE = "TibiSuite",
-  OPT_HIDE_OPTS = "Ocultar el botón flotante Opciones",
-  OPT_HIDE_SEARCH = "Ocultar el campo de búsqueda flotante",
-  OPT_FLOAT_NOTE = "Mayús + clic derecho en la ventana siempre abre las opciones.",
 
   BB_TITLE = "Agenda",
   BB_ADD = "Añadir",
