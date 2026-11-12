@@ -30,7 +30,6 @@ AN.KEY    = "Anchor"
 
 AN.L = AN.L or {}
 function AN.T(key, fr) return AN.L[key] or fr end
-local T = AN.T
 
 local function Hex()
   local a = AN.ACCENT

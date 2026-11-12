@@ -283,6 +283,8 @@ L.OPT_SEC_MINIMAP      = "미니맵"
 L.OPT_MM_HIDE_SOLO     = "Opacity 아이콘 숨기기 (Opacity 단독)"
 L.OPT_MM_HIDE_SUITE    = "TibiSuite 아이콘 숨기기"
 L.OPT_MM_NOTE          = "TibiSuite와 함께 사용하면 Opacity는 자체 아이콘이 없으며 TibiSuite 아이콘을 사용합니다 (센터 > 바 및 접근과 같은 설정). 아이콘을 숨겨도 /opacity 또는 /opa로 창을 열 수 있습니다."
+L.OPT_MM_FULLHIDE     = "투명할 때 미니맵 완전히 숨기기"
+L.OPT_MM_FULLHIDE_NOTE = "플레이어 화살표와 퀘스트 표시는 게임이 직접 그리며 투명도를 무시합니다. 5% 미만에서는 Opacity가 미니맵 전체를 숨기고, 투명도가 다시 올라가면(마우스 오버, 상황) 바로 다시 표시합니다. 5~99% 사이에서는 화살표와 표시가 계속 보입니다: 게임의 제한입니다."
 L.OPT_SEC_RESET        = "초기화"
 L.OPT_RESET            = "목록 비우기 (모두 100%로)"
 

@@ -334,6 +334,8 @@ L.WN_59_1  = L.WN_59_1  or "LvlHistory : nouvel onglet Raids (runs par difficult
 L.WN_59_2  = L.WN_59_2  or "Dashboard : les raids et le temps en instance de LvlHistory apparaissent dans la carte Leveling (site et Tibi Companion), via l'export de Stats."
 L.WN_65_0  = L.WN_65_0  or "Nouveau module Anchor : place les fenêtres du jeu où tu veux. Magnétisme et repères d'alignement, grille, annuler, une disposition par résolution d'écran et par personnage, placement du butin et des lancers de dés. Laisse la main à ElvUI, EllesmereUI ou BlizzMove quand ils gèrent déjà une fenêtre."
 L.WN_ANCHOR_HEAD = L.WN_ANCHOR_HEAD or "Nouveau module : Anchor"
+L.WN_69_0  = L.WN_69_0  or "Opacity : une minicarte réglée à moins de 5 % est maintenant entièrement cachée, flèche du joueur et repères de quêtes compris, et réapparaît au survol. L'opacité de l'infobulle est enfin respectée à chaque affichage."
+L.WN_69_1  = L.WN_69_1  or "Suite allégée : SkillTracker n'écoute plus les sorts de tout le raid, LegTracker et Stats travaillent moins à chaque image, code inutilisé retiré, et les téléchargements perdent environ 9 Mo d'images que le jeu ne charge jamais."
 L.WN_68_0  = L.WN_68_0  or "Options : la section « Bouton flottant » est désormais tout en bas des options de chaque addon, au même endroit partout. Masquer le bouton Options marche aussi sans TibiSuite, et Stats et SkillTracker gagnent cette option."
 L.WN_67_0  = L.WN_67_0  or "Correctif : les boutons de minicarte de RenTracker, LegTracker, DailyTracker, LvlHistory et DgnTracker restent dans la grille d'EllesmereUI ou le conteneur de MiniHub au lieu de revenir autour de la minicarte."
 L.WN_66_0  = L.WN_66_0  or"Opacity : nouvelle section Minicarte dans ses options. Une case masque l'icône Opacity quand il est installé seul, une autre l'icône TibiSuite. L'icône reste rangée par EllesmereUI, ElvUI ou MiniHub quand ils gèrent la minicarte."
@@ -444,6 +446,12 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- 7.5.5 : Opacity (minicarte cachee sous 5 %, infobulle), suite allegee (audit).
+  ["7.5.5"] = {
+    { key = "Opacity", title = "Opacity", text = L.WN_69_0, new = false },
+    { key = "Suite", title = "TibiSuite", text = L.WN_69_1, new = false },
+    { key = "Anchor", title = "Anchor", headline = L.WN_ANCHOR_HEAD, text = L.WN_65_0, new = true },
+  },
   -- 7.5.4 : Clean code langages (traductions inutilisees retirees), memes cartes que la 7.5.3.
   ["7.5.4"] = {
     { key = "Anchor", title = "Anchor", headline = L.WN_ANCHOR_HEAD, text = L.WN_65_0, new = true },
@@ -851,14 +859,6 @@ end
 local function Hex(c)
   return string.format("|cFF%02X%02X%02X",
     math.floor(c.r * 255 + 0.5), math.floor(c.g * 255 + 0.5), math.floor(c.b * 255 + 0.5))
-end
-
--- Toast adapte au resultat de TibiSuite.SetModuleEnabled.
-local function ToastModuleStatus(mod, status)
-  local name = Hex(mod.col) .. mod.addonName .. "|r "
-  if status == "loaded" then TibiSuite.ShowToast(name .. L.TOAST_ENABLED_FMT)
-  elseif status == "reload" then TibiSuite.ShowToast(name .. L.TOAST_ENABLED_RELOAD)
-  elseif status == "off" then TibiSuite.ShowToast(name .. L.TOAST_DISABLED_FMT) end
 end
 
 local function Build()

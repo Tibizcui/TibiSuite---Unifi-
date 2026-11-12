@@ -604,18 +604,21 @@ function NS.OverlayRelook() NS.OverlayUpdate(true, true) end
 NS.OnFarmChanged(function() NS.OverlayUpdate(true) end)
 
 -- ---------------------------------------------------------------- vie
-local acc = 0
-local ticker = CreateFrame("Frame")
-ticker:SetScript("OnUpdate", function(_, dt)
-  acc = acc + dt
-  if acc < 1 then return end
-  acc = 0
+-- Une fois par seconde (audit 7.5.5) : minuterie native au lieu d'un
+-- OnUpdate appele a chaque image pour n'agir qu'une fois par seconde.
+-- Sous pcall : une erreur ne doit pas arreter la minuterie (elle reste
+-- signalee par le gestionnaire d'erreurs, comme avec l'ancien OnUpdate).
+local function OverlayTick()
   if not NS.GetPinID() then
     if f and f:IsShown() then f:Hide() end
     return
   end
   -- Apparition / disparition en mode auto (seance ouverte ou close)
   if (f and f:IsShown()) or ShouldShow() then NS.OverlayUpdate(false) end
+end
+C_Timer.NewTicker(1, function()
+  local ok, err = pcall(OverlayTick)
+  if not ok then geterrorhandler()(err) end
 end)
 
 local ev = CreateFrame("Frame")

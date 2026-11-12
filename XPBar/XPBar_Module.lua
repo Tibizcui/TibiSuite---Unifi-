@@ -14,11 +14,8 @@
 local KEY    = "XPBar"
 local LABEL  = "XPBar"
 local ACCENT = { 0.737, 0.220, 0.980 }   -- violet (logo #BC38FA)
-local FRAME  = "XPBarContainer"
 local L      = XPBarL or {}
 local function T(key, default) return L[key] or default end
-
-local function GetUI() return _G.TibiMidnight end
 
 -- MODE DOUBLE : le core est-il present et fonctionnel ?
 local function HasCore()

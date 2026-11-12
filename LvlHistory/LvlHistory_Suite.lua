@@ -14,7 +14,6 @@ local function FloatUI()
 end
 FloatUI()
 local ACCENT   = { 0.369, 0.886, 0.137 }   -- vert (logo #5EE223)
-local LOGO     = "Interface\\AddOns\\LvlHistory\\Media\\icon"
 local KEY      = "Lvl"
 local FULLSKIN = true
 
@@ -125,17 +124,6 @@ local function provider(q)
     if #out >= 60 then return out end
   end
   return out
-end
-
-local searchPopup
-local function OpenSearch()
-  local ui = GetUI(); if not ui then return end
-  if not searchPopup then
-    searchPopup = ui.CreateSearchPopup({
-      name = "LvlHistorySearchPopup",
-      title = "|cFF5EE223LvlHistory|r  " .. T("SEARCH_TITLE", "Recherche"), accent = ACCENT, logo = LOGO, provider = provider })
-  end
-  searchPopup.Toggle()
 end
 
 -- ---------------------------------------------------------- Attache & skin

@@ -536,10 +536,14 @@ local DAMAGE_SUBEVENTS = {
   ENVIRONMENTAL_DAMAGE = true,
 }
 
+-- Identifiant du joueur memorise (audit 7.5.5) : il ne change pas pendant la
+-- session, inutile de le redemander a chaque ligne du journal de combat.
+local playerGUID
 local function OnCombatLogEvent()
   local _, subEvent, _, sourceGUID, _, sourceFlags, _, destGUID = CombatLogGetCurrentEventInfo()
   if not DAMAGE_SUBEVENTS[subEvent] then return end
-  if destGUID ~= UnitGUID("player") then return end
+  if not playerGUID then playerGUID = UnitGUID("player") end
+  if destGUID ~= playerGUID then return end
   if not sourceGUID or sourceGUID == "" then return end
   lastDamageSource = {
     isPlayer = sourceFlags and bit.band(sourceFlags, COMBATLOG_OBJECT_TYPE_PLAYER) ~= 0,

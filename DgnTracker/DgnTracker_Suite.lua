@@ -14,7 +14,6 @@ local function FloatUI()
 end
 FloatUI()
 local ACCENT   = { 0.008, 0.404, 0.988 }   -- bleu (logo #0267FC)
-local LOGO     = "Interface\\AddOns\\DgnTracker\\medias\\DgnTracker"
 local KEY      = "Dgn"
 local L        = DgnTrackerL or {}
 local function T(key, default) return L[key] or default end
@@ -96,17 +95,6 @@ local function provider(q)
     end
   end
   return out
-end
-
-local searchPopup
-local function OpenSearch()
-  local ui = GetUI(); if not ui then return end
-  if not searchPopup then
-    searchPopup = ui.CreateSearchPopup({
-      name = "DgnTrackerSearchPopup",
-      title = "|cFF0267FCDgnTracker|r  " .. T("SEARCH_TITLE", "Recherche"), accent = ACCENT, logo = LOGO, provider = provider })
-  end
-  searchPopup.Toggle()
 end
 
 -- ---------------------------------------------------------- Attache & skin

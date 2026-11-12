@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.5.5
+- Performance : la détection de la pêche n'écoute plus que vos propres sorts, et non plus ceux de tout le groupe ou du raid.
+- Archive CurseForge allégée : les images que le jeu ne charge jamais ne sont plus incluses.
+
 ## 7.5.4
 - Clean code langages
 

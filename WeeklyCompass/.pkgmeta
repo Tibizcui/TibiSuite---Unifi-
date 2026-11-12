@@ -1,3 +1,11 @@
 manual-changelog:
   filename: CHANGELOG.md
   markup-type: markdown
+
+# Audit 7.5.5 : fichiers gardes dans le depot mais exclus de l'archive
+# CurseForge. WoW ne charge pas un .png pour un chemin de texture sans
+# extension (verifie en jeu le 2026-11-12 : logo vide sans le .tga) ;
+# les .tga listes ne sont references par aucun code.
+ignore:
+  - medias/TibiSuiteIcon.png
+  - medias/logo.png

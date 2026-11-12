@@ -14,7 +14,6 @@
 -- =============================================================================
 
 local ADDON, LL = ...
-local C = LL.const
 local D = LL.Data
 local U = LL.util
 

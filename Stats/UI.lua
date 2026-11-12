@@ -1683,7 +1683,6 @@ local KPI_DEF = {
   achievements = { metric = "achPoints", tile = "achievements" },
   session = { metric = "sessions", tile = "session" },
 }
-local KPI_EXTRA = { "repFactions", "profCount", "delveBest" }
 
 local function KpiAccent(key)
   if key == "pvp" or key == "achievements" or key == "session" then return SECTION_ACCENTS[key] or ACCENT end

@@ -51,6 +51,26 @@ local function Over(frame, r)
   return frame:IsMouseOver()
 end
 
+-- Minicarte cachee par Opacity (ligne "Minimap", voir PilotMinimap dans
+-- Core.lua) : une frame cachee ne repond plus a IsMouseOver. On compare donc
+-- la position du curseur au rectangle de la carte, toujours connu.
+local function OverHidden(frame, r)
+  local ok, res = pcall(function()
+    local l, b, w, h = frame:GetRect()
+    if not l then return false end
+    local s = frame:GetEffectiveScale()
+    local x, y = GetCursorPosition()
+    x, y = x / s, y / s
+    local m = r   -- meme unite que les decalages d'IsMouseOver
+    return x >= l - m and x <= l + w + m and y >= b - m and y <= b + h + m
+  end)
+  return ok and res or false
+end
+
+local function HiddenByUs(frame, st)
+  return st.name == "Minimap" and OP.MinimapHiddenByUs and OP.MinimapHiddenByUs() and not frame:IsShown()
+end
+
 driver:SetScript("OnUpdate", function(self, dt)
   local p = OP.Profile()
   if not p then self:Hide(); return end
@@ -71,7 +91,8 @@ driver:SetScript("OnUpdate", function(self, dt)
   if checkMouse and not suppress then
     for _, frame in pairs(OP.byName) do
       local st = OP.state[frame]
-      if st and st.active and st.hover and frame:IsVisible() and Over(frame, radius) then
+      if st and st.active and st.hover
+         and ((frame:IsVisible() and Over(frame, radius)) or (HiddenByUs(frame, st) and OverHidden(frame, radius))) then
         overSince[frame] = now
         if st.group then groupSince[st.group] = now end
       end
@@ -100,6 +121,17 @@ driver:SetScript("OnUpdate", function(self, dt)
         OP.Push(frame)
       end
       st.wasVisible = visible
+      -- Infobulle visible (st.tooltip, voir Attach dans Core.lua) : le client
+      -- peut remettre son alpha a 100 % sans SetAlpha Lua. Si l'alpha reel
+      -- depasse la valeur attendue, on la repose. On ne corrige que vers le
+      -- bas : le fondu natif de Blizzard (alpha qui descend) n'est pas contrarie.
+      if st.tooltip and visible then
+        watch = true
+        if st.mode ~= "children" and (st.cur or 1) < 1 and checkMouse then
+          local ok, a = pcall(frame.GetAlpha, frame)
+          if ok and type(a) == "number" and a > (st.base or 1) * st.cur + 0.01 then OP.Push(frame) end
+        end
+      end
       if not visible then
         -- Invisible : inutile d'animer, on se cale directement.
         if st.cur ~= target then st.cur = target; OP.Push(frame) end

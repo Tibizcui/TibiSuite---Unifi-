@@ -1,5 +1,5 @@
 -- ================================================================
--- RenTracker v7.5.4
+-- RenTracker v7.5.5
 -- Suivi des reputations | Toutes les extensions depuis vanilla
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
@@ -1011,7 +1011,6 @@ local function BuildUI()
   local TAB_COL_W  = 96    -- largeur colonne onglets extension
   local TAB_H      = 28    -- hauteur d'un onglet extension
   local TAB_GAP    = 2     -- espacement vertical entre onglets
-  local CONTENT_X  = TAB_COL_W + 14  -- X du panneau contenu (apres colonne)
   local FRAME_H_MIN = 60 + (#EXT_ORDER * (TAB_H + TAB_GAP)) + 60
 
   -- ================================================================
@@ -2782,7 +2781,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       if not loginAnnounced and not (_G.TibiSuite and _G.TibiSuite.RegisterModule)
          and not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
         loginAnnounced = true
-        print("|cFF4D99FFRenTracker|r v7.5.4 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+        print("|cFF4D99FFRenTracker|r v7.5.5 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
       ScheduleParagonScan(3)
@@ -2794,7 +2793,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     if not loginAnnounced and not (_G.TibiSuite and _G.TibiSuite.RegisterModule)
        and not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
       loginAnnounced = true
-      print("|cFF4D99FFRenTracker|r v7.5.4 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFRenTracker|r v7.5.5 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)

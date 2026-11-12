@@ -370,7 +370,6 @@ local function RefreshManager()
     for _, name in ipairs(excluded) do entries[#entries + 1] = { name = name } end
 
     local y = -4
-    local lastCat
     for _, r in ipairs(rows) do r:Hide() end
     for i, e in ipairs(entries) do
         local r = GetRow(i, content)

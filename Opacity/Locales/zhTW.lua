@@ -283,6 +283,8 @@ L.OPT_SEC_MINIMAP      = "小地圖"
 L.OPT_MM_HIDE_SOLO     = "隱藏 Opacity 圖示（僅 Opacity）"
 L.OPT_MM_HIDE_SUITE    = "隱藏 TibiSuite 圖示"
 L.OPT_MM_NOTE          = "與 TibiSuite 一起使用時，Opacity 沒有自己的圖示，使用的是 TibiSuite 圖示（與 中心 > 條和存取 中的設定相同）。圖示隱藏後，/opacity 或 /opa 仍可開啟視窗。"
+L.OPT_MM_FULLHIDE     = "小地圖透明時完全隱藏"
+L.OPT_MM_FULLHIDE_NOTE = "玩家箭頭和任務標記由遊戲直接繪製，會忽略透明度。低於 5% 時，Opacity 會隱藏整個小地圖，並在透明度回升（滑鼠懸停、情境）時立即重新顯示。在 5% 到 99% 之間，箭頭和標記仍然可見：這是遊戲的限制。"
 L.OPT_SEC_RESET        = "重設"
 L.OPT_RESET            = "清空清單（全部回到 100%）"
 

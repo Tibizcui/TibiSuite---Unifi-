@@ -867,6 +867,14 @@ local function BuildOptions()
   end
   p:Note(T("OPT_MM_NOTE", "Avec TibiSuite, Opacity n'a pas d'icône propre : c'est celle de TibiSuite qui sert "
     .. "(même réglage que Centre > Barre et accès). Icône masquée, /opacity ou /opa ouvre toujours la fenêtre."))
+  -- Minicarte elle-meme (ligne MinimapCluster de la liste) : voir PilotMinimap
+  -- dans Core.lua. OpacityDB.minimapFullHide : nil = actif.
+  p:Check(T("OPT_MM_FULLHIDE", "Cacher entièrement la minicarte quand elle est transparente"),
+    function() return OpacityDB.minimapFullHide ~= false end,
+    function(v) OpacityDB.minimapFullHide = v and true or false; if OP.ApplyMinimapNow then OP.ApplyMinimapNow() end end)
+  p:Note(T("OPT_MM_FULLHIDE_NOTE", "La flèche du joueur et les repères de quêtes sont dessinés par le jeu et ignorent l'opacité. "
+    .. "Sous 5 %, Opacity cache donc la minicarte entière, puis la réaffiche dès qu'elle remonte (survol, contexte). "
+    .. "Entre 5 et 99 %, la flèche et les repères restent visibles : c'est une limite du jeu."))
 
   p:Section(T("OPT_SEC_RESET", "Réinitialiser"))
   p:Button(T("OPT_RESET", "Vider la liste (tout revient à 100 %)"), function() OP.ResetProfile() end)

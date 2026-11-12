@@ -24,6 +24,9 @@
 
   Aucune autre ecriture sur les frames des autres : pas d'EnableMouse, pas de
   Show/Hide, pas de SetParent, pas de hook de fonction globale Blizzard.
+  SEULE EXCEPTION, la minicarte (voir PilotMinimap plus bas) : quand
+  MinimapCluster est attenue, Opacity pilote aussi la Minimap elle-meme, et la
+  cache sous 5 % (case OpacityDB.minimapFullHide, nil = actif).
 ============================================================================]]
 
 local ADDON, OP = ...
@@ -257,6 +260,103 @@ local function Blockable(frame)
   return OP.blockedInCombat and InCombatLockdown() and frame.IsProtected and frame:IsProtected()
 end
 
+-- ============================================================================
+-- MINICARTE (retour en jeu 2026-11-12, verifie par Tibiscui avec /dump)
+--   MinimapCluster a 0 %, mais Minimap:GetEffectiveAlpha() = 1 : sous 12.x la
+--   Minimap n'herite pas de l'opacite du cluster. Et la fleche du joueur et
+--   les reperes (quetes, points d'interet), dessines par le moteur, ignorent
+--   TOUTE opacite, meme Minimap:SetAlpha(0). Seul Minimap:Hide() les efface
+--   (SetPlayerTexture / SetBlipTexture : sans effet en 12.x).
+--   Donc, quand MinimapCluster est controle :
+--     1. le facteur est aussi applique a la Minimap, SEULEMENT si elle
+--        n'herite pas du cluster (sinon, sur Classic par exemple, il serait
+--        applique deux fois) ; meme principe lire-et-multiplier ;
+--     2. sous MM_HIDE_BELOW, la Minimap est cachee (case minimapFullHide),
+--        et reaffichee des que le facteur remonte. Opacity ne reaffiche que
+--        ce qu'il a lui-meme cache.
+--   Le survol continue de marcher : il est teste sur MinimapCluster, qui
+--   reste affiche (seulement transparent).
+-- ============================================================================
+local MM_HIDE_BELOW = 0.05
+local mm = { hooked = false, base = 1, factor = nil, hidden = false, desire = false, busy = false }
+
+-- La Minimap ignore-t-elle l'opacite de MinimapCluster ?
+local function MinimapIndependent(mmf, cluster)
+  local f = mmf
+  for _ = 1, 10 do
+    local okI, ign = pcall(function() return f.IsIgnoringParentAlpha and f:IsIgnoringParentAlpha() end)
+    if okI and ign then return true end
+    local okP, parent = pcall(f.GetParent, f)
+    if not okP or not parent then return true end   -- le cluster n'est pas un ancetre
+    if parent == cluster then return false end
+    f = parent
+  end
+  return true
+end
+
+local function HookMinimap(mmf)
+  if mm.hooked then return end
+  mm.hooked = true
+  mm.base = mmf:GetAlpha() or 1
+  -- Un tiers change l'alpha de la Minimap : nouvelle base, notre facteur reste.
+  hooksecurefunc(mmf, "SetAlpha", function(self, a)
+    if applying then return end
+    mm.base = tonumber(a) or 1
+    if mm.factor then SetAlphaRaw(self, mm.base * mm.factor) end
+  end)
+  -- Un tiers la reaffiche alors qu'elle doit rester cachee : on la recache.
+  pcall(mmf.HookScript, mmf, "OnShow", function(self)
+    if mm.busy or not mm.desire then return end
+    if InCombatLockdown() and self:IsProtected() then return end
+    mm.hidden = true
+    mm.busy = true; pcall(self.Hide, self); mm.busy = false
+  end)
+end
+
+-- Deux lignes de la liste peuvent piloter la minicarte : MinimapCluster (le
+-- catalogue) et Minimap elle-meme (retour en jeu 2026-11-12 : la pipette,
+-- posee sur la carte, ajoute "Minimap"). source = "cluster" ou "self".
+-- Pour "self", l'opacite est deja appliquee par le moteur commun : seul le
+-- masquage s'ajoute. La carte est cachee si l'une des deux le demande.
+mm.want = { cluster = false, self = false }
+function OP.MinimapHiddenByUs() return mm.hidden end
+
+local function PilotMinimap(frame, st, cur, source)
+  local mmf = _G.Minimap
+  if not IsUsableFrame(mmf) then return end
+  HookMinimap(mmf)
+  local active = st.active and cur < 1
+  -- 1. Opacite (cluster seulement, et pas si la Minimap est elle-meme dans
+  --    la liste : un seul pilote pour son alpha)
+  if source == "cluster" then
+    local own = byName.Minimap and state[byName.Minimap] and state[byName.Minimap].active
+    if active and not own and MinimapIndependent(mmf, frame) then
+      mm.factor = cur
+      SetAlphaRaw(mmf, mm.base * cur)
+    elseif mm.factor then
+      mm.factor = nil
+      if not own then SetAlphaRaw(mmf, mm.base) end
+    end
+  end
+  -- 2. Masquage complet sous le seuil
+  mm.want[source] = (active and cur < MM_HIDE_BELOW) and true or false
+  local want = (mm.want.cluster or mm.want.self) and not (OpacityDB and OpacityDB.minimapFullHide == false)
+  mm.desire = want and true or false
+  if InCombatLockdown() and mmf:IsProtected() then
+    if want ~= mm.hidden then pendingCombat[frame] = true end
+    return
+  end
+  if want and not mm.hidden then
+    if mmf:IsShown() then   -- deja cachee par quelqu'un d'autre : pas a nous de la rendre
+      mm.hidden = true
+      mm.busy = true; pcall(mmf.Hide, mmf); mm.busy = false
+    end
+  elseif not want and mm.hidden then
+    mm.hidden = false
+    mm.busy = true; pcall(mmf.Show, mmf); mm.busy = false
+  end
+end
+
 function OP.Push(frame)
   local st = state[frame]
   if not st then return end
@@ -267,6 +367,14 @@ function OP.Push(frame)
   else
     SetAlphaRaw(frame, (st.base or 1) * cur)
   end
+  if st.name == "MinimapCluster" then PilotMinimap(frame, st, st.active and cur or 1, "cluster")
+  elseif st.name == "Minimap" then PilotMinimap(frame, st, st.active and cur or 1, "self") end
+end
+
+-- Case « cacher entierement la minicarte » changee : effet immediat.
+function OP.ApplyMinimapNow()
+  if byName.MinimapCluster then OP.Push(byName.MinimapCluster) end
+  if byName.Minimap then OP.Push(byName.Minimap) end
 end
 
 -- Crochet "lire" sur un enfant / une region d'une frame en mode "children".
@@ -335,6 +443,22 @@ local function Attach(name, frame)
     -- hooksecurefunc ne s'enleve jamais : quand la frame n'est plus
     -- controlee, le crochet se contente de memoriser la base (st.active=false).
     hooksecurefunc(frame, "SetAlpha", OnExternalSetAlpha)
+    -- INFOBULLES (retour en jeu 2026-11-12, GameTooltip sans effet) : a chaque
+    -- affichage, le client remet l'alpha d'une infobulle a 100 % en interne,
+    -- sans passer par un SetAlpha Lua : le crochet ci-dessus ne le voit pas et
+    -- notre facteur etait perdu. On reapplique donc au OnShow, et Hover.lua
+    -- surveille l'alpha reel tant que l'infobulle est visible (st.tooltip).
+    local okType, kind = pcall(frame.GetObjectType, frame)
+    if okType and kind == "GameTooltip" and frame.HookScript then
+      st.tooltip = true
+      pcall(frame.HookScript, frame, "OnShow", function(self)
+        local s = state[self]
+        if s and s.active then
+          OP.Push(self)
+          if OP.WakeDriver then OP.WakeDriver() end
+        end
+      end)
+    end
   end
   byName[name] = frame
   return st

@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.5.4
+-- TibiSuiteCore v7.5.5
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.5.4"
+local VERSION = "7.5.5"
 
 -- ================================================================
 -- LOCALISATION
@@ -1382,15 +1382,6 @@ local function IsModuleVisible(mod)
   return not (TibiSuiteDB.hidden and TibiSuiteDB.hidden[mod.key])
 end
 
--- Nombre d'onglets actuellement affichés (filtre utilisateur appliqué).
-local function VisibleCount()
-  local n = 0
-  for _, mod in ipairs(MODULES) do
-    if IsModuleVisible(mod) then n = n + 1 end
-  end
-  return n
-end
-
 -- Renvoie (colonnes, lignes) de la grille de toggles.
 -- Réglages INDÉPENDANTS : l'utilisateur choisit librement les deux valeurs
 -- (TibiSuiteDB.cols et TibiSuiteDB.rows). Aucun recalcul automatique de l'une
@@ -2370,94 +2361,6 @@ end
 -- Interroge tous les modules inscrits via TibiMidnight.RegisterSearch
 -- et affiche les résultats cliquables dans un panneau flottant Midnight.
 -- ================================================================
-local gSearchFrame
-local function BuildGlobalSearch()
-  if gSearchFrame then return gSearchFrame end
-  local UI = _G.TibiMidnight
-  if not UI then return nil end
-
-  local f = CreateFrame("Frame", "TibiSuiteGlobalSearch", UIParent, "BackdropTemplate")
-  f:SetSize(370, 430)
-  f:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
-  f:SetFrameStrata("DIALOG")
-  f:SetMovable(true); f:EnableMouse(true)
-  f:RegisterForDrag("LeftButton")
-  f:SetScript("OnDragStart", f.StartMoving)
-  f:SetScript("OnDragStop", f.StopMovingOrSizing)
-  f:SetClampedToScreen(true)
-  UI.SkinFrame(f, TibiSuite.ACCENT, UI.C.PANEL)
-  TibiSuite.OnAccentChanged(function(c) UI.SetLisere(f, c) end)
-  UI.AddHeaderLogo(f, "Interface\\AddOns\\TibiSuite\\medias\\TibiSuite")
-
-  local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-  title:SetPoint("TOP", 0, -14)
-  title:SetText("|cFFC41F3BTibiSuite|r  " .. L.GS_TITLE)
-
-  local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
-  close:SetPoint("TOPRIGHT", 2, 2)
-  close:SetScript("OnClick", function() f:Hide() end)
-
-  local box = CreateFrame("EditBox", nil, f, "BackdropTemplate")
-  box:SetSize(330, 26)
-  box:SetPoint("TOP", 0, -44)
-  box:SetBackdrop(UI.FlatBackdrop())
-  box:SetBackdropColor(0.02, 0.01, 0.04, 0.95)
-  box:SetBackdropBorderColor(UI.C.BORDER[1], UI.C.BORDER[2], UI.C.BORDER[3], 0.9)
-  box:SetAutoFocus(true)
-  box:SetFontObject("GameFontHighlight")
-  box:SetTextInsets(8, 8, 0, 0)
-  box:SetScript("OnEscapePressed", function(s) s:ClearFocus(); f:Hide() end)
-
-  local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
-  scroll:SetPoint("TOPLEFT", 12, -80)
-  scroll:SetPoint("BOTTOMRIGHT", -30, 12)
-  local content = CreateFrame("Frame", nil, scroll)
-  content:SetSize(310, 10)
-  scroll:SetScrollChild(content)
-
-  local rows = {}
-  local empty = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-  empty:SetPoint("TOPLEFT", 4, -6)
-  empty:SetText(L.GS_EMPTY_DEFAULT)
-
-  local function render(query)
-    for _, r in ipairs(rows) do r:Hide() end
-    local results = UI.RunGlobalSearch(query or "")
-    empty:SetShown(#results == 0)
-    if #results == 0 then
-      empty:SetText((query == nil or query == "")
-        and L.GS_EMPTY_DEFAULT or L.GS_EMPTY_NORESULT)
-    end
-    local y = -6
-    for i, item in ipairs(results) do
-      local r = rows[i]
-      if not r then
-        r = UI.MakeButton(content, 300, 24, "")
-        r._label:ClearAllPoints()
-        r._label:SetPoint("LEFT", 8, 0); r._label:SetPoint("RIGHT", -8, 0)
-        r._label:SetJustifyH("LEFT")
-        rows[i] = r
-      end
-      r:ClearAllPoints()
-      r:SetPoint("TOPLEFT", content, "TOPLEFT", 4, y)
-      r._label:SetText(TibiSuite.AccentHex() .. "[" .. (item._module or "?") .. "]|r "
-        .. (item.text or ""))
-      r:SetScript("OnClick", function()
-        if item.onClick then pcall(item.onClick) end
-      end)
-      r:Show()
-      y = y - 28
-    end
-    content:SetHeight(math.max(-y + 10, 10))
-  end
-
-  box:SetScript("OnTextChanged", function(s) render(s:GetText()) end)
-  f:SetScript("OnShow", function() box:SetFocus(); render(box:GetText() or "") end)
-
-  gSearchFrame = f
-  return f
-end
-
 -- Assignée à l'upvalue déclaré plus haut (pas de mot-clé local ici).
 -- Fournisseur global : agrège tous les modules et préfixe par nom de module.
 GlobalProvider = function(q)

@@ -583,12 +583,9 @@ function NS.GraceLeft()
   return math.max(0, (GRACE[cur.kind] or 300) - (time() - (cur.last or time())))
 end
 
-local acc = 0
-local clock = CreateFrame("Frame")
-clock:SetScript("OnUpdate", function(_, elapsed)
-  acc = acc + elapsed
-  if acc < 1 then return end
-  acc = 0
+-- Une fois par seconde (audit 7.5.5) : minuterie native au lieu d'un
+-- OnUpdate appele a chaque image pour n'agir qu'une fois par seconde.
+C_Timer.NewTicker(1, function()
   if not NS.GetPinID() then lastT = nil return end
   local ok, err = pcall(Tick)
   if not ok and not NS._farmErr then

@@ -283,6 +283,8 @@ L.OPT_SEC_MINIMAP      = "Minimapa"
 L.OPT_MM_HIDE_SOLO     = "Ocultar el icono de Opacity (Opacity solo)"
 L.OPT_MM_HIDE_SUITE    = "Ocultar el icono de TibiSuite"
 L.OPT_MM_NOTE          = "Con TibiSuite, Opacity no tiene icono propio: se usa el de TibiSuite (mismo ajuste que Centro > Barra y acceso). Con el icono oculto, /opacity o /opa sigue abriendo la ventana."
+L.OPT_MM_FULLHIDE     = "Ocultar por completo el minimapa cuando es transparente"
+L.OPT_MM_FULLHIDE_NOTE = "La flecha del jugador y los marcadores de misiones los dibuja el juego e ignoran la opacidad. Por debajo del 5 %, Opacity oculta todo el minimapa y lo vuelve a mostrar en cuanto sube (al pasar el ratón, contexto). Entre el 5 y el 99 %, la flecha y los marcadores siguen visibles: es una limitación del juego."
 L.OPT_SEC_RESET        = "Restablecer"
 L.OPT_RESET            = "Vaciar la lista (todo vuelve al 100 %)"
 

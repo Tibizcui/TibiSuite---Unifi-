@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.5.5
+- Nettoyage : retrait de l'ancienne fenêtre de recherche globale, remplacée depuis longtemps par celle du Centre, et de fonctions inutilisées.
+- Archive CurseForge allégée : les images que le jeu ne charge jamais ne sont plus incluses.
+
 ## 7.5.4
 - Clean code langages
 

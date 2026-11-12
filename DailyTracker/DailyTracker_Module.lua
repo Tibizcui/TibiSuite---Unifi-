@@ -15,7 +15,6 @@
   Charge en dernier par DailyTracker.toc, apres DailyTracker.lua et le _Suite.
 ============================================================================]]
 
-local FRAME  = "DTMainFrame"
 local ACCENT = { 0.086, 0.769, 0.988 }   -- cyan (logo #16C4FC) - accent existant
 local KEY    = "Daily"
 

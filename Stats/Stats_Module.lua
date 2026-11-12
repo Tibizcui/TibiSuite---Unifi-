@@ -198,10 +198,9 @@ local function BuildStandaloneMinimapButton()
     btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
   end
 
-  btn:SetScript("OnDragStart", function(self) self.dragging = true end)
-  btn:SetScript("OnDragStop", function(self) self.dragging = false end)
-  btn:SetScript("OnUpdate", function(self)
-    if not self.dragging then return end
+  -- OnUpdate pose SEULEMENT pendant le deplacement (audit 7.5.5) : avant, il
+  -- tournait a chaque image pendant toute la session pour sortir aussitot.
+  local function OnDragUpdate(self)
     local mx, my = Minimap:GetCenter()
     local cx, cy = GetCursorPosition()
     local scale = Minimap:GetEffectiveScale()
@@ -209,7 +208,9 @@ local function BuildStandaloneMinimapButton()
     StatsDB.minimapAngle = math.deg(math.atan2(cy - my, cx - mx))
     StatsDB.minimapMoved = true
     UpdatePosition()
-  end)
+  end
+  btn:SetScript("OnDragStart", function(self) self.dragging = true; self:SetScript("OnUpdate", OnDragUpdate) end)
+  btn:SetScript("OnDragStop", function(self) self.dragging = false; self:SetScript("OnUpdate", nil) end)
 
   btn:SetScript("OnClick", function(_, button)
     if button == "RightButton" then

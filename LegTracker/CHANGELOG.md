@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.5.5
+- Performance : le suivi de farm et le panneau de l'objet épinglé se mettent à jour une fois par seconde par minuterie, au lieu d'un contrôle à chaque image.
+- Nettoyage du code inutilisé.
+- Archive CurseForge allégée : les images que le jeu ne charge jamais ne sont plus incluses.
+
 ## 7.5.4
 - Clean code langages
 

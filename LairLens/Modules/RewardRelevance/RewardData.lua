@@ -6,7 +6,6 @@
 -- =============================================================================
 
 local ADDON, LL = ...
-local C = LL.const
 local D = LL.Data
 
 LL.RewardData = {}

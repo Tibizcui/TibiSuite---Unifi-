@@ -283,6 +283,8 @@ L.OPT_SEC_MINIMAP      = "Minikarte"
 L.OPT_MM_HIDE_SOLO     = "Opacity-Symbol ausblenden (nur Opacity)"
 L.OPT_MM_HIDE_SUITE    = "TibiSuite-Symbol ausblenden"
 L.OPT_MM_NOTE          = "Mit TibiSuite hat Opacity kein eigenes Symbol: Es wird das TibiSuite-Symbol verwendet (gleiche Einstellung wie Zentrale > Leiste und Zugriff). Bei ausgeblendetem Symbol öffnet /opacity oder /opa weiterhin das Fenster."
+L.OPT_MM_FULLHIDE     = "Minikarte vollständig ausblenden, wenn sie transparent ist"
+L.OPT_MM_FULLHIDE_NOTE = "Der Spielerpfeil und die Questmarkierungen werden vom Spiel gezeichnet und ignorieren die Deckkraft. Unter 5 % blendet Opacity daher die gesamte Minikarte aus und zeigt sie wieder an, sobald die Deckkraft steigt (Mauszeiger, Kontext). Zwischen 5 und 99 % bleiben Pfeil und Markierungen sichtbar: eine Einschränkung des Spiels."
 L.OPT_SEC_RESET        = "Zurücksetzen"
 L.OPT_RESET            = "Liste leeren (alles zurück auf 100 %)"
 

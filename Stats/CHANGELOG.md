@@ -1,5 +1,10 @@
 # Changelog
 
+## 7.5.5
+- Performance : lecture du journal de combat allégée, et le bouton de minicarte (addon seul) ne travaille plus que pendant son déplacement.
+- Nettoyage du code inutilisé.
+- Archive CurseForge allégée : les images que le jeu ne charge jamais ne sont plus incluses.
+
 ## 7.5.4
 - Clean code langages
 

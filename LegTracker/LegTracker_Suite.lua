@@ -14,9 +14,7 @@ local function FloatUI()
 end
 FloatUI()
 local ACCENT   = { 1.000, 0.427, 0.043 }   -- orange (logo #FF6D0B)
-local LOGO     = "Interface\\AddOns\\LegTracker\\medias\\LegTracker"
 local KEY      = "Leg"
-local FULLSKIN = false
 local L        = LegTrackerL or {}
 local function T(key, default) return L[key] or default end
 
@@ -204,17 +202,6 @@ local function provider(q)
     end
   end
   return out
-end
-
-local searchPopup
-local function OpenSearch()
-  local ui = GetUI(); if not ui then return end
-  if not searchPopup then
-    searchPopup = ui.CreateSearchPopup({
-      name = "LegTrackerSearchPopup",
-      title = "|cFF9480FFLegTracker|r  " .. T("SEARCH_TITLE", "Recherche"), accent = ACCENT, logo = LOGO, provider = provider })
-  end
-  searchPopup.Toggle()
 end
 
 -- ---------------------------------------------------------- Attache & skin

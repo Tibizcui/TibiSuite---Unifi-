@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.5.5
+- Nettoyage du code inutilisé.
+- Archive CurseForge allégée : les images que le jeu ne charge jamais ne sont plus incluses.
+
 ## 7.5.4
 - Clean code langages
 

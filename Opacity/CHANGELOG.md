@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.5.5
+- Minicarte : à moins de 5 % d'opacité, la minicarte est entièrement cachée, flèche du joueur et repères de quêtes compris (le jeu les dessine sans tenir compte de l'opacité). Elle réapparaît au survol ou dès que l'opacité remonte. Nouvelle case dans les options, section Minicarte, cochée par défaut.
+- Minicarte : l'opacité s'applique aussi à la carte elle-même, que la ligne ajoutée soit « Minicarte » ou « Minimap » (pipette).
+- Infobulle (GameTooltip) : l'opacité réglée est maintenant respectée à chaque affichage.
+- Archive CurseForge allégée : les images que le jeu ne charge jamais ne sont plus incluses.
+
 ## 7.5.4
 - Clean code langages
 

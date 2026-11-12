@@ -18,7 +18,6 @@ local FH = 420   -- hauteur totale (etendu)
 local HDR_H  = 36
 local TAB_H  = 26
 local FTR_H  = 24
-local CONT_H = FH - HDR_H - TAB_H - FTR_H   -- 334 px
 local PAD    = 14
 
 local COMPACT_W    = 340                       -- largeur mode reduit
@@ -1555,7 +1554,6 @@ function UI.RefreshTab4()
 
     -- ── Mesure dynamique de la largeur des noms ──────────────────────────────
     -- On mesure la largeur naturelle de chaque nom pour eviter les chevauchements.
-    local bestKeyDB = db.dgnBestKey or {}
     if not dgnMeasFS then
         dgnMeasFS = dgnList:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         dgnMeasFS:Hide()
@@ -1740,7 +1738,6 @@ local RAID_RGB    = {
     M   = DGN_COLORS.MYTHIC,
 }
 local RAID_HEX    = { LFR = "|cff5090c0", N = "|cff999999", H = "|cff1edd1e", M = "|cffffc700" }
-local RAID_SHORT  = { LFR = "L", N = "N", H = "H", M = "M" }
 local MAX_RAID_ROWS = 30
 local RD_BOSS_W   = 40
 

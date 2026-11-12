@@ -21,7 +21,6 @@ local function FloatUI()
 end
 FloatUI()
 local ACCENT = { 0.867, 0.651, 0.412 }   -- or/sable (logo #DDA669) - accent existant
-local LOGO   = "Interface\\AddOns\\RenTracker\\medias\\RenTracker"
 local KEY    = "Rep"
 local L      = RenTrackerL or {}
 local function T(key, default) return L[key] or default end

@@ -350,8 +350,13 @@ local frame = CreateFrame("Frame")
 pcall(frame.RegisterEvent, frame, "PLAYER_LOGIN")
 pcall(frame.RegisterEvent, frame, "PLAYER_LOGOUT")
 pcall(frame.RegisterEvent, frame, "PLAYER_REGEN_DISABLED")
-pcall(frame.RegisterEvent, frame, "UNIT_SPELLCAST_CHANNEL_START")
-pcall(frame.RegisterEvent, frame, "UNIT_SPELLCAST_SUCCEEDED")
+-- Sorts du JOUEUR seulement, filtres par le client (audit 7.5.5) : avec
+-- RegisterEvent, chaque sort de chaque joueur d'un raid reveillait ce code.
+-- Repli sur RegisterEvent si RegisterUnitEvent manque (le filtre a1 ~= "player"
+-- plus bas reste en place dans les deux cas).
+for _, e in ipairs({ "UNIT_SPELLCAST_CHANNEL_START", "UNIT_SPELLCAST_SUCCEEDED" }) do
+  if not pcall(frame.RegisterUnitEvent, frame, e, "player") then pcall(frame.RegisterEvent, frame, e) end
+end
 pcall(frame.RegisterEvent, frame, "LOOT_READY")
 pcall(frame.RegisterEvent, frame, "LOOT_OPENED")
 

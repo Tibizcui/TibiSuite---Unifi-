@@ -210,6 +210,8 @@ L.OPT_SEC_MINIMAP      = "Minimap"
 L.OPT_MM_HIDE_SOLO     = "Hide the Opacity icon (Opacity alone)"
 L.OPT_MM_HIDE_SUITE    = "Hide the TibiSuite icon"
 L.OPT_MM_NOTE          = "With TibiSuite, Opacity has no icon of its own: the TibiSuite icon is used (same setting as Centre > Bar and access). With the icon hidden, /opacity or /opa still opens the window."
+L.OPT_MM_FULLHIDE     = "Fully hide the minimap when it is transparent"
+L.OPT_MM_FULLHIDE_NOTE = "The player arrow and quest markers are drawn by the game and ignore opacity. Below 5%, Opacity therefore hides the whole minimap, then shows it again as soon as it rises (hover, context). Between 5 and 99%, the arrow and markers stay visible: this is a game limitation."
 L.OPT_SEC_RESET        = "Reset"
 L.OPT_RESET            = "Clear the list (everything back to 100%)"
 

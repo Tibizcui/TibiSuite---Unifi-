@@ -13,7 +13,6 @@
   Charge en dernier par DgnTracker.toc, apres DgnTracker.lua et _Suite.lua.
 ============================================================================]]
 
-local FRAME  = "DGNMainFrame"
 local ACCENT = { 0.008, 0.404, 0.988 }   -- bleu (logo #0267FC)
 local KEY    = "Dgn"
 local L      = DgnTrackerL or {}
