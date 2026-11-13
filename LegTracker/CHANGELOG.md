@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.8
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.5.7
 - Mémoire : la fenêtre n'est plus construite au chargement mais à sa première ouverture. Le bouton de minicarte propre n'est plus créé quand TibiSuite est présent (il était masqué aussitôt). L'option d'affichage du bouton de minicarte (addon seul) s'applique sans ouvrir la fenêtre.
 - Icône de la liste des add-ons allégée (64 × 64 au lieu de 128 × 128), même rendu à l'écran.

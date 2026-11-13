@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.8
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.5.7
 - Icône de la liste des add-ons allégée (64 × 64 au lieu de 128 × 128), même rendu à l'écran.
 - Socle d'interface v23 : constructeur commun des boutons de minicarte.

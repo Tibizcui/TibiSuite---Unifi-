@@ -3019,7 +3019,9 @@ local function BuildReputationDetail(content, top)
   reputationDetailPanel:SetWidth(content:GetWidth())
 
   local rec = (view.char ~= "__account__") and StatsDB[view.char]
-  local list = rec and rec.reputations and rec.reputations.list
+  -- Liste reunie : reputations propres + bataillon (SX.RepFull, Core.lua).
+  local full = rec and (SX.RepFull and SX.RepFull(rec) or rec.reputations)
+  local list = full and full.list
   -- Uniquement les factions avec une progression RECENTE constatee
   -- (lastGainAt present) - pas un tri par % avec repli, un vrai filtre : les
   -- factions jamais touchees depuis que ce suivi existe n'apparaissent pas

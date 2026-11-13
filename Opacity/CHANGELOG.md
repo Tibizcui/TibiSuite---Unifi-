@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.8
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.5.7
 - Performance : le test de survol de la minicarte cachée ne crée plus de fonction 20 fois par seconde.
 - Icône de la liste des add-ons allégée (64 × 64 au lieu de 128 × 128), même rendu à l'écran.

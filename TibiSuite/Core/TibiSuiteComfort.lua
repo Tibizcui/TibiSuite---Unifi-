@@ -64,7 +64,7 @@ local SET_KEYS = {
   "widgets", "widgetsLocked", "widgetScale",
   "uiScale", "highContrast", "cvd",
   "remindDaily", "remindDailyMin", "remindWeekly", "remindWeeklyH", "remindCal", "remindNote",
-  "sugOn", "sugHabits", "sugNoGroup", "sugKinds", "advPopup",
+  "sugOn", "sugHabits", "sugNoGroup", "sugKinds", "advPopup", "welcomeBack", "backDays",
   "versionCheck", "announceChat",
   "weekRecapPopup", "plannerPos", "groupShare",
 }

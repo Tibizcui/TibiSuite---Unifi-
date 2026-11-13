@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.8
+- Réputations de bataillon gardées une seule fois pour tout le compte au lieu d'une copie par personnage (environ 4 fois moins de lignes de réputation dans la sauvegarde). Tous les personnages affichent désormais la valeur à jour de ces réputations ; l'export du Dashboard garde le même format.
+
 ## 7.5.7
 - Performance : le suivi du dernier coup reçu (cause des morts) ne crée plus de table à chaque dégât en combat.
 - La sonde de diagnostic « action bloquée » n'est plus incluse dans l'archive CurseForge (gardée pour le développement).

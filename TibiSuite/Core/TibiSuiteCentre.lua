@@ -273,6 +273,8 @@ D("CTR_SUG_SEC_POPUP", "Fenêtre des propositions")
 D("CTR_SUG_POPUP_NOTE","À la connexion, une fenêtre te propose 5 activités. Survole une proposition pour voir ce qu'il reste à faire. Elle attend la fin de l'analyse des hauts faits et ne s'ouvre ni en combat ni en instance.")
 D("CTR_SUG_POPUP",     "Afficher les propositions à la connexion")
 D("CTR_SUG_POPUP_SHOW","Ouvrir la fenêtre maintenant")
+D("CTR_WB_ON",         "« Bon retour » après 30 jours d'absence d'un personnage")
+D("CTR_WB_SHOW",       "Voir « Bon retour » pour ce personnage")
 D("CTR_SUG_SEC_KINDS", "Types proposés")
 D("CTR_SUG_K_ach",     "Hauts faits presque finis (Stats)")
 D("CTR_SUG_K_coll",    "Montures à obtenir (DgnTracker)")
@@ -2087,6 +2089,13 @@ local function BuildSugPanel()
   P:Check(L.CTR_SUG_POPUP, function() return TibiSuiteDB.advPopup ~= false end,
     function(v) TibiSuiteDB.advPopup = (not v) and false or nil end)
   if TibiSuite.AddAdvisorKeyRow then TibiSuite.AddAdvisorKeyRow(P) end
+  -- Mode « Retour au jeu » (TibiSuiteAdvisor.lua, fin du fichier).
+  P:Check(L.CTR_WB_ON, function() return TibiSuiteDB.welcomeBack ~= false end,
+    function(v) TibiSuiteDB.welcomeBack = (not v) and false or nil end)
+  P:Button(L.CTR_WB_SHOW, function()
+    frame:Hide()
+    if TibiSuite.ShowWelcomeBack then TibiSuite.ShowWelcomeBack(true) end
+  end)
   P:Button(L.CTR_SUG_POPUP_SHOW, function()
     frame:Hide()
     if TibiSuite.ShowAdvisor then TibiSuite.ShowAdvisor(true) end

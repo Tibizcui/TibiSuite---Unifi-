@@ -504,7 +504,7 @@ function SX.CollectExportData()
         delveTierAchievementID = rec.delveTierAchievementID, delveTierAchievementName = rec.delveTierAchievementName,
         delveTypes = rec.delveTypes, delveAllMaxed = SX.DelveAllMaxed(rec),
         torghast = rec.torghast, torghastByDungeon = rec.torghastByDungeon,
-        reputations = rec.reputations,
+        reputations = SX.RepFull and SX.RepFull(rec) or rec.reputations,
         professionsNative = rec.professionsNative,
       }
     else
@@ -517,7 +517,7 @@ function SX.CollectExportData()
         delveTierAchievementID = rec.delveTierAchievementID, delveTierAchievementName = rec.delveTierAchievementName,
         delveTypes = rec.delveTypes, delveAllMaxed = SX.DelveAllMaxed(rec),
         torghast = rec.torghast, torghastByDungeon = rec.torghastByDungeon,
-        reputations = rec.reputations,
+        reputations = SX.RepFull and SX.RepFull(rec) or rec.reputations,
         professionsNative = rec.professionsNative,
       }
     end

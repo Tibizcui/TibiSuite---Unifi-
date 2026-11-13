@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.5.7
+-- TibiSuiteCore v7.5.8
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.5.7"
+local VERSION = "7.5.8"
 
 -- ================================================================
 -- LOCALISATION
@@ -3141,6 +3141,10 @@ SlashCmdList["TIBISUITE"] = function(msg)
 
   elseif msg == "temps" or msg == "time" or msg:match("^temps%s+") or msg:match("^time%s+") then
     if TibiSuite.SessionSlash then TibiSuite.SessionSlash(msg:match("^%S+%s+(%d+)")) end
+
+  elseif msg == "retour" or msg == "back" then
+    -- Mode « Retour au jeu » (TibiSuiteAdvisor.lua) : a tout moment.
+    if TibiSuite.ShowWelcomeBack then TibiSuite.ShowWelcomeBack(true) end
 
   elseif msg:match("^sonde groupe") or msg:match("^probe group") then
     -- Sonde du partage en groupe (7.3, lot C) : report, clear, sinon on/off.

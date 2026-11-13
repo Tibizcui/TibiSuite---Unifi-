@@ -113,5 +113,15 @@ ne coûtent presque rien en mémoire après le chargement.
   plus d'images (même budget de 5 ms par image).
   - Compactage : `SX.CompactDay` ne copie plus rien quand un jour n'a rien à
     regrouper (évitait des centaines de tables jetées à chaque connexion).
+- **Réputations de bataillon de Stats (après la 7.5.7, non testé en jeu)**.
+  Mesure : 209 Ko, 1 207 lignes pour 162 factions, 104 présentes chez les 10
+  personnages. `SX.SplitWarbandReps` (après chaque collecte) range les
+  factions `C_Reputation.IsAccountWideReputation` dans `StatsDB.repWarband`
+  (une fois), `SX.StripWarbandFromAlts` nettoie les autres personnages,
+  `SX.RepFull` réunit les deux pour l'UI et l'export (format inchangé, dates
+  de progression par personnage via `repRecentGain`). Simulé sur une copie
+  de la sauvegarde (hypothèse : les 104 communes sont de bataillon) :
+  1 207 -> 271 lignes, 0 faction manquante, 0 entrée propre ou résumé
+  modifié, idempotent. Sauvegarde : `Stats.lua.avant-reputations`.
 - Correctifs de documentation : contradiction LoadOnDemand (CLAUDE.md et
   `Notes` du core), exception MiniHub aux bibliothèques externes.

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.8
+- Nouveau : « Bon retour ». Quand un personnage revient après 30 jours d'absence, une fenêtre propose jusqu'à 5 étapes calculées d'après ton personnage (progression du niveau, équipement en retard, Grand coffre, renommées, connaissances de métier), chacune avec un bouton qui ouvre le bon module. Réglage dans le Centre (Suggestions), commande /ts retour.
+
 ## 7.5.7
 - La sonde de partage en groupe (/ts sonde groupe), outil de développement, n'est plus incluse dans l'archive CurseForge.
 - Socle d'interface v23 : constructeur commun des boutons de minicarte.

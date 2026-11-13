@@ -643,3 +643,261 @@ ev:SetScript("OnEvent", function(_, _, isLogin)
   end
   C_Timer.After(35, try)
 end)
+
+-- ============================================================================
+-- MODE « RETOUR AU JEU » (2026-11-13, plan _dev/Plan_Partage_RetourJeu.md, B)
+-- ----------------------------------------------------------------------------
+-- A la vraie connexion d'un personnage reste longtemps sans jouer (30 jours
+-- par defaut, TibiSuiteDB.backDays), une fenetre « Bon retour » propose 5
+-- etapes au plus, calculees UNIQUEMENT d'apres ce que le client et les modules
+-- savent (aucune regle de jeu ecrite en dur). Une etape dont le module n'est
+-- pas installe n'apparait pas. Desactivable : TibiSuiteDB.welcomeBack = false
+-- (toute la suite) ou TibiSuiteCharDB.welcomeBackOff = true (ce personnage).
+-- Absence : TibiSuiteCharDB.lastSeen (pose a chaque connexion et deconnexion),
+-- sinon le dernier jour connu de Stats pour ce personnage (installation
+-- recente de la suite). /ts retour ouvre la fenetre a tout moment.
+-- NON TESTE EN JEU.
+-- ============================================================================
+D("WB_TITLE",       "Bon retour en Azeroth !")
+D("WB_SUB_FMT",     "%s  ·  absent depuis %d jours")
+D("WB_SUB_NOW",     "Ce que la suite te conseille de reprendre en premier.")
+D("WB_EMPTY",       "Rien ne presse : ton personnage est à jour. Bon jeu !")
+D("WB_OFF",         "Ne plus afficher pour ce personnage")
+D("WB_OK",          "C'est parti")
+D("WB_GO",          "Y aller")
+D("WB_LEVEL_FMT",   "Niveau %d sur %d : reprends ta progression (historique et rythme dans LvlHistory).")
+D("WB_ILVL_FMT",    "Ton équipement (%d) est en retard sur ton meilleur personnage (%d) : les donjons de la saison.")
+D("WB_VAULT_CLAIM", "Ton Grand coffre a une récompense à récupérer.")
+D("WB_VAULT_EMPTY", "Ton Grand coffre est vide cette semaine : voici ce qui le remplit.")
+D("WB_RENOWN_FMT",  "%d renommées de l'extension ne sont pas encore au maximum.")
+D("WB_KP_FMT",      "%d points de connaissance de métier à dépenser.")
+
+local WB_MAX, WB_DAYS = 5, 30
+
+local function CharDay(iso)
+  local y, m, d = tostring(iso or ""):match("^(%d+)-(%d+)-(%d+)$")
+  if not y then return nil end
+  return time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })
+end
+
+-- Dernier passage connu de ce personnage (avant cette connexion).
+local function LastSeen()
+  local cdb = TibiSuiteCharDB
+  if type(cdb) == "table" and tonumber(cdb.lastSeen) then return tonumber(cdb.lastSeen) end
+  local key = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+  local rec = type(StatsDB) == "table" and StatsDB[key]
+  if type(rec) ~= "table" or type(rec.days) ~= "table" then return nil end
+  local last
+  for k in pairs(rec.days) do if type(k) == "string" and (not last or k > last) then last = k end end
+  return last and CharDay(last) or nil
+end
+
+-- Module present ET charge (cle du catalogue -> nom d'addon).
+local function Loaded(key)
+  for _, mod in ipairs(TibiSuite.GetCatalog and TibiSuite.GetCatalog() or {}) do
+    if mod.key == key then
+      return (C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded(mod.addonName)) and true or false
+    end
+  end
+  return false
+end
+
+-- Etapes (dans l'ordre du plan), chacune seulement si elle s'applique.
+function TibiSuite.WelcomeBackSteps()
+  local out = {}
+  local function add(key, text, open) if #out < WB_MAX then out[#out + 1] = { key = key, text = text, open = open } end end
+  local lvl = UnitLevel("player") or 0
+  local maxL = GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion()
+  local atMax = maxL and lvl >= maxL
+
+  if maxL and not atMax and Loaded("Lvl") then
+    add("Lvl", string.format(L.WB_LEVEL_FMT, lvl, maxL), function() TibiSuite.OpenModule("Lvl") end)
+  end
+
+  if atMax and Loaded("Dgn") and GetAverageItemLevel then
+    local ok, _, eq = pcall(GetAverageItemLevel)
+    local me = ok and tonumber(eq) and math.floor(eq) or nil
+    local ref
+    local myKey = (UnitName("player") or "?") .. "-" .. (GetRealmName() or "?")
+    if type(StatsDB) == "table" then
+      for k, rec in pairs(StatsDB) do
+        if k ~= myKey and type(rec) == "table" and type(k) == "string" and k:find("-", 1, true)
+           and tonumber(rec.ilvl) and (not maxL or (tonumber(rec.level) or 0) >= maxL) then
+          ref = math.max(ref or 0, math.floor(rec.ilvl))
+        end
+      end
+    end
+    if me and ref and me < ref - 15 then
+      add("Dgn", string.format(L.WB_ILVL_FMT, me, ref), function()
+        TibiSuite.OpenModule("Dgn")
+        if _G.DgnTracker_OpenView then _G.DgnTracker_OpenView("Season") end
+      end)
+    end
+  end
+
+  if atMax and Loaded("Weekly") and C_WeeklyRewards then
+    local okC, claim = pcall(function() return C_WeeklyRewards.HasAvailableRewards and C_WeeklyRewards.HasAvailableRewards() end)
+    if okC and claim then
+      add("Weekly", L.WB_VAULT_CLAIM, function() TibiSuite.OpenModule("Weekly") end)
+    else
+      local okA, acts = pcall(function() return C_WeeklyRewards.GetActivities and C_WeeklyRewards.GetActivities() end)
+      if okA and type(acts) == "table" and #acts > 0 then
+        local any = false
+        for _, a in ipairs(acts) do if (tonumber(a.progress) or 0) > 0 then any = true; break end end
+        if not any then add("Weekly", L.WB_VAULT_EMPTY, function() TibiSuite.OpenModule("Weekly") end) end
+      end
+    end
+  end
+
+  if Loaded("Rep") and C_MajorFactions and C_MajorFactions.GetMajorFactionIDs and C_MajorFactions.HasMaximumRenown
+     and LE_EXPANSION_LEVEL_CURRENT then
+    local ok, ids = pcall(C_MajorFactions.GetMajorFactionIDs, LE_EXPANSION_LEVEL_CURRENT)
+    if ok and type(ids) == "table" then
+      local n = 0
+      for _, id in ipairs(ids) do
+        local okM, isMax = pcall(C_MajorFactions.HasMaximumRenown, id)
+        if okM and isMax == false then n = n + 1 end
+      end
+      if n > 0 then add("Rep", string.format(L.WB_RENOWN_FMT, n), function() TibiSuite.OpenModule("Rep") end) end
+    end
+  end
+
+  if Loaded("Skill") and _G.SkillTrackerAPI and SkillTrackerAPI.GetCharSummary then
+    local ok, list = pcall(SkillTrackerAPI.GetCharSummary, GetRealmName(), UnitName("player"))
+    if ok and type(list) == "table" then
+      local kp = 0
+      for _, p in ipairs(list) do kp = kp + (tonumber(p.kp) or 0) end
+      if kp > 0 then add("Skill", string.format(L.WB_KP_FMT, kp), function() TibiSuite.OpenModule("Skill") end) end
+    end
+  end
+  return out
+end
+
+local wb
+local wbRows = {}
+local function BuildWB()
+  if wb or not Kit() then return wb end
+  wb = CreateFrame("Frame", "TibiSuiteWelcomeBack", UIParent, "BackdropTemplate")
+  wb:SetSize(W, 260)
+  wb:SetPoint("CENTER", 0, 80)
+  wb:SetFrameStrata("DIALOG")
+  wb:SetToplevel(true)
+  wb:SetClampedToScreen(true)
+  wb:EnableMouse(true)
+  wb:SetMovable(true)
+  wb:RegisterForDrag("LeftButton")
+  wb:SetScript("OnDragStart", wb.StartMoving)
+  wb:SetScript("OnDragStop", wb.StopMovingOrSizing)
+  if K.SkinLikeSuite then K.SkinLikeSuite(wb, K.ACC) end
+  if K.AddFadeIn then K.AddFadeIn(wb, 0.25) end
+  table.insert(UISpecialFrames, "TibiSuiteWelcomeBack")
+  wb.logo = wb:CreateTexture(nil, "ARTWORK"); wb.logo:SetSize(38, 38); wb.logo:SetPoint("TOPLEFT", 18, -16)
+  wb.logo:SetTexture(K.LOGO)
+  wb.title = K.Text(wb, "GameFontNormalLarge", L.WB_TITLE, Acc())
+  wb.title:SetPoint("TOPLEFT", wb.logo, "TOPRIGHT", 12, -1)
+  wb.sub = K.Text(wb, "GameFontHighlightSmall", "", K.COL.TXT)
+  wb.sub:SetPoint("TOPLEFT", wb.title, "BOTTOMLEFT", 0, -4)
+  wb.sub2 = K.Text(wb, "GameFontDisableSmall", L.WB_SUB_NOW, K.COL.MUT)
+  wb.sub2:SetPoint("TOPLEFT", wb.sub, "BOTTOMLEFT", 0, -3)
+  wb.close = K.Btn(wb, 26, 26, "X", "ghost")
+  wb.close:SetPoint("TOPRIGHT", -10, -10)
+  wb.close:SetScript("OnClick", function() wb:Hide() end)
+  wb.sep = wb:CreateTexture(nil, "ARTWORK"); wb.sep:SetHeight(1)
+  wb.sep:SetPoint("TOPLEFT", 16, -82); wb.sep:SetPoint("TOPRIGHT", -16, -82)
+  wb.sep:SetColorTexture(1, 1, 1, 0.10)
+  wb.empty = K.Text(wb, "GameFontHighlight", L.WB_EMPTY, K.COL.MUT, W - 48)
+  wb.empty:SetPoint("TOPLEFT", 24, -100)
+  wb.off = K.Btn(wb, 260, 24, "", "ghost")
+  wb.off:SetPoint("BOTTOMLEFT", 12, 14)
+  wb.off._label:ClearAllPoints(); wb.off._label:SetPoint("LEFT", 6, 0)
+  local function paintOff()
+    local off = type(TibiSuiteCharDB) == "table" and TibiSuiteCharDB.welcomeBackOff
+    local box = off and "|TInterface\\Buttons\\UI-CheckBox-Check:16:16|t" or "|TInterface\\Buttons\\UI-CheckBox-Up:16:16|t"
+    wb.off._label:SetText(box .. " " .. L.WB_OFF)
+  end
+  wb.off:SetScript("OnClick", function()
+    if type(TibiSuiteCharDB) ~= "table" then return end
+    TibiSuiteCharDB.welcomeBackOff = (not TibiSuiteCharDB.welcomeBackOff) or nil
+    paintOff()
+  end)
+  wb.PaintOff = paintOff
+  wb.ok = K.Btn(wb, 130, 28, L.WB_OK, "pri")
+  wb.ok:SetPoint("BOTTOMRIGHT", -16, 12)
+  wb.ok:SetScript("OnClick", function() wb:Hide() end)
+  wb:Hide()
+  return wb
+end
+
+local function WBRow(i)
+  local r = CreateFrame("Frame", nil, wb)
+  r:SetSize(W - 32, 44)
+  r.bar = r:CreateTexture(nil, "ARTWORK"); r.bar:SetPoint("TOPLEFT"); r.bar:SetPoint("BOTTOMLEFT"); r.bar:SetWidth(3)
+  r.txt = K.Text(r, "GameFontHighlight", "", K.COL.TXT, W - 190)
+  r.txt:SetPoint("LEFT", 14, 0)
+  r.go = K.Btn(r, 110, 26, L.WB_GO)
+  r.go:SetPoint("RIGHT", -4, 0)
+  wbRows[i] = r
+  return r
+end
+
+-- force : ouvre meme sans etape (commande /ts retour).
+function TibiSuite.ShowWelcomeBack(force, days)
+  if not BuildWB() then return false end
+  local steps = TibiSuite.WelcomeBackSteps()
+  if #steps == 0 and not force then return false end
+  local name = UnitName("player") or ""
+  if TibiSuite.SafeName then name = TibiSuite.SafeName(name) end
+  wb.sub:SetText(days and string.format(L.WB_SUB_FMT, name, days) or name)
+  wb.title:SetTextColor(Acc()[1], Acc()[2], Acc()[3])
+  local y = -96
+  for i, s in ipairs(steps) do
+    local r = wbRows[i] or WBRow(i)
+    r:ClearAllPoints(); r:SetPoint("TOPLEFT", 16, y)
+    local c = ModColor(s.key)
+    r.bar:SetColorTexture(c[1], c[2], c[3], 1)
+    r.txt:SetText(s.text)
+    r.go:SetScript("OnClick", function() wb:Hide(); pcall(s.open) end)
+    r:Show()
+    y = y - 44 - GAP
+  end
+  for i = #steps + 1, #wbRows do wbRows[i]:Hide() end
+  wb.empty:SetShown(#steps == 0)
+  if #steps == 0 then y = y - (wb.empty:GetStringHeight() or 30) - 16 end
+  wb.PaintOff()
+  wb:SetHeight(-y + 60)
+  if TibiSuite.ApplyUIScaleTo then TibiSuite.ApplyUIScaleTo(wb) end
+  wb:Show()
+  return true
+end
+
+local wbEv = CreateFrame("Frame")
+pcall(wbEv.RegisterEvent, wbEv, "PLAYER_ENTERING_WORLD")
+pcall(wbEv.RegisterEvent, wbEv, "PLAYER_LOGOUT")
+wbEv:SetScript("OnEvent", function(_, event, isLogin)
+  if event == "PLAYER_LOGOUT" then
+    if type(TibiSuiteCharDB) == "table" then TibiSuiteCharDB.lastSeen = time() end
+    return
+  end
+  wbEv:UnregisterEvent("PLAYER_ENTERING_WORLD")
+  if not isLogin then return end              -- vraie connexion seulement
+  local last = LastSeen()
+  if type(TibiSuiteCharDB) == "table" then TibiSuiteCharDB.lastSeen = time() end
+  if not last then return end
+  local limit = tonumber(TibiSuiteDB and TibiSuiteDB.backDays) or WB_DAYS
+  local days = math.floor((time() - last) / 86400)
+  if days < limit then return end
+  if TibiSuiteDB and TibiSuiteDB.welcomeBack == false then return end
+  if type(TibiSuiteCharDB) == "table" and TibiSuiteCharDB.welcomeBackOff then return end
+  -- Attente : donnees du personnage pretes, hors combat et hors instance,
+  -- sans recouvrir les autres fenetres d'accueil. Passe AVANT le Conseiller
+  -- (35 s) : le joueur qui revient voit d'abord son parcours.
+  local tries = 0
+  local function try()
+    tries = tries + 1
+    local busy = InCombatLockdown() or (IsInInstance and IsInInstance())
+      or Shown("TibiSuiteSetupWizard") or Shown("TibiSuiteWhatsNew")
+    if not busy then TibiSuite.ShowWelcomeBack(false, days); return end
+    if tries < 20 then C_Timer.After(5, try) end
+  end
+  C_Timer.After(12, try)
+end)

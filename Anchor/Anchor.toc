@@ -4,7 +4,7 @@
 ## Notes: Move any game window: snapping and alignment guides, grid, undo, one layout per screen resolution and per character, loot rolls placement. Works alongside ElvUI and EllesmereUI.
 ## Notes-frFR: Deplacer les fenetres du jeu : magnetisme et reperes, grille, annulation, une disposition par resolution d'ecran et par personnage, placement des lancers de des. Cohabite avec ElvUI et EllesmereUI.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.5.7
+## Version: 7.5.8
 ## X-Curse-Project-ID: 1795734
 # MULTI-VERSIONS (comme Opacity) : ce fichier sert Midnight et WoW Forever
 # (16001). Classic (Vanilla, TBC, Cata, Mists) lit aussi ce fichier : une

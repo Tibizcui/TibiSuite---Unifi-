@@ -2005,7 +2005,91 @@ function SX.CollectReputationSnapshot(rec)
       summary = { tracked = #list, maxedCount = maxedCount, paragonReady = paragonReady, highestRenownRank = highestRenownRank },
     }
   end)
-  if ok then rec.reputations = result end
+  if ok then
+    rec.reputations = result
+    pcall(SX.SplitWarbandReps, rec)
+  end
+end
+
+-- ----------------------------------------------------------------------------
+-- REPUTATIONS DE BATAILLON (audit poids 2026-11-13)
+-- Une reputation de bataillon (C_Reputation.IsAccountWideReputation, deja
+-- utilisee par RenTracker et RepBar) a la meme valeur sur tout le compte :
+-- elle est gardee UNE fois dans StatsDB.repWarband (cle sans tiret, jamais
+-- prise pour un personnage) au lieu d'une copie par personnage. Chaque
+-- personnage ne garde que ses reputations propres (reputations.split = true).
+-- SX.RepFull(rec) remet les deux ensemble pour l'affichage et l'export : le
+-- Dashboard et Companion recoivent exactement le meme format qu'avant, avec
+-- en plus des valeurs de bataillon toujours a jour sur tous les personnages.
+-- La date de derniere progression reste propre a chaque personnage
+-- (rec.repRecentGain). Sans l'API (Classic, Forever), rien ne change.
+-- ----------------------------------------------------------------------------
+local function IsWarband(id)
+  if not (id and C_Reputation and C_Reputation.IsAccountWideReputation) then return false end
+  local ok, wide = pcall(C_Reputation.IsAccountWideReputation, id)
+  return ok and wide and true or false
+end
+
+function SX.SplitWarbandReps(rec)
+  local reps = rec and rec.reputations
+  if type(reps) ~= "table" or type(reps.list) ~= "table" then return end
+  local wb = StatsDB.repWarband
+  local own, moved = {}, 0
+  for _, info in ipairs(reps.list) do
+    if type(info) == "table" and IsWarband(info.factionID) then
+      wb = wb or { list = {} }
+      info.lastGainAt = nil
+      wb.list[info.factionID] = info
+      moved = moved + 1
+    else
+      own[#own + 1] = info
+    end
+  end
+  if moved == 0 then return end
+  wb.at = time()
+  StatsDB.repWarband = wb
+  reps.list, reps.split = own, true
+  SX.StripWarbandFromAlts()
+end
+
+-- Retire des autres personnages les reputations deja gardees au niveau du
+-- compte (anciennes sauvegardes) : gain immediat, sans attendre de se
+-- connecter sur chacun. La valeur de compte est la plus recente.
+function SX.StripWarbandFromAlts()
+  local wb = StatsDB.repWarband
+  if not (wb and wb.list) then return end
+  for _, key in ipairs(SX.GetCharKeys()) do
+    local reps = type(StatsDB[key]) == "table" and StatsDB[key].reputations
+    if type(reps) == "table" and type(reps.list) == "table" and not reps.split then
+      local own = {}
+      for _, info in ipairs(reps.list) do
+        if not (type(info) == "table" and info.factionID and wb.list[info.factionID]) then own[#own + 1] = info end
+      end
+      reps.list, reps.split = own, true
+    end
+  end
+end
+
+-- Liste complete d'un personnage (propres + bataillon), au format d'origine.
+-- Les entrees de bataillon sont des copies (date de progression du perso).
+function SX.RepFull(rec)
+  local reps = rec and rec.reputations
+  if type(reps) ~= "table" or not reps.split then return reps end
+  local wb = StatsDB.repWarband
+  local list = {}
+  for _, info in ipairs(reps.list or {}) do list[#list + 1] = info end
+  if wb and wb.list then
+    local ids = {}
+    for id in pairs(wb.list) do ids[#ids + 1] = id end
+    table.sort(ids)
+    for _, id in ipairs(ids) do
+      local c = {}
+      for k, v in pairs(wb.list[id]) do c[k] = v end
+      c.lastGainAt = rec.repRecentGain and rec.repRecentGain[id]
+      list[#list + 1] = c
+    end
+  end
+  return { list = list, summary = reps.summary }
 end
 
 -- Suivi quotidien de la reputation gagnee (UPDATE_FACTION) --------------
