@@ -138,6 +138,9 @@ local function Decorate()
     provider = provider,
   })
 end
+-- Expose pour RenTracker.lua : la fenetre etant construite a sa premiere
+-- ouverture (audit poids 2026-11-13), elle est habillee a ce moment-la.
+_G.RenTracker_Decorate = Decorate
 
 -- Un seul bouton minimap pour la suite EN MODE MODULE seulement : on masque
 -- celui de RenTracker (le core le re-masque aussi ; ceinture et bretelles).
@@ -187,9 +190,10 @@ elseif GetUI() and GetUI().RegisterSearch then
   GetUI().RegisterSearch(KEY, T("MODULE_LABEL", "Réput."), provider)
 end
 
--- La fenetre RNTMainFrame est construite par RenTracker.lua sur son ADDON_LOADED,
--- qui se declenche juste apres le chargement de ce fichier. On habille donc en
--- differe (et on remasque le bouton minimap), avec quelques tentatives de secours.
+-- Filet de securite : depuis l'audit poids (2026-11-13), RNTMainFrame n'est
+-- construite qu'a sa premiere ouverture, et habillee a ce moment-la par
+-- EnsureUI (RenTracker.lua). Ces passages sont alors sans effet (Decorate
+-- sort si la frame n'existe pas) ; on les garde pour le bouton minimap.
 C_Timer.After(0.2, function() HideOwnMinimap(); Decorate() end)
 C_Timer.After(1.0, function() HideOwnMinimap(); Decorate() end)
 C_Timer.After(3.0, function() HideOwnMinimap(); Decorate() end)

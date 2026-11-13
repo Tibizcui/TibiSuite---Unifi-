@@ -6,6 +6,10 @@ manual-changelog:
 # CurseForge. WoW ne charge pas un .png pour un chemin de texture sans
 # extension (verifie en jeu le 2026-11-12 : logo vide sans le .tga) ;
 # les .tga listes ne sont references par aucun code.
+# Lot 1 bis (2026-11-13, valide en jeu) : logos et icones livres en .blp
+# (DXT5, environ 3 fois plus legers) ; les .tga restent dans le depot.
 ignore:
   - medias/TibiSuiteIcon.png
   - medias/logo.png
+  - medias/TibiSuiteIcon.tga
+  - medias/logo.tga

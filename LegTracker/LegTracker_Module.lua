@@ -155,9 +155,10 @@ elseif GetUI() and GetUI().RegisterSearch then
   GetUI().RegisterSearch(KEY, LABEL, provider)
 end
 
--- La fenetre LegTrackerMainFrame est construite par LegTracker.lua sur son
--- ADDON_LOADED. On habille donc en differe et on remasque le bouton minimap,
--- avec quelques tentatives de secours.
+-- Filet de securite : depuis l'audit poids (2026-11-13), LegTrackerMainFrame
+-- n'est construite qu'a sa premiere ouverture, et habillee a ce moment-la par
+-- EnsureUI (LegTracker.lua). Ces passages sont alors sans effet (Decorate
+-- sort si la frame n'existe pas) ; on les garde pour le bouton minimap.
 C_Timer.After(0.2, function() HideOwnMinimap(); Decorate() end)
 C_Timer.After(1.0, function() HideOwnMinimap(); Decorate() end)
 C_Timer.After(3.0, function() HideOwnMinimap(); Decorate() end)

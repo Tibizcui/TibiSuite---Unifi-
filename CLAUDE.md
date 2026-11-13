@@ -1,7 +1,8 @@
 # TibiSuite (Unifié) : contexte pour Claude Code
 
 Suite d'addons World of Warcraft de Tibiscui, en **Lua natif** (aucun Ace3, aucun
-LibStub externe). Fusion de plusieurs trackers autrefois séparés en une seule
+LibStub externe ; seule exception, MiniHub embarque LibStub, CallbackHandler,
+LibDataBroker et LibDBIcon pour regrouper les boutons des autres addons). Fusion de plusieurs trackers autrefois séparés en une seule
 suite modulaire, sans perdre la progression des joueurs.
 
 > Convention d'écriture du projet : français, ton premium et honnête, **jamais de
@@ -18,7 +19,13 @@ PostBox, RenTracker, RepBar, SkillTracker, Standby, Stats, WeeklyCompass, XPBar.
 - Core : `TibiSuite/Core/TibiSuiteCore.lua`
 - Options (cases à cocher) : `TibiSuite/Core/TibiSuiteOptions.lua`
 - Socle UI partagé : `TibiSuite/Core/TibiSuiteUI.lua`
-- TOC : voir `TibiSuite/TibiSuite.toc` (source de vérité). Au 13 novembre 2026 : `## Interface: 120105, 120100, 120007, 16001`, `## Version: 7.5.6`.
+- TOC : voir `TibiSuite/TibiSuite.toc` (source de vérité). Au 13 novembre 2026 : `## Version: 7.5.7`.
+  Modules multi-versions (core, XPBar, RepBar, Stats, MiniHub, Opacity, Standby,
+  SkillTracker, LvlHistory, RenTracker, Anchor) : **un `.toc` principal** dont la
+  ligne `## Interface` liste Midnight, Forever et Classic (Vanilla, TBC, Cata,
+  Mists), plus un `<Nom>_Wrath.toc` (client 3.4, antérieur aux listes à
+  virgules). Toute modification de la liste des fichiers : dans les 2 (lot 6,
+  2026-11-13, non testé sur un client Classic).
 
 Un module type contient : `<Nom>.toc`, `Core.lua` (logique + events), `UI.lua`,
 `<Nom>_Module.lua` (glue TibiSuite, voir plus bas), une copie du socle sous
@@ -34,8 +41,9 @@ Un module type contient : `<Nom>.toc`, `Core.lua` (logique + events), `UI.lua`,
 2. **On ne travaille QUE dans "TibiSuite - Unifié".** Les dépôts autonomes
    (`Documents\GitHub\XPBar`, `RenTracker`, `TibiSuite`, etc.) sont les anciennes
    versions standalone pré-fusion : NE PAS les modifier.
-3. **Mode double.** Chaque module marche en suite (LoadOnDemand piloté par le
-   core, pas de bouton minimap propre, onglet dans la barre unifiée) ET en addon
+3. **Mode double.** Chaque module marche en suite (chargé par WoW, activé ou
+   désactivé par la case du core, pas de bouton minimap propre, onglet dans la
+   barre unifiée) ET en addon
    indépendant (même dossier, charge sa copie du socle, crée son propre bouton
    minimap). Détection à l'exécution via `HasCore()` (`_G.TibiSuite.RegisterModule`
    présent). La SavedVariables ne change jamais entre les deux modes. Référence :
@@ -126,8 +134,17 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   notes, champs ; remonte tout objet ancré TOPLEFT sur `content` sous une note
   raccourcie, y compris les widgets maison de MiniHub/Standby), `panel:IsDocked()`.
   Registre `UI.panels` (+ par `cfg.name`) et `UI.lastShownPanel`. Toute
-  évolution du socle (actuellement v22) : bump `NS_VERSION` + recopie dans les 17 copies en gardant
-  leur bloc d'en-tête « COPIE EMBARQUEE (module X) ».
+  évolution du socle (actuellement v23) : bump `NS_VERSION` + recopie dans les 17 copies en gardant
+  leur bloc d'en-tête « COPIE EMBARQUEE (module X) » (Anchor, Opacity et
+  Standby n'en ont pas : leur en-tête est celui du core).
+- Bouton de minicarte (v23) : `UI.MinimapButton{name, icon, style="compact"|"tracker",
+  getAngle, setAngle, default, onClick(button), tooltip(tt)}` construit le
+  bouton propre des modules en autonome (nom global et clé d'angle du module
+  inchangés, jamais recollé sur la minicarte s'il est rangé par MiniHub ou
+  EllesmereUI, `OnUpdate` seulement pendant le glisser ; options `radiusPad`,
+  `texCoord`, `onClick(bouton, cadre)`). Utilisé par 15 modules ; MiniHub
+  garde son bouton LibDBIcon. Logos et icônes en `.blp` (DXT5) à côté des
+  `.tga` : chemins de texture toujours SANS extension.
 - Alerte de nouvelle version (v17, non testée en jeu, plan `_dev/VersionCheck.md`) :
   préfixe addon `TibiSuite`, message `V1:<version>:S|M` en guilde / groupe /
   raid / instance (60 s par canal, jamais en combat, réponse à un joueur en
@@ -235,6 +252,12 @@ scale 0.90, grille toggles 2x5, mmAngle 200, locked false, vertical false.
   ouvert, pas Controlled Folder Access.
 - Aucun module ne touche de code secure/verrouillé en combat (lecteurs de données
   uniquement) : pas de problème de taint sur les données elles-mêmes.
+- **Fenêtres à la demande (2026-11-13, validé en jeu).** Dgn, Daily, Leg et
+  Ren construisent leur fenêtre au premier besoin via `EnsureUI()` (plus à
+  `ADDON_LOADED`), comme Stats et LvlHistory. Toute ouverture passe par
+  `EnsureUI()`, tout rafraîchissement garde `mainFrame and mainFrame:IsShown()`.
+  Les sondes de dev sont exclues de l'archive par `@do-not-package@`.
+  Détail : `_dev/Audit_Poids.md`.
 
 ## Vérification
 

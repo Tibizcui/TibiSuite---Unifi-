@@ -65,67 +65,30 @@ end
 -- ============================================================================
 local function BuildStandaloneMinimapButton()
   if _G.RepBarMinimapBtn then return end
-  local btn = CreateFrame("Button", "RepBarMinimapBtn", Minimap)
-  btn:SetSize(31, 31)
-  btn:SetFrameStrata("MEDIUM")
-  btn:SetFrameLevel(8)
-  btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-  btn:RegisterForDrag("LeftButton")
-  btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-
-  local overlay = btn:CreateTexture(nil, "OVERLAY")
-  overlay:SetSize(53, 53)
-  overlay:SetPoint("TOPLEFT", 0, 0)
-  overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-
-  local icon = btn:CreateTexture(nil, "BACKGROUND")
-  icon:SetSize(20, 20)
-  icon:SetPoint("CENTER", 0, 1)
-  icon:SetTexture("Interface\\AddOns\\RepBar\\medias\\Logo")
-
-  -- Angle propre a chaque addon (XPBar 200, RepBar 225, Stats 175) : avant,
-  -- XPBar et RepBar partageaient 200 et leurs boutons se superposaient. Tant
-  -- que le joueur n'a pas deplace le bouton (minimapMoved), l'angle par
-  -- defaut s'applique, ce qui separe aussi les anciennes sauvegardes.
-  local function UpdatePosition()
-    RepBarDB = RepBarDB or {}
-    if not RepBarDB.minimapMoved then RepBarDB.minimapAngle = 225 end
-    local angle = math.rad(RepBarDB.minimapAngle or 225)
-    local radius = 105
-    btn:ClearAllPoints()
-    btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
-  end
-
-  btn:SetScript("OnDragStart", function(self) self.dragging = true end)
-  btn:SetScript("OnDragStop", function(self) self.dragging = false end)
-  btn:SetScript("OnUpdate", function(self)
-    if not self.dragging then return end
-    local mx, my = Minimap:GetCenter()
-    local cx, cy = GetCursorPosition()
-    local scale = Minimap:GetEffectiveScale()
-    cx, cy = cx / scale, cy / scale
-    RepBarDB.minimapAngle = math.deg(math.atan2(cy - my, cx - mx))
-    RepBarDB.minimapMoved = true
-    UpdatePosition()
-  end)
-
-  btn:SetScript("OnClick", function(_, button)
-    if button == "RightButton" then
-      if _G.RepBar_OpenOptions then _G.RepBar_OpenOptions() end
-    elseif _G.RepBar_Toggle then
-      _G.RepBar_Toggle()
-    end
-  end)
-  btn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:AddLine("RepBar")
-    GameTooltip:AddLine(T("MM_TT_LEFT", "Clic gauche : afficher/masquer"), 0.9, 0.9, 0.95)
-    GameTooltip:AddLine(T("MM_TT_RIGHT", "Clic droit : options"), 0.9, 0.9, 0.95)
-    GameTooltip:Show()
-  end)
-  btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-  UpdatePosition()
+  -- Construit par le socle v23 (UI.MinimapButton, audit poids 2026-11-13,
+  -- lot 5) : position, glisser (OnUpdate pose seulement pendant le
+  -- deplacement) et collecteurs MiniHub / EllesmereUI geres au meme endroit.
+  local UIm = _G.TibiMidnight
+  if not (UIm and UIm.MinimapButton) then return end
+  local btn = UIm.MinimapButton({
+    name = "RepBarMinimapBtn", style = "compact", default = 225,
+    icon = "Interface\\AddOns\\RepBar\\medias\\Logo",
+    getAngle = function() if not (RepBarDB and RepBarDB.minimapMoved) then return 225 end return RepBarDB.minimapAngle end,
+    setAngle = function(a) RepBarDB = RepBarDB or {}; RepBarDB.minimapAngle = a; RepBarDB.minimapMoved = true end,
+    onClick = function(button)
+      if button == "RightButton" then
+        if _G.RepBar_OpenOptions then _G.RepBar_OpenOptions() end
+      elseif _G.RepBar_Toggle then
+        _G.RepBar_Toggle()
+      end
+    end,
+    tooltip = function(tt)
+      tt:AddLine("RepBar")
+      tt:AddLine(T("MM_TT_LEFT", "Clic gauche : afficher/masquer"), 0.9, 0.9, 0.95)
+      tt:AddLine(T("MM_TT_RIGHT", "Clic droit : options"), 0.9, 0.9, 0.95)
+    end,
+  })
+  return btn
 end
 
 -- MODE MODULE : inscription au catalogue, sauf si explicitement desactive.

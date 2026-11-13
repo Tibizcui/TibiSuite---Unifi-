@@ -139,6 +139,99 @@ function SX.AppendDayEvent(list, entry)
   return entry
 end
 
+-- Or (piste B) : fusionne avec une entree recente de meme source au lieu
+-- d'ajouter une ligne. Regarde les 3 dernieres entrees (une salve peut
+-- intercaler vendor / ah / other). Garde l'heure de la premiere entree.
+function SX.AppendGoldEvent(list, source, amount, now)
+  local win = SX.GOLD_MERGE_WINDOW or 0
+  for i = #list, math.max(1, #list - 3), -1 do
+    local e = list[i]
+    if type(e) == "table" then
+      if (e.ts or 0) < now - win then break end
+      if e.source == source then
+        e.amount = (tonumber(e.amount) or 0) + amount
+        return e
+      end
+    end
+  end
+  return SX.AppendDayEvent(list, { ts = now, source = source, amount = amount })
+end
+
+-- Compactage des vieux jours (piste C). Une ligne par cle, somme du champ
+-- additionne, autres champs (ts, exp...) de la premiere entree du groupe.
+-- Meme format d'entree qu'avant : l'addon, le Dashboard et Companion les
+-- lisent sans changement. Idempotent (un jour deja compacte reste identique).
+local COMPACT = {
+  goldLog     = { sum = "amount", keys = { "source" } },
+  playtimeLog = { sum = "time",   keys = { "activity" } },
+  repLog      = { sum = "amount", keys = { "faction", "exp" } },
+  profLog     = { sum = "amount", keys = { "profession", "exp" } },
+}
+function SX.CompactDay(d)
+  local removed = 0
+  for logName, spec in pairs(COMPACT) do
+    local list = d[logName]
+    -- 1er passage sans rien copier : un jour deja compacte (cas de chaque
+    -- connexion) ne cree aucune table (constat 2026-11-13 : la copie
+    -- systematique gonflait la memoire a recuperer apres chaque /reload).
+    local dup = false
+    if type(list) == "table" and #list > 1 then
+      local seen = {}
+      for _, e in ipairs(list) do
+        if type(e) == "table" then
+          local k = ""
+          for _, f in ipairs(spec.keys) do k = k .. "\31" .. tostring(e[f]) end
+          if seen[k] then dup = true; break end
+          seen[k] = true
+        end
+      end
+    end
+    if dup then
+      local groups, out = {}, {}
+      for _, e in ipairs(list) do
+        if type(e) == "table" then
+          local k = ""
+          for _, f in ipairs(spec.keys) do k = k .. "\31" .. tostring(e[f]) end
+          local g = groups[k]
+          if g then
+            g[spec.sum] = (tonumber(g[spec.sum]) or 0) + (tonumber(e[spec.sum]) or 0)
+          else
+            g = {}
+            for f, v in pairs(e) do g[f] = v end
+            groups[k] = g
+            out[#out + 1] = g
+          end
+        end
+      end
+      if #out < #list then
+        removed = removed + (#list - #out)
+        d[logName] = out
+      end
+    end
+  end
+  return removed
+end
+
+-- Compacte, pour tous les personnages, les jours plus vieux que
+-- SX.COMPACT_AFTER_DAYS. Renvoie le nombre de lignes retirees.
+function SX.CompactOldDays()
+  local limit = SX.COMPACT_AFTER_DAYS
+  if not limit or not SX.GetCharKeys then return 0 end
+  local cutoff = date("%Y-%m-%d", time() - limit * 86400)
+  local removed = 0
+  for _, key in ipairs(SX.GetCharKeys()) do
+    local rec = StatsDB[key]
+    if type(rec) == "table" and type(rec.days) == "table" then
+      for dayKey, d in pairs(rec.days) do
+        if type(dayKey) == "string" and dayKey < cutoff and type(d) == "table" then
+          removed = removed + SX.CompactDay(d)
+        end
+      end
+    end
+  end
+  return removed
+end
+
 -- Purge les jours les plus anciens au-dela du plafond (borne la taille des
 -- SavedVariables, meme principe que PostBox).
 function SX.PurgeOldDays(rec)
@@ -529,7 +622,10 @@ end
 -- dernier coup de joueur (cas limites assumes, pas de solution parfaite
 -- cote client).
 -- ============================================================================
-local lastDamageSource -- { isPlayer=bool, isHostile=bool }
+-- Derniere source de degats recue (audit poids 2026-11-13) : deux booleens
+-- au lieu d'une table neuve a chaque coup encaisse en combat (moins de
+-- dechets pour le ramasse-miettes). Remis a nil a la mort.
+local lastSrcPlayer, lastSrcHostile
 local DAMAGE_SUBEVENTS = {
   SWING_DAMAGE = true, RANGE_DAMAGE = true, SPELL_DAMAGE = true,
   SPELL_PERIODIC_DAMAGE = true, SPELL_BUILDING_DAMAGE = true,
@@ -545,21 +641,19 @@ local function OnCombatLogEvent()
   if not playerGUID then playerGUID = UnitGUID("player") end
   if destGUID ~= playerGUID then return end
   if not sourceGUID or sourceGUID == "" then return end
-  lastDamageSource = {
-    isPlayer = sourceFlags and bit.band(sourceFlags, COMBATLOG_OBJECT_TYPE_PLAYER) ~= 0,
-    isHostile = sourceFlags and bit.band(sourceFlags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0,
-  }
+  lastSrcPlayer = sourceFlags and bit.band(sourceFlags, COMBATLOG_OBJECT_TYPE_PLAYER) ~= 0 or false
+  lastSrcHostile = sourceFlags and bit.band(sourceFlags, COMBATLOG_OBJECT_REACTION_HOSTILE) ~= 0 or false
 end
 
 local function OnPlayerDead()
   local rec = SX.EnsureChar(SX.CurrentCharKey())
-  if lastDamageSource and lastDamageSource.isPlayer then
+  if lastSrcPlayer then
     rec.pvpDeathsByPlayers = (rec.pvpDeathsByPlayers or 0) + 1
-    if lastDamageSource.isHostile then
+    if lastSrcHostile then
       rec.pvpDeathsByEnemyFaction = (rec.pvpDeathsByEnemyFaction or 0) + 1
     end
   end
-  lastDamageSource = nil
+  lastSrcPlayer, lastSrcHostile = nil, nil
   rec.pvp = SX.CollectPvPSnapshot(rec)
 end
 
@@ -1075,9 +1169,9 @@ local function FlushGoldSourceBucket()
   local rec = SX.EnsureChar(SX.CurrentCharKey())
   local d = SX.EnsureDay(rec, SX.TodayKey())
   local now = time()
-  if vendorAmt > 0 then SX.AppendDayEvent(d.goldLog, { ts = now, source = "vendor", amount = vendorAmt }) end
-  if ahAmt > 0 then SX.AppendDayEvent(d.goldLog, { ts = now, source = "ah", amount = ahAmt }) end
-  if otherAmt > 0 then SX.AppendDayEvent(d.goldLog, { ts = now, source = "other", amount = otherAmt }) end
+  if vendorAmt > 0 then SX.AppendGoldEvent(d.goldLog, "vendor", vendorAmt, now) end
+  if ahAmt > 0 then SX.AppendGoldEvent(d.goldLog, "ah", ahAmt, now) end
+  if otherAmt > 0 then SX.AppendGoldEvent(d.goldLog, "other", otherAmt, now) end
 end
 
 local function OnPlayerMoney()
@@ -2281,6 +2375,15 @@ evFrame:SetScript("OnEvent", function(_, event, ...)
     SX.RefreshCharMeta()
     local rec = SX.EnsureChar(SX.CurrentCharKey())
     SX.PurgeOldDays(rec)
+    -- Allegement (audit poids 2026-11-13) : vieux jours compactes (piste C),
+    -- et code d'export libere pendant la partie (piste A). Il est recalcule
+    -- a PLAYER_LOGOUT avant l'ecriture de la sauvegarde ; en cas de plantage,
+    -- rien n'est ecrit et l'ancien fichier garde l'ancien code. Garde si
+    -- l'export automatique est coupe : sinon Companion perdrait le code.
+    pcall(SX.CompactOldDays)
+    local tdb = _G.TibiSuiteDB
+    local autoExport = not (type(tdb) == "table" and tdb.statsAutoExport == false)
+    if autoExport and SX.Export and SX.Export.Generate then StatsDB.export = nil end
     C_Timer.NewTicker(60, FlushPlayed)
     -- Rescan retarde : les donnees de hauts faits ne semblent pas toujours
     -- completement chargees a l'instant precis de PLAYER_LOGIN (constat
@@ -2565,6 +2668,11 @@ local function Rebuild()
   local keepNear = {}
   for _, e in ipairs(near) do keepNear[e.id] = e end
   nearMap = keepNear
+  -- Audit poids (2026-11-13) : le nom de meta n'est garde que pour les
+  -- candidats affiches (seul usage : leur note ci-dessus).
+  local keepMeta = {}
+  for id in pairs(keep) do if metaOf[id] then keepMeta[id] = metaOf[id] end end
+  metaOf = keepMeta
   advList, advAt = list, GetTime()
   if SX.RefreshDashboard then pcall(SX.RefreshDashboard) end
   if _G.TibiSuite and _G.TibiSuite.InvalidateSuggestions then pcall(_G.TibiSuite.InvalidateSuggestions) end
@@ -2574,6 +2682,24 @@ end
 -- erreur saute la categorie en cours au lieu de figer le parcours sur
 -- « en cours » pour toute la session (vu en jeu le 2026-10-14).
 local lastErr
+
+-- Audit poids (2026-11-13) : pendant le parcours, on ne garde que les
+-- meilleurs de chaque groupe (5 « presque finis », 8 candidats par tag),
+-- exactement ceux que Rebuild retiendrait, au lieu de tous les hauts faits a
+-- 30 % ou plus (des milliers de tables jetees d'un coup a la fin). Le plus
+-- faible du groupe est retire des que la limite est depassee.
+local NEAR_GROUP = "\0near"
+local function KeepTop(map, cnt, e, group, limit)
+  if map[e.id] then map[e.id] = e; return end
+  map[e.id] = e
+  local n = (cnt[group] or 0) + 1
+  if n <= limit then cnt[group] = n; return end
+  local worst
+  for _, x in pairs(map) do
+    if (x.tag or NEAR_GROUP) == group and (not worst or x.pct < worst.pct) then worst = x end
+  end
+  if worst then map[worst.id] = nil end
+end
 
 local function StepBody()
   local t0 = debugprofilestop()
@@ -2604,8 +2730,8 @@ local function StepBody()
       if ok and id then
         local okE, near, cand = pcall(Evaluate, id, cat)
         if okE then
-          if near then scan.near[id] = near end
-          if cand then scan.cand[id] = cand end
+          if near then KeepTop(scan.near, scan.cnt, near, NEAR_GROUP, ACH_KEEP) end
+          if cand then KeepTop(scan.cand, scan.cnt, cand, cand.tag, ADV_PER_TAG) end
         end
       end
     end
@@ -2657,10 +2783,13 @@ function SX.ScanAchievements(onDone)
     ci.root = r
   end
   holidays = ReadHolidays()
+  -- Les titres ne servent qu'a ReadHolidays, juste au-dessus : inutile de les
+  -- garder toute la session pour chaque categorie (audit poids 2026-11-13).
+  for _, ci in pairs(catInfo) do ci.title = nil end
   metaOf = {}
   local maxL = GetMaxLevelForPlayerExpansion and GetMaxLevelForPlayerExpansion()
   maxed = maxL and UnitLevel("player") >= maxL or false
-  scan = { cats = cats, ci = 1, ai = 0, nCat = 0, near = {}, cand = {}, onDone = { onDone } }
+  scan = { cats = cats, ci = 1, ai = 0, nCat = 0, near = {}, cand = {}, cnt = {}, onDone = { onDone } }
   C_Timer.After(0, Step)
 end
 

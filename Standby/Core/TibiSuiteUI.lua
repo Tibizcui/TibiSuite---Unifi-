@@ -21,7 +21,7 @@
   Auteur : Tibiscui - Kirin Tor
 ============================================================================]]
 
-local NS_VERSION = 22
+local NS_VERSION = 23
 
 if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
   return
@@ -1621,6 +1621,131 @@ do
       inGuild = IsInGuild and IsInGuild() or false, groupChannel = GroupChannel(),
     }
   end
+end
+
+-- ============================================================================
+-- BOUTON DE MINICARTE (v23, audit poids 2026-11-13, lot 5)
+-- ----------------------------------------------------------------------------
+-- Un seul code pour les boutons propres des modules EN AUTONOME (en suite, le
+-- core porte le seul bouton). Deux rendus repris tels quels des modules :
+--   style "compact" (Stats, XPBar, RepBar, Opacity...) : 31 px, anneau 53,
+--     icone 20, surbrillance Blizzard, rayon fixe 105 ;
+--   style "tracker" (Daily, Donjons, Leg, Reput.) : 32 px, icone ronde 24
+--     masquee, anneau 52, halo, rayon = demi-largeur de la minicarte + 10.
+-- cfg = { name, icon, style, getAngle = fn() -> degres, setAngle = fn(deg),
+--         default = degres, onClick = fn(bouton, cadre), tooltip = fn(GameTooltip),
+--         radiusPad = ecart au bord de la minicarte (sinon selon le style),
+--         texCoord = { g, d, h, b } pour recadrer une icone Blizzard }
+-- Le nom et la sauvegarde de l'angle restent ceux du module (collecteurs
+-- MiniHub / EllesmereUI et SavedVariables inchanges). Un bouton range par un
+-- collecteur (parent autre que la minicarte) n'est jamais recolle dessus.
+-- OnUpdate pose seulement pendant le glisser.
+-- ============================================================================
+UI.mmButtons = UI.mmButtons or {}
+local mmZoom
+local function MMRadius(btn)
+  local pad = btn._mmCfg.radiusPad
+  if pad then return (Minimap:GetWidth() / 2) + pad end
+  if btn._mmTracker then return (Minimap:GetWidth() / 2) + 10 end
+  return 105
+end
+local function MMPlace(btn)
+  if btn:GetParent() ~= Minimap then return end
+  local cfg = btn._mmCfg
+  local a = tonumber(cfg.getAngle and cfg.getAngle()) or cfg.default or 200
+  local rad, r = math.rad(a), MMRadius(btn)
+  btn:ClearAllPoints()
+  btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(rad) * r, math.sin(rad) * r)
+end
+local function MMDrag(self)
+  if self:GetParent() ~= Minimap then return end
+  local mx, my = Minimap:GetCenter()
+  local cx, cy = GetCursorPosition()
+  local sc = Minimap:GetEffectiveScale()
+  local deg = math.deg(math.atan2(cy / sc - my, cx / sc - mx)) % 360
+  if self._mmCfg.setAngle then self._mmCfg.setAngle(deg) end
+  MMPlace(self)
+end
+
+function UI.MinimapButton(cfg)
+  if type(cfg) ~= "table" or not cfg.name or not Minimap then return nil end
+  local btn = _G[cfg.name]
+  if btn then return btn end
+  local tracker = cfg.style == "tracker"
+  btn = CreateFrame("Button", cfg.name, Minimap)
+  btn._mmCfg, btn._mmTracker = cfg, tracker
+  btn:SetFrameStrata("MEDIUM")
+  btn:SetFrameLevel(8)
+  btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  btn:RegisterForDrag("LeftButton")
+  if tracker then
+    btn:SetSize(32, 32)
+    btn:EnableMouse(true)
+    btn:SetClampedToScreen(true)
+    btn:SetToplevel(true)
+    local icon = btn:CreateTexture(nil, "ARTWORK")
+    icon:SetPoint("CENTER", 0, 0)
+    icon:SetSize(24, 24)
+    icon:SetTexture(cfg.icon)
+    local mask = btn:CreateMaskTexture()
+    mask:SetAllPoints(icon)
+    mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    icon:AddMaskTexture(mask)
+    local ring = btn:CreateTexture(nil, "OVERLAY")
+    ring:SetSize(52, 52)
+    ring:SetPoint("TOPLEFT", btn, "TOPLEFT", 0, 0)
+    ring:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    local hl = btn:CreateTexture(nil, "ARTWORK")
+    hl:SetPoint("CENTER", 0, 0)
+    hl:SetSize(20, 20)
+    hl:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+    hl:SetVertexColor(1, 1, 1, 0.25)
+    hl:SetAlpha(0)
+    btn._hl = hl
+    btn.icon = icon
+  else
+    btn:SetSize(31, 31)
+    btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+    local overlay = btn:CreateTexture(nil, "OVERLAY")
+    overlay:SetSize(53, 53)
+    overlay:SetPoint("TOPLEFT", 0, 0)
+    overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    local icon = btn:CreateTexture(nil, "BACKGROUND")
+    icon:SetSize(20, 20)
+    icon:SetPoint("CENTER", 0, 1)
+    icon:SetTexture(cfg.icon)
+    btn.icon = icon
+  end
+  if cfg.texCoord and btn.icon.SetTexCoord then btn.icon:SetTexCoord(unpack(cfg.texCoord)) end
+
+  btn.UpdatePosition = MMPlace
+  btn:SetScript("OnShow", MMPlace)
+  btn:SetScript("OnDragStart", function(self) self:SetScript("OnUpdate", MMDrag) end)
+  btn:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
+  btn:SetScript("OnClick", function(self, button) if cfg.onClick then cfg.onClick(button, self) end end)
+  btn:SetScript("OnEnter", function(self)
+    if self._hl then self._hl:SetAlpha(1) end
+    if not cfg.tooltip then return end
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    cfg.tooltip(GameTooltip)
+    GameTooltip:Show()
+  end)
+  btn:SetScript("OnLeave", function(self)
+    if self._hl then self._hl:SetAlpha(0) end
+    GameTooltip:Hide()
+  end)
+
+  -- Zoom de la minicarte : sa largeur change le rayon du style "tracker".
+  UI.mmButtons[#UI.mmButtons + 1] = btn
+  if not mmZoom then
+    mmZoom = CreateFrame("Frame")
+    pcall(mmZoom.RegisterEvent, mmZoom, "MINIMAP_UPDATE_ZOOM")
+    mmZoom:SetScript("OnEvent", function()
+      for _, b in ipairs(UI.mmButtons) do if b._mmTracker or b._mmCfg.radiusPad then MMPlace(b) end end
+    end)
+  end
+  MMPlace(btn)
+  return btn
 end
 
 -- Alias tourne vers l'avenir : le meme socle est aussi accessible via

@@ -27,6 +27,7 @@ for k, v in pairs({
   ACCESS_HEADER = "-- Вход (кратчайший путь):", TIPS_HEADER = "-- Советы:", TIPS_FR_NOTE = "(на французском)",
   DETECTED_NOTE = "Подземелье найдено в игре: советов по входу пока нет. Точка маршрута берёт позицию из игры.",
   MPLUS_ONLY_NOTE = "Подземелье ротации М+ ещё не описано в DgnTracker: советов по входу пока нет.",
+  SEARCH_BOSS_TAG = "босс ·",
   BOSSES_FMT = "Боссы (%d):", MPLUS_LABEL = "Эпохальный+",
   MPLUS_BEST_FMT = "Лучший ключ сезона: %s+%d|r (%s)", MPLUS_OVERTIME = "не в срок",
   MPLUS_SCORE_FMT = "рейтинг %d", MPLUS_NONE = "в этом сезоне ключей нет",

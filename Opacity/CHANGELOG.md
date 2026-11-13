@@ -1,5 +1,13 @@
 # Changelog
 
+## 7.5.7
+- Performance : le test de survol de la minicarte cachée ne crée plus de fonction 20 fois par seconde.
+- Icône de la liste des add-ons allégée (64 × 64 au lieu de 128 × 128), même rendu à l'écran.
+- Socle d'interface v23 : constructeur commun des boutons de minicarte.
+- Bouton de minicarte (addon seul) construit par le socle : même apparence, même position sauvegardée.
+- Un seul fichier .toc pour Midnight, Forever et Classic (Vanilla, TBC, Cata, Mists), plus un fichier pour Wrath : quatre fichiers en moins.
+- Logos au format BLP compressé (DXT5) : environ trois fois plus légers que les TGA, même rendu.
+
 ## 7.5.6
 - Infobulle : elle reste atténuée pendant son fondu de disparition. Avant, elle remontait à 100 % quand la souris quittait l'objet survolé, puis s'effaçait.
 - Nouvelle ligne « Infobulle (bulle d'aide) » dans « Ajouter des fenêtres », section Blizzard : interface. Plus besoin de la viser à la pipette.

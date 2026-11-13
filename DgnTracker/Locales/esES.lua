@@ -27,6 +27,7 @@ for k, v in pairs({
   ACCESS_HEADER = "-- Acceso (camino más corto):", TIPS_HEADER = "-- Consejos:", TIPS_FR_NOTE = "(en francés)",
   DETECTED_NOTE = "Instancia detectada en el juego: aún sin consejos de acceso. El punto de ruta usa la posición dada por el juego.",
   MPLUS_ONLY_NOTE = "Mazmorra de la rotación Mítica+ aún no incluida en DgnTracker: sin consejos de acceso por ahora.",
+  SEARCH_BOSS_TAG = "jefe ·",
   BOSSES_FMT = "Jefes (%d):", MPLUS_LABEL = "Mítica+",
   MPLUS_BEST_FMT = "Mejor piedra de la temporada: %s+%d|r (%s)", MPLUS_OVERTIME = "fuera de tiempo",
   MPLUS_SCORE_FMT = "puntuación %d", MPLUS_NONE = "ninguna piedra completada esta temporada",

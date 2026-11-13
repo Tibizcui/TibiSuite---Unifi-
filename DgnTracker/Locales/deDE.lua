@@ -27,6 +27,7 @@ for k, v in pairs({
   ACCESS_HEADER = "-- Zugang (kürzester Weg):", TIPS_HEADER = "-- Tipps:", TIPS_FR_NOTE = "(auf Französisch)",
   DETECTED_NOTE = "Im Spiel erkannte Instanz: noch keine Zugangstipps. Der Wegpunkt nutzt die Position aus dem Spiel.",
   MPLUS_ONLY_NOTE = "Mythisch+-Dungeon der Rotation, noch nicht in DgnTracker erfasst: vorerst keine Zugangstipps.",
+  SEARCH_BOSS_TAG = "Boss ·",
   BOSSES_FMT = "Bosse (%d):", MPLUS_LABEL = "Mythisch+",
   MPLUS_BEST_FMT = "Bester Schlüssel der Saison: %s+%d|r (%s)", MPLUS_OVERTIME = "Zeit überschritten",
   MPLUS_SCORE_FMT = "Wertung %d", MPLUS_NONE = "diese Saison noch kein Schlüssel abgeschlossen",

@@ -20,7 +20,11 @@ local function T(key, default) return L[key] or default end
 
 local function GetUI() return _G.TibiMidnight end
 local function ApplyOpts()
-  local f = _G[FRAME]; if f and f.ApplyOptions then f:ApplyOptions() end
+  local f = _G[FRAME]; if f and f.ApplyOptions then f:ApplyOptions(); return end
+  -- Fenetre pas encore construite (creee a sa premiere ouverture depuis
+  -- l'audit poids 2026-11-13) : seul le bouton minimap autonome est a suivre.
+  local b, db = _G.LegTrackerMinimapBtn, _G.LegTrackerDB
+  if b and db then b:SetShown(db.showMinimap ~= false) end
 end
 local function Refresh()
   local f = _G[FRAME]; if f and f.RefreshContent then f:RefreshContent() end
@@ -219,6 +223,9 @@ local function Decorate()
     provider = provider,
   })
 end
+-- Expose pour LegTracker.lua : la fenetre etant construite a sa premiere
+-- ouverture (audit poids 2026-11-13), elle est habillee a ce moment-la.
+LTNS.Decorate = Decorate
 
 -- Inscription immediate au registre de recherche globale
 -- (le provider lit les donnees a la volee ; plus fiable que PLAYER_LOGIN seul)

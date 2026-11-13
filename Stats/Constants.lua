@@ -5,6 +5,7 @@
 
 local ADDON, SX = ...
 
+--@do-not-package@
 -- ============================================================================
 -- SONDE « action bloquee » (2026-11-08, WoW Forever) : le jeu affiche « Stats
 -- a ete bloque a cause d'une action qui n'est utilisable que par l'IU de
@@ -63,6 +64,7 @@ do
     if type(StatsDB) == "table" then flush() end
   end)
 end
+--@end-do-not-package@
 
 -- Accent dore : Stats est un module transverse (pas teinte comme les modules
 -- thematiques), il reprend l'accent GOLD de la palette commune du socle.
@@ -89,6 +91,16 @@ SX.HISTORY_MAX_DAYS = 400
 -- exploser la taille de l'export sans jamais faire perdre les journees passees
 -- (SX.PurgeOldDays reste le seul garant de la retention long terme).
 SX.HISTORY_MAX_EVENTS_PER_DAY = 200
+
+-- Allegement (audit poids 2026-11-13, pistes B et C) :
+--   * GOLD_MERGE_WINDOW : deux entrees d'or de meme source a moins de 5 min
+--     d'ecart n'en font qu'une (dix ventes au marchand = une ligne) ;
+--   * COMPACT_AFTER_DAYS : au-dela de 60 jours, les journaux ADDITIONNES
+--     (or, temps de jeu, reputation, metiers) gardent une ligne par source /
+--     activite / faction / metier, sommes conservees. Les journaux COMPTES
+--     (quetes, donjons, raids, gouffres, M+, JcJ) ne sont jamais touches.
+SX.GOLD_MERGE_WINDOW = 300
+SX.COMPACT_AFTER_DAYS = 60
 
 SX.PERIODS = { "day", "week", "month", "year" }
 SX.GRANULARITIES = { "day", "week", "month", "year" }

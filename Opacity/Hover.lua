@@ -54,16 +54,19 @@ end
 -- Minicarte cachee par Opacity (ligne "Minimap", voir PilotMinimap dans
 -- Core.lua) : une frame cachee ne repond plus a IsMouseOver. On compare donc
 -- la position du curseur au rectangle de la carte, toujours connu.
+-- Fonction nommee passee a pcall avec ses arguments (audit poids
+-- 2026-11-13) : plus de closure neuve 20 fois par seconde.
+local function RectHit(frame, m)   -- m : meme unite que les decalages d'IsMouseOver
+  local l, b, w, h = frame:GetRect()
+  if not l then return false end
+  local s = frame:GetEffectiveScale()
+  local x, y = GetCursorPosition()
+  x, y = x / s, y / s
+  return x >= l - m and x <= l + w + m and y >= b - m and y <= b + h + m
+end
+
 local function OverHidden(frame, r)
-  local ok, res = pcall(function()
-    local l, b, w, h = frame:GetRect()
-    if not l then return false end
-    local s = frame:GetEffectiveScale()
-    local x, y = GetCursorPosition()
-    x, y = x / s, y / s
-    local m = r   -- meme unite que les decalages d'IsMouseOver
-    return x >= l - m and x <= l + w + m and y >= b - m and y <= b + h + m
-  end)
+  local ok, res = pcall(RectHit, frame, r)
   return ok and res or false
 end
 

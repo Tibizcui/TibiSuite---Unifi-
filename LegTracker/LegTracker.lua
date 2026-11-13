@@ -1,5 +1,5 @@
 -- ================================================================
--- LegTracker v7.5.6
+-- LegTracker v7.5.7
 -- Suivi des objets legendaires de toutes les extensions WoW
 -- Auteur : Tibiscui - Kirin Tor
 -- Design & architecture propre a LegTracker
@@ -2032,6 +2032,41 @@ local function BuildUI()
   mainFrame:Hide()
 end
 
+-- Construction a la demande (audit poids 2026-11-13) : la fenetre n'est plus
+-- creee a ADDON_LOADED mais a sa premiere ouverture (meme principe que Stats
+-- et LvlHistory). Renvoie la fenetre, ou nil tant que la base n'est pas
+-- chargee. Position, taille et options restaurees ici ; habillage du socle
+-- applique tout de suite (NS.Decorate, defini par LegTracker_Suite.lua).
+local function EnsureUI()
+  if mainFrame then return mainFrame end
+  if not LegTrackerDB then return nil end
+  BuildUI()
+  local p = LegTrackerDB.pos
+  mainFrame:ClearAllPoints()
+  if p and p.x then
+    mainFrame:SetPoint("CENTER", UIParent, "CENTER", p.x, p.y)
+  else
+    mainFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+  end
+  if LegTrackerDB.width and LegTrackerDB.height then
+    mainFrame:SetSize(LegTrackerDB.width, LegTrackerDB.height)
+  end
+  if mainFrame.ApplyOptions then mainFrame:ApplyOptions() end
+  if NS.Decorate then pcall(NS.Decorate) end
+  return mainFrame
+end
+
+-- Bascule commune (bouton minimap, compartiment, slash, onglet de la suite)
+local function ToggleMain()
+  if not EnsureUI() then return end
+  if mainFrame:IsShown() then
+    mainFrame:Hide() ; LegTrackerDB.open = false
+  else
+    if RequestRaidInfo then RequestRaidInfo() end
+    mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
+  end
+end
+
 -- ================================================================
 -- VUE COLLECTION (lot C) : tous les legendaires du compte en une grille,
 -- une colonne par personnage scanne (les 7 qui en detiennent le plus, le
@@ -2268,118 +2303,37 @@ end
 -- ================================================================
 -- BOUTON MINIMAP
 -- ================================================================
-local function GetMinimapRadius()
-  return (Minimap:GetWidth() / 2) + 10
-end
-
-local function SetMinimapPos(angle)
-  angle = angle % 360
-  if LegTrackerDB then LegTrackerDB.mmAngle = angle end
-  local r   = GetMinimapRadius()
-  local rad = math.rad(angle)
-  minimapBtn:ClearAllPoints()
-  minimapBtn:SetPoint("CENTER", Minimap, "CENTER", math.cos(rad)*r, math.sin(rad)*r)
-end
-
+-- Bouton de minicarte (mode autonome) : construit par le socle v23
+-- (UI.MinimapButton, audit poids 2026-11-13, lot 5). Nom, angle sauvegarde
+-- (LegTrackerDB.mmAngle), clic et infobulle inchanges ; le socle gere la position,
+-- le glisser, le zoom de la minicarte et les collecteurs (MiniHub, EllesmereUI).
 local function BuildMinimapButton()
-  minimapBtn = CreateFrame("Button", "LegTrackerMinimapBtn", Minimap)
-  minimapBtn:SetSize(32, 32)
-  minimapBtn:SetFrameStrata("MEDIUM")
-  minimapBtn:SetFrameLevel(8)
-  minimapBtn:SetMovable(false)
-  minimapBtn:EnableMouse(true)
-  minimapBtn:SetClampedToScreen(true)
-  minimapBtn:SetToplevel(true)
-
-  local icon = minimapBtn:CreateTexture(nil, "ARTWORK")
-  icon:SetPoint("CENTER", minimapBtn, "CENTER", 0, 0)
-  icon:SetSize(24, 24)
-  icon:SetTexture("Interface\\AddOns\\LegTracker\\medias\\LegTracker")
-  local mask = minimapBtn:CreateMaskTexture()
-  mask:SetAllPoints(icon)
-  mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-  icon:AddMaskTexture(mask)
-
-  local ring = minimapBtn:CreateTexture(nil, "OVERLAY")
-  ring:SetSize(52, 52)
-  ring:SetPoint("TOPLEFT", minimapBtn, "TOPLEFT", 0, 0)
-  ring:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-
-  local hl = minimapBtn:CreateTexture(nil, "ARTWORK")
-  hl:SetPoint("CENTER", minimapBtn, "CENTER", 0, 0)
-  hl:SetSize(20, 20)
-  hl:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
-  hl:SetVertexColor(1, 1, 1, 0.25)
-  hl:SetAlpha(0)
-  local hlMask = minimapBtn:CreateMaskTexture()
-  hlMask:SetAllPoints(hl)
-  hlMask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-  hl:AddMaskTexture(hlMask)
-  minimapBtn._hl = hl
-
-  SetMinimapPos((LegTrackerDB and LegTrackerDB.mmAngle) or 220)
-  minimapBtn:SetScript("OnShow", function(self)
-    -- Range par un collecteur (grille EllesmereUI, conteneur MiniHub) :
-    -- ne pas le recoller sur la minicarte, il sortirait de sa place.
-    if self:GetParent() ~= Minimap then return end
-    SetMinimapPos((LegTrackerDB and LegTrackerDB.mmAngle) or 220)
-  end)
-
-  minimapBtn:RegisterForDrag("LeftButton")
-  minimapBtn:SetScript("OnDragStart", function(s)
-    s:SetScript("OnUpdate", function()
-      local mx, my  = Minimap:GetCenter()
-      local uiScale = UIParent:GetEffectiveScale()
-      local cx, cy  = GetCursorPosition()
-      SetMinimapPos(math.deg(math.atan2((cy/uiScale)-my, (cx/uiScale)-mx)))
-    end)
-  end)
-  minimapBtn:SetScript("OnDragStop", function(s)
-    s:SetScript("OnUpdate", nil)
-  end)
-
-  local rw = CreateFrame("Frame")
-  rw:RegisterEvent("MINIMAP_UPDATE_ZOOM")
-  rw:SetScript("OnEvent", function()
-    SetMinimapPos((LegTrackerDB and LegTrackerDB.mmAngle) or 220)
-  end)
-
-  minimapBtn:SetScript("OnClick", function(_, button)
-    if button == "LeftButton" then
-      if mainFrame:IsShown() then
-        mainFrame:Hide() ; LegTrackerDB.open = false
-      else
-        mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
-      end
-    end
-  end)
-
-  minimapBtn:SetScript("OnEnter", function(s)
-    if s._hl then s._hl:SetAlpha(1) end
-    GameTooltip:SetOwner(s, "ANCHOR_LEFT")
-    GameTooltip:AddLine("|cFFff954eLegTracker|r", 0.95, 0.78, 0.35)
-    GameTooltip:AddLine(T("MM_TT_SUBTITLE", "Suivi des objets legendaires"), 0.9, 0.9, 0.9)
-    GameTooltip:AddLine(T("MM_TT_SUBTITLE2", "Suivi de compte complet"), 0.7, 0.9, 0.7)
-    GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("|cFFFFD700" .. T("MM_TT_LEFTCLICK_LABEL", "Clic gauche") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"), 0.7, 0.7, 0.7)
-    GameTooltip:AddLine("|cFFFFD700" .. T("MM_TT_DRAG_LABEL", "Glisser") .. "|r : " .. T("REPOSITION_HINT", "repositionner l'icone"), 0.7, 0.7, 0.7)
-    GameTooltip:Show()
-  end)
-  minimapBtn:SetScript("OnLeave", function(s)
-    if s._hl then s._hl:SetAlpha(0) end
-    GameTooltip:Hide()
-  end)
+  local UIm = _G.TibiMidnight
+  if not (UIm and UIm.MinimapButton) then return end
+  minimapBtn = UIm.MinimapButton({
+    name = "LegTrackerMinimapBtn", style = "tracker", default = 220,
+    icon = "Interface\\AddOns\\LegTracker\\medias\\LegTracker",
+    getAngle = function() return LegTrackerDB and LegTrackerDB.mmAngle end,
+    setAngle = function(a) if LegTrackerDB then LegTrackerDB.mmAngle = a end end,
+    onClick = function(button)
+        if button == "LeftButton" then ToggleMain() end
+    end,
+    tooltip = function(tt)
+        tt:AddLine("|cFFff954eLegTracker|r", 0.95, 0.78, 0.35)
+        tt:AddLine(T("MM_TT_SUBTITLE", "Suivi des objets legendaires"), 0.9, 0.9, 0.9)
+        tt:AddLine(T("MM_TT_SUBTITLE2", "Suivi de compte complet"), 0.7, 0.9, 0.7)
+        tt:AddLine(" ")
+        tt:AddLine("|cFFFFD700" .. T("MM_TT_LEFTCLICK_LABEL", "Clic gauche") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"), 0.7, 0.7, 0.7)
+        tt:AddLine("|cFFFFD700" .. T("MM_TT_DRAG_LABEL", "Glisser") .. "|r : " .. T("REPOSITION_HINT", "repositionner l'icone"), 0.7, 0.7, 0.7)
+    end,
+  })
 end
 
 -- ================================================================
 -- ADDON COMPARTMENT
 -- ================================================================
 function LegTracker_OnAddonCompartmentClick()
-  if mainFrame:IsShown() then
-    mainFrame:Hide() ; LegTrackerDB.open = false
-  else
-    mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
-  end
+  ToggleMain()
 end
 
 function LegTracker_OnAddonCompartmentEnter(btn)
@@ -2540,6 +2494,7 @@ SlashCmdList["LEGTRACKER"] = function(msg)
     return
   end
   if msg == "collection" or msg == "coll" then
+    if not EnsureUI() then return end
     if not mainFrame:IsShown() then LegTracker_Toggle() end
     mainFrame.collMode = true
     ApplyViewMode()
@@ -2578,11 +2533,7 @@ SlashCmdList["LEGTRACKER"] = function(msg)
     if NS.OverlayToggle then NS.OverlayToggle() end
     return
   end
-  if mainFrame:IsShown() then
-    mainFrame:Hide() ; LegTrackerDB.open = false
-  else
-    mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
-  end
+  ToggleMain()
 end
 
 -- ================================================================
@@ -2778,24 +2729,14 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
 
   if event == "ADDON_LOADED" and arg1 == ADDON then
     InitDB()
-    BuildUI()
-    BuildMinimapButton()
-
-    local p = LegTrackerDB.pos
-    mainFrame:ClearAllPoints()
-    if p and p.x then
-      mainFrame:SetPoint("CENTER", UIParent, "CENTER", p.x, p.y)
-    else
-      mainFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+    -- Fenetre construite a sa premiere ouverture (EnsureUI : position,
+    -- taille et options y sont appliquees). Le bouton minimap propre n'existe
+    -- qu'en autonome : en suite, il etait masque aussitot cree (audit poids
+    -- 2026-11-13). Son reglage d'affichage est applique ici, sans la fenetre.
+    if not (_G.TibiSuite and _G.TibiSuite.RegisterModule) then
+      BuildMinimapButton()
+      if minimapBtn and LegTrackerDB.showMinimap == false then minimapBtn:Hide() end
     end
-
-    -- Taille sauvegardee (redimensionnement manuel)
-    if LegTrackerDB.width and LegTrackerDB.height then
-      mainFrame:SetSize(LegTrackerDB.width, LegTrackerDB.height)
-    end
-
-    -- Applique les options (echelle, opacite, minimap, verrou)
-    if mainFrame.ApplyOptions then mainFrame:ApplyOptions() end
 
     LegTrackerDB.open = false  -- l'ouverture auto est geree au PLAYER_LOGIN
 
@@ -2811,7 +2752,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       PLAYER_REALM = GetRealmName()
       ScanAll()
       StartLootWatch()
-      if LegTrackerDB.autoOpen and mainFrame then
+      if LegTrackerDB.autoOpen and EnsureUI() then
         mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
       end
     end
@@ -2838,13 +2779,13 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     if RequestRaidInfo then RequestRaidInfo() end
 
     -- Ouverture automatique au login si l'option est active
-    if LegTrackerDB.autoOpen and mainFrame then
+    if LegTrackerDB.autoOpen and EnsureUI() then
       mainFrame:Show() ; mainFrame:RefreshContent() ; LegTrackerDB.open = true
     end
 
     -- En suite, seul TibiSuite annonce la connexion (7.3).
     if not (_G.TibiSuite and _G.TibiSuite.RegisterModule) then
-    print(COL_BLUE .. "LegTracker v7.5.6" .. COL_RESET
+    print(COL_BLUE .. "LegTracker v7.5.7" .. COL_RESET
           .. " " .. T("LOGIN_LOADED", "chargé -- tapez") .. " " .. COL_GOLD .. "/lt" .. COL_RESET .. " " .. T("LOGIN_TO_OPEN", "pour ouvrir.")
           .. " |cFF888888" .. T("LOGIN_SUBCMDS", "(/lt scan = forcer scan, /lt verify = controler les IDs, /lt reset = reinit donnees compte)") .. "|r")
     end
@@ -2879,15 +2820,7 @@ end)
 -- TOGGLE PUBLIC -- appelé par TibiSuite
 -- ================================================================
 function LegTracker_Toggle()
-  if mainFrame:IsShown() then
-    mainFrame:Hide()
-    LegTrackerDB.open = false
-  else
-    if RequestRaidInfo then RequestRaidInfo() end
-    mainFrame:Show()
-    mainFrame:RefreshContent()
-    LegTrackerDB.open = true
-  end
+  ToggleMain()
 end
 
 -- ================================================================
@@ -2952,7 +2885,7 @@ end
 -- Ouvre la fenetre sur ce legendaire (onglet de son extension, vue liste)
 function NS.SelectItem(itemID)
   local item, extIdx = NS.FindItem(itemID)
-  if not (item and mainFrame) then return false end
+  if not (item and EnsureUI()) then return false end
   LegTrackerDB.selectedExtension = extIdx
   if mainFrame.collMode then mainFrame.collMode = false ; ApplyViewMode() end
   mainFrame.selectedItem = item

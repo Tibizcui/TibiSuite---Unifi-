@@ -156,9 +156,10 @@ elseif GetUI() and GetUI().RegisterSearch then
   GetUI().RegisterSearch(KEY, T("MODULE_LABEL", "Donjons"), provider)
 end
 
--- Rattrapage LoadOnDemand : DGNMainFrame est construit par DgnTracker.lua sur
--- son ADDON_LOADED (juste avant ce fichier). On habille en differe et on
--- remasque le bouton minimap, avec quelques tentatives de secours.
+-- Filet de securite : depuis l'audit poids (2026-11-13), DGNMainFrame n'est
+-- construit qu'a sa premiere ouverture, et habille a ce moment-la par
+-- EnsureUI (DgnTracker.lua). Ces passages sont alors sans effet (Decorate
+-- sort si la frame n'existe pas) ; on les garde pour le bouton minimap.
 C_Timer.After(0.2, function() HideOwnMinimap(); Decorate() end)
 C_Timer.After(1.0, function() HideOwnMinimap(); Decorate() end)
 C_Timer.After(3.0, function() HideOwnMinimap(); Decorate() end)

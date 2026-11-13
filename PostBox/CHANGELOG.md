@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.5.7
+- Icône de la liste des add-ons allégée (64 × 64 au lieu de 128 × 128), même rendu à l'écran.
+- Socle d'interface v23 : constructeur commun des boutons de minicarte.
+- Bouton de minicarte (addon seul) construit par le socle : même apparence, même position sauvegardée ; il ne travaille plus à chaque image, seulement pendant son déplacement.
+- Logos au format BLP compressé (DXT5) : environ trois fois plus légers que les TGA, même rendu.
+
 ## 7.5.6
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

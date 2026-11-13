@@ -27,6 +27,7 @@ for k, v in pairs({
   ACCESS_HEADER = "-- 入口（最短路线）：", TIPS_HEADER = "-- 提示：", TIPS_FR_NOTE = "（法语）",
   DETECTED_NOTE = "游戏中检测到的副本：暂无入口说明。路径点使用游戏提供的位置。",
   MPLUS_ONLY_NOTE = "DgnTracker 尚未收录的大秘境轮换地下城：暂无入口说明。",
+  SEARCH_BOSS_TAG = "首领 ·",
   BOSSES_FMT = "首领（%d）：", MPLUS_LABEL = "史诗钥石",
   MPLUS_BEST_FMT = "本赛季最佳钥石：%s+%d|r（%s）", MPLUS_OVERTIME = "超时",
   MPLUS_SCORE_FMT = "评分 %d", MPLUS_NONE = "本赛季尚未完成钥石",

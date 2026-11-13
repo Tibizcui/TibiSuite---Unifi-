@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.5.7
+- La sonde de partage en groupe (/ts sonde groupe), outil de développement, n'est plus incluse dans l'archive CurseForge.
+- Socle d'interface v23 : constructeur commun des boutons de minicarte.
+- Un seul fichier .toc pour Midnight, Forever et Classic (Vanilla, TBC, Cata, Mists), plus un fichier pour Wrath : quatre fichiers en moins.
+- Description de l'addon corrigée : les modules sont activés ou désactivés par leur case, plus de chargement à la demande.
+- Logos au format BLP compressé (DXT5) : environ trois fois plus légers que les TGA, même rendu.
+
 ## 7.5.6
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

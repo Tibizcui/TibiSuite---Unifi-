@@ -336,6 +336,8 @@ L.WN_65_0  = L.WN_65_0  or "Nouveau module Anchor : place les fenêtres du jeu o
 L.WN_ANCHOR_HEAD = L.WN_ANCHOR_HEAD or "Nouveau module : Anchor"
 L.WN_69_0  = L.WN_69_0  or "Opacity : une minicarte réglée à moins de 5 % est maintenant entièrement cachée, flèche du joueur et repères de quêtes compris, et réapparaît au survol. L'opacité de l'infobulle est enfin respectée à chaque affichage."
 L.WN_70_0  = L.WN_70_0  or "Opacity : l'infobulle reste atténuée pendant son fondu de disparition, au lieu de remonter à 100 % quand la souris quitte l'objet. Nouvelle ligne « Infobulle (bulle d'aide) » dans « Ajouter des fenêtres », plus besoin de la pipette."
+L.WN_71_0  = L.WN_71_0  or "Donjons : la recherche trouve aussi les boss des donjons et raids, dans la langue du jeu. Tape « VanCleef » : un clic ouvre la fiche des Mortemines. Nouvelles fiches : Les Mortemines, Ombrecroc, Cavernes des Lamentations, Brassenoire, Hache-Tripes, Salles Écarlates, Monastère des Pandashan, Caveau d'Archavon."
+L.WN_71_1  = L.WN_71_1  or "Suite plus légère : les fenêtres de Donjons, Daily, LegTracker et Réputations ne sont construites qu'à leur première ouverture, Stats garde moins de données en mémoire (vieux jours regroupés, totaux conservés), et les téléchargements perdent encore environ 1,6 Mo grâce aux logos compressés."
 L.WN_69_1  = L.WN_69_1  or "Suite allégée : SkillTracker n'écoute plus les sorts de tout le raid, LegTracker et Stats travaillent moins à chaque image, code inutilisé retiré, et les téléchargements perdent environ 9 Mo d'images que le jeu ne charge jamais."
 L.WN_68_0  = L.WN_68_0  or "Options : la section « Bouton flottant » est désormais tout en bas des options de chaque addon, au même endroit partout. Masquer le bouton Options marche aussi sans TibiSuite, et Stats et SkillTracker gagnent cette option."
 L.WN_67_0  = L.WN_67_0  or "Correctif : les boutons de minicarte de RenTracker, LegTracker, DailyTracker, LvlHistory et DgnTracker restent dans la grille d'EllesmereUI ou le conteneur de MiniHub au lieu de revenir autour de la minicarte."
@@ -447,6 +449,12 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- 7.5.7 : recherche des boss (Donjons), instances ajoutees, audit poids.
+  ["7.5.7"] = {
+    { key = "Dgn", title = "Donjons", text = L.WN_71_0, new = false },
+    { key = "Suite", title = "TibiSuite", text = L.WN_71_1, new = false },
+    { key = "Anchor", title = "Anchor", headline = L.WN_ANCHOR_HEAD, text = L.WN_65_0, new = true },
+  },
   -- 7.5.6 : Opacity, infobulle attenuee pendant le fondu + ligne au catalogue.
   ["7.5.6"] = {
     { key = "Opacity", title = "Opacity", text = L.WN_70_0, new = false },

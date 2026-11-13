@@ -193,58 +193,25 @@ end
 -- ============================================================================
 local function BuildStandaloneMinimapButton()
     if _G.LairLensMinimapBtn then return end
-    local btn = CreateFrame("Button", "LairLensMinimapBtn", Minimap)
-    btn:SetSize(31, 31)
-    btn:SetFrameStrata("MEDIUM")
-    btn:SetFrameLevel(8)
-    btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    btn:RegisterForDrag("LeftButton")
-    btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-
-    local overlay = btn:CreateTexture(nil, "OVERLAY")
-    overlay:SetSize(53, 53)
-    overlay:SetPoint("TOPLEFT", 0, 0)
-    overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-
-    local icon = btn:CreateTexture(nil, "BACKGROUND")
-    icon:SetSize(20, 20)
-    icon:SetPoint("CENTER", 0, 1)
-    icon:SetTexture(LOGO)
-
-    LairLensDB = LairLensDB or {}
-    LairLensDB.minimapAngle = LairLensDB.minimapAngle or 200
-    local function UpdatePosition()
-        local angle = math.rad(LairLensDB.minimapAngle)
-        local radius = 105
-        btn:ClearAllPoints()
-        btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
-    end
-
-    btn:SetScript("OnDragStart", function(self) self.dragging = true end)
-    btn:SetScript("OnDragStop", function(self) self.dragging = false end)
-    btn:SetScript("OnUpdate", function(self)
-        if not self.dragging then return end
-        local mx, my = Minimap:GetCenter()
-        local cx, cy = GetCursorPosition()
-        local scale = Minimap:GetEffectiveScale()
-        cx, cy = cx / scale, cy / scale
-        LairLensDB.minimapAngle = math.deg(math.atan2(cy - my, cx - mx))
-        UpdatePosition()
-    end)
-
-    btn:SetScript("OnClick", function(_, button)
-        if button == "RightButton" then LairLens_OpenOptions() else LairLens_Toggle() end
-    end)
-    btn:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:AddLine("LairLens")
-        GameTooltip:AddLine(LL.L["MM_LEFT"], 0.9, 0.9, 0.95)
-        GameTooltip:AddLine(LL.L["MM_RIGHT"], 0.9, 0.9, 0.95)
-        GameTooltip:Show()
-    end)
-    btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-    UpdatePosition()
+  -- Construit par le socle v23 (UI.MinimapButton, audit poids 2026-11-13,
+  -- lot 5) : position, glisser (OnUpdate pose seulement pendant le
+  -- deplacement) et collecteurs MiniHub / EllesmereUI geres au meme endroit.
+  local UIm = _G.TibiMidnight
+  if not (UIm and UIm.MinimapButton) then return end
+  local btn = UIm.MinimapButton({
+    name = "LairLensMinimapBtn", style = "compact", default = 200,
+    icon = LOGO,
+    getAngle = function() return LairLensDB and LairLensDB.minimapAngle end,
+    setAngle = function(a) if LairLensDB then LairLensDB.minimapAngle = a end end,
+    onClick = function(button)
+      if button == "RightButton" then LairLens_OpenOptions() else LairLens_Toggle() end
+    end,
+    tooltip = function(tt)
+      tt:AddLine("LairLens")
+      tt:AddLine(LL.L["MM_LEFT"], 0.9, 0.9, 0.95)
+      tt:AddLine(LL.L["MM_RIGHT"], 0.9, 0.9, 0.95)
+    end,
+  })
 end
 
 -- ---------------------------------------------------------- Inscription suite

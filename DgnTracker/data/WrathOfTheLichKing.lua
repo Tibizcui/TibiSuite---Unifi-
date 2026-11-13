@@ -4,7 +4,7 @@ DgnTrackerData = DgnTrackerData or {}
 DgnTrackerData["WrathOfTheLichKing"] = {
   label="Wrath of the Lich King", color={r=0.65,g=0.85,b=1.00},
   -- scanMaps : cartes de zone reelles (Live.lua retrouve les entrees par leur nom)
-  scanMaps={114, 115, 116, 117, 118, 119, 120, 121, 127, 71},
+  scanMaps={114, 115, 116, 117, 118, 119, 120, 121, 127, 71, 123},
   instances = {
     {name="Le Nexus", type="dungeon", zone="Borée", region="Norfendre", sector="Toundra Boréenne",
      mapID=114, coords={x=28.59,y=27.72}, jid=281,
@@ -117,5 +117,11 @@ DgnTrackerData["WrathOfTheLichKing"] = {
      access={both="Suivez l'icône d'entrée sur la carte."},
      path="Grottes du Temps, Tanaris.",
      tomtom={mapID=75, x=60.11, y=82.72}},
+    -- Ajouts audit 2026-11-13 (instances absentes ; approx = a corriger par le jeu)
+    {name="Le Caveau d'Archavon", type="raid", zone="Joug-d'hiver",
+     mapID=123, coords={x=49.9,y=16.6}, jid=753, approx=true,
+     access={both="Suivez l'icône d'entrée sur la carte."},
+     path="Joug-d'hiver, sous la forteresse. Accessible à la faction qui contrôle la zone.",
+     tomtom={mapID=123, x=49.9, y=16.6}},
   },
 }

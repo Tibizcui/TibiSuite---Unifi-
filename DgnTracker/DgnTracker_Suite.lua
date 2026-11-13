@@ -70,6 +70,47 @@ function DgnTracker_OpenOptions()
 end
 
 -- ---------------------------------------------------------------- Recherche
+local function OpenInst(inst)
+  return function()
+    if _G.DgnTracker_OpenInstance and _G.DgnTracker_OpenInstance(inst) then return end
+    local f = _G[FRAME]
+    if _G.DgnTracker_Toggle and (not f or not f:IsShown()) then _G.DgnTracker_Toggle() end
+  end
+end
+
+-- Boss (audit 2026-11-13) : noms lus dans le journal d'aventure, dans la
+-- langue du client, a partir de 3 lettres seulement. Live.Bosses garde un
+-- cache par instance : le journal n'est interroge qu'une fois par session,
+-- a la premiere recherche, jamais au chargement.
+local BOSS_MIN, BOSS_MAX = 3, 30
+local function bossHits(q, ui, data, Live, seenJid)
+  local out = {}
+  if not (Live and Live.Bosses and Live.Info) or #q < BOSS_MIN then return out end
+  for _, ext in pairs(data) do
+    if type(ext) == "table" and ext.instances then
+      for _, inst in ipairs(ext.instances) do
+        local jid = Live.Info(inst).jid or inst.jid
+        if jid and not seenJid[jid] then
+          seenJid[jid] = true
+          local ok, list = pcall(Live.Bosses, jid)
+          if ok and type(list) == "table" then
+            for _, bname in ipairs(list) do
+              if type(bname) == "string" and ui.Match(bname, q) then
+                local shown = (Live.DisplayName(inst)) or inst.name or "?"
+                out[#out + 1] = {
+                  text = bname .. "  |cff808080" .. T("SEARCH_BOSS_TAG", "boss ·") .. " " .. shown .. "|r",
+                  onClick = OpenInst(inst) }
+                if #out >= BOSS_MAX then return out end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+  return out
+end
+
 local function provider(q)
   local out, ui = {}, GetUI()
   local data, Live = _G.DgnTrackerData, _G.DgnTrackerLive
@@ -84,16 +125,14 @@ local function provider(q)
         if ui.Match(hay, q) then
           out[#out + 1] = {
             text = shown .. "  |cff808080" .. (inst.zone or tostring(extKey)) .. "|r",
-            onClick = function()
-              if _G.DgnTracker_OpenInstance and _G.DgnTracker_OpenInstance(inst) then return end
-              local f = _G[FRAME]
-              if _G.DgnTracker_Toggle and (not f or not f:IsShown()) then _G.DgnTracker_Toggle() end
-            end }
+            onClick = OpenInst(inst) }
           if #out >= 60 then return out end
         end
       end
     end
   end
+  -- Puis les boss, a la suite des instances
+  for _, r in ipairs(bossHits(q, ui, data, Live, {})) do out[#out + 1] = r end
   return out
 end
 

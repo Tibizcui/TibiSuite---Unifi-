@@ -1,5 +1,5 @@
 -- ================================================================
--- RenTracker v7.5.6
+-- RenTracker v7.5.7
 -- Suivi des reputations | Toutes les extensions depuis vanilla
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
@@ -2355,6 +2355,39 @@ local function BuildUI()
   mainFrame:Hide()
 end
 
+-- Construction a la demande (audit poids 2026-11-13) : la fenetre n'est plus
+-- creee a ADDON_LOADED mais a sa premiere ouverture (meme principe que Stats
+-- et LvlHistory). Renvoie la fenetre, ou nil tant que la base n'est pas
+-- chargee. Position restauree ici ; habillage du socle applique tout de
+-- suite (RenTracker_Decorate, defini par RenTracker_Module.lua).
+local function EnsureUI()
+  if mainFrame then return mainFrame end
+  if not RenTrackerDB then return nil end
+  BuildUI()
+  local p = RenTrackerDB.pos
+  mainFrame:ClearAllPoints()
+  if p and p.x then
+    mainFrame:SetPoint(p.point or "CENTER", UIParent, p.point or "CENTER", p.x, p.y)
+  else
+    mainFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
+  end
+  if _G.RenTracker_Decorate then pcall(_G.RenTracker_Decorate) end
+  return mainFrame
+end
+
+-- Bascule commune (bouton minimap, compartiment, slash, onglet de la suite)
+local function ToggleMain()
+  if not EnsureUI() then return end
+  if mainFrame:IsShown() then
+    mainFrame:Hide()
+    RenTrackerDB.open = false
+  else
+    mainFrame:Show()
+    mainFrame:RefreshContent()
+    RenTrackerDB.open = true
+  end
+end
+
 -- ================================================================
 -- BOUTON MINIMAP
 -- Conforme aux règles Blizzard :
@@ -2368,155 +2401,31 @@ end
 -- ================================================================
 local minimapBtn
 
--- Retourne le rayon orbital en pixels, adapté à la taille réelle
--- de la minimap (certains addons la redimensionnent).
-local function GetMinimapRadius()
-  return (Minimap:GetWidth() / 2) + 10
-end
-
--- Place le bouton sur le cercle orbital à l'angle donné (degrés).
--- Sauvegarde l'angle dans la DB pour le restaurer au prochain login.
-local function SetMinimapPos(angle)
-  -- Normalise l'angle entre 0 et 360
-  angle = angle % 360
-  if RenTrackerDB then RenTrackerDB.mmAngle = angle end
-  local r   = GetMinimapRadius()
-  local rad = math.rad(angle)
-  minimapBtn:ClearAllPoints()
-  minimapBtn:SetPoint(
-    "CENTER", Minimap, "CENTER",
-    math.cos(rad) * r,
-    math.sin(rad) * r
-  )
-end
-
+-- Bouton de minicarte (mode autonome) : construit par le socle v23
+-- (UI.MinimapButton, audit poids 2026-11-13, lot 5). Nom, angle sauvegarde
+-- (RenTrackerDB.mmAngle), clic et infobulle inchanges ; le socle gere la position,
+-- le glisser, le zoom de la minicarte et les collecteurs (MiniHub, EllesmereUI).
 local function BuildMinimapButton()
-  -- ── Cadre principal ────────────────────────────────────────────
-  -- Bouton 32×32, parent = Minimap (ancrage orbital)
-  -- Structure conforme à DBIcon et aux boutons Blizzard natifs
-  minimapBtn = CreateFrame("Button", "RNTMinimapBtn", Minimap)
-  minimapBtn:SetSize(32, 32)
-  minimapBtn:SetFrameStrata("MEDIUM")
-  minimapBtn:SetFrameLevel(8)
-  minimapBtn:SetMovable(false)
-  minimapBtn:EnableMouse(true)
-  minimapBtn:SetClampedToScreen(true)
-  minimapBtn:SetToplevel(true)
-
-  -- ── Couche 1 : icône custom avec mask circulaire (ARTWORK) ─────
-  -- Icône 20×20 (taille standard des icônes minimap Blizzard).
-  -- Le mask CircleMask coupe les coins pour un rendu parfaitement circulaire.
-  local icon = minimapBtn:CreateTexture(nil, "ARTWORK")
-  icon:SetPoint("CENTER", minimapBtn, "CENTER", 0, 0)
-  icon:SetSize(24, 24)
-  icon:SetTexture("Interface\\AddOns\\RenTracker\\medias\\RenTracker")
-  -- Mask circulaire Blizzard : coupe les 4 coins de l\'icône carrée
-  local mask = minimapBtn:CreateMaskTexture()
-  mask:SetAllPoints(icon)
-  mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-  icon:AddMaskTexture(mask)
-
-  -- ── Couche 2 : ring doré Blizzard (OVERLAY) ────────────────────
-  -- Offset standard DBIcon/Blizzard : TOPLEFT(-8, 8) sur SIZE 56×56.
-  -- C'est l'offset exact utilisé par tous les addons minimap professionnels
-  -- pour aligner le ring doré avec le bord circulaire de la minimap.
-  local ring = minimapBtn:CreateTexture(nil, "OVERLAY")
-  ring:SetSize(52, 52)
-  ring:SetPoint("TOPLEFT", minimapBtn, "TOPLEFT", 0, 0)
-  ring:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-
-  -- ── Couche 3 : highlight au survol (HIGHLIGHT) ─────────────────
-  -- Texture circulaire blanche semi-transparente, avec mask pour rester ronde.
-  -- On NE PAS utiliser la couche "HIGHLIGHT" native de WoW car elle ignore les masks.
-  -- À la place : deux textures ARTWORK gérées manuellement via OnEnter/OnLeave.
-  local hl = minimapBtn:CreateTexture(nil, "ARTWORK")
-  hl:SetPoint("CENTER", minimapBtn, "CENTER", 0, 0)
-  hl:SetSize(20, 20)
-  hl:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
-  hl:SetVertexColor(1, 1, 1, 0.25)
-  hl:SetAlpha(0)  -- caché par défaut
-  -- Mask circulaire identique à l'icône
-  local hlMask = minimapBtn:CreateMaskTexture()
-  hlMask:SetAllPoints(hl)
-  hlMask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-  hl:AddMaskTexture(hlMask)
-  minimapBtn._hl = hl
-
-  -- ── Position initiale ──────────────────────────────────────────
-  -- Restaurée depuis la DB (220° = bas-gauche par défaut, comme DBIcon)
-  local savedAngle = (RenTrackerDB and RenTrackerDB.mmAngle) or 220
-  SetMinimapPos(savedAngle)
-
-  -- Repositionne si la minimap change de taille (ElvUI, Dominos, etc.)
-  minimapBtn:SetScript("OnShow", function(self)
-    -- Range par un collecteur (grille EllesmereUI, conteneur MiniHub) :
-    -- ne pas le recoller sur la minicarte, il sortirait de sa place.
-    if self:GetParent() ~= Minimap then return end
-    SetMinimapPos((RenTrackerDB and RenTrackerDB.mmAngle) or 220)
-  end)
-
-  -- ── Drag orbital ───────────────────────────────────────────────
-  -- L'angle est calculé en temps réel depuis la position du curseur
-  -- relativement au centre de la minimap (atan2). Pas de SetMovable(true)
-  -- car on ne veut pas que WoW gère le déplacement librement.
-  minimapBtn:RegisterForDrag("LeftButton")
-
-  minimapBtn:SetScript("OnDragStart", function(s)
-    s:SetScript("OnUpdate", function()
-      local mx, my   = Minimap:GetCenter()
-      local uiScale  = UIParent:GetEffectiveScale()
-      local cx, cy   = GetCursorPosition()
-      -- Convertir les coordonnées écran en coordonnées UI
-      local angle = math.deg(math.atan2(
-        (cy / uiScale) - my,
-        (cx / uiScale) - mx
-      ))
-      SetMinimapPos(angle)
-    end)
-  end)
-
-  minimapBtn:SetScript("OnDragStop", function(s)
-    -- Arrêter le tracking OnUpdate dès que le bouton est relâché
-    s:SetScript("OnUpdate", nil)
-  end)
-
-  -- ── Recalcul du rayon si la minimap est redimensionnée ─────────
-  -- Certains addons (Dominos, SexyMap) redimensionnent la minimap dynamiquement.
-  -- On écoute MINIMAP_UPDATE_ZOOM comme signal de changement de taille.
-  local resizeWatcher = CreateFrame("Frame")
-  pcall(resizeWatcher.RegisterEvent, resizeWatcher, "MINIMAP_UPDATE_ZOOM")
-  resizeWatcher:SetScript("OnEvent", function()
-    SetMinimapPos((RenTrackerDB and RenTrackerDB.mmAngle) or 220)
-  end)
-
-  -- ── Clic : ouvrir / fermer la fenêtre principale ───────────────
-  minimapBtn:SetScript("OnClick", function(_, button)
-    if button == "LeftButton" then
-      if mainFrame:IsShown() then
-        mainFrame:Hide()
-        RenTrackerDB.open = false
-      else
-        mainFrame:Show()
-        mainFrame:RefreshContent()
-        RenTrackerDB.open = true
-      end
-    end
-  end)
-  -- ── Tooltip + highlight circulaire ────────────────────────────────────
-  minimapBtn:SetScript("OnEnter", function(s)
-    if s._hl then s._hl:SetAlpha(1) end
-    GameTooltip:SetOwner(s, "ANCHOR_LEFT")
-    GameTooltip:AddLine("RenTracker", 0.45, 0.70, 1.0)
-    GameTooltip:AddLine(T("MM_TT_SUBTITLE", "Suivi des réputations"), 0.9, 0.9, 0.9)
-    GameTooltip:AddLine(" ", 1, 1, 1)
-    GameTooltip:AddLine("|cFFFFD700" .. T("LEFT_CLICK_LABEL", "Clic gauche") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"), 0.7, 0.7, 0.7)
-    GameTooltip:AddLine("|cFFFFD700" .. T("DRAG_LABEL", "Glisser") .. "|r : " .. T("REPOSITION_HINT", "repositionner l'icône"), 0.7, 0.7, 0.7)
-    GameTooltip:Show()
-  end)
-  minimapBtn:SetScript("OnLeave", function(s)
-    if s._hl then s._hl:SetAlpha(0) end
-    GameTooltip:Hide()
-  end)
+  local UIm = _G.TibiMidnight
+  if not (UIm and UIm.MinimapButton) then return end
+  minimapBtn = UIm.MinimapButton({
+    name = "RNTMinimapBtn", style = "tracker", default = 220,
+    icon = "Interface\\AddOns\\RenTracker\\medias\\RenTracker",
+    getAngle = function() return RenTrackerDB and RenTrackerDB.mmAngle end,
+    setAngle = function(a) if RenTrackerDB then RenTrackerDB.mmAngle = a end end,
+    onClick = function(button)
+        if button == "LeftButton" then
+          ToggleMain()
+        end
+    end,
+    tooltip = function(tt)
+        tt:AddLine("RenTracker", 0.45, 0.70, 1.0)
+        tt:AddLine(T("MM_TT_SUBTITLE", "Suivi des réputations"), 0.9, 0.9, 0.9)
+        tt:AddLine(" ", 1, 1, 1)
+        tt:AddLine("|cFFFFD700" .. T("LEFT_CLICK_LABEL", "Clic gauche") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"), 0.7, 0.7, 0.7)
+        tt:AddLine("|cFFFFD700" .. T("DRAG_LABEL", "Glisser") .. "|r : " .. T("REPOSITION_HINT", "repositionner l'icône"), 0.7, 0.7, 0.7)
+    end,
+  })
 end
 
 -- ================================================================
@@ -2525,14 +2434,7 @@ end
 -- entrées ## AddonCompartmentFunc* du .toc
 -- ================================================================
 function RenTracker_OnAddonCompartmentClick()
-  if mainFrame:IsShown() then
-    mainFrame:Hide()
-    RenTrackerDB.open = false
-  else
-    mainFrame:Show()
-    mainFrame:RefreshContent()
-    RenTrackerDB.open = true
-  end
+  ToggleMain()
 end
 
 function RenTracker_OnAddonCompartmentEnter(btn)
@@ -2553,14 +2455,7 @@ end
 -- Fonction publique appelée par TibiSuite pour ouvrir/fermer la fenêtre.
 -- ================================================================
 function RenTracker_Toggle()
-  if mainFrame:IsShown() then
-    mainFrame:Hide()
-    RenTrackerDB.open = false
-  else
-    mainFrame:Show()
-    mainFrame:RefreshContent()
-    RenTrackerDB.open = true
-  end
+  ToggleMain()
 end
 
 -- ================================================================
@@ -2642,14 +2537,7 @@ SlashCmdList["RENTRACKER"] = function(msg)
     RenTracker_ToggleOptions()
     return
   end
-  if mainFrame:IsShown() then
-    mainFrame:Hide()
-    RenTrackerDB.open = false
-  else
-    mainFrame:Show()
-    mainFrame:RefreshContent()
-    RenTrackerDB.open = true
-  end
+  ToggleMain()
 end
 
 -- ================================================================
@@ -2757,17 +2645,10 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
   elseif event == "ADDON_LOADED" and arg1 == ADDON then
 
     EnsureDB()  -- garantit options + sous-tables meme pour un profil ancien
-    BuildUI()
-    BuildMinimapButton()
-
-    -- Restaurer position fenetre
-    local p = RenTrackerDB.pos
-    if p and p.x then
-      mainFrame:ClearAllPoints()
-      mainFrame:SetPoint(p.point or "CENTER", UIParent, p.point or "CENTER", p.x, p.y)
-    else
-      mainFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
-    end
+    -- Fenetre construite a sa premiere ouverture (EnsureUI, position comprise).
+    -- Le bouton minimap propre n'existe qu'en autonome : en suite, il etait
+    -- masque aussitot cree (audit poids 2026-11-13).
+    if not (_G.TibiSuite and _G.TibiSuite.RegisterModule) then BuildMinimapButton() end
 
     -- (redimensionnement manuel supprime en v3.4)
 
@@ -2781,7 +2662,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
       if not loginAnnounced and not (_G.TibiSuite and _G.TibiSuite.RegisterModule)
          and not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
         loginAnnounced = true
-        print("|cFF4D99FFRenTracker|r v7.5.6 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+        print("|cFF4D99FFRenTracker|r v7.5.7 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
       end
       C_Timer.After(2, AutoTrackFactionByZone)
       ScheduleParagonScan(3)
@@ -2793,7 +2674,7 @@ evFrame:SetScript("OnEvent", function(_, event, arg1)
     if not loginAnnounced and not (_G.TibiSuite and _G.TibiSuite.RegisterModule)
        and not (RenTrackerDB.options and RenTrackerDB.options.loginMsg == false) then
       loginAnnounced = true
-      print("|cFF4D99FFRenTracker|r v7.5.6 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFRenTracker|r v7.5.7 " .. T("LOGIN_LOADED", "chargé -- tapez") .. " |cFFFFD700/rt|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
     -- Suivi auto au login (AutoTrackFactionByZone respecte l'option autoTrack)
     C_Timer.After(2, AutoTrackFactionByZone)

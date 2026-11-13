@@ -170,65 +170,31 @@ end
 local MM_ANGLE = 175   -- XPBar 200, RepBar 225 : trois boutons cote a cote
 local function BuildStandaloneMinimapButton()
   if _G.LibDBIcon10_Stats then return end
+  -- Construit par le socle v23 (UI.MinimapButton, audit poids 2026-11-13,
+  -- lot 5) : position, glisser (OnUpdate pose seulement pendant le
+  -- deplacement) et collecteurs MiniHub / EllesmereUI geres au meme endroit.
+  local UIm = _G.TibiMidnight
+  if not (UIm and UIm.MinimapButton) then return end
   local fr = (GetLocale and GetLocale() == "frFR")
-  local btn = CreateFrame("Button", "LibDBIcon10_Stats", Minimap)
-  btn:SetSize(31, 31)
-  btn:SetFrameStrata("MEDIUM")
-  btn:SetFrameLevel(8)
-  btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-  btn:RegisterForDrag("LeftButton")
-  btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-
-  local overlay = btn:CreateTexture(nil, "OVERLAY")
-  overlay:SetSize(53, 53)
-  overlay:SetPoint("TOPLEFT", 0, 0)
-  overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-
-  local icon = btn:CreateTexture(nil, "BACKGROUND")
-  icon:SetSize(20, 20)
-  icon:SetPoint("CENTER", 0, 1)
-  icon:SetTexture("Interface\\AddOns\\Stats\\medias\\Logo")
-
-  local function UpdatePosition()
-    StatsDB = StatsDB or {}
-    if not StatsDB.minimapMoved then StatsDB.minimapAngle = MM_ANGLE end
-    local angle = math.rad(tonumber(StatsDB.minimapAngle) or MM_ANGLE)
-    local radius = 105
-    btn:ClearAllPoints()
-    btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
-  end
-
-  -- OnUpdate pose SEULEMENT pendant le deplacement (audit 7.5.5) : avant, il
-  -- tournait a chaque image pendant toute la session pour sortir aussitot.
-  local function OnDragUpdate(self)
-    local mx, my = Minimap:GetCenter()
-    local cx, cy = GetCursorPosition()
-    local scale = Minimap:GetEffectiveScale()
-    cx, cy = cx / scale, cy / scale
-    StatsDB.minimapAngle = math.deg(math.atan2(cy - my, cx - mx))
-    StatsDB.minimapMoved = true
-    UpdatePosition()
-  end
-  btn:SetScript("OnDragStart", function(self) self.dragging = true; self:SetScript("OnUpdate", OnDragUpdate) end)
-  btn:SetScript("OnDragStop", function(self) self.dragging = false; self:SetScript("OnUpdate", nil) end)
-
-  btn:SetScript("OnClick", function(_, button)
-    if button == "RightButton" then
-      if SX.OpenOptions then SX.OpenOptions() end
-    elseif SX.Toggle then
-      SX.Toggle()
-    end
-  end)
-  btn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:AddLine("Stats")
-    GameTooltip:AddLine(fr and "Clic gauche : ouvrir / fermer" or "Left-click: open / close", 0.9, 0.9, 0.95)
-    GameTooltip:AddLine(fr and "Clic droit : options" or "Right-click: options", 0.9, 0.9, 0.95)
-    GameTooltip:Show()
-  end)
-  btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-  UpdatePosition()
+  local btn = UIm.MinimapButton({
+    name = "LibDBIcon10_Stats", style = "compact", default = MM_ANGLE,
+    icon = "Interface\\AddOns\\Stats\\medias\\Logo",
+    getAngle = function() if not (StatsDB and StatsDB.minimapMoved) then return MM_ANGLE end return StatsDB.minimapAngle end,
+    setAngle = function(a) StatsDB = StatsDB or {}; StatsDB.minimapAngle = a; StatsDB.minimapMoved = true end,
+    onClick = function(button)
+      if button == "RightButton" then
+        if SX.OpenOptions then SX.OpenOptions() end
+      elseif SX.Toggle then
+        SX.Toggle()
+      end
+    end,
+    tooltip = function(tt)
+      tt:AddLine("Stats")
+      tt:AddLine(fr and "Clic gauche : ouvrir / fermer" or "Left-click: open / close", 0.9, 0.9, 0.95)
+      tt:AddLine(fr and "Clic droit : options" or "Right-click: options", 0.9, 0.9, 0.95)
+    end,
+  })
+  return btn
 end
 
 if not HasCore() then

@@ -304,6 +304,8 @@ E["WarlordsOfDraenor"] = {
 }
 
 E["MistsOfPandaria"] = {
+  ["Le Monastère des Pandashan"] = { b = "Follow the entrance icon on the map.",
+    p = "Kun-Lai Summit, centre. Shado-Pan Monastery in the mountains." },
   ["Palais Mogu'shan"] = { b = "Fly to Pandaria and follow the entrance icon on the map.",
     p = "Vale of Eternal Blossoms, north-east." },
   ["Porte du Soleil couchant"] = { b = "Fly to Pandaria and follow the entrance icon on the map.",
@@ -358,6 +360,8 @@ E["Cataclysme"] = {
 }
 
 E["WrathOfTheLichKing"] = {
+  ["Le Caveau d'Archavon"] = { b = "Follow the entrance icon on the map.",
+    p = "Wintergrasp, under the fortress. Open to the faction that controls the zone." },
   ["Ahn'kahet : l'Ancien royaume"] = { b = "Follow the entrance icon on the map.",
     p = "Dragonblight, west, next to Azjol-Nerub." },
   ["Donjon d'Utgarde"] = { b = "Follow the entrance icon on the map.",
@@ -458,6 +462,18 @@ E["TheBurningCrusade"] = {
 }
 
 E["Vanilla"] = {
+  ["Les Mortemines"] = { b = "Follow the entrance icon on the map.",
+    p = "Westfall, Moonbrook (south). Mine entrance under the ruined village." },
+  ["Le Donjon d'Ombrecroc"] = { b = "Follow the entrance icon on the map.",
+    p = "Silverpine Forest, south. Castle on the hill above Pyrewood." },
+  ["Les Cavernes des Lamentations"] = { b = "Follow the entrance icon on the map.",
+    p = "Northern Barrens, south-west. Cave in the oasis, at the foot of the cliffs." },
+  ["Les Profondeurs de Brassenoire"] = { b = "Follow the entrance icon on the map.",
+    p = "Ashenvale, north-west coast. Half-sunken ruined temple: dive into the pool." },
+  ["Hache-Tripes"] = { b = "Follow the entrance icon on the map.",
+    p = "Feralas, centre. Ancient ogre city; three wings (East, North, West)." },
+  ["Les Salles Écarlates"] = { b = "Follow the entrance icon on the map.",
+    p = "Tirisfal Glades, east. Same complex as the Scarlet Monastery." },
   ["La Prison"] = { b = "Follow the entrance icon on the map.",
     p = "Stormwind, Mage Quarter." },
   ["Kraal de Tranchebauge"] = { b = "Follow the entrance icon on the map.",

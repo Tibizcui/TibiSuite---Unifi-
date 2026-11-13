@@ -1,24 +1,23 @@
-## Interface: 120105, 120100, 120007, 16001
+## Interface: 120105, 120100, 120007, 50504, 50503, 40402, 40401, 20506, 20505, 16001, 11509, 11508
 ## Title: XPBar
 ## Title-frFR: XPBar
 ## Notes: Barre XP avancée - Niveau, XP, Repos, Quêtes, Stats de session
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.5.6
+## Version: 7.5.7
 ## X-Curse-Project-ID: 1585015
 # MULTI-VERSIONS : ce fichier sert Midnight (12xxxx) et WoW Forever (16001,
 # meme API que Mainline, numero releve sur le client Forever et dans
-# EllesmereUI). Classic a ses propres .toc, MEME CONTENU, seule la ligne
-# Interface change : XPBar_Vanilla.toc (Classic Era), XPBar_TBC.toc (TBC
-# Anniversary), XPBar_Wrath.toc (Wrath, Titan Reforged), XPBar_Cata.toc
-# (Cataclysm Classic), XPBar_Mists.toc (Mists Classic). Le client prend le .toc a
-# son suffixe avant celui-ci. Toute modification de la liste des fichiers
-# ci-dessous est a reporter dans les 5 autres. Le code choisit ses API par
-# detection (fonction presente ou non), jamais par numero de version.
-# Sur Classic et Forever, le core TibiSuite ne se charge pas : XPBar y
-# tourne en autonome (son propre bouton minimap).
-# MODE DOUBLE (standalone ou integre) : pas de LoadOnDemand (ce module doit
-# pouvoir se charger seul, sans le core) ; dependance SOUPLE sur TibiSuite.
-# Voir XPBar_Module.lua pour la detection a l'execution (HasCore()).
+# EllesmereUI). Classic (Vanilla, TBC, Cata, Mists) lit aussi ce fichier :
+# une seule liste Interface, comprise par tous ces clients depuis 10.2.7 /
+# 4.4.0 (audit poids 2026-11-13, lot 6). Seul XPBar_Wrath.toc reste a part
+# (client 3.4, plus ancien) : toute modification de la liste des fichiers
+# est a reporter dans les 2. Le code choisit ses API par detection (fonction
+# presente ou non), jamais par numero de version. Sur Classic et Forever, le
+# core TibiSuite ne se charge pas : XPBar y tourne en autonome (son propre
+# bouton minimap). MODE DOUBLE (standalone ou integre) : pas de LoadOnDemand
+# (ce module doit pouvoir se charger seul, sans le core) ; dependance SOUPLE
+# sur TibiSuite. Voir XPBar_Module.lua pour la detection a l'execution
+# (HasCore()).
 ## OptionalDeps: TibiSuite
 ## Group: TibiSuite
 ## Category: TibiSuite - Tracker

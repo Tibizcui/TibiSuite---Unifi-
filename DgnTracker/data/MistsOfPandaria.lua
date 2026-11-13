@@ -58,5 +58,11 @@ DgnTrackerData["MistsOfPandaria"] = {
      access={both="Vol vers la Pandarie, suivez l'icône d'entrée sur la carte."},
      path="L'escalier Dérobé, entre la forêt de Jade et la vallée des Quatre vents.",
      tomtom={mapID=433, x=48.42, y=61.38}},
+    -- Ajouts audit 2026-11-13 (instances absentes ; approx = a corriger par le jeu)
+    {name="Le Monastère des Pandashan", type="dungeon", zone="Sommet de Kun-Lai",
+     mapID=379, coords={x=36.71,y=47.46}, jid=312,
+     access={both="Vol vers la Pandarie, suivez l'icône d'entrée sur la carte."},
+     path="Sommet de Kun-Lai, centre. Monastère des Pandashan dans les montagnes.",
+     tomtom={mapID=379, x=36.71, y=47.46}},
   },
 }

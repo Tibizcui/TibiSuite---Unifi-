@@ -64,67 +64,30 @@ end
 -- ============================================================================
 local function BuildStandaloneMinimapButton()
   if _G.LibDBIcon10_XPBar then return end
-  local btn = CreateFrame("Button", "LibDBIcon10_XPBar", Minimap)
-  btn:SetSize(31, 31)
-  btn:SetFrameStrata("MEDIUM")
-  btn:SetFrameLevel(8)
-  btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-  btn:RegisterForDrag("LeftButton")
-  btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-
-  local overlay = btn:CreateTexture(nil, "OVERLAY")
-  overlay:SetSize(53, 53)
-  overlay:SetPoint("TOPLEFT", 0, 0)
-  overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-
-  local icon = btn:CreateTexture(nil, "BACKGROUND")
-  icon:SetSize(20, 20)
-  icon:SetPoint("CENTER", 0, 1)
-  icon:SetTexture("Interface\\AddOns\\XPBar\\medias\\Logo")
-
-  -- Angle propre a chaque addon (XPBar 200, RepBar 225, Stats 175) : avant,
-  -- XPBar et RepBar partageaient 200 et leurs boutons se superposaient. Tant
-  -- que le joueur n'a pas deplace le bouton (minimapMoved), l'angle par
-  -- defaut s'applique, ce qui separe aussi les anciennes sauvegardes.
-  local function UpdatePosition()
-    XPBarDB = XPBarDB or {}
-    if not XPBarDB.minimapMoved then XPBarDB.minimapAngle = 200 end
-    local angle = math.rad(XPBarDB.minimapAngle or 200)
-    local radius = 105
-    btn:ClearAllPoints()
-    btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
-  end
-
-  btn:SetScript("OnDragStart", function(self) self.dragging = true end)
-  btn:SetScript("OnDragStop", function(self) self.dragging = false end)
-  btn:SetScript("OnUpdate", function(self)
-    if not self.dragging then return end
-    local mx, my = Minimap:GetCenter()
-    local cx, cy = GetCursorPosition()
-    local scale = Minimap:GetEffectiveScale()
-    cx, cy = cx / scale, cy / scale
-    XPBarDB.minimapAngle = math.deg(math.atan2(cy - my, cx - mx))
-    XPBarDB.minimapMoved = true
-    UpdatePosition()
-  end)
-
-  btn:SetScript("OnClick", function(_, button)
-    if button == "RightButton" then
-      if _G.XPBar_OpenOptions then _G.XPBar_OpenOptions() end
-    elseif _G.XPBar_Toggle then
-      _G.XPBar_Toggle()
-    end
-  end)
-  btn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:AddLine("XPBar")
-    GameTooltip:AddLine(T("MM_TT_LEFT", "Clic gauche : afficher/masquer"), 0.9, 0.9, 0.95)
-    GameTooltip:AddLine(T("MM_TT_RIGHT", "Clic droit : options"), 0.9, 0.9, 0.95)
-    GameTooltip:Show()
-  end)
-  btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-  UpdatePosition()
+  -- Construit par le socle v23 (UI.MinimapButton, audit poids 2026-11-13,
+  -- lot 5) : position, glisser (OnUpdate pose seulement pendant le
+  -- deplacement) et collecteurs MiniHub / EllesmereUI geres au meme endroit.
+  local UIm = _G.TibiMidnight
+  if not (UIm and UIm.MinimapButton) then return end
+  local btn = UIm.MinimapButton({
+    name = "LibDBIcon10_XPBar", style = "compact", default = 200,
+    icon = "Interface\\AddOns\\XPBar\\medias\\Logo",
+    getAngle = function() if not (XPBarDB and XPBarDB.minimapMoved) then return 200 end return XPBarDB.minimapAngle end,
+    setAngle = function(a) XPBarDB = XPBarDB or {}; XPBarDB.minimapAngle = a; XPBarDB.minimapMoved = true end,
+    onClick = function(button)
+      if button == "RightButton" then
+        if _G.XPBar_OpenOptions then _G.XPBar_OpenOptions() end
+      elseif _G.XPBar_Toggle then
+        _G.XPBar_Toggle()
+      end
+    end,
+    tooltip = function(tt)
+      tt:AddLine("XPBar")
+      tt:AddLine(T("MM_TT_LEFT", "Clic gauche : afficher/masquer"), 0.9, 0.9, 0.95)
+      tt:AddLine(T("MM_TT_RIGHT", "Clic droit : options"), 0.9, 0.9, 0.95)
+    end,
+  })
+  return btn
 end
 
 -- Rattrapage cosmetique : habille la barre XPBarContainer au style socle

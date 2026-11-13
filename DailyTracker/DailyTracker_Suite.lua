@@ -178,6 +178,9 @@ local function Decorate()
     provider = provider,
   })
 end
+-- Expose pour DailyTracker.lua : la fenetre etant construite a sa premiere
+-- ouverture (audit poids 2026-11-13), elle est habillee a ce moment-la.
+NS.Decorate = Decorate
 
 -- Inscription immediate au registre de recherche globale
 -- (le provider lit les donnees a la volee ; plus fiable que PLAYER_LOGIN seul)

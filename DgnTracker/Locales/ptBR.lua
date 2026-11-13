@@ -27,6 +27,7 @@ for k, v in pairs({
   ACCESS_HEADER = "-- Acesso (caminho mais curto):", TIPS_HEADER = "-- Dicas:", TIPS_FR_NOTE = "(em francês)",
   DETECTED_NOTE = "Instância detectada no jogo: ainda sem dicas de acesso. O ponto de referência usa a posição informada pelo jogo.",
   MPLUS_ONLY_NOTE = "Masmorra da rotação Mítica+ ainda não coberta pelo DgnTracker: sem dicas de acesso por enquanto.",
+  SEARCH_BOSS_TAG = "chefe ·",
   BOSSES_FMT = "Chefes (%d):", MPLUS_LABEL = "Mítica+",
   MPLUS_BEST_FMT = "Melhor chave da temporada: %s+%d|r (%s)", MPLUS_OVERTIME = "fora do tempo",
   MPLUS_SCORE_FMT = "pontuação %d", MPLUS_NONE = "nenhuma chave concluída nesta temporada",

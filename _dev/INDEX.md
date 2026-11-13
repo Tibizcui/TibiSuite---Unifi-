@@ -28,6 +28,7 @@
 | `VersionCheck.md` | Alerte de nouvelle version dans le chat | Publié en 7.1.5.50 |
 | `LegOverlay.md` | Légendaire épinglé et overlay de farm | Publié en 7.2.0, validé en jeu |
 | `Plan_7.3.md` | Session guidée, patrimoine, bilan, M+, visite, groupe | Publié en 7.3.0 ; liste de contrôle en jeu en fin de fichier |
+| `Audit_Poids.md` | Audit du poids (2026-11-13) : icônes, fenêtres à la demande, sondes hors archive | Lots 1, 2, 4, 7 faits (non publiés) ; 5 et 6 reportés |
 
 ## Chronologie des versions
 

@@ -27,6 +27,7 @@ for k, v in pairs({
   ACCESS_HEADER = "-- 입구 (최단 경로):", TIPS_HEADER = "-- 팁:", TIPS_FR_NOTE = "(프랑스어)",
   DETECTED_NOTE = "게임에서 발견된 인스턴스: 아직 입구 안내가 없습니다. 경유지는 게임이 제공한 위치를 사용합니다.",
   MPLUS_ONLY_NOTE = "DgnTracker에 아직 없는 쐐기돌 순환 던전: 현재 입구 안내가 없습니다.",
+  SEARCH_BOSS_TAG = "우두머리 ·",
   BOSSES_FMT = "우두머리 (%d):", MPLUS_LABEL = "쐐기돌",
   MPLUS_BEST_FMT = "이번 시즌 최고 쐐기돌: %s+%d|r (%s)", MPLUS_OVERTIME = "시간 초과",
   MPLUS_SCORE_FMT = "점수 %d", MPLUS_NONE = "이번 시즌 완료한 쐐기돌 없음",

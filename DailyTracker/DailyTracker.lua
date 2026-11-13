@@ -1895,141 +1895,76 @@ local function BuildUI()
   mainFrame:Hide()
 end -- BuildUI
 
+-- Construction a la demande (audit poids 2026-11-13) : la fenetre n'est plus
+-- creee a ADDON_LOADED mais a sa premiere ouverture (meme principe que Stats
+-- et LvlHistory). Renvoie la fenetre, ou nil tant que la base n'est pas
+-- chargee. Position restauree ici, habillage du socle applique tout de suite
+-- (NS.Decorate, defini par DailyTracker_Suite.lua).
+local function EnsureUI()
+  if mainFrame then return mainFrame end
+  if not DailyTrackerDB then return nil end
+  BuildUI()
+  local p = DailyTrackerDB.pos
+  mainFrame:ClearAllPoints()
+  if p and p.x then
+    mainFrame:SetPoint(p.point or "CENTER",UIParent,p.point or "CENTER",p.x,p.y)
+  else mainFrame:SetPoint("CENTER",UIParent,"CENTER",0,0) end
+  if NS.Decorate then pcall(NS.Decorate) end
+  return mainFrame
+end
+
 -- ================================================================
 -- MINIMAP
 -- ================================================================
 local minimapBtn
 
-local function GetMinimapRadius()
-  return (Minimap:GetWidth() / 2) + 10
-end
-
-local function SetMinimapPos(angle)
-  if DailyTrackerDB then DailyTrackerDB.mmAngle = angle end
-  local r   = GetMinimapRadius()
-  local rad = math.rad(angle)
-  minimapBtn:ClearAllPoints()
-  minimapBtn:SetPoint(
-    "CENTER", Minimap, "CENTER",
-    math.cos(rad) * r,
-    math.sin(rad) * r
-  )
-end
-
+-- Bouton de minicarte (mode autonome) : construit par le socle v23
+-- (UI.MinimapButton, audit poids 2026-11-13, lot 5). Nom, angle sauvegarde
+-- (DailyTrackerDB.mmAngle), clic et infobulle inchanges ; le socle gere la position,
+-- le glisser, le zoom de la minicarte et les collecteurs (MiniHub, EllesmereUI).
 local function BuildMinimapButton()
-
-  minimapBtn = CreateFrame("Button", "DTMinimapBtn", Minimap)
-  minimapBtn:SetSize(32, 32)
-  minimapBtn:SetFrameStrata("MEDIUM")
-  minimapBtn:SetFrameLevel(8)
-  minimapBtn:SetMovable(false)
-  minimapBtn:EnableMouse(true)
-  minimapBtn:SetClampedToScreen(true)
-  minimapBtn:SetToplevel(true)
-
-  local icon = minimapBtn:CreateTexture(nil, "ARTWORK")
-  icon:SetPoint("CENTER", minimapBtn, "CENTER", 0, 0)
-  icon:SetSize(24, 24)
-  icon:SetTexture("Interface\\AddOns\\DailyTracker\\medias\\DailyTracker")
-  local mask = minimapBtn:CreateMaskTexture()
-  mask:SetAllPoints(icon)
-  mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-  icon:AddMaskTexture(mask)
-
-  local ring = minimapBtn:CreateTexture(nil, "OVERLAY")
-  ring:SetSize(52, 52)
-  ring:SetPoint("TOPLEFT", minimapBtn, "TOPLEFT", 0, 0)
-  ring:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-
-  local hl = minimapBtn:CreateTexture(nil, "ARTWORK")
-  hl:SetPoint("CENTER", minimapBtn, "CENTER", 0, 0)
-  hl:SetSize(20, 20)
-  hl:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
-  hl:SetVertexColor(1, 1, 1, 0.25)
-  hl:SetAlpha(0)
-  local hlMask = minimapBtn:CreateMaskTexture()
-  hlMask:SetAllPoints(hl)
-  hlMask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-  hl:AddMaskTexture(hlMask)
-  minimapBtn._hl = hl
-
-  local savedAngle = (DailyTrackerDB and DailyTrackerDB.mmAngle) or 220
-  SetMinimapPos(savedAngle)
-
-  minimapBtn:SetScript("OnShow", function(self)
-    -- Range par un collecteur (grille EllesmereUI, conteneur MiniHub) :
-    -- ne pas le recoller sur la minicarte, il sortirait de sa place.
-    if self:GetParent() ~= Minimap then return end
-    SetMinimapPos((DailyTrackerDB and DailyTrackerDB.mmAngle) or 220)
-  end)
-
-  minimapBtn:RegisterForDrag("LeftButton")
-
-  minimapBtn:SetScript("OnDragStart", function(s)
-    s:SetScript("OnUpdate", function()
-      local mx, my  = Minimap:GetCenter()
-      local uiScale = UIParent:GetEffectiveScale()
-      local cx, cy  = GetCursorPosition()
-      local angle   = math.deg(math.atan2(
-        (cy / uiScale) - my,
-        (cx / uiScale) - mx
-      ))
-      SetMinimapPos(angle)
-    end)
-  end)
-
-  minimapBtn:SetScript("OnDragStop", function(s)
-    s:SetScript("OnUpdate", nil)
-  end)
-
-  local resizeWatcher = CreateFrame("Frame")
-  resizeWatcher:RegisterEvent("MINIMAP_UPDATE_ZOOM")
-  resizeWatcher:SetScript("OnEvent", function()
-    SetMinimapPos((DailyTrackerDB and DailyTrackerDB.mmAngle) or 220)
-  end)
-
-  minimapBtn:SetScript("OnClick", function(_, button)
-    if button == "LeftButton" then
-      if mainFrame:IsShown() then
-        mainFrame:Hide()
-        DailyTrackerDB.open = false
-      else
-        mainFrame:Show()
-        mainFrame:RefreshContent()
-        DailyTrackerDB.open = true
-      end
-    end
-  end)
-
-  minimapBtn:SetScript("OnEnter", function(s)
-    if s._hl then s._hl:SetAlpha(1) end
-    local ext = DailyTrackerDB.extension or "Midnight"
-    InvalidateCache()
-    local d, t = GetExtStats(ext)
-    GameTooltip:SetOwner(s, "ANCHOR_LEFT")
-    GameTooltip:AddLine(ACCENT_HEX.."DailyTracker|r")
-    GameTooltip:AddLine(EXT_FULLNAMES[ext] or ext, 0.9, 0.9, 0.9)
-    GameTooltip:AddLine(string.format(L.ACT_COUNT, d, t), 0.3, 0.9, 0.5)
-    GameTooltip:AddLine(string.format("%s: %s   %s: %s",
-      L.RESET_DAILY, FormatDuration(SecUntilDailyReset()),
-      L.RESET_WEEKLY, FormatDuration(SecUntilWeeklyReset())), 0.7,0.7,0.7)
-    GameTooltip:AddLine(" ", 1, 1, 1)
-    GameTooltip:AddLine("|cFFFFD700"..L.MM_LEFT.."|r", 0.7, 0.7, 0.7)
-    GameTooltip:AddLine("|cFFFFD700"..L.MM_DRAG.."|r", 0.7, 0.7, 0.7)
-    GameTooltip:Show()
-  end)
-
-  minimapBtn:SetScript("OnLeave", function(s)
-    if s._hl then s._hl:SetAlpha(0) end
-    GameTooltip:Hide()
-  end)
+  local UIm = _G.TibiMidnight
+  if not (UIm and UIm.MinimapButton) then return end
+  minimapBtn = UIm.MinimapButton({
+    name = "DTMinimapBtn", style = "tracker", default = 220,
+    icon = "Interface\\AddOns\\DailyTracker\\medias\\DailyTracker",
+    getAngle = function() return DailyTrackerDB and DailyTrackerDB.mmAngle end,
+    setAngle = function(a) if DailyTrackerDB then DailyTrackerDB.mmAngle = a end end,
+    onClick = function(button)
+        if button == "LeftButton" then
+          if not EnsureUI() then return end
+          if mainFrame:IsShown() then
+            mainFrame:Hide()
+            DailyTrackerDB.open = false
+          else
+            mainFrame:Show()
+            mainFrame:RefreshContent()
+            DailyTrackerDB.open = true
+          end
+        end
+    end,
+    tooltip = function(tt)
+        local ext = DailyTrackerDB.extension or "Midnight"
+        InvalidateCache()
+        local d, t = GetExtStats(ext)
+        tt:AddLine(ACCENT_HEX.."DailyTracker|r")
+        tt:AddLine(EXT_FULLNAMES[ext] or ext, 0.9, 0.9, 0.9)
+        tt:AddLine(string.format(L.ACT_COUNT, d, t), 0.3, 0.9, 0.5)
+        tt:AddLine(string.format("%s: %s   %s: %s",
+          L.RESET_DAILY, FormatDuration(SecUntilDailyReset()),
+          L.RESET_WEEKLY, FormatDuration(SecUntilWeeklyReset())), 0.7,0.7,0.7)
+        tt:AddLine(" ", 1, 1, 1)
+        tt:AddLine("|cFFFFD700"..L.MM_LEFT.."|r", 0.7, 0.7, 0.7)
+        tt:AddLine("|cFFFFD700"..L.MM_DRAG.."|r", 0.7, 0.7, 0.7)
+    end,
+  })
 end
 
 -- ================================================================
 -- COMPARTIMENT
 -- ================================================================
 function DailyTracker_OnAddonCompartmentClick()
-  if not mainFrame then return end
+  if not EnsureUI() then return end
   if mainFrame:IsShown() then mainFrame:Hide(); DailyTrackerDB.open=false
   else mainFrame:Show(); mainFrame:RefreshContent(); DailyTrackerDB.open=true end
 end
@@ -2046,7 +1981,7 @@ function DailyTracker_OnAddonCompartmentLeave() GameTooltip:Hide() end
 -- une quete precise.
 -- ================================================================
 function DailyTracker_ShowFaction(extKey, facName, questName)
-  if not mainFrame then return end
+  if not EnsureUI() then return end
   extKey = extKey or DailyTrackerDB.extension or CURRENT_EXT
   local fac = FindFaction(extKey, facName)
   if not fac then return end
@@ -2471,7 +2406,7 @@ end
 -- SLASH
 -- ================================================================
 local function ToggleMain()
-  if not mainFrame then return end
+  if not EnsureUI() then return end
   if mainFrame:IsShown() then mainFrame:Hide(); DailyTrackerDB.open=false
   else mainFrame:Show(); mainFrame:RefreshContent(); DailyTrackerDB.open=true end
 end
@@ -2496,7 +2431,7 @@ SlashCmdList["DAILYTRACKER"]=function(msg)
     if DailyTracker_OpenRares then DailyTracker_OpenRares() end
     return
   elseif msg=="alts" then
-    if not mainFrame then return end
+    if not EnsureUI() then return end
     DailyTrackerDB.view = "alts"
     mainFrame:Show(); DailyTrackerDB.open=true; mainFrame:RefreshContent()
     return
@@ -2557,12 +2492,10 @@ evFrame:SetScript("OnEvent",function(_,event,arg1,arg2)
     if DailyTrackerDB.remindHours==nil then DailyTrackerDB.remindHours=12 end
     if DailyTrackerData[DailyTrackerDB.extension or ""]==nil then DailyTrackerDB.extension=CURRENT_EXT end
 
-    BuildUI() ; BuildMinimapButton()
-    local p=DailyTrackerDB.pos
-    if p and p.x then
-      mainFrame:ClearAllPoints()
-      mainFrame:SetPoint(p.point or "CENTER",UIParent,p.point or "CENTER",p.x,p.y)
-    else mainFrame:SetPoint("CENTER",UIParent,"CENTER",0,0) end
+    -- Fenetre construite a sa premiere ouverture (EnsureUI). Le bouton
+    -- minimap propre n'existe qu'en autonome : en suite, il etait masque
+    -- aussitot cree (audit poids 2026-11-13).
+    if not HasCore() then BuildMinimapButton() end
 
   elseif event=="ADDON_LOADED" and arg1=="TibiSuite" then
     if minimapBtn then minimapBtn:Hide() end
@@ -2578,7 +2511,7 @@ evFrame:SetScript("OnEvent",function(_,event,arg1,arg2)
     RequestTitles()
     InvalidateCache()
     Snapshot()
-    if DailyTrackerDB.open and mainFrame then
+    if DailyTrackerDB.open and EnsureUI() then
       mainFrame:Show() ; mainFrame:RefreshContent()
     end
     if TodoDB().shown then SetTodoShown(true) end
@@ -2638,7 +2571,7 @@ end
 
 -- Ouvre directement la vue Rares et boss mondiaux (/dt rares, apercu).
 function DailyTracker_OpenRares()
-  if not mainFrame then return end
+  if not EnsureUI() then return end
   DailyTrackerDB.view = "rares"
   mainFrame._scrollOffset = 0
   mainFrame:Show(); DailyTrackerDB.open = true

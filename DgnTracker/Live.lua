@@ -130,19 +130,43 @@ function Live.EJ(jid)
   return c
 end
 
+local function ReadEncounters(jid, withArg)
+  local list = {}
+  for i = 1, 25 do
+    local ok, bname
+    if withArg then ok, bname = pcall(EJ_GetEncounterInfoByIndex, i, jid)
+    else ok, bname = pcall(EJ_GetEncounterInfoByIndex, i) end
+    if not ok or not bname then break end
+    list[#list + 1] = bname
+  end
+  return list
+end
+
+-- Boss d'une instance. Constat en jeu (2026-11-13) : la recherche des boss ne
+-- trouvait rien, la lecture directe par jid renvoyant une liste vide. Repli :
+-- selectionner l'instance dans le journal (comme Collections.lua), lire, puis
+-- remettre le palier d'origine. Jamais si le journal est ouvert (on ne
+-- deplace pas ce que le joueur regarde) ; une liste vide n'est pas gardee
+-- (nouvel essai 60 s plus tard).
+local function JournalOpen()
+  return EncounterJournal and EncounterJournal.IsShown and EncounterJournal:IsShown()
+end
 function Live.Bosses(jid)
   local c = Live.EJ(jid)
-  if not c then return nil end
+  if not c or not EJ_GetEncounterInfoByIndex then return nil end
   if c.bosses then return c.bosses end
-  local list = {}
-  if EJ_GetEncounterInfoByIndex then
-    for i = 1, 25 do
-      local ok, bname = pcall(EJ_GetEncounterInfoByIndex, i, jid)
-      if not ok or not bname then break end
-      list[#list + 1] = bname
+  local now = GetTime and GetTime() or 0
+  if c.bossTry and now - c.bossTry < 60 then return {} end
+  local list = ReadEncounters(jid, true)
+  if #list == 0 and EJ_SelectInstance and not JournalOpen() then
+    local tier = EJ_GetCurrentTier and EJ_GetCurrentTier()
+    if pcall(EJ_SelectInstance, jid) then
+      list = ReadEncounters(jid, false)
+      if #list == 0 then list = ReadEncounters(jid, true) end
     end
+    if tier and EJ_SelectTier then pcall(EJ_SelectTier, tier) end
   end
-  c.bosses = list
+  if #list > 0 then c.bosses = list else c.bossTry = now end
   return list
 end
 

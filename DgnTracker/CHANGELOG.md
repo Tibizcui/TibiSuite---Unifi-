@@ -1,5 +1,15 @@
 # Changelog
 
+## 7.5.7
+- Mémoire : la fenêtre n'est plus construite au chargement mais à sa première ouverture. Le bouton de minicarte propre n'est plus créé quand TibiSuite est présent (il était masqué aussitôt).
+- Icône de la liste des add-ons allégée (64 × 64 au lieu de 128 × 128), même rendu à l'écran.
+- Socle d'interface v23 : constructeur commun des boutons de minicarte.
+- Bouton de minicarte (addon seul) construit par le socle : même apparence, même position sauvegardée.
+- Recherche : les boss des donjons et raids sont trouvés (nom dans la langue du jeu, à partir de 3 lettres) ; un clic ouvre la fiche de l'instance.
+- Nouvelles fiches : Les Mortemines, Le Donjon d'Ombrecroc, Les Cavernes des Lamentations, Les Profondeurs de Brassenoire, Hache-Tripes, Les Salles Écarlates, Le Monastère des Pandashan, Le Caveau d'Archavon.
+- La liste des boss s'affiche aussi sur les fiches dont l'entrée n'a pas été relevée sur la carte.
+- Logos au format BLP compressé (DXT5) : environ trois fois plus légers que les TGA, même rendu.
+
 ## 7.5.6
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

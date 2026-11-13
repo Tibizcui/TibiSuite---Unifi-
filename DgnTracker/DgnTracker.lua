@@ -1,5 +1,5 @@
 -- ================================================================
--- DgnTracker v7.5.6
+-- DgnTracker v7.5.7
 -- Auteur : Tibiscui - Kirin Tor
 -- ================================================================
 
@@ -1315,7 +1315,10 @@ local function BuildUI()
 
         -- Lignes jeu : boss, Mythique+, verrous
         local extra = {}
-        local bosses = info.jid and Live.Bosses(info.jid)
+        -- jid du jeu, sinon celui de la fiche (audit 2026-11-13 : sans
+        -- releve de la carte, la ligne des boss n'apparaissait jamais).
+        local bjid = info.jid or inst.jid
+        local bosses = bjid and Live.Bosses(bjid)
         if bosses and #bosses > 0 then
           extra[#extra + 1] = hdrCol .. string.format(T("BOSSES_FMT", "Boss (%d) :"), #bosses) .. "|r |cFFCCCCCC" .. table.concat(bosses, ", ") .. "|r"
         end
@@ -1435,16 +1438,38 @@ Live.onChange = function()
   if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
 end
 
+-- Construction a la demande (audit poids 2026-11-13) : la fenetre n'est plus
+-- creee a ADDON_LOADED mais a sa premiere ouverture (meme principe que Stats
+-- et LvlHistory). Un joueur qui ne l'ouvre pas ne paie ni les frames ni la
+-- memoire. Position restauree ici, habillage du socle applique tout de suite
+-- (DgnTracker_Decorate, defini par DgnTracker_Suite.lua). Tout acces a
+-- mainFrame hors de ce fichier passe par _G.DGNMainFrame, deja protege.
+local function EnsureUI()
+  if mainFrame then return mainFrame end
+  BuildUI()
+  local p = DgnTrackerDB and DgnTrackerDB.pos
+  mainFrame:ClearAllPoints()
+  if p and p.x then
+    mainFrame:SetPoint(p.point or "CENTER",UIParent,p.point or "CENTER",p.x,p.y)
+  else
+    mainFrame:SetPoint("CENTER",UIParent,"CENTER",0,0)
+  end
+  if _G.DgnTracker_Decorate then pcall(_G.DgnTracker_Decorate) end
+  return mainFrame
+end
+
 -- ================================================================
 -- OUVERTURE / API
 -- ================================================================
 local function ShowMain()
+  EnsureUI()
   if not mainFrame:IsShown() then mainFrame:Show(); DgnTrackerDB.open = true end
   mainFrame:RefreshContent()
 end
 
 function DgnTracker_Toggle()
-  if mainFrame:IsShown() then
+  if not DgnTrackerDB then return end
+  if mainFrame and mainFrame:IsShown() then
     mainFrame:Hide()
     DgnTrackerDB.open = false
   else
@@ -1454,7 +1479,8 @@ end
 
 -- Ouvre la fenetre sur une vue ou une extension (ex. "Coll", "Season").
 function DgnTracker_OpenView(key)
-  if not mainFrame then return false end
+  if not DgnTrackerDB then return false end
+  EnsureUI()
   DgnTrackerDB.extension = key
   ShowMain()
   if mainFrame.scrollFrame then mainFrame.scrollFrame:SetVerticalScroll(0) end
@@ -1465,7 +1491,7 @@ end
 -- q : nom (toute langue connue), instance de DgnTrackerData, ou table
 --     { name=, instMapID=, challengeMapID=, jid=, type= }. Renvoie true si trouvee.
 function DgnTracker_OpenInstance(q)
-  if not mainFrame then return false end
+  if not DgnTrackerDB then return false end
   local inst
   if type(q) == "table" and q.type and q.name and q._ext then inst = q
   else inst = Live.Find(q) end
@@ -1486,6 +1512,7 @@ function DgnTracker_OpenInstance(q)
   local ext = inst._ext
   DgnTrackerDB.extension = (ext and DgnTrackerData[ext]) and ext or "Season"
   DgnTrackerDB.activeTab = inst.type
+  EnsureUI()
   if mainFrame.searchBox and mainFrame.searchBox:GetText() ~= "" then mainFrame.searchBox:SetText("") end
   DgnTrackerDB.expandedInst[KeyOf(inst)] = true
   ShowMain()
@@ -1498,92 +1525,29 @@ end
 -- ================================================================
 local minimapBtn
 
-local function GetMinimapRadius()
-  return (Minimap:GetWidth()/2) + 10
-end
-
-local function SetMinimapPos(angle)
-  angle = angle % 360
-  if DgnTrackerDB then DgnTrackerDB.mmAngle = angle end
-  local r   = GetMinimapRadius()
-  local rad = math.rad(angle)
-  minimapBtn:ClearAllPoints()
-  minimapBtn:SetPoint("CENTER",Minimap,"CENTER",math.cos(rad)*r,math.sin(rad)*r)
-end
-
+-- Bouton de minicarte (mode autonome) : construit par le socle v23
+-- (UI.MinimapButton, audit poids 2026-11-13, lot 5). Nom, angle sauvegarde
+-- (DgnTrackerDB.mmAngle), clic et infobulle inchanges ; le socle gere la position,
+-- le glisser, le zoom de la minicarte et les collecteurs (MiniHub, EllesmereUI).
 local function BuildMinimapButton()
-  minimapBtn = CreateFrame("Button","DGNMinimapBtn",Minimap)
-  minimapBtn:SetSize(32,32)
-  minimapBtn:SetFrameStrata("MEDIUM")
-  minimapBtn:SetFrameLevel(8)
-  minimapBtn:EnableMouse(true)
-  minimapBtn:SetClampedToScreen(true)
-  minimapBtn:SetToplevel(true)
-
-  local icon = minimapBtn:CreateTexture(nil,"ARTWORK")
-  icon:SetPoint("CENTER",0,0)
-  icon:SetSize(24,24)
-  icon:SetTexture("Interface\\AddOns\\DgnTracker\\medias\\DgnTracker")
-  local mask = minimapBtn:CreateMaskTexture()
-  mask:SetAllPoints(icon)
-  mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask",
-    "CLAMPTOBLACKADDITIVE","CLAMPTOBLACKADDITIVE")
-  icon:AddMaskTexture(mask)
-
-  local ring = minimapBtn:CreateTexture(nil,"OVERLAY")
-  ring:SetSize(52,52)
-  ring:SetPoint("TOPLEFT",minimapBtn,"TOPLEFT",0,0)
-  ring:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-
-  local hl = minimapBtn:CreateTexture(nil,"ARTWORK")
-  hl:SetPoint("CENTER",0,0)
-  hl:SetSize(20,20)
-  hl:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
-  hl:SetVertexColor(1,1,1,0.25)
-  hl:SetAlpha(0)
-  minimapBtn._hl = hl
-
-  SetMinimapPos((DgnTrackerDB and DgnTrackerDB.mmAngle) or 195)
-  minimapBtn:SetScript("OnShow",function(self)
-    -- Range par un collecteur (grille EllesmereUI, conteneur MiniHub) :
-    -- ne pas le recoller sur la minicarte, il sortirait de sa place.
-    if self:GetParent() ~= Minimap then return end
-    SetMinimapPos((DgnTrackerDB and DgnTrackerDB.mmAngle) or 195)
-  end)
-  minimapBtn:RegisterForDrag("LeftButton")
-  minimapBtn:SetScript("OnDragStart",function(s)
-    s:SetScript("OnUpdate",function()
-      local mx,my = Minimap:GetCenter()
-      local sc = UIParent:GetEffectiveScale()
-      local cx,cy = GetCursorPosition()
-      SetMinimapPos(math.deg(atan2((cy/sc)-my,(cx/sc)-mx)))
-    end)
-  end)
-  minimapBtn:SetScript("OnDragStop",function(s) s:SetScript("OnUpdate",nil) end)
-
-  local rw = CreateFrame("Frame")
-  rw:RegisterEvent("MINIMAP_UPDATE_ZOOM")
-  rw:SetScript("OnEvent",function()
-    SetMinimapPos((DgnTrackerDB and DgnTrackerDB.mmAngle) or 195)
-  end)
-
-  minimapBtn:SetScript("OnClick",function(_,btn)
-    if btn=="LeftButton" then DgnTracker_Toggle() end
-  end)
-  minimapBtn:SetScript("OnEnter",function(s)
-    if s._hl then s._hl:SetAlpha(1) end
-    GameTooltip:SetOwner(s,"ANCHOR_LEFT")
-    GameTooltip:AddLine("|cFF0070DEDgnTracker|r",0.30,0.70,1.0)
-    GameTooltip:AddLine(T("MM_TT_SUBTITLE", "Tracker des instances & raids"),0.9,0.9,0.9)
-    GameTooltip:AddLine(" ")
-    GameTooltip:AddLine("|cFFFFD700" .. T("LEFT_CLICK_LABEL", "Clic gauche") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"),0.7,0.7,0.7)
-    GameTooltip:AddLine("|cFFFFD700" .. T("DRAG_LABEL", "Glisser") .. "|r : " .. T("REPOSITION_HINT", "repositionner l'icône"),0.7,0.7,0.7)
-    GameTooltip:Show()
-  end)
-  minimapBtn:SetScript("OnLeave",function(s)
-    if s._hl then s._hl:SetAlpha(0) end
-    GameTooltip:Hide()
-  end)
+  local UIm = _G.TibiMidnight
+  if not (UIm and UIm.MinimapButton) then return end
+  minimapBtn = UIm.MinimapButton({
+    name = "DGNMinimapBtn", style = "tracker", default = 195,
+    icon = "Interface\\AddOns\\DgnTracker\\medias\\DgnTracker",
+    getAngle = function() return DgnTrackerDB and DgnTrackerDB.mmAngle end,
+    setAngle = function(a) if DgnTrackerDB then DgnTrackerDB.mmAngle = a end end,
+    onClick = function(btn)
+        if btn=="LeftButton" then DgnTracker_Toggle() end
+    end,
+    tooltip = function(tt)
+        tt:AddLine("|cFF0070DEDgnTracker|r",0.30,0.70,1.0)
+        tt:AddLine(T("MM_TT_SUBTITLE", "Tracker des instances & raids"),0.9,0.9,0.9)
+        tt:AddLine(" ")
+        tt:AddLine("|cFFFFD700" .. T("LEFT_CLICK_LABEL", "Clic gauche") .. "|r : " .. T("TOGGLE_HINT", "ouvrir / fermer"),0.7,0.7,0.7)
+        tt:AddLine("|cFFFFD700" .. T("DRAG_LABEL", "Glisser") .. "|r : " .. T("REPOSITION_HINT", "repositionner l'icône"),0.7,0.7,0.7)
+    end,
+  })
 end
 
 -- ================================================================
@@ -1624,7 +1588,7 @@ SlashCmdList["DGNTRACKER"] = function(msg)
 
   elseif msg=="reset" then
     DgnTrackerDB.expandedInst = {}
-    if mainFrame:IsShown() then mainFrame:RefreshContent() end
+    if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
     Chat(T("ACCORDION_RESET", "accordéon réinitialisé."))
     return
 
@@ -1652,7 +1616,7 @@ SlashCmdList["DGNTRACKER"] = function(msg)
   elseif msg=="probe" or msg=="sonde" then
     local m, a, x = Live.Probe()
     Chat(string.format(T("PROBE_DONE", "sonde terminée : %d instances reconnues, %d ajoutées depuis le jeu, %d sans correspondance. Faites /reload pour écrire le fichier DgnTracker.lua (SavedVariables)."), m, a, x))
-    if mainFrame:IsShown() then mainFrame:RefreshContent() end
+    if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
     return
   elseif msg=="check" or msg=="controle" or msg=="contrôle" then
     local r = Live.Check()
@@ -1681,7 +1645,7 @@ SlashCmdList["DGNTRACKER"] = function(msg)
     if #r.moved > 0 then
       print("  |cFF888888" .. T("CHECK_NOTE", "Les points de route suivent déjà la position du jeu. Faites /reload et envoyez WTF\\...\\SavedVariables\\DgnTracker.lua à Tibiscui pour corriger les fiches.") .. "|r")
     end
-    if mainFrame:IsShown() then mainFrame:RefreshContent() end
+    if mainFrame and mainFrame:IsShown() then mainFrame:RefreshContent() end
     return
   elseif msg=="collections rebuild" or msg=="coll rebuild" then
     if DgnTrackerColl then
@@ -1754,15 +1718,10 @@ evFrame:SetScript("OnEvent",function(_,event,arg1)
       db.midnightDefault = true
     end
     Live.Index()
-    BuildUI()
-    BuildMinimapButton()
-    local p = db.pos
-    if p and p.x then
-      mainFrame:ClearAllPoints()
-      mainFrame:SetPoint(p.point or "CENTER",UIParent,p.point or "CENTER",p.x,p.y)
-    else
-      mainFrame:SetPoint("CENTER",UIParent,"CENTER",0,0)
-    end
+    -- Fenetre construite a sa premiere ouverture (EnsureUI). Le bouton
+    -- minimap propre n'existe qu'en autonome : en suite, le core et
+    -- DgnTracker_Module.lua le masquaient aussitot cree (audit poids 2026-11-13).
+    if not HasCore() then BuildMinimapButton() end
     db.open = false  -- ferme automatiquement au login
 
   elseif event=="PLAYER_LOGIN" then
@@ -1771,7 +1730,7 @@ evFrame:SetScript("OnEvent",function(_,event,arg1)
     local mode = "full"
     if HasCore() then mode = "none" end  -- 7.3 : seul TibiSuite annonce en suite
     if mode == "full" then
-      print("|cFF4D99FFDgnTracker|r v7.5.6 " .. T("LOGIN_LOADED", "chargé --") .. " |cFFFFD700/dg|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
+      print("|cFF4D99FFDgnTracker|r v7.5.7 " .. T("LOGIN_LOADED", "chargé --") .. " |cFFFFD700/dg|r " .. T("LOGIN_TO_OPEN", "pour ouvrir."))
     end
   end
 end)

@@ -71,7 +71,7 @@ DgnTrackerData["Legion"] = {
      path="Brisée de la Tempête, rive sud. Tombe de Sargeras. 9 boss.",
      tomtom={mapID=646, x=64.01, y=21.37}},
     {name="Antorus, le Trône Ardent", type="raid", zone="Étendues Antoréennes", region="Argus", sector="Étendues Antoréennes",
-     mapID=885, coords={x=54.97,y=62.31},
+     mapID=885, coords={x=54.97,y=62.31}, jid=946,
      access={both="Argus, Étendues Antoréennes. L'entrée n'est PAS la grande porte : c'est un portail vert dans une fissure sous la plateforme d'artillerie, à côté de l'Armurerie du Gangrefeu (centre-est de la carte)."},
      path="Étendues Antoréennes, centre-est, portail vert sous la plateforme d'artillerie. 11 boss.",
      tomtom={mapID=885, x=54.97, y=62.31}},

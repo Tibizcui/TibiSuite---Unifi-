@@ -27,6 +27,7 @@ for k, v in pairs({
   ACCESS_HEADER = "-- Accesso (percorso più breve):", TIPS_HEADER = "-- Consigli:", TIPS_FR_NOTE = "(in francese)",
   DETECTED_NOTE = "Istanza rilevata nel gioco: ancora nessun consiglio di accesso. Il punto di via usa la posizione fornita dal gioco.",
   MPLUS_ONLY_NOTE = "Spedizione della rotazione Mitica+ non ancora presente in DgnTracker: per ora nessun consiglio di accesso.",
+  SEARCH_BOSS_TAG = "boss ·",
   BOSSES_FMT = "Boss (%d):", MPLUS_LABEL = "Mitica+",
   MPLUS_BEST_FMT = "Miglior chiave della stagione: %s+%d|r (%s)", MPLUS_OVERTIME = "fuori tempo",
   MPLUS_SCORE_FMT = "punteggio %d", MPLUS_NONE = "nessuna chiave completata in questa stagione",

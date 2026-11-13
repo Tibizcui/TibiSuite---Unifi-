@@ -1770,63 +1770,24 @@ end
 -- BOUTON MINIMAP (mode autonome ; masque par la glue en mode suite)
 -- ================================================================
 local mmBtn
-local function GetMinimapRadius() return (Minimap:GetWidth() / 2) + 10 end
-local function SetMMPos(angle)
-  ST.settings.mmAngle = angle
-  local rad = math.rad(angle)
-  local r = GetMinimapRadius()
-  mmBtn:ClearAllPoints()
-  mmBtn:SetPoint("CENTER", Minimap, "CENTER", math.cos(rad) * r, math.sin(rad) * r)
-end
-
+-- Construit par le socle v23 (UI.MinimapButton, audit poids 2026-11-13,
+-- lot 5), style "tracker". Nom, angle (ST.settings.mmAngle), clic et
+-- infobulle inchanges ; icone ronde 24 px comme les autres trackers.
 local function BuildMinimapButton()
   if mmBtn then return end
-  mmBtn = CreateFrame("Button", "SkillTrackerMinimapBtn", Minimap)
-  mmBtn:SetSize(32, 32)
-  mmBtn:SetFrameStrata("MEDIUM")
-  mmBtn:SetFrameLevel(8)
-  mmBtn:EnableMouse(true)
-  mmBtn:SetClampedToScreen(true)
-
-  local icon = mmBtn:CreateTexture(nil, "ARTWORK")
-  icon:SetPoint("CENTER", 0, 0)
-  icon:SetSize(20, 20)
-  icon:SetTexture(ST.LOGO)
-  local mask = mmBtn:CreateMaskTexture()
-  mask:SetAllPoints(icon)
-  mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask",
-    "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-  icon:AddMaskTexture(mask)
-
-  local ring = mmBtn:CreateTexture(nil, "OVERLAY")
-  ring:SetSize(52, 52)
-  ring:SetPoint("TOPLEFT", 0, 0)
-  ring:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-
-  SetMMPos(ST.settings.mmAngle or 210)
-
-  mmBtn:RegisterForDrag("LeftButton")
-  mmBtn:RegisterForClicks("AnyUp")
-  mmBtn:SetScript("OnDragStart", function(s)
-    s:SetScript("OnUpdate", function()
-      local mx, my = Minimap:GetCenter()
-      local sc = UIParent:GetEffectiveScale()
-      local cx, cy = GetCursorPosition()
-      SetMMPos(math.deg(math.atan2((cy / sc) - my, (cx / sc) - mx)))
-    end)
-  end)
-  mmBtn:SetScript("OnDragStop", function(s) s:SetScript("OnUpdate", nil) end)
-  mmBtn:SetScript("OnClick", function(_, btn)
-    if btn == "RightButton" then ST.OpenOptions() else ST.Toggle() end
-  end)
-  mmBtn:SetScript("OnEnter", function(s)
-    GameTooltip:SetOwner(s, "ANCHOR_LEFT")
-    ST.FillSummaryTooltip(GameTooltip)
-    GameTooltip:Show()
-  end)
-  mmBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-
-  if not ST.settings.minimap then mmBtn:Hide() end
+  local UIm = _G.TibiMidnight
+  if not (UIm and UIm.MinimapButton) then return end
+  mmBtn = UIm.MinimapButton({
+    name = "SkillTrackerMinimapBtn", style = "tracker", default = 210,
+    icon = ST.LOGO,
+    getAngle = function() return ST.settings and ST.settings.mmAngle end,
+    setAngle = function(a) if ST.settings then ST.settings.mmAngle = a end end,
+    onClick = function(btn)
+      if btn == "RightButton" then ST.OpenOptions() else ST.Toggle() end
+    end,
+    tooltip = function(tt) ST.FillSummaryTooltip(tt) end,
+  })
+  if mmBtn and not ST.settings.minimap then mmBtn:Hide() end
 end
 
 function ST.UpdateMinimap()

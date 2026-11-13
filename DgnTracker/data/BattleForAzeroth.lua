@@ -61,7 +61,7 @@ DgnTrackerData["BattleForAzeroth"] = {
      path="Nazjatar, nord, Porte de la Reine. Tourbillon devant la statue d'Azshara. 8 boss.",
      tomtom={mapID=1355, x=50.3, y=12.8}},
     {name="Ny'alotha, la Cité Éveillée", type="raid", zone="Val de l'Éternel printemps", region="Pandarie", sector="Val de l'Éternel Printemps",
-     mapID=1530, coords={x=50.8,y=71.0},
+     mapID=1530, coords={x=50.8,y=71.0}, jid=1180,
      access={both="L'entrée alterne chaque semaine selon l'assaut. Semaine du Val de l'Éternel printemps : 50.8, 71.0 (point de route). Semaine d'Uldum : Uldum 54.0, 43.0, au sud de Ramkahen sur le grand barrage."},
      path="Val de l'Éternel printemps 50.8, 71.0 ou Uldum 54.0, 43.0, selon l'assaut de la semaine. 12 boss.",
      tomtom={mapID=1530, x=50.8, y=71.0}},

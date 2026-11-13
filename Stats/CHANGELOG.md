@@ -1,5 +1,18 @@
 # Changelog
 
+## 7.5.7
+- Performance : le suivi du dernier coup reçu (cause des morts) ne crée plus de table à chaque dégât en combat.
+- La sonde de diagnostic « action bloquée » n'est plus incluse dans l'archive CurseForge (gardée pour le développement).
+- Icône de la liste des add-ons allégée (64 × 64 au lieu de 128 × 128), même rendu à l'écran.
+- Socle d'interface v23 : constructeur commun des boutons de minicarte.
+- Bouton de minicarte (addon seul) construit par le socle : même apparence, même position sauvegardée.
+- Un seul fichier .toc pour Midnight, Forever et Classic (Vanilla, TBC, Cata, Mists), plus un fichier pour Wrath : quatre fichiers en moins.
+- Logos au format BLP compressé (DXT5) : environ trois fois plus légers que les TGA, même rendu.
+- Mémoire : le code d'export du Dashboard n'est plus gardé en mémoire pendant la partie ; il est recalculé à la déconnexion, comme avant.
+- Journal d'or : les gains de même source à moins de 5 minutes d'écart sont regroupés en une ligne (dix ventes au marchand = une ligne), totaux inchangés.
+- Mémoire : le parcours des hauts faits (Conseiller, carte Hauts faits) ne garde plus que les hauts faits qu'il affichera, au lieu de tous ceux à 30 % ou plus ; mêmes suggestions qu'avant.
+- Jours de plus de 60 jours : le détail de l'or, du temps de jeu, de la réputation et des métiers est regroupé par source, activité, faction ou métier. Totaux conservés ; quêtes, donjons, raids, gouffres et JcJ restent détaillés.
+
 ## 7.5.6
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

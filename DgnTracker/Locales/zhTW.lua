@@ -27,6 +27,7 @@ for k, v in pairs({
   ACCESS_HEADER = "-- 入口（最短路線）：", TIPS_HEADER = "-- 提示：", TIPS_FR_NOTE = "（法文）",
   DETECTED_NOTE = "遊戲中偵測到的副本：尚無入口說明。路徑點使用遊戲提供的位置。",
   MPLUS_ONLY_NOTE = "DgnTracker 尚未收錄的傳奇鑰石輪替地城：暫無入口說明。",
+  SEARCH_BOSS_TAG = "首領 ·",
   BOSSES_FMT = "首領（%d）：", MPLUS_LABEL = "傳奇鑰石",
   MPLUS_BEST_FMT = "本賽季最佳鑰石：%s+%d|r（%s）", MPLUS_OVERTIME = "超時",
   MPLUS_SCORE_FMT = "評分 %d", MPLUS_NONE = "本賽季尚未完成鑰石",

@@ -1,17 +1,18 @@
-## Interface: 120105, 120100, 120007, 16001
+## Interface: 120105, 120100, 120007, 50504, 50503, 40402, 40401, 20506, 20505, 16001, 11509, 11508
 ## Title: TibiSuite
 ## Title-frFR: TibiSuite
-## Notes: Coeur de la suite Tibiscui. Charge le socle une seule fois, un seul bouton minimap, barre d'onglets unifiee, et chargement a la demande des modules coches.
-## Notes-frFR: Coeur de la suite Tibiscui. Socle charge une seule fois, un seul bouton minimap, barre d'onglets unifiee, chargement a la demande (LoadOnDemand) des modules coches.
+## Notes: Coeur de la suite Tibiscui. Charge le socle une seule fois, un seul bouton minimap, barre d'onglets unifiee, et activation des modules coches.
+## Notes-frFR: Coeur de la suite Tibiscui. Socle charge une seule fois, un seul bouton minimap, barre d'onglets unifiee, activation des modules coches (case a cocher = active ou desactive l'addon).
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.5.6
+## Version: 7.5.7
 ## X-Curse-Project-ID: 1550823
 # MULTI-VERSIONS (comme XPBar, RepBar, Stats) : ce fichier sert Midnight et
-# WoW Forever (16001). Classic a ses propres .toc, MEME CONTENU, seule la
-# ligne Interface change : TibiSuite_Vanilla.toc, TibiSuite_TBC.toc, TibiSuite_Wrath.toc,
-# TibiSuite_Cata.toc, TibiSuite_Mists.toc. Toute modification de la liste des fichiers
-# est a reporter dans les 6. Le code choisit ses API par presence de la
-# fonction, jamais par numero de version.
+# WoW Forever (16001). Classic (Vanilla, TBC, Cata, Mists) lit aussi ce
+# fichier : une seule liste Interface, comprise par tous ces clients depuis
+# 10.2.7 / 4.4.0 (audit poids 2026-11-13, lot 6). Seul TibiSuite_Wrath.toc
+# reste a part (client 3.4, plus ancien) : toute modification de la liste
+# des fichiers est a reporter dans les 2. Le code choisit ses API par
+# presence de la fonction, jamais par numero de version.
 
 ## IconTexture: Interface\AddOns\TibiSuite\medias\TibiSuite
 
@@ -52,5 +53,7 @@ Core\TibiSuitePlanner.lua
 Core\TibiSuiteWorth.lua
 Core\TibiSuiteRecap.lua
 Core\TibiSuiteTour.lua
+#@do-not-package@
 Core\TibiSuiteGroupProbe.lua
+#@end-do-not-package@
 Core\TibiSuiteGroup.lua

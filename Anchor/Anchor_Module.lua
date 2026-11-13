@@ -27,50 +27,25 @@ end
 -- ============================================================================
 local function BuildStandaloneMinimapButton()
   if _G.TibiAnchorMinimapBtn then return end
-  local btn = CreateFrame("Button", "TibiAnchorMinimapBtn", Minimap)
-  btn:SetSize(31, 31)
-  btn:SetFrameStrata("MEDIUM")
-  btn:SetFrameLevel(8)
-  btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-  btn:RegisterForDrag("LeftButton")
-  btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
-  local overlay = btn:CreateTexture(nil, "OVERLAY")
-  overlay:SetSize(53, 53)
-  overlay:SetPoint("TOPLEFT", 0, 0)
-  overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-  local icon = btn:CreateTexture(nil, "BACKGROUND")
-  icon:SetSize(20, 20)
-  icon:SetPoint("CENTER", 0, 1)
-  icon:SetTexture(AN.LOGO)
-
-  local function UpdatePosition()
-    local angle = math.rad((TibiAnchorDB and tonumber(TibiAnchorDB.minimapAngle)) or 200)
-    btn:ClearAllPoints()
-    btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * 105, math.sin(angle) * 105)
-  end
-  local function OnDragUpdate()
-    if not TibiAnchorDB then return end
-    local mx, my = Minimap:GetCenter()
-    local cx, cy = GetCursorPosition()
-    local scale = Minimap:GetEffectiveScale()
-    cx, cy = cx / scale, cy / scale
-    TibiAnchorDB.minimapAngle = math.deg(math.atan2(cy - my, cx - mx))
-    UpdatePosition()
-  end
-  btn:SetScript("OnDragStart", function(self) self:SetScript("OnUpdate", OnDragUpdate) end)
-  btn:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
-  btn:SetScript("OnClick", function(_, button)
-    if button == "RightButton" then TibiAnchor_OpenOptions() else TibiAnchor_Toggle() end
-  end)
-  btn:SetScript("OnEnter", function(self)
-    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-    GameTooltip:AddLine("Anchor")
-    GameTooltip:AddLine(T("MM_TT_LEFT", "Clic gauche : ouvrir / fermer"), 0.9, 0.9, 0.95)
-    GameTooltip:AddLine(T("MM_TT_RIGHT", "Clic droit : options"), 0.9, 0.9, 0.95)
-    GameTooltip:Show()
-  end)
-  btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
-  UpdatePosition()
+  -- Construit par le socle v23 (UI.MinimapButton, audit poids 2026-11-13,
+  -- lot 5) : position, glisser (OnUpdate pose seulement pendant le
+  -- deplacement) et collecteurs MiniHub / EllesmereUI geres au meme endroit.
+  local UIm = _G.TibiMidnight
+  if not (UIm and UIm.MinimapButton) then return end
+  local btn = UIm.MinimapButton({
+    name = "TibiAnchorMinimapBtn", style = "compact", default = 200,
+    icon = AN.LOGO,
+    getAngle = function() return TibiAnchorDB and tonumber(TibiAnchorDB.minimapAngle) end,
+    setAngle = function(a) if TibiAnchorDB then TibiAnchorDB.minimapAngle = a end end,
+    onClick = function(button)
+      if button == "RightButton" then TibiAnchor_OpenOptions() else TibiAnchor_Toggle() end
+    end,
+    tooltip = function(tt)
+      tt:AddLine("Anchor")
+      tt:AddLine(T("MM_TT_LEFT", "Clic gauche : ouvrir / fermer"), 0.9, 0.9, 0.95)
+      tt:AddLine(T("MM_TT_RIGHT", "Clic droit : options"), 0.9, 0.9, 0.95)
+    end,
+  })
 end
 
 if HasCore() and IsEnabledByCore() then
