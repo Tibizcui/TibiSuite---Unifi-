@@ -121,15 +121,20 @@ driver:SetScript("OnUpdate", function(self, dt)
         OP.Push(frame)
       end
       st.wasVisible = visible
-      -- Infobulle visible (st.tooltip, voir Attach dans Core.lua) : le client
-      -- peut remettre son alpha a 100 % sans SetAlpha Lua. Si l'alpha reel
-      -- depasse la valeur attendue, on la repose. On ne corrige que vers le
-      -- bas : le fondu natif de Blizzard (alpha qui descend) n'est pas contrarie.
-      if st.tooltip and visible then
+      -- Infobulle visible (st.tooltip, mode "children", voir Attach dans
+      -- Core.lua) : le jeu ajoute des lignes et des elements pendant
+      -- l'affichage (AddLine apres Show). Si leur nombre change, on les
+      -- recense et on leur applique le facteur. Comparer deux compteurs coute
+      -- presque rien, a 20 Hz et seulement tant que l'infobulle est visible.
+      if st.tooltip and visible and st.mode == "children" then
         watch = true
-        if st.mode ~= "children" and (st.cur or 1) < 1 and checkMouse then
-          local ok, a = pcall(frame.GetAlpha, frame)
-          if ok and type(a) == "number" and a > (st.base or 1) * st.cur + 0.01 then OP.Push(frame) end
+        if checkMouse then
+          local ok, nr, nc = pcall(function() return frame:GetNumRegions(), frame:GetNumChildren() end)
+          if ok and (nr ~= st.nRegions or nc ~= st.nChildren) then
+            st.nRegions, st.nChildren = nr, nc
+            OP.CollectObjs(frame)
+            OP.Push(frame)
+          end
         end
       end
       if not visible then

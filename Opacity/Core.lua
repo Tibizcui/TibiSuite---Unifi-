@@ -446,14 +446,23 @@ local function Attach(name, frame)
     -- INFOBULLES (retour en jeu 2026-11-12, GameTooltip sans effet) : a chaque
     -- affichage, le client remet l'alpha d'une infobulle a 100 % en interne,
     -- sans passer par un SetAlpha Lua : le crochet ci-dessus ne le voit pas et
-    -- notre facteur etait perdu. On reapplique donc au OnShow, et Hover.lua
-    -- surveille l'alpha reel tant que l'infobulle est visible (st.tooltip).
+    -- notre facteur etait perdu.
+    -- Retour en jeu 2026-11-13 : quand la souris quitte l'objet survole, le
+    -- fondu natif de disparition REPART DE 100 % et reecrit l'alpha a chaque
+    -- image : l'infobulle remontait a 100 % avant de s'effacer. On ne peut pas
+    -- gagner contre lui sur l'alpha de la frame. Les infobulles passent donc
+    -- d'emblee en mode "children" : l'alpha de la frame reste au client (son
+    -- fondu s'applique), notre facteur va sur le fond et les lignes, et les
+    -- deux se multiplient. Le OnShow et Hover.lua recensent les lignes creees
+    -- a la volee (TextLeftN, barre de vie, argent...).
     local okType, kind = pcall(frame.GetObjectType, frame)
     if okType and kind == "GameTooltip" and frame.HookScript then
       st.tooltip = true
+      SwitchToChildren(frame, st)
       pcall(frame.HookScript, frame, "OnShow", function(self)
         local s = state[self]
         if s and s.active then
+          OP.CollectObjs(self)
           OP.Push(self)
           if OP.WakeDriver then OP.WakeDriver() end
         end

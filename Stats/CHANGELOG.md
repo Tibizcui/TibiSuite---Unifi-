@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.6
+- Version alignée sur la suite TibiSuite, sans changement pour ce module.
+
 ## 7.5.5
 - Performance : lecture du journal de combat allégée, et le bouton de minicarte (addon seul) ne travaille plus que pendant son déplacement.
 - Nettoyage du code inutilisé.

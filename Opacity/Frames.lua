@@ -90,6 +90,10 @@ local BLIZZARD = {
   { names = { "MicroMenuContainer" },         cat = "hud", label = T("F_MICRO",       "Micro-menu") },
   { names = { "BagsBar" },                    cat = "hud", label = T("F_BAGSBAR",     "Barre des sacs") },
   { names = { "MinimapCluster" },             cat = "hud", label = T("F_MINIMAP",     "Minicarte") },
+  -- Infobulle principale (survol d'un objet, d'un PNJ, d'un sort...). Avant,
+  -- seule la pipette permettait de l'ajouter, et il fallait la faire
+  -- apparaitre sous la souris pour la viser.
+  { names = { "GameTooltip" },                cat = "hud", label = T("F_TOOLTIP",     "Infobulle (bulle d'aide)") },
   { names = { "ObjectiveTrackerFrame" },      cat = "hud", label = T("F_OBJECTIVES",  "Suivi des objectifs") },
   { names = { "BuffFrame" },                  cat = "hud", label = T("F_BUFFS",       "Améliorations") },
   { names = { "DebuffFrame" },                cat = "hud", label = T("F_DEBUFFS",     "Affaiblissements") },

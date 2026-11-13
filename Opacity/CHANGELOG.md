@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.5.6
+- Infobulle : elle reste atténuée pendant son fondu de disparition. Avant, elle remontait à 100 % quand la souris quittait l'objet survolé, puis s'effaçait.
+- Nouvelle ligne « Infobulle (bulle d'aide) » dans « Ajouter des fenêtres », section Blizzard : interface. Plus besoin de la viser à la pipette.
+
 ## 7.5.5
 - Minicarte : à moins de 5 % d'opacité, la minicarte est entièrement cachée, flèche du joueur et repères de quêtes compris (le jeu les dessine sans tenir compte de l'opacité). Elle réapparaît au survol ou dès que l'opacité remonte. Nouvelle case dans les options, section Minicarte, cochée par défaut.
 - Minicarte : l'opacité s'applique aussi à la carte elle-même, que la ligne ajoutée soit « Minicarte » ou « Minimap » (pipette).

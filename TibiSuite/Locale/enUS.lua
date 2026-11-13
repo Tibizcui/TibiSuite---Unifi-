@@ -498,6 +498,7 @@ L.WN_59_2  = "Dashboard: LvlHistory raids and instance time now show in the Leve
 L.WN_65_0  = "New Anchor module: place the game windows wherever you want. Snapping and alignment guides, grid, undo, one layout per screen resolution and per character, loot and loot roll placement. Steps aside for ElvUI, EllesmereUI or BlizzMove when they already handle a window."
 L.WN_ANCHOR_HEAD = "New module: Anchor"
 L.WN_69_0  = "Opacity: a minimap set below 5% is now fully hidden, player arrow and quest markers included, and comes back on hover. The tooltip opacity is finally kept on every display."
+L.WN_70_0  = "Opacity: the tooltip stays dimmed during its fade-out instead of jumping back to 100% when the mouse leaves the object. New \"Tooltip\" line in \"Add windows\", no need for the picker anymore."
 L.WN_69_1  = "Lighter suite: SkillTracker no longer listens to the whole raid's spells, LegTracker and Stats do less work every frame, unused code removed, and downloads lose about 9 MB of images the game never loads."
 L.WN_68_0  = "Options: the \"Floating button\" section now sits at the very bottom of every addon's options, in the same place everywhere. Hiding the Options button also works without TibiSuite, and Stats and SkillTracker gain this option."
 L.WN_67_0  = "Fix: the minimap buttons of RenTracker, LegTracker, DailyTracker, LvlHistory and DgnTracker stay in the EllesmereUI grid or the MiniHub container instead of jumping back around the minimap."
