@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.9
+- Fix bug display : corrections d'affichage.
+
 ## 7.5.8
 - Réputations de bataillon gardées une seule fois pour tout le compte au lieu d'une copie par personnage (environ 4 fois moins de lignes de réputation dans la sauvegarde). Tous les personnages affichent désormais la valeur à jour de ces réputations ; l'export du Dashboard garde le même format.
 

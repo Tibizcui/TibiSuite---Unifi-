@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.5.9
+- Fix bug display : corrections d'affichage.
+
 ## 7.5.8
 - Version alignée sur la suite TibiSuite, sans changement pour ce module.
 

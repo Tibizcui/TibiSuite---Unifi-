@@ -451,6 +451,12 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- 7.5.9 : fix bug display (memes cartes que la 7.5.8).
+  ["7.5.9"] = {
+    { key = "Suite", title = "TibiSuite", text = L.WN_72_0, new = true },
+    { key = "Stats", title = "Stats", text = L.WN_72_1, new = false },
+    { key = "Dgn", title = "Donjons", text = L.WN_71_0, new = false },
+  },
   -- 7.5.8 : « Bon retour » (Conseiller), reputations de bataillon de Stats.
   ["7.5.8"] = {
     { key = "Suite", title = "TibiSuite", text = L.WN_72_0, new = true },

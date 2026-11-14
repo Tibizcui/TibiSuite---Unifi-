@@ -19,7 +19,7 @@ PostBox, RenTracker, RepBar, SkillTracker, Standby, Stats, WeeklyCompass, XPBar.
 - Core : `TibiSuite/Core/TibiSuiteCore.lua`
 - Options (cases à cocher) : `TibiSuite/Core/TibiSuiteOptions.lua`
 - Socle UI partagé : `TibiSuite/Core/TibiSuiteUI.lua`
-- TOC : voir `TibiSuite/TibiSuite.toc` (source de vérité). Au 13 novembre 2026 : `## Version: 7.5.8`.
+- TOC : voir `TibiSuite/TibiSuite.toc` (source de vérité). Au 14 novembre 2026 : `## Version: 7.5.9`.
   Modules multi-versions (core, XPBar, RepBar, Stats, MiniHub, Opacity, Standby,
   SkillTracker, LvlHistory, RenTracker, Anchor) : **un `.toc` principal** dont la
   ligne `## Interface` liste Midnight, Forever et Classic (Vanilla, TBC, Cata,

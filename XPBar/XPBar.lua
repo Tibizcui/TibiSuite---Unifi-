@@ -1,4 +1,4 @@
--- XPBar.lua v7.5.8
+-- XPBar.lua v7.5.9
 -- Barre XP avancée - Tibiscui
 -- Maj+Drag pour déplacer | Maj+Clic droit pour les options
 

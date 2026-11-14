@@ -4,7 +4,7 @@
 ## Notes: Coeur de la suite Tibiscui. Charge le socle une seule fois, un seul bouton minimap, barre d'onglets unifiee, et activation des modules coches.
 ## Notes-frFR: Coeur de la suite Tibiscui. Socle charge une seule fois, un seul bouton minimap, barre d'onglets unifiee, activation des modules coches (case a cocher = active ou desactive l'addon).
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.5.8
+## Version: 7.5.9
 ## X-Curse-Project-ID: 1550823
 # MULTI-VERSIONS (comme XPBar, RepBar, Stats) : ce fichier sert Midnight et
 # WoW Forever (16001). Classic (Vanilla, TBC, Cata, Mists) lit aussi ce
