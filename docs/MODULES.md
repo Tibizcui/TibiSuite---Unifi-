@@ -140,8 +140,12 @@ démoniste sans Grimoire du sacrifice, chevalier de la mort impie), munitions
 (seulement si `GetInventorySlotInfo("AmmoSlot")` répond), composants Classic
 (seulement si l'infobulle du sort cite l'objet). Moments : entrée en instance
 (une fois par instance et difficulté), `READY_CHECK`, `MERCHANT_SHOW` avec
-réparation, connexion (décochée). Rien ne s'affiche si tout va bien, sauf au
-ready check.
+réparation, connexion (décochée), et **en quête** (`onSolo`, solo hors
+instance) : alerte quand usure, sacs, familier, munitions ou composants
+franchissent un seuil, une fois par problème (nouvelle alerte seulement s'il
+disparaît puis revient, ou s'aggrave), après 3 s de persistance, jamais en
+combat ni en fantôme ; les problèmes déjà là au premier contrôle solo ne sont
+pas annoncés. Rien ne s'affiche si tout va bien, sauf au ready check.
 
 Règles : **aucune lecture en combat** (`RU.Evaluate` renvoie nil ; un moment
 reçu en combat attend `PLAYER_REGEN_ENABLED`) ; toute valeur secrète ou

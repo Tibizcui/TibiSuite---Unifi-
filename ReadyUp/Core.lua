@@ -210,6 +210,7 @@ local DEFAULTS = {
   onReadyCheck = true,   -- appel « Pret ? » du groupe
   onMerchant   = true,   -- chez un marchand qui repare, si l'usure est basse
   onLogin      = false,
+  onSolo       = true,   -- en quete (solo, hors instance) : quand un seuil est franchi
   okOnReady    = true,   -- afficher « Pret » au ready check si tout va bien
   -- controles
   chkDurability = true,

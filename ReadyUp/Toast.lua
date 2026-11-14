@@ -5,6 +5,8 @@
     - entree dans un donjon, un raid ou un gouffre (une fois par instance) ;
     - appel « Pret ? » du groupe (READY_CHECK) ;
     - marchand qui repare, si l'usure est sous le seuil ;
+    - en quete (solo) : quand usure, sacs, familier, munitions ou
+      composants franchissent un seuil (une fois par probleme) ;
     - connexion (decoche par defaut).
   Rien ne s'affiche si tout va bien, sauf au ready check (option).
   Un evenement recu en combat attend la fin du combat.
@@ -173,17 +175,61 @@ local function OnEnteringWorld()
   After(4, function() Run("instance") end)
 end
 
--- Rafraichissement silencieux (fenetre ouverte, badge), une fois par seconde
--- au plus et jamais en combat.
+-- ============================================================================
+-- EN QUETE (solo, hors instance) : alerte quand un seuil est franchi.
+--   - une seule alerte par probleme : elle ne revient que si le probleme
+--     disparait puis reapparait, ou s'aggrave (alerte -> critique) ;
+--   - un probleme doit durer 3 s avant d'etre annonce (familier rappele
+--     apres un vol, sac qui se vide aussitot...) ;
+--   - les problemes deja la a la connexion ne sont pas annonces (l'option
+--     « A la connexion » s'en charge si elle est cochee).
+-- ============================================================================
+local SOLO_IDS = { dur = true, bags = true, pet = true, ammo = true, reagents = true }
+local soloAlerted = {}   -- [id] = etat deja annonce
+local soloSeen = {}      -- [id] = GetTime() de premiere apparition
+local soloBaseline = true
+local Touch
+
+local function SoloCheck(ev)
+  if not (ev and TibiReadyUpDB) then return end
+  if ev.context ~= "solo" then soloSeen = {}; return end
+  local dead = UnitIsDeadOrGhost and UnitIsDeadOrGhost("player")
+  local now = GetTime()
+  local fresh, waiting = {}, false
+  local current = {}
+  for _, r in ipairs(ev.results) do
+    if SOLO_IDS[r.id] and (r.state == "warn" or r.state == "fail") then current[r.id] = r.state end
+  end
+  for id in pairs(SOLO_IDS) do
+    local st = current[id]
+    if not st then
+      soloAlerted[id], soloSeen[id] = nil, nil
+    elseif soloBaseline then
+      soloAlerted[id] = st
+    elseif soloAlerted[id] ~= st and not (soloAlerted[id] == "fail" and st == "warn") then
+      soloSeen[id] = soloSeen[id] or now
+      if now - soloSeen[id] >= 3 then fresh[id] = st else waiting = true end
+    end
+  end
+  soloBaseline = false
+  if waiting then After(3.5, function() Touch() end) end
+  if dead or not TibiReadyUpDB.onSolo or not next(fresh) then return end
+  for id, st in pairs(fresh) do soloAlerted[id] = st end
+  RU.ShowToast(ev, false, fresh)
+end
+RU.SoloCheck = SoloCheck
+
+-- Rafraichissement silencieux (fenetre ouverte, badge, alerte en quete),
+-- une fois par seconde au plus et jamais en combat.
 local dirty = false
-local function Touch()
+Touch = function()
   if dirty then return end
   dirty = true
   After(1, function()
     dirty = false
     if not RU.IsRunning() then return end
     if InCombatLockdown and InCombatLockdown() then return end
-    RU.Evaluate("refresh")
+    SoloCheck(RU.Evaluate("refresh"))
   end)
 end
 
@@ -227,6 +273,7 @@ ev:SetScript("OnEvent", function(self, e, arg1)
   end
   if e == "PLAYER_REGEN_ENABLED" then
     if pending then local r = pending; pending = nil; After(1, function() Run(r) end) end
+    Touch()   -- fin de combat : familier mort, usure, munitions (alerte en quete)
     return
   end
   if e == "UNIT_AURA" and arg1 ~= "player" then return end

@@ -215,6 +215,8 @@ local function BuildOptions()
   chk(T("OPT_ON_READY", "À l'appel « Prêt ? » du groupe"), "onReadyCheck")
   chk(T("OPT_OK_READY", "Confirmer « Prêt » quand tout va bien"), "okOnReady")
   chk(T("OPT_ON_MERCHANT", "Chez un marchand qui répare, si l'usure est basse"), "onMerchant")
+  chk(T("OPT_ON_SOLO", "En quête, quand un seuil est franchi"), "onSolo",
+    T("TT_ON_SOLO", "En solo, hors instance : sacs pleins, usure, familier, munitions ou composants. Une seule fois par problème, jamais en combat."))
   chk(T("OPT_ON_LOGIN", "À la connexion"), "onLogin")
 
   p:Section(T("OPT_SEC_CHECKS", "Contrôles"))
