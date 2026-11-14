@@ -1,0 +1,13 @@
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
+# Fichiers gardes dans le depot mais exclus de l'archive CurseForge.
+# WoW ne charge pas un .png pour un chemin de texture sans extension.
+# Le logo n'existe pour l'instant qu'en .tga (pas encore de .blp DXT5) :
+# Logo.tga reste donc DANS l'archive. Quand Logo.blp existera, ajouter
+# medias/Logo.tga a cette liste, comme pour les autres modules.
+ignore:
+  - medias/Logo.png
+  - medias/TibiSuiteIcon.png
+  - medias/TibiSuiteIcon.tga

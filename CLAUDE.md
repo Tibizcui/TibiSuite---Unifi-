@@ -14,14 +14,14 @@ suite modulaire, sans perdre la progression des joueurs.
 Chaque dossier de premier niveau est un **addon WoW autonome** (le dossier donne
 son nom au fichier SavedVariables). `TibiSuite/` est le **core**. Modules :
 Anchor, DailyTracker, DgnTracker, LairLens, LegTracker, LvlHistory, MiniHub, Opacity,
-PostBox, RenTracker, RepBar, SkillTracker, Standby, Stats, WeeklyCompass, XPBar.
+PostBox, ReadyUp, RenTracker, RepBar, SkillTracker, Standby, Stats, WeeklyCompass, XPBar.
 
 - Core : `TibiSuite/Core/TibiSuiteCore.lua`
 - Options (cases à cocher) : `TibiSuite/Core/TibiSuiteOptions.lua`
 - Socle UI partagé : `TibiSuite/Core/TibiSuiteUI.lua`
 - TOC : voir `TibiSuite/TibiSuite.toc` (source de vérité). Au 14 novembre 2026 : `## Version: 7.5.9`.
   Modules multi-versions (core, XPBar, RepBar, Stats, MiniHub, Opacity, Standby,
-  SkillTracker, LvlHistory, RenTracker, Anchor) : **un `.toc` principal** dont la
+  SkillTracker, LvlHistory, RenTracker, Anchor, ReadyUp) : **un `.toc` principal** dont la
   ligne `## Interface` liste Midnight, Forever et Classic (Vanilla, TBC, Cata,
   Mists), plus un `<Nom>_Wrath.toc` (client 3.4, antérieur aux listes à
   virgules). Toute modification de la liste des fichiers : dans les 2 (lot 6,
@@ -55,7 +55,8 @@ Daily=DailyTrackerDB, Dgn=DgnTrackerDB, Leg=LegTrackerDB, Rep=RenTrackerDB,
 Lvl=LvlHistoryDB, Weekly=WeeklyCompassDB, MiniHub=MiniHubDB, XPBar=XPBarDB,
 Lair=LairLensDB (+LairLensCharDB), Skill=SkillTrackerDB, Stats=StatsDB,
 RepBar=RepBarDB, PostBox=PostBoxDB, Opacity=OpacityDB, Standby=StandbyDB,
-Anchor=TibiAnchorDB (préfixe Tibi : nom générique, risque de collision).
+Anchor=TibiAnchorDB, ReadyUp=TibiReadyUpDB (préfixe Tibi : nom générique,
+risque de collision).
 Core=TibiSuiteDB (+TibiSuiteCharDB).
 
 ## Architecture du core (`TibiSuiteCore.lua`)
@@ -134,9 +135,10 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   notes, champs ; remonte tout objet ancré TOPLEFT sur `content` sous une note
   raccourcie, y compris les widgets maison de MiniHub/Standby), `panel:IsDocked()`.
   Registre `UI.panels` (+ par `cfg.name`) et `UI.lastShownPanel`. Toute
-  évolution du socle (actuellement v23) : bump `NS_VERSION` + recopie dans les 17 copies en gardant
-  leur bloc d'en-tête « COPIE EMBARQUEE (module X) » (Anchor, Opacity et
-  Standby n'en ont pas : leur en-tête est celui du core).
+  évolution du socle (actuellement v24, 2026-11-14 : ReadyUp ajouté à la
+  liste des dossiers) : bump `NS_VERSION` + recopie dans les 18 copies en gardant
+  leur bloc d'en-tête « COPIE EMBARQUEE (module X) » (Anchor, Opacity,
+  Standby et ReadyUp n'en ont pas : leur en-tête est celui du core).
 - Bouton de minicarte (v23) : `UI.MinimapButton{name, icon, style="compact"|"tracker",
   getAngle, setAngle, default, onClick(button), tooltip(tt)}` construit le
   bouton propre des modules en autonome (nom global et clé d'angle du module
@@ -156,7 +158,7 @@ version égale ou supérieure est déjà chargée). Helpers principaux :
   celle de nos `.toc` (`C_AddOns.GetAddOnInterfaceVersion`, sinon métadonnée
   `Interface`, sinon constante `TOC_INTERFACE` du socle), une ligne « date d'avant
   la mise à jour X du jeu ». L'alerte exacte passe devant. **Monter
-  `TOC_INTERFACE` à chaque passage de compatibilité** (17 copies du socle).
+  `TOC_INTERFACE` à chaque passage de compatibilité** (18 copies du socle).
 - En-tête : `UI.AddHeaderControls(frame,cfg)` pose les boutons flottants Options
   (roue) et Recherche (loupe) au coin haut-droit, applique l'état masqué dès la
   création via `UI.IsCtrlHidden` (réappliqué à chaque `OnShow`), et câble
@@ -196,7 +198,7 @@ Frames concernées (Options+Recherche sauf indication) : Daily
 `DTMainFrame`, Dgn `DGNMainFrame`, Lvl `LvlHistoryMainFrame`, Weekly
 `WeeklyCompassFrame`, Rep `RNTMainFrame`, Lair `LairLensAuditFrame`, Leg
 `LegTrackerMainFrame`, MiniHub `MiniHubContainer`, PostBox `PostBoxMainFrame`,
-Anchor `TibiAnchorMainFrame` ; Options seul : XPBar `XPBarContainer`, RepBar
+Anchor `TibiAnchorMainFrame`, ReadyUp `TibiReadyUpMainFrame` ; Options seul : XPBar `XPBarContainer`, RepBar
 `RepBarContainer`, Opacity `OpacityMainFrame`, Stats `StatsMainFrame`,
 SkillTracker `SkillTrackerMainFrame`. Standby n'a pas de bouton flottant.
 Le raccourci Maj+clic droit ouvre les options ; il est câblé UNIQUEMENT par le
@@ -285,5 +287,5 @@ touches `LZW.lua` ou le format d'export, reporte-le dans
 Pour garder ce fichier court, le détail est rangé dans `docs/`. Ne le charge que si la tâche le concerne :
 
 - `docs/CENTRE-ET-BARRE.md` : styles de la barre (Dock, Panneau vivant) et Centre TibiSuite.
-- `docs/MODULES.md` : modules Opacity, Standby, PostBox et Anchor.
+- `docs/MODULES.md` : modules Opacity, Standby, PostBox, Anchor et ReadyUp.
 - `docs/JOURNAL-DEV.md` : journal de développement (multi-versions Classic et Forever, LvlHistory Raids et temps en instance).

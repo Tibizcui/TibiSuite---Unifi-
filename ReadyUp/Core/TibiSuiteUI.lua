@@ -1,0 +1,1757 @@
+--[[============================================================================
+  TibiSuiteUI  -  Socle d'interface commun de la suite TibiSuite (ex TibiMidnightUI)
+  ---------------------------------------------------------------------------
+  IMPORTANT : ce fichier est desormais charge UNE SEULE FOIS, par le core
+  TibiSuite (fini le copier-coller dans chaque module). Le nom du global reste
+  volontairement _G.TibiMidnight pour ne casser aucun module existant qui lit
+  GetUI() = _G.TibiMidnight ; un alias _G.TibiSuiteUI est ajoute en fin de
+  fichier pour le code a venir. Le numero de version (NS_VERSION) protege
+  toujours le chargement : si une copie plus ancienne trainait encore dans un
+  module non converti, la meilleure version gagne.
+
+  Identite visuelle unique : fond plat sombre, bordure fine quasi noire,
+  separateurs discrets, EN-TETE avec logo, et un LISERE fin a la couleur
+  d'identite du module. Fournit aussi les briques reutilisables : boutons
+  d'en-tete (roue + loupe), champ de recherche, fabriques de widgets, un
+  constructeur de panneau d'Options flottant et un popup de recherche.
+
+  Protege par un numero de version : si une version identique ou plus recente
+  est deja chargee par un autre addon, on garde la meilleure.
+
+  Auteur : Tibiscui - Kirin Tor
+============================================================================]]
+
+local NS_VERSION = 24
+
+if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
+  return
+end
+
+local UI = _G.TibiMidnight or {}
+_G.TibiMidnight = UI
+UI._version = NS_VERSION
+UI.panels = UI.panels or {}  -- registre des panneaux d'options (v13, rempli par CreateOptionsPanel)
+
+-- ============================================================================
+-- PALETTE PLATE  (facon WeeklyCompass) - valeurs 0-1, r,g,b,a
+-- ============================================================================
+UI.C = {
+  BG      = { 0.060, 0.070, 0.090, 0.98 },  -- fond principal  #0F1217
+  PANEL   = { 0.055, 0.063, 0.082, 0.99 },  -- fond des panneaux
+  HDR     = { 0.078, 0.090, 0.114, 1.00 },  -- bandeau d'en-tete  #141922
+  SEP     = { 1.000, 1.000, 1.000, 0.10 },  -- separateurs discrets (blanc 10%)
+  BORDER  = { 0.000, 0.000, 0.000, 1.00 },  -- bordure fine quasi noire
+  GOLD    = { 1.000, 0.843, 0.000, 1.00 },  -- accent doux pour les valeurs
+  LAV     = { 0.580, 0.502, 1.000, 1.00 },  -- lavande (liens divers)
+  TXT     = { 0.902, 0.910, 0.941, 1.00 },  -- texte principal
+  DIM     = { 0.620, 0.650, 0.710, 1.00 },  -- texte attenue
+  MUTED   = { 0.420, 0.450, 0.510, 1.00 },  -- sous-texte
+  OK      = { 0.400, 0.851, 0.541, 1.00 },  -- vert "oui"
+  NO      = { 0.898, 0.420, 0.420, 1.00 },  -- rouge "non"
+  WARN    = { 1.000, 0.549, 0.000, 1.00 },  -- orange d'alerte (ex: concentration pleine)
+}
+
+-- Lisibilite (v15) : modifie UI.C SUR PLACE (les fenetres creees ensuite en
+-- profitent, celles deja dessinees apres un /reload). contrast = textes plus
+-- clairs, fonds opaques, separateurs plus visibles ; cvd = palette sure pour
+-- les daltonismes rouge-vert (bleu au lieu de vert, vermillon, jaune).
+-- Appele par le core TibiSuite ; sans lui, rien ne change.
+local C_BASE
+function UI.ApplyReadability(opts)
+  opts = opts or {}
+  if not C_BASE then
+    C_BASE = {}
+    for k, v in pairs(UI.C) do C_BASE[k] = { v[1], v[2], v[3], v[4] } end
+  end
+  local function set(k, r, g, b, a) local t = UI.C[k]; if t then t[1], t[2], t[3], t[4] = r, g, b, a end end
+  for k, v in pairs(C_BASE) do set(k, v[1], v[2], v[3], v[4]) end
+  if opts.contrast then
+    set("BG", 0.030, 0.035, 0.045, 1); set("PANEL", 0.028, 0.032, 0.042, 1)
+    set("SEP", 1, 1, 1, 0.24)
+    set("TXT", 1, 1, 1, 1); set("DIM", 0.820, 0.840, 0.880, 1); set("MUTED", 0.690, 0.715, 0.765, 1)
+  end
+  if opts.cvd then
+    set("OK", 0.337, 0.706, 0.914, 1)     -- bleu ciel
+    set("NO", 0.835, 0.369, 0.000, 1)     -- vermillon
+    set("WARN", 0.941, 0.894, 0.259, 1)   -- jaune
+  end
+  UI._readability = { contrast = opts.contrast and true or false, cvd = opts.cvd and true or false }
+end
+
+function UI.Hex(r, g, b)
+  return string.format("|cFF%02X%02X%02X",
+    math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5))
+end
+
+-- ============================================================================
+-- NORMALISATION DE TEXTE (recherche insensible casse + accents)
+-- ============================================================================
+local ACCENTS = {
+  ["à"]="a",["â"]="a",["ä"]="a",["á"]="a",["ã"]="a",["À"]="a",["Â"]="a",["Ä"]="a",
+  ["é"]="e",["è"]="e",["ê"]="e",["ë"]="e",["É"]="e",["È"]="e",["Ê"]="e",["Ë"]="e",
+  ["î"]="i",["ï"]="i",["í"]="i",["ì"]="i",["Î"]="i",["Ï"]="i",
+  ["ô"]="o",["ö"]="o",["ó"]="o",["ò"]="o",["õ"]="o",["Ô"]="o",["Ö"]="o",
+  ["û"]="u",["ü"]="u",["ú"]="u",["ù"]="u",["Û"]="u",["Ü"]="u",
+  ["ç"]="c",["Ç"]="c",["ñ"]="n",["Ñ"]="n",
+}
+function UI.Normalize(s)
+  if not s then return "" end
+  s = tostring(s):lower()
+  s = s:gsub("[\192-\255][\128-\191]*", function(ch) return ACCENTS[ch] or ch end)
+  return s
+end
+
+function UI.Match(haystack, needle)
+  if needle == "" then return true end
+  local h = UI.Normalize(haystack)
+  if h:find(needle, 1, true) then return true end
+  -- Tolérance singulier/pluriel : « fragments » doit trouver « fragment ».
+  -- On retire un « s » ou « x » final de la requête et on réessaie.
+  if #needle > 3 then
+    local last = needle:sub(-1)
+    if last == "s" or last == "x" then
+      if h:find(needle:sub(1, -2), 1, true) then return true end
+    end
+  end
+  return false
+end
+
+-- ============================================================================
+-- ECHAP EN SECURITE : le joueur est-il en train de lancer un sort, de
+-- canaliser, ou en mode de ciblage (reticule) ?
+-- ----------------------------------------------------------------
+-- PIEGE REEL, CONFIRME EN JEU (/etrace -> ADDON_ACTION_FORBIDDEN "TibiSuite",
+-- "SpellStopCasting()" / "SpellStopTargeting()") : si une fenetre de la
+-- suite intercepte Echap (SetPropagateKeyboardInput(false)) PENDANT que le
+-- joueur lance un sort ou est en mode de ciblage, Echap doit normalement
+-- annuler ce sort/ciblage via le systeme natif de Blizzard. En consommant la
+-- touche nous-memes a ce moment-la, on contamine cette annulation native et
+-- Blizzard bloque l'action ("reservee a l'IU de Blizzard"). Solution : ne
+-- JAMAIS consommer Echap dans ce cas precis, on laisse simplement propager
+-- pour que Blizzard annule normalement, sans qu'on y touche.
+-- A appeler AVANT tout SetPropagateKeyboardInput(false) sur Echap, partout
+-- dans la suite (socle et modules).
+-- ============================================================================
+function UI.IsCastingOrTargeting()
+  if SpellIsTargeting and SpellIsTargeting() then return true end
+  if UnitCastingInfo and UnitCastingInfo("player") then return true end
+  if UnitChannelInfo and UnitChannelInfo("player") then return true end
+  return false
+end
+
+-- ============================================================================
+-- CADRE PLAT (bordure 1 px) + LISERE d'accent + LOGO d'en-tete
+-- ============================================================================
+-- Backdrop plat : fond uni + bordure fine de 1 pixel (comme WeeklyCompass).
+function UI.FlatBackdrop()
+  return {
+    bgFile   = "Interface\\Buttons\\WHITE8X8",
+    edgeFile = "Interface\\Buttons\\WHITE8X8",
+    edgeSize = 1,
+  }
+end
+
+-- Alias de compatibilité : d'anciens appels utilisent UI.Backdrop(...)
+function UI.Backdrop() return UI.FlatBackdrop() end
+
+-- Ajoute (ou met a jour) le fin liseré colore en haut de la frame.
+function UI.SetLisere(f, accent)
+  if not f or not f.CreateTexture then return end
+  if not f._tibiLisere then
+    local t = f:CreateTexture(nil, "OVERLAY")
+    t:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -1)
+    t:SetPoint("TOPRIGHT", f, "TOPRIGHT", -1, -1)
+    t:SetHeight(2)
+    f._tibiLisere = t
+  end
+  if accent then
+    f._tibiLisere:SetColorTexture(accent[1], accent[2], accent[3], 1)
+    f._tibiLisere:Show()
+  else
+    f._tibiLisere:Hide()
+  end
+end
+
+-- Applique le fond plat + bordure fine + liseré d'accent.
+--   accent  : {r,g,b} couleur d'identite (liseré). nil = pas de liseré.
+--   bgTable : fond a utiliser (defaut : UI.C.BG)
+function UI.SkinFrame(f, accent, bgTable)
+  if f.SetBackdrop then
+    f:SetBackdrop(UI.FlatBackdrop())
+    local bg = bgTable or UI.C.BG
+    f:SetBackdropColor(bg[1], bg[2], bg[3], bg[4] or 0.98)
+    f:SetBackdropBorderColor(UI.C.BORDER[1], UI.C.BORDER[2], UI.C.BORDER[3], 1)
+  end
+  UI.SetLisere(f, accent)
+end
+
+-- ============================================================================
+-- AUTO-HAUTEUR D'UNE FENETRE (centralise le calcul jusque-la recopie inline)
+-- La fenetre grandit pour epouser son contenu, plancher a `min`, plafonnee a
+-- (hauteur ecran - `margin`). Au-dela, le module gere son propre defilement.
+--   UI.FitHeight(frame, contentHeight, { chrome=, min=, margin=, apply= })
+--     contentHeight : hauteur utile du contenu mesure
+--     chrome        : hauteur du cadre autour (en-tete, onglets, pied...) - defaut 0
+--     min           : hauteur plancher - defaut 0
+--     margin        : marge sous le bord bas de l'ecran - defaut 80
+--     apply         : mettre false pour calculer sans appeler SetHeight - defaut true
+--   Renvoie la hauteur cible calculee.
+-- ============================================================================
+function UI.FitHeight(frame, contentHeight, opts)
+  opts = opts or {}
+  local chrome  = opts.chrome or 0
+  local minH    = opts.min or 0
+  local margin  = opts.margin or 80
+  local screenH = (UIParent and UIParent.GetHeight and UIParent:GetHeight()) or 768
+  local target  = (contentHeight or 0) + chrome
+  if target < minH then target = minH end
+  local cap = screenH - margin
+  if cap < minH then cap = minH end            -- ecran minuscule : le plancher prime
+  if target > cap then target = cap end
+  if frame and frame.SetHeight and opts.apply ~= false then frame:SetHeight(target) end
+  return target
+end
+
+-- Ajoute un petit logo en haut a gauche (une seule fois).
+--   path : chemin de texture WoW SANS extension (WoW resout .tga/.blp)
+function UI.AddHeaderLogo(f, path, size)
+  if not f or not f.CreateTexture or f._tibiLogo or not path then return f and f._tibiLogo end
+  local t = f:CreateTexture(nil, "OVERLAY")
+  t:SetSize(size or 18, size or 18)
+  t:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -6)
+  t:SetTexture(path)
+  f._tibiLogo = t
+  return t
+end
+
+-- ============================================================================
+-- BOUTON GENERIQUE (texte) - style plat
+-- ============================================================================
+function UI.MakeButton(parent, w, h, text)
+  local b = CreateFrame("Button", nil, parent, "BackdropTemplate")
+  b:SetSize(w, h)
+  b:SetBackdrop(UI.FlatBackdrop())
+  b:SetBackdropColor(1, 1, 1, 0.05)
+  b:SetBackdropBorderColor(1, 1, 1, 0.12)
+  local fs = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  fs:SetAllPoints()
+  fs:SetText(text or "")
+  b._label = fs
+  b:SetScript("OnEnter", function(s) s:SetBackdropColor(1, 1, 1, 0.10); s:SetBackdropBorderColor(1, 1, 1, 0.25) end)
+  b:SetScript("OnLeave", function(s) s:SetBackdropColor(1, 1, 1, 0.05); s:SetBackdropBorderColor(1, 1, 1, 0.12) end)
+  return b
+end
+
+-- ============================================================================
+-- BARRE DE DEFILEMENT PLATE
+-- Habille la barre du modele Blizzard UIPanelScrollFrameTemplate (fleches
+-- grises carrees, texture de fond) sans toucher a son fonctionnement : la
+-- molette, le glisser et les clics restent geres par Blizzard. On masque
+-- seulement ses textures et on dessine par-dessus : rail fin, curseur a la
+-- couleur d'accent, chevrons traces avec deux traits (aucune texture externe).
+--   UI.SkinScrollBar(scrollFrame, accent)   -- accent {r,g,b} ou nil
+-- ============================================================================
+local function Chevron(btn, up)
+  local holder = {}
+  for i = 1, 2 do
+    local t = btn:CreateTexture(nil, "OVERLAY")
+    t:SetSize(6, 1.5)
+    t:SetColorTexture(1, 1, 1, 1)
+    local sign = (i == 1) and -1 or 1
+    t:SetPoint("CENTER", btn, "CENTER", sign * 2, 0)
+    -- « ^ » : trait gauche monte vers la droite (+45 deg), trait droit descend.
+    local rot = math.rad(45) * (i == 1 and 1 or -1) * (up and 1 or -1)
+    if t.SetRotation then t:SetRotation(rot) end
+    holder[i] = t
+  end
+  return holder
+end
+
+function UI.SkinScrollBar(scroll, accent)
+  if not scroll or scroll._tibiScrollSkinned then return end
+  local name = scroll.GetName and scroll:GetName()
+  local bar = scroll.ScrollBar or (name and _G[name .. "ScrollBar"])
+  if type(bar) ~= "table" or not bar.GetRegions then return end
+  scroll._tibiScrollSkinned = true
+  accent = accent or UI.C.GOLD
+
+  local thumb = (bar.GetThumbTexture and bar:GetThumbTexture()) or bar.ThumbTexture
+  -- Textures d'origine de la barre (fond, bords) : effacees.
+  for _, r in ipairs({ bar:GetRegions() }) do
+    if r ~= thumb and r.SetAlpha then r:SetAlpha(0) end
+  end
+
+  -- Rail fin
+  local rail = bar:CreateTexture(nil, "BACKGROUND")
+  rail:SetColorTexture(1, 1, 1, 0.06)
+  rail:SetWidth(4)
+  rail:SetPoint("TOP", bar, "TOP", 0, 0)
+  rail:SetPoint("BOTTOM", bar, "BOTTOM", 0, 0)
+
+  -- Curseur a la couleur d'accent
+  if thumb and thumb.SetColorTexture then
+    thumb:SetColorTexture(accent[1], accent[2], accent[3], 0.85)
+    thumb:SetWidth(4)
+    if thumb:GetHeight() < 16 then thumb:SetHeight(24) end
+  end
+
+  -- Fleches : on vide les textures du modele et on trace un chevron plat.
+  local function skinArrow(btn, up)
+    if type(btn) ~= "table" or not btn.GetRegions then return end
+    for _, r in ipairs({ btn:GetRegions() }) do if r.SetAlpha then r:SetAlpha(0) end end
+    local bg = btn:CreateTexture(nil, "BACKGROUND")
+    bg:SetPoint("TOPLEFT", 2, -2); bg:SetPoint("BOTTOMRIGHT", -2, 2)
+    bg:SetColorTexture(1, 1, 1, 0.05)
+    local lines = Chevron(btn, up)
+    local function paint(hover)
+      local on = (not btn.IsEnabled) or btn:IsEnabled()
+      local a = on and (hover and 1 or 0.75) or 0.20
+      for _, t in ipairs(lines) do
+        if hover and on then t:SetVertexColor(accent[1], accent[2], accent[3], a)
+        else t:SetVertexColor(0.90, 0.91, 0.94, a) end
+      end
+      bg:SetColorTexture(1, 1, 1, (hover and on) and 0.10 or 0.05)
+    end
+    paint(false)
+    btn:HookScript("OnEnter", function() paint(true) end)
+    btn:HookScript("OnLeave", function() paint(false) end)
+    btn:HookScript("OnEnable", function() paint(false) end)
+    btn:HookScript("OnDisable", function() paint(false) end)
+  end
+  local upBtn = bar.ScrollUpButton or (bar.GetName and bar:GetName() and _G[bar:GetName() .. "ScrollUpButton"])
+  local dnBtn = bar.ScrollDownButton or (bar.GetName and bar:GetName() and _G[bar:GetName() .. "ScrollDownButton"])
+  skinArrow(upBtn, true)
+  skinArrow(dnBtn, false)
+end
+
+-- ============================================================================
+-- BOUTON D'EN-TETE (roue, loupe, croix...) - plat, sans bordure
+-- ============================================================================
+function UI.HeaderIcon(parent, glyph, tooltip, onClick)
+  local b = CreateFrame("Button", nil, parent)
+  b:SetSize(22, 22)
+  local fs = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+  fs:SetPoint("CENTER", 0, 0)
+  fs:SetText(glyph)
+  b._label = fs
+  fs:SetAlpha(0.75)
+  b:SetScript("OnEnter", function(s)
+    s._label:SetAlpha(1)
+    if tooltip then
+      GameTooltip:SetOwner(s, "ANCHOR_BOTTOM")
+      GameTooltip:AddLine(tooltip, 0.9, 0.9, 0.95)
+      GameTooltip:Show()
+    end
+  end)
+  b:SetScript("OnLeave", function(s) s._label:SetAlpha(0.75); GameTooltip:Hide() end)
+  if onClick then b:SetScript("OnClick", onClick) end
+  return b
+end
+
+-- ============================================================================
+-- CONTROLES D'EN-TETE LISIBLES : case "Rechercher..." + bouton "Options"
+-- Remplace les glyphes Unicode (carres vides en jeu) par du texte lisible et
+-- une vraie texture de loupe Blizzard. Ancres au-dessus du coin haut-droit.
+--   cfg = { accent={r,g,b}, onOptions=fn, onSearch=fn }
+-- ============================================================================
+-- Champ de recherche INLINE : on tape dedans, les resultats apparaissent en
+-- direct dans un popup deroulant juste en dessous (pas de fenetre separee).
+--   cfg = { accent={r,g,b}, provider=fn, width=, placeholder= }
+--   provider(requeteNormalisee) -> { {text=, onClick=}, ... }
+--   Renvoie { box, drop, Show, Hide, Toggle, SetFocus }
+function UI.MakeSearchField(parent, cfg)
+  cfg = cfg or {}
+  local W = cfg.width or 150
+  local DW = cfg.dropWidth or math.max(W, 260)  -- largeur du popup de résultats
+  local accent = cfg.accent or UI.C.LAV
+
+  local box = CreateFrame("EditBox", nil, parent, "BackdropTemplate")
+  box:SetSize(W, 20)
+  box:SetBackdrop(UI.FlatBackdrop())
+  box:SetBackdropColor(0.02, 0.01, 0.04, 0.95)
+  box:SetBackdropBorderColor(accent[1], accent[2], accent[3], 0.8)
+  box:SetAutoFocus(false)
+  box:SetFontObject("GameFontHighlightSmall")
+  box:SetTextInsets(6, 18, 0, 0)
+
+  local mag = box:CreateTexture(nil, "OVERLAY")
+  mag:SetSize(12, 12); mag:SetPoint("RIGHT", -4, 0)
+  mag:SetTexture("Interface\\Common\\UI-Searchbox-Icon")
+
+  local ph = box:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  ph:SetPoint("LEFT", 6, 0); ph:SetText(cfg.placeholder or "Rechercher...")
+
+  -- Popup de resultats (deroulant)
+  local drop = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+  drop:SetFrameStrata("FULLSCREEN_DIALOG")
+  UI.SkinFrame(drop, accent, UI.C.PANEL)
+  drop:Hide()
+
+  -- Place le popup (largeur fixe DW) : sous le champ ou au-dessus si pas la place,
+  -- et aligné du côté où il reste de la place à l'écran (jamais coupé par un bord).
+  local function placeDrop(h)
+    drop:ClearAllPoints()
+    drop:SetWidth(DW)
+    local up = false
+    local roomBelow = box:GetBottom()
+    if roomBelow and roomBelow < (h + 10) then up = true end
+    local cx = box:GetCenter()
+    local scx = (UIParent:GetWidth() or 1024) / 2
+    local rightSide = (cx and cx > scx)  -- champ à droite -> popup vers la gauche
+    local vA = up and "BOTTOM" or "TOP"
+    local vR = up and "TOP" or "BOTTOM"
+    local vy = up and 2 or -2
+    if rightSide then
+      drop:SetPoint(vA .. "RIGHT", box, vR .. "RIGHT", 0, vy)
+    else
+      drop:SetPoint(vA .. "LEFT", box, vR .. "LEFT", 0, vy)
+    end
+  end
+
+  local scroll = CreateFrame("ScrollFrame", nil, drop, "UIPanelScrollFrameTemplate")
+  scroll:SetPoint("TOPLEFT", 4, -4)
+  scroll:SetPoint("BOTTOMRIGHT", -24, 4)
+  UI.SkinScrollBar(scroll, cfg and cfg.accent)
+  local content = CreateFrame("Frame", nil, scroll)
+  content:SetSize(DW - 30, 10)
+  scroll:SetScrollChild(content)
+
+  local rows = {}
+  local empty = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  empty:SetPoint("TOPLEFT", 4, -4); empty:SetText("Aucun résultat.")
+
+  local function render(qraw)
+    for _, r in ipairs(rows) do r:Hide() end
+    local q = UI.Normalize(qraw or "")
+    if q == "" then drop:Hide(); return end
+    local results = {}
+    if cfg.provider then
+      local ok, res = pcall(cfg.provider, q)
+      if ok and type(res) == "table" then results = res end
+    end
+    empty:SetShown(#results == 0)
+    local y = -4
+    for i, item in ipairs(results) do
+      local r = rows[i]
+      if not r then
+        r = UI.MakeButton(content, DW - 34, 34, "")
+        r._label:ClearAllPoints()
+        r._label:SetPoint("LEFT", 6, 0); r._label:SetPoint("RIGHT", -6, 0); r._label:SetJustifyH("LEFT")
+        if r._label.SetWordWrap then r._label:SetWordWrap(true) end
+        rows[i] = r
+      end
+      r:ClearAllPoints()
+      r:SetPoint("TOPLEFT", content, "TOPLEFT", 0, y)
+      r._label:SetText(item.text or "")
+      r:SetScript("OnClick", function()
+        if item.onClick then pcall(item.onClick) end
+        box:SetText(""); drop:Hide(); box:ClearFocus()
+      end)
+      r:Show(); y = y - 36
+    end
+    content:SetHeight(math.max(-y + 4, 24))
+    local visH = math.min(math.max(#results, 1), 8) * 36 + 12
+    drop:SetHeight(visH)
+    placeDrop(visH)
+    drop:Show()
+  end
+
+  box:SetScript("OnTextChanged", function(s) ph:SetShown(s:GetText() == "") render(s:GetText()) end)
+  box:SetScript("OnEscapePressed", function(s) s:SetText(""); s:ClearFocus(); drop:Hide() end)
+  box:SetScript("OnEnterPressed", function(s) s:ClearFocus() end)
+  box:SetScript("OnEditFocusLost", function()
+    -- Quitter le champ (clic dans le jeu, etc.) efface la recherche et ferme le popup.
+    C_Timer.After(0.20, function()
+      if not box:HasFocus() then
+        box:SetText(""); ph:SetShown(true); drop:Hide()
+      end
+    end)
+  end)
+
+  local h = { box = box, drop = drop }
+  h.Show = function() box:Show() end
+  h.Hide = function() box:Hide(); drop:Hide() end
+  h.Toggle = function() if box:IsShown() then h.Hide() else box:Show(); box:SetFocus() end end
+  h.SetFocus = function() box:SetFocus() end
+  return h
+end
+
+-- ============================================================================
+-- MASQUAGE DES CONTROLES FLOTTANTS (v21) : suite ET standalone
+-- ----------------------------------------------------------------------------
+-- Avant v21, l'etat masque vivait seulement dans le core (TibiSuiteDB) : en
+-- standalone, la case ne faisait rien. Desormais chaque module inscrit sa
+-- propre SavedVariables (UI.RegisterCtrlStore) et l'etat y est aussi ecrit,
+-- sous la cle plate floatHidden = { options = true, search = true }.
+-- Lecture : masque si le core OU la base du module le dit. Ecriture : les
+-- deux a la fois, donc le choix survit au passage suite <-> standalone.
+-- ============================================================================
+UI.ctrlStores = UI.ctrlStores or {}
+
+function UI.RegisterCtrlStore(frameName, getDB)
+  if type(frameName) == "string" and type(getDB) == "function" then
+    UI.ctrlStores[frameName] = getDB
+  end
+end
+
+local function CtrlStore(frameName, create)
+  local fn = frameName and UI.ctrlStores[frameName]
+  if not fn then return nil end
+  local ok, db = pcall(fn)
+  if not ok or type(db) ~= "table" then return nil end
+  if type(db.floatHidden) ~= "table" then
+    if not create then return nil end
+    db.floatHidden = {}
+  end
+  return db.floatHidden
+end
+
+function UI.IsCtrlHidden(frameName, which)
+  local TS = _G.TibiSuite
+  if TS and TS.IsCtrlHidden and TS.IsCtrlHidden(frameName, which) then return true end
+  local s = CtrlStore(frameName)
+  return (s and s[which]) and true or false
+end
+
+function UI.SetCtrlHidden(frameName, which, hidden)
+  local s = CtrlStore(frameName, true)
+  if s then s[which] = hidden and true or nil end
+  local TS = _G.TibiSuite
+  if TS and TS.SetCtrlHidden then pcall(TS.SetCtrlHidden, frameName, which, hidden) end
+  local f = frameName and _G[frameName]
+  local c = f and f._tibiControls
+  if type(c) == "table" and c.ApplyHidden then c.ApplyHidden() end
+end
+
+-- Libelles de la section standard (panel:FloatControls), identiques dans
+-- tous les addons. Langue du client, anglais par defaut.
+local FLOAT_STRINGS = {
+  enUS = { title1 = "Floating button", titleN = "Floating buttons", hideOpt = "Hide the Options button",
+           hideSearch = "Hide the Search field", tip = "Shift + right-click on the window always opens the options." },
+  frFR = { title1 = "Bouton flottant", titleN = "Boutons flottants", hideOpt = "Masquer le bouton Options",
+           hideSearch = "Masquer le champ Recherche", tip = "Maj + clic droit sur la fenêtre ouvre toujours les options." },
+  deDE = { title1 = "Schwebende Schaltfläche", titleN = "Schwebende Schaltflächen", hideOpt = "Optionen-Schaltfläche ausblenden",
+           hideSearch = "Suchfeld ausblenden", tip = "Umschalt + Rechtsklick auf das Fenster öffnet immer die Optionen." },
+  esES = { title1 = "Botón flotante", titleN = "Botones flotantes", hideOpt = "Ocultar el botón Opciones",
+           hideSearch = "Ocultar el campo Búsqueda", tip = "Mayús + clic derecho en la ventana siempre abre las opciones." },
+  itIT = { title1 = "Pulsante mobile", titleN = "Pulsanti mobili", hideOpt = "Nascondi il pulsante Opzioni",
+           hideSearch = "Nascondi il campo Ricerca", tip = "Maiusc + clic destro sulla finestra apre sempre le opzioni." },
+  ptBR = { title1 = "Botão flutuante", titleN = "Botões flutuantes", hideOpt = "Ocultar o botão Opções",
+           hideSearch = "Ocultar o campo Busca", tip = "Shift + botão direito na janela sempre abre as opções." },
+  ruRU = { title1 = "Плавающая кнопка", titleN = "Плавающие кнопки", hideOpt = "Скрыть кнопку настроек",
+           hideSearch = "Скрыть поле поиска", tip = "Shift + ПКМ по окну всегда открывает настройки." },
+  koKR = { title1 = "떠 있는 버튼", titleN = "떠 있는 버튼", hideOpt = "설정 버튼 숨기기",
+           hideSearch = "검색창 숨기기", tip = "창에서 Shift + 우클릭하면 언제나 설정이 열립니다." },
+  zhCN = { title1 = "浮动按钮", titleN = "浮动按钮", hideOpt = "隐藏选项按钮",
+           hideSearch = "隐藏搜索框", tip = "在窗口上 Shift + 右键总能打开设置。" },
+  zhTW = { title1 = "浮動按鈕", titleN = "浮動按鈕", hideOpt = "隱藏選項按鈕",
+           hideSearch = "隱藏搜尋框", tip = "在視窗上 Shift + 右鍵永遠會開啟設定。" },
+}
+FLOAT_STRINGS.esMX = FLOAT_STRINGS.esES
+function UI.FloatStrings()
+  local loc = GetLocale and GetLocale() or "enUS"
+  return FLOAT_STRINGS[loc] or FLOAT_STRINGS.enUS
+end
+
+function UI.AddHeaderControls(frame, cfg)
+  cfg = cfg or {}
+  if frame._tibiControls then return frame._tibiControls end
+  local accent = cfg.accent or UI.C.LAV
+  local ctrls = {}
+
+  -- Bouton Options (texte lisible)
+  local opt = UI.MakeButton(frame, 66, 20, "")
+  opt._label:SetText(UI.Hex(accent[1], accent[2], accent[3]) .. "Options|r")
+  opt:SetPoint("BOTTOMRIGHT", frame, "TOPRIGHT", -2, 3)
+  if cfg.onOptions then opt:SetScript("OnClick", cfg.onOptions) end
+  ctrls.options = opt
+
+  -- Champ de recherche inline (resultats en popup en direct)
+  if cfg.provider then
+    local field = UI.MakeSearchField(frame, { accent = accent, provider = cfg.provider, width = 150 })
+    field.box:SetPoint("RIGHT", opt, "LEFT", -4, 0)
+    ctrls.search = field
+  end
+
+  -- Masquage persistant des controles (Options / Recherche). L'etat par fenetre
+  -- (cle = nom global de la fenetre) est lu par UI.IsCtrlHidden : core en mode
+  -- suite, SavedVariables du module en standalone (v21). On l'applique des la
+  -- creation, donc sans clignotement. ctrls.ApplyHidden permet de reappliquer
+  -- apres coup (UI.SetCtrlHidden et le core l'appellent).
+  local frameName = frame.GetName and frame:GetName()
+  if cfg.store and frameName then UI.RegisterCtrlStore(frameName, cfg.store) end
+  ctrls.ApplyHidden = function()
+    if not frameName then return end
+    if ctrls.options and ctrls.options.SetShown then
+      ctrls.options:SetShown(not UI.IsCtrlHidden(frameName, "options"))
+    end
+    if ctrls.search then
+      if UI.IsCtrlHidden(frameName, "search") then
+        if ctrls.search.Hide then ctrls.search.Hide() end
+      else
+        if ctrls.search.Show then ctrls.search.Show() end
+      end
+    end
+  end
+  ctrls.ApplyHidden()
+  -- Filet (v21) : si la base du module n'etait pas encore lisible a la
+  -- creation, on reapplique a chaque affichage de la fenetre (additif).
+  if frame.HookScript then frame:HookScript("OnShow", function() ctrls.ApplyHidden() end) end
+
+  -- Maj+clic droit sur la fenetre -> ouvre le panneau d'options du module.
+  -- Place au socle (une seule fois, effet immediat) ; additif (HookScript),
+  -- n'ecrase aucun gestionnaire OnMouseUp existant de la fenetre.
+  if cfg.onOptions and frame.HookScript and not frame.__tibiOptShortcut then
+    frame.__tibiOptShortcut = true
+    if frame.EnableMouse then frame:EnableMouse(true) end
+    frame:HookScript("OnMouseUp", function(_, button)
+      if button == "RightButton" and IsShiftKeyDown() then pcall(cfg.onOptions) end
+    end)
+  end
+
+  frame._tibiControls = ctrls
+  return ctrls
+end
+
+-- ============================================================================
+-- CHAMP DE RECHERCHE (loupe qui ouvre/ferme une EditBox) - usage libre
+-- ============================================================================
+function UI.AttachSearch(parent, anchorTo, onChanged)
+  local icon = UI.HeaderIcon(parent, "\226\140\149", "Rechercher")
+  if anchorTo then icon:SetPoint("RIGHT", anchorTo, "LEFT", -4, 0)
+  else icon:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -34, -8) end
+
+  local box = CreateFrame("EditBox", nil, parent, "BackdropTemplate")
+  box:SetSize(150, 22)
+  box:SetPoint("RIGHT", icon, "LEFT", -4, 0)
+  box:SetBackdrop(UI.FlatBackdrop())
+  box:SetBackdropColor(1, 1, 1, 0.06)
+  box:SetBackdropBorderColor(1, 1, 1, 0.15)
+  box:SetAutoFocus(false)
+  box:SetFontObject("GameFontHighlightSmall")
+  box:SetTextInsets(6, 6, 0, 0)
+  box:Hide()
+
+  box:SetScript("OnTextChanged", function(self) if onChanged then onChanged(UI.Normalize(self:GetText())) end end)
+  box:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus(); self:Hide(); if onChanged then onChanged("") end end)
+  box:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+
+  local handle = { icon = icon, box = box }
+  handle.Toggle = function()
+    if box:IsShown() then box:SetText(""); box:Hide(); if onChanged then onChanged("") end
+    else box:Show(); box:SetFocus() end
+  end
+  icon:SetScript("OnClick", handle.Toggle)
+  return handle
+end
+
+-- ============================================================================
+-- REGISTRE DE RECHERCHE GLOBALE
+-- ============================================================================
+UI.searchProviders = UI.searchProviders or {}
+function UI.RegisterSearch(key, label, fn) UI.searchProviders[key] = { label = label, fn = fn } end
+
+-- Recherche globale : interroge TOUS les modules inscrits et ENTRELACE leurs
+-- résultats (un de chaque module à tour de rôle), pour qu'aucun addon ne
+-- monopolise la liste et que tout le contenu de la suite soit représenté.
+function UI.RunGlobalSearch(query)
+  local q = UI.Normalize(query)
+  if q == "" then return {} end
+
+  local perModule, keys = {}, {}
+  for key, prov in pairs(UI.searchProviders) do
+    local ok, res = pcall(prov.fn, q)
+    if ok and type(res) == "table" and #res > 0 then
+      for _, item in ipairs(res) do item._module = prov.label or key end
+      perModule[key] = res
+      keys[#keys + 1] = key
+    end
+  end
+  table.sort(keys)  -- ordre stable des modules
+
+  local out, i, added = {}, 1, true
+  while added and #out < 300 do
+    added = false
+    for _, key in ipairs(keys) do
+      local item = perModule[key][i]
+      if item then out[#out + 1] = item; added = true end
+    end
+    i = i + 1
+  end
+  return out
+end
+
+-- ============================================================================
+-- EN-TETE COMMUN (bandeau + logo + titre a l'accent + bouton fermer)
+-- Utilise par les panneaux d'options et les popups de recherche.
+-- ============================================================================
+local function BuildHeader(f, cfg)
+  UI.SkinFrame(f, cfg.accent, cfg.bg or UI.C.PANEL)
+
+  local hdr = f:CreateTexture(nil, "ARTWORK")
+  hdr:SetColorTexture(UI.C.HDR[1], UI.C.HDR[2], UI.C.HDR[3], 1)
+  hdr:SetPoint("TOPLEFT", f, "TOPLEFT", 1, -3)
+  hdr:SetPoint("TOPRIGHT", f, "TOPRIGHT", -1, -3)
+  hdr:SetHeight(32)
+
+  local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+  if cfg.logo then
+    local logo = f:CreateTexture(nil, "OVERLAY")
+    logo:SetSize(20, 20)
+    logo:SetPoint("LEFT", hdr, "LEFT", 10, 0)
+    logo:SetTexture(cfg.logo)
+    title:SetPoint("LEFT", logo, "RIGHT", 8, 0)
+  else
+    title:SetPoint("LEFT", hdr, "LEFT", 12, 0)
+  end
+  title:SetText(cfg.title or "")
+  if cfg.accent then title:SetTextColor(cfg.accent[1], cfg.accent[2], cfg.accent[3]) end
+
+  local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+  close:SetPoint("TOPRIGHT", 2, 2)
+  close:SetScript("OnClick", function() f:Hide() end)
+  return hdr
+end
+
+-- ============================================================================
+-- CONSTRUCTEUR DE PANNEAU D'OPTIONS FLOTTANT
+--   UI.CreateOptionsPanel{ name=, title=, accent={r,g,b}, logo="chemin" }
+--   Methodes : :Section :Note :Check :Slider :Color :Button :Show :Hide :Toggle
+-- ============================================================================
+function UI.CreateOptionsPanel(cfg)
+  cfg = cfg or {}
+  local accent = cfg.accent
+
+  local f = CreateFrame("Frame", cfg.name, UIParent, "BackdropTemplate")
+  f:SetSize(320, 460)
+  f:SetPoint("CENTER", UIParent, "CENTER", 0, 60)
+  f:SetFrameStrata("DIALOG")
+  f:SetMovable(true); f:EnableMouse(true)
+  f:RegisterForDrag("LeftButton")
+  f:SetScript("OnDragStart", f.StartMoving)
+  f:SetScript("OnDragStop", f.StopMovingOrSizing)
+  f:SetClampedToScreen(true)
+  f:Hide()
+
+  BuildHeader(f, cfg)
+
+  local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+  scroll:SetPoint("TOPLEFT", 10, -42)
+  scroll:SetPoint("BOTTOMRIGHT", -30, 12)
+  UI.SkinScrollBar(scroll, accent)
+  local content = CreateFrame("Frame", nil, scroll)
+  content:SetSize(280, 10)
+  scroll:SetScrollChild(content)
+
+  -- _seps / _notes / _boxes : elements dont la largeur suit la colonne en mode
+  -- ancre (v13). _shift : hauteur gagnee par le re-calage des notes elargies.
+  local panel = { frame = f, content = content, scroll = scroll, _y = -6, _refresh = {},
+                  _seps = {}, _notes = {}, _boxes = {}, _shift = 0, _width = 280,
+                  _name = cfg.name,    -- v14 : le Centre retrouve le module par ce nom
+                  _items = {} }        -- v14 : reglages indexes (palette de commandes)
+  -- Chaque reglage cree est note : libelle, section courante, objet a l'ecran.
+  -- La palette de commandes du core cherche dedans, puis panel:Reveal(item).
+  local function index(kind, label, obj, getFn, setFn)
+    if type(label) ~= "string" or label == "" then return end
+    local it = { kind = kind, label = label, section = panel._section, obj = obj, get = getFn, set = setFn }
+    panel._items[#panel._items + 1] = it
+    return it
+  end
+  -- Annuler (v15) : juste AVANT d'appliquer un changement venu de la souris,
+  -- le socle confie a UI.RecordUndo (fourni par le core TibiSuite) une
+  -- fonction qui photographie toutes les cases et curseurs du panneau. Rien
+  -- n'est enregistre pendant un Refresh ni pendant une annulation.
+  local function snapshot()
+    local t = {}
+    for i, it in ipairs(panel._items) do
+      if it.get then
+        local ok, v = pcall(it.get)
+        if ok then t[i] = (v == nil) and false or v end
+      end
+    end
+    return t
+  end
+  local function beforeChange(it)
+    if panel._muted or not it or not UI.RecordUndo then return end
+    pcall(UI.RecordUndo, panel, it, snapshot)
+  end
+  local function advance(h) panel._y = panel._y - h end
+  local function fit() content:SetHeight(math.max(-(panel._y + panel._shift) + 10, 10)) end
+
+  local function accentText(txt)
+    if accent then return UI.Hex(accent[1], accent[2], accent[3]) .. txt .. "|r" end
+    return UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. txt .. "|r"
+  end
+
+  function panel:Section(text)
+    local s = content:CreateTexture(nil, "ARTWORK")
+    s:SetColorTexture(UI.C.SEP[1], UI.C.SEP[2], UI.C.SEP[3], UI.C.SEP[4])
+    s:SetSize(264, 1)
+    s:SetPoint("TOPLEFT", content, "TOPLEFT", 4, panel._y - 4)
+    panel._seps[#panel._seps + 1] = s
+    local fs = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    fs:SetPoint("TOPLEFT", content, "TOPLEFT", 4, panel._y - 10)
+    fs:SetText(accentText(text))
+    panel._section = text
+    index("section", text, fs)
+    advance(30); fit(); return self
+  end
+
+  function panel:Note(text)
+    local fs = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    fs:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
+    fs:SetWidth(260); fs:SetJustifyH("LEFT"); fs:SetText(text)
+    local h = fs:GetStringHeight() or 12
+    panel._notes[#panel._notes + 1] = { fs = fs, y = panel._y, h = h }
+    advance(h + 10); fit(); return self
+  end
+
+  -- Champ texte en lecture seule mais SELECTIONNABLE (Ctrl+C) : un EditBox
+  -- qui réécrit son propre texte si l'utilisateur tente de le modifier.
+  -- Utile pour une URL ou un code a copier depuis un panneau d'options.
+  function panel:SelectableText(label, text)
+    if label then
+      local cap = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+      cap:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
+      cap:SetText(label)
+      advance(16)
+    end
+    local box = CreateFrame("EditBox", nil, content, "BackdropTemplate")
+    box:SetSize(258, 20)
+    box:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
+    panel._boxes[#panel._boxes + 1] = box
+    box:SetBackdrop(UI.FlatBackdrop())
+    box:SetBackdropColor(0.02, 0.02, 0.03, 0.9)
+    box:SetBackdropBorderColor(1, 1, 1, 0.15)
+    box:SetAutoFocus(false)
+    box:SetFontObject("GameFontHighlightSmall")
+    box:SetTextInsets(6, 6, 0, 0)
+    box:SetText(text or "")
+    box:SetCursorPosition(0)
+    box:SetScript("OnEditFocusGained", function(s) s:HighlightText() end)
+    box:SetScript("OnEscapePressed", function(s) s:ClearFocus() end)
+    box:SetScript("OnEnterPressed", function(s) s:ClearFocus() end)
+    box:SetScript("OnTextChanged", function(s)
+      if s:GetText() ~= (text or "") then s:SetText(text or ""); s:HighlightText() end
+    end)
+    advance(28); fit()
+    return box
+  end
+
+  function panel:Check(label, getFn, setFn, tooltip)
+    local cb = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    cb:SetSize(24, 24)
+    cb:SetPoint("TOPLEFT", content, "TOPLEFT", 4, panel._y)
+    local t = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    t:SetPoint("LEFT", cb, "RIGHT", 4, 0); t:SetText(label)
+    cb:SetChecked(getFn())
+    local it
+    cb:SetScript("OnClick", function(s) beforeChange(it); setFn(s:GetChecked() and true or false) end)
+    if tooltip then
+      cb:SetScript("OnEnter", function(s) GameTooltip:SetOwner(s, "ANCHOR_RIGHT"); GameTooltip:SetText(tooltip, nil, nil, nil, nil, true); GameTooltip:Show() end)
+      cb:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+    panel._refresh[#panel._refresh + 1] = function() cb:SetChecked(getFn()) end
+    it = index("check", label, cb, getFn, setFn)
+    advance(28); fit(); return self
+  end
+
+  -- v22 : section standard "Bouton(s) flottant(s)", a appeler EN DERNIER
+  -- dans chaque panneau d'options, pour qu'elle soit toujours au meme
+  -- endroit et avec les memes libelles dans tous les addons.
+  -- opts.search = true ajoute la case du champ Recherche ; opts.store
+  -- (fonction -> SavedVariables du module) inscrit la base standalone.
+  function panel:FloatControls(frameName, opts)
+    opts = opts or {}
+    if opts.store then UI.RegisterCtrlStore(frameName, opts.store) end
+    local S = UI.FloatStrings()
+    self:Section(opts.search and S.titleN or S.title1)
+    self:Check(S.hideOpt,
+      function() return UI.IsCtrlHidden(frameName, "options") end,
+      function(v) UI.SetCtrlHidden(frameName, "options", v) end, S.tip)
+    if opts.search then
+      self:Check(S.hideSearch,
+        function() return UI.IsCtrlHidden(frameName, "search") end,
+        function(v) UI.SetCtrlHidden(frameName, "search", v) end)
+    end
+    return self
+  end
+
+  function panel:Slider(label, minV, maxV, step, getFn, setFn)
+    local cap = content:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    cap:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
+    local function setCap(v) cap:SetText(label .. " : " .. UI.Hex(UI.C.GOLD[1],UI.C.GOLD[2],UI.C.GOLD[3]) .. tostring(v) .. "|r") end
+    setCap(getFn())
+    local sl = CreateFrame("Slider", nil, content, "OptionsSliderTemplate")
+    sl:SetWidth(250)
+    sl:SetPoint("TOPLEFT", content, "TOPLEFT", 10, panel._y - 18)
+    sl:SetMinMaxValues(minV, maxV); sl:SetValueStep(step); sl:SetObeyStepOnDrag(true)
+    sl:SetValue(getFn())
+    if sl.Low then sl.Low:SetText("") end
+    if sl.High then sl.High:SetText("") end
+    if sl.Text then sl.Text:SetText("") end
+    local it
+    sl:SetScript("OnValueChanged", function(_, v)
+      v = math.floor(v / step + 0.5) * step; setCap(v)
+      local ok, cur = pcall(getFn)
+      if not (ok and cur == v) then beforeChange(it) end
+      setFn(v)
+    end)
+    panel._refresh[#panel._refresh + 1] = function() sl:SetValue(getFn()); setCap(getFn()) end
+    it = index("slider", label, cap, function() return getFn() end, function(v) sl:SetValue(v); setFn(v) end)
+    -- v16 : bornes et pas (palette de commandes : Gauche / Droite).
+    if it then it.min, it.max, it.step = minV, maxV, step end
+    advance(52); fit(); return self
+  end
+
+  function panel:Color(label, getFn, setFn)
+    local b = UI.MakeButton(content, 250, 22, label)
+    b:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
+    local sw = b:CreateTexture(nil, "OVERLAY")
+    sw:SetSize(14, 14); sw:SetPoint("RIGHT", -6, 0)
+    local function refresh() local c = getFn(); sw:SetColorTexture(c[1], c[2], c[3], c[4] or 1) end
+    refresh()
+    b:SetScript("OnClick", function()
+      local c = getFn(); local r, g, bl, a = c[1], c[2], c[3], c[4] or 1
+      local function apply()
+        local nr, ng, nb = ColorPickerFrame:GetColorRGB()
+        local na = a; if ColorPickerFrame.GetColorAlpha then na = ColorPickerFrame:GetColorAlpha() end
+        setFn(nr, ng, nb, na); refresh()
+      end
+      local info = { swatchFunc = apply, opacityFunc = apply, hasOpacity = true, r = r, g = g, b = bl, opacity = a,
+        cancelFunc = function() setFn(r, g, bl, a); refresh() end }
+      if ColorPickerFrame.SetupColorPickerAndShow then ColorPickerFrame:SetupColorPickerAndShow(info)
+      else ColorPickerFrame.func = apply; ColorPickerFrame.opacityFunc = apply; ColorPickerFrame.cancelFunc = info.cancelFunc
+        ColorPickerFrame.hasOpacity = true; ColorPickerFrame.opacity = a; ColorPickerFrame:SetColorRGB(r, g, bl); ColorPickerFrame:Show() end
+    end)
+    panel._refresh[#panel._refresh + 1] = refresh
+    index("color", label, b)
+    advance(28); fit(); return self
+  end
+
+  function panel:Button(label, onClick)
+    local b = UI.MakeButton(content, 250, 24, label)
+    b:SetPoint("TOPLEFT", content, "TOPLEFT", 6, panel._y)
+    b:SetScript("OnClick", onClick)
+    index("button", label, b)
+    advance(30); fit(); return self
+  end
+
+  -- ── Largeur de colonne (v13) ─────────────────────────────────────
+  -- Elargit separateurs, notes et champs texte. Une note plus large prend
+  -- moins de lignes : tout objet ancre en TOPLEFT sur `content` SOUS cette
+  -- note remonte d'autant (y compris les widgets poses a la main par un
+  -- module via panel._y, ex. MiniHub et Standby). Les objets ancres sur un
+  -- autre objet (libelle d'une case...) suivent leur ancre. Revenir a 280
+  -- restaure exactement la mise en page d'origine. A appeler une fois le
+  -- panneau entierement construit.
+  function panel:SetContentWidth(w)
+    w = math.max(280, math.floor(w or 280))
+    local d = w - 280
+    panel._width = w
+    content:SetWidth(w)
+    for _, s in ipairs(panel._seps) do s:SetWidth(264 + d) end
+    for _, b in ipairs(panel._boxes) do b:SetWidth(258 + d) end
+    local total = 0
+    for _, n in ipairs(panel._notes) do
+      n.fs:SetWidth(260 + d)
+      n.delta = n.h - (n.fs:GetStringHeight() or n.h)
+      total = total + n.delta
+    end
+    local function recale(obj)
+      if not (obj and obj.GetNumPoints and obj:GetNumPoints() == 1) then return end
+      local p, rel, rp, x, y = obj:GetPoint(1)
+      if rel ~= content or p ~= "TOPLEFT" or rp ~= "TOPLEFT" then return end
+      local y0 = obj._tsBaseY
+      if not y0 then y0 = y; obj._tsBaseY = y end
+      local s = 0
+      for _, n in ipairs(panel._notes) do
+        if obj ~= n.fs and y0 < n.y then s = s + n.delta end
+      end
+      obj:SetPoint("TOPLEFT", content, "TOPLEFT", x, y0 + s)
+    end
+    for _, c in ipairs({ content:GetChildren() }) do recale(c) end
+    for _, r in ipairs({ content:GetRegions() }) do recale(r) end
+    panel._shift = total
+    fit()
+  end
+
+  -- ── Mode ancre (v13) : le panneau s'affiche DANS un cadre hote ──────
+  -- Seule la zone defilante change de parent : en-tete, fond et bouton
+  -- fermer restent sur la fenetre flottante, qui est masquee. Le module
+  -- n'a rien a changer : ses cases, son Refresh et ses widgets maison
+  -- suivent. panel:Undock() rend le panneau flottant tel qu'avant.
+  function panel:Dock(host, width)
+    if not host then return end
+    f:Hide()
+    scroll:SetParent(host)
+    scroll:SetFrameStrata(host:GetFrameStrata())
+    scroll:SetFrameLevel(host:GetFrameLevel() + 2)
+    scroll:ClearAllPoints()
+    scroll:SetPoint("TOPLEFT", host, "TOPLEFT", 0, 0)
+    scroll:SetPoint("BOTTOMRIGHT", host, "BOTTOMRIGHT", -24, 0)
+    scroll:Show()
+    panel._host = host
+    panel:SetContentWidth(width or ((host:GetWidth() or 304) - 24))
+    panel:Refresh()
+  end
+
+  function panel:Undock()
+    if not panel._host then return end
+    panel._host = nil
+    scroll:SetParent(f)
+    scroll:SetFrameStrata(f:GetFrameStrata())
+    scroll:SetFrameLevel(f:GetFrameLevel() + 2)
+    scroll:ClearAllPoints()
+    scroll:SetPoint("TOPLEFT", 10, -42)
+    scroll:SetPoint("BOTTOMRIGHT", -30, 12)
+    panel:SetContentWidth(280)
+  end
+
+  function panel:IsDocked() return panel._host ~= nil end
+
+  -- Reveal (v14) : amene un reglage indexe a l'ecran et le surligne 1,5 s a
+  -- la couleur d'accent du panneau. A appeler une fois le panneau affiche.
+  function panel:Reveal(item)
+    local obj = item and item.obj
+    if not (obj and obj.GetTop) then return end
+    local top, ot = content:GetTop(), obj:GetTop()
+    if not (top and ot) then return end
+    local off = top - ot
+    local range = scroll:GetVerticalScrollRange() or 0
+    scroll:SetVerticalScroll(math.max(0, math.min(range, off - 40)))
+    if not panel._flash then
+      local fl = content:CreateTexture(nil, "BACKGROUND")
+      fl:SetHeight(28)
+      local ag = fl:CreateAnimationGroup()
+      local a = ag:CreateAnimation("Alpha"); a:SetFromAlpha(0.45); a:SetToAlpha(0); a:SetDuration(1.5)
+      a:SetSmoothing("IN")
+      ag:SetScript("OnFinished", function() fl:Hide() end)
+      panel._flash, panel._flashAG = fl, ag
+    end
+    local c = accent or UI.C.GOLD
+    local fl = panel._flash
+    fl:SetColorTexture(c[1], c[2], c[3], 1)
+    fl:ClearAllPoints()
+    fl:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -off + 4)
+    fl:SetPoint("RIGHT", content, "RIGHT", 0, 0)
+    fl:Show()
+    panel._flashAG:Stop(); panel._flashAG:Play()
+  end
+
+  -- Ancre ET hote visible : le panneau est deja a l'ecran, dans le Centre.
+  -- Ancre mais hote ferme : on le rend flottant pour que la roue d'un module
+  -- (ou Maj+clic droit) ouvre toujours ses options.
+  local function dockedVisible() return panel._host and panel._host:IsVisible() end
+
+  function panel:Refresh()
+    local was = panel._muted
+    panel._muted = true
+    for _, fn in ipairs(panel._refresh) do pcall(fn) end
+    panel._muted = was
+  end
+
+  -- Remet le panneau dans l'etat d'une photo (v15, Annuler). Les cases
+  -- cochees sur la photo sont restaurees d'abord : une case « radio » dont
+  -- le setter ignore la valeur reselectionne ainsi l'ancien choix, et les
+  -- autres retrouvent d'elles-memes leur etat. Puis le reste, un par un, en
+  -- relisant la valeur courante juste avant (aucun appel inutile).
+  function panel:ApplySnapshot(snap)
+    if type(snap) ~= "table" then return 0 end
+    panel._muted = true
+    local n = 0
+    local function pass(onlyTrue)
+      for i, it in ipairs(panel._items) do
+        local old = snap[i]
+        if old ~= nil and it.get and it.set and (not onlyTrue or old == true) then
+          local ok, cur = pcall(it.get)
+          if ok and ((cur == nil) and false or cur) ~= old then
+            pcall(it.set, old); n = n + 1
+          end
+        end
+      end
+    end
+    pass(true); pass(false)
+    panel._muted = false
+    panel:Refresh()
+    return n
+  end
+  -- Redirection vers le Centre (v14) : quand le core TibiSuite est present,
+  -- toute demande d'affichage FLOTTANT (roue d'un module, Maj+clic droit,
+  -- clic droit sur un onglet, commande slash) ouvre le Centre sur la page du
+  -- module. UI.PanelRedirect(panel) est fourni par le core et renvoie true
+  -- s'il a pris la main ; absent (mode autonome) = comportement d'origine.
+  -- UI._noRedirect est leve par le Centre pendant qu'il recupere un panneau,
+  -- sinon il se rappellerait lui-meme.
+  function panel:Show()
+    UI.lastShownPanel = panel
+    if dockedVisible() then panel:Refresh(); return end
+    local redirect = UI.PanelRedirect
+    if redirect and not UI._noRedirect then
+      local ok, handled = pcall(redirect, panel)
+      if ok and handled then return end
+    end
+    panel:Undock(); panel:Refresh(); f:Show()
+  end
+  function panel:Hide() f:Hide() end
+  function panel:IsShown() return f:IsShown() or (dockedVisible() and true or false) end
+  function panel:Toggle()
+    if dockedVisible() then return end
+    if f:IsShown() then f:Hide() else panel:Show() end
+  end
+  f:SetScript("OnShow", function() panel:Refresh() end)
+  -- Registre (v13) : le Centre TibiSuite retrouve ici le panneau d'un module.
+  UI.panels = UI.panels or {}
+  UI.panels[#UI.panels + 1] = panel
+  if cfg.name then UI.panels[cfg.name] = panel end
+  return panel
+end
+
+-- ============================================================================
+-- POPUP DE RECHERCHE  (recherche locale d'un module, ou globale)
+--   UI.CreateSearchPopup{ name=, title=, accent={r,g,b}, logo=, provider=fn }
+-- ============================================================================
+function UI.CreateSearchPopup(cfg)
+  cfg = cfg or {}
+  local f = CreateFrame("Frame", cfg.name, UIParent, "BackdropTemplate")
+  f:SetSize(360, 400)
+  f:SetPoint("CENTER", UIParent, "CENTER", 0, 40)
+  f:SetFrameStrata("DIALOG")
+  f:SetMovable(true); f:EnableMouse(true)
+  f:RegisterForDrag("LeftButton")
+  f:SetScript("OnDragStart", f.StartMoving)
+  f:SetScript("OnDragStop", f.StopMovingOrSizing)
+  f:SetClampedToScreen(true)
+  f:Hide()
+
+  BuildHeader(f, cfg)
+
+  local box = CreateFrame("EditBox", nil, f, "BackdropTemplate")
+  box:SetSize(330, 26)
+  box:SetPoint("TOP", 0, -42)
+  box:SetBackdrop(UI.FlatBackdrop())
+  box:SetBackdropColor(1, 1, 1, 0.06)
+  box:SetBackdropBorderColor(1, 1, 1, 0.15)
+  box:SetAutoFocus(true)
+  box:SetFontObject("GameFontHighlight")
+  box:SetTextInsets(8, 8, 0, 0)
+  box:SetScript("OnEscapePressed", function(s) s:ClearFocus(); f:Hide() end)
+
+  local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+  scroll:SetPoint("TOPLEFT", 12, -78)
+  scroll:SetPoint("BOTTOMRIGHT", -30, 12)
+  UI.SkinScrollBar(scroll, cfg.accent)
+  local content = CreateFrame("Frame", nil, scroll)
+  content:SetSize(300, 10)
+  scroll:SetScrollChild(content)
+
+  local rows = {}
+  local empty = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  empty:SetPoint("TOPLEFT", 4, -6)
+  empty:SetText("Tapez pour rechercher.")
+
+  local function render(query)
+    for _, r in ipairs(rows) do r:Hide() end
+    local q = UI.Normalize(query or "")
+    local results = {}
+    if q ~= "" and cfg.provider then
+      local ok, res = pcall(cfg.provider, q)
+      if ok and type(res) == "table" then results = res end
+    end
+    empty:SetShown(#results == 0)
+    empty:SetText(q == "" and "Tapez pour rechercher." or "Aucun résultat.")
+    local y = -6
+    for i, item in ipairs(results) do
+      local r = rows[i]
+      if not r then
+        r = UI.MakeButton(content, 290, 24, "")
+        r._label:ClearAllPoints(); r._label:SetPoint("LEFT", 8, 0); r._label:SetPoint("RIGHT", -8, 0); r._label:SetJustifyH("LEFT")
+        rows[i] = r
+      end
+      r:ClearAllPoints(); r:SetPoint("TOPLEFT", content, "TOPLEFT", 4, y)
+      r._label:SetText(item.text or "")
+      r:SetScript("OnClick", function() if item.onClick then pcall(item.onClick) end end)
+      r:Show(); y = y - 28
+    end
+    content:SetHeight(math.max(-y + 10, 10))
+  end
+
+  box:SetScript("OnTextChanged", function(s) render(s:GetText()) end)
+  f:SetScript("OnShow", function() box:SetFocus(); render(box:GetText() or "") end)
+
+  local handle = { frame = f }
+  handle.Show = function() f:Show() end
+  handle.Hide = function() f:Hide() end
+  handle.Toggle = function() if f:IsShown() then f:Hide() else f:Show() end end
+  return handle
+end
+
+-- ============================================================================
+-- BANDEAU PERSONNAGE COMMUN
+--   Format : [niveau] Nom (couleur de classe) [ilvl] - Spécialisation - Royaume
+--   UI.CharBannerText(data) -> chaîne coloree prête pour un FontString
+--   UI.CharBanner(parent, data) -> FontString déjà créée et remplie
+--   data = { name=, realm=, class=, level=, ilvl=, spec= } pour un personnage
+--   hors-ligne (ex: liste Stats). data=nil ou omis -> lit le joueur connecté.
+-- ============================================================================
+function UI.ClassColor(classToken)
+  local c = classToken and (
+    (C_ClassColor and C_ClassColor.GetClassColor and C_ClassColor.GetClassColor(classToken)) or
+    (RAID_CLASS_COLORS and RAID_CLASS_COLORS[classToken])
+  )
+  if c then return { c.r, c.g, c.b } end
+  return { 0.85, 0.85, 0.90 }
+end
+
+local function liveCharData()
+  local name  = UnitName("player")
+  local realm = GetRealmName()
+  local class = select(2, UnitClass("player"))
+  local level = UnitLevel("player")
+  local spec
+  local specIndex = GetSpecialization and GetSpecialization()
+  if specIndex then
+    local _, specName = GetSpecializationInfo(specIndex)
+    spec = specName
+  end
+  local ilvl
+  if GetAverageItemLevel then
+    local _, avgEquipped = GetAverageItemLevel()
+    if avgEquipped then ilvl = math.floor(avgEquipped + 0.5) end
+  end
+  return { name = name, realm = realm, class = class, level = level, ilvl = ilvl, spec = spec }
+end
+
+function UI.CharBannerText(data)
+  data = data or liveCharData()
+  local cc = UI.ClassColor(data.class)
+  local parts = {}
+  parts[#parts + 1] = UI.Hex(UI.C.GOLD[1], UI.C.GOLD[2], UI.C.GOLD[3]) .. "[" .. tostring(data.level or "?") .. "]|r"
+  parts[#parts + 1] = UI.Hex(cc[1], cc[2], cc[3]) .. (data.name or "?") .. "|r"
+  if data.ilvl then
+    parts[#parts + 1] = UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. "[" .. tostring(data.ilvl) .. "]|r"
+  end
+  local tail = {}
+  if data.spec and data.spec ~= "" then tail[#tail + 1] = data.spec end
+  if data.realm and data.realm ~= "" then tail[#tail + 1] = data.realm end
+  local line = table.concat(parts, " ")
+  if #tail > 0 then
+    local sep = "  " .. UI.Hex(UI.C.MUTED[1], UI.C.MUTED[2], UI.C.MUTED[3]) .. "-|r  "
+    line = line .. sep .. table.concat(tail, sep)
+  end
+  return line
+end
+
+function UI.CharBanner(parent, data)
+  local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  fs:SetJustifyH("LEFT")
+  fs:SetText(UI.CharBannerText(data))
+  return fs
+end
+
+-- ============================================================================
+-- ALERTE DE NOUVELLE VERSION (v17, plan : _dev/VersionCheck.md)
+-- Un addon n'a pas acces a Internet : chaque copie annonce sa version aux
+-- autres joueurs (guilde, groupe, raid, instance) par un message addon
+-- invisible, et previent une fois par session si quelqu'un a plus recent.
+-- Dans le socle (et pas dans le core) pour marcher aussi avec un module
+-- installe seul. Un seul emetteur grace a la garde NS_VERSION.
+-- Message : "V1:<version>:S" (S = suite, M = module seul). Tout autre format
+-- est ignore. Jamais d'envoi ni d'affichage en combat.
+-- En suite : reglage TibiSuiteDB.versionCheck (nil = actif, false = coupe),
+-- memoire TibiSuiteDB.verSeen = { v, at }, entree dans le fil d'activite.
+-- v18 : detection de patch, sans personne autour. Si le client du jeu a
+-- un numero d'interface plus recent que celui de nos .toc, on previent
+-- qu'une mise a jour est probablement disponible (pas de numero exact).
+-- Jamais en meme temps que l'alerte exacte (elle a la priorite).
+-- v19 : diagnostics (prefixe, envois, echo de nos propres messages en
+-- guilde, messages recus) et UI.VersionTest() pour /ts version test.
+-- v20 : module Anchor ajoute a la liste des dossiers de la suite.
+-- v24 : module ReadyUp ajoute a la liste des dossiers de la suite.
+-- ============================================================================
+do
+  local PREFIX   = "TibiSuite"
+  local PROTO    = "V1"
+  local THROTTLE = 60   -- secondes entre deux envois sur un meme canal
+  -- Les 18 dossiers de la suite, core en tete puis ordre alphabetique.
+  local ADDONS = {
+    "TibiSuite", "Anchor", "DailyTracker", "DgnTracker", "LairLens", "LegTracker",
+    "LvlHistory", "MiniHub", "Opacity", "PostBox", "ReadyUp", "RenTracker", "RepBar",
+    "SkillTracker", "Standby", "Stats", "WeeklyCompass", "XPBar",
+  }
+
+  local FR = (GetLocale and GetLocale() == "frFR")
+  local TXT_NEW = FR and "Nouvelle version %s disponible, votre version %s est obsolète !"
+                     or  "New version %s available, your version %s is out of date!"
+  local TXT_PATCH = FR and "Votre version %s date d'avant la mise à jour %s du jeu : une nouvelle version est probablement disponible."
+                       or  "Your version %s predates game patch %s: a new version is probably available."
+  -- Repli si le client ne livre pas le champ Interface des .toc : la plus
+  -- haute valeur de « ## Interface » des .toc. A TENIR A JOUR a chaque
+  -- passage de compatibilite (sinon fausse alerte apres un patch).
+  local TOC_INTERFACE = 120105
+
+  local VC = UI._vc or {}
+  UI._vc = VC
+  VC.heard   = VC.heard or {}   -- [expediteur] = version (session, jamais sauvegarde)
+  VC.lastTx  = VC.lastTx or {}  -- [canal] = time() du dernier envoi
+  VC.pending = VC.pending or {} -- [canal] = true si un envoi attend (combat, debit)
+
+  -- "7.1.5.49" -> { 7, 1, 5, 49 } ; nil si le format n'est pas strict.
+  local function Parse(v)
+    if type(v) ~= "string" or #v > 23 or not v:match("^%d+[%.%d]*$") or v:find("%.%.") or v:sub(-1) == "." then
+      return nil
+    end
+    local t = {}
+    for n in v:gmatch("%d+") do
+      n = tonumber(n)
+      if not n or n >= 1000 or #t >= 4 then return nil end
+      t[#t + 1] = n
+    end
+    if #t < 2 then return nil end
+    return t
+  end
+
+  -- -1, 0 ou 1 (champs manquants = 0 : 7.1 == 7.1.0).
+  local function Compare(a, b)
+    for i = 1, 4 do
+      local x, y = a[i] or 0, b[i] or 0
+      if x ~= y then return (x < y) and -1 or 1 end
+    end
+    return 0
+  end
+  VC.Parse, VC.Compare = Parse, Compare
+
+  local function IsLoaded(name)
+    if C_AddOns and C_AddOns.IsAddOnLoaded then return C_AddOns.IsAddOnLoaded(name) and true or false end
+    return IsAddOnLoaded and IsAddOnLoaded(name) and true or false
+  end
+
+  local function Meta(name)
+    local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+    if not get then return nil end
+    local ok, v = pcall(get, name, "Version")
+    return ok and v or nil
+  end
+
+  -- Version annoncee = la plus haute des addons de la suite charges.
+  -- Nom affiche = TibiSuite si le core est charge, sinon le 1er module charge.
+  local function Mine()
+    local best, bestT, name
+    for _, a in ipairs(ADDONS) do
+      if IsLoaded(a) then
+        name = name or a
+        local v = Meta(a)
+        local t = Parse(v)
+        if t and (not bestT or Compare(t, bestT) > 0) then best, bestT = v, t end
+      end
+    end
+    return best, bestT, name or "TibiSuite"
+  end
+
+  local function InSuite() return IsLoaded("TibiSuite") and type(_G.TibiSuiteDB) == "table" end
+
+  local function IsOn()
+    if InSuite() then return _G.TibiSuiteDB.versionCheck ~= false end
+    return true  -- module seul : rien pour memoriser un choix, toujours actif
+  end
+
+  local function InCombat() return InCombatLockdown and InCombatLockdown() end
+
+  local function ChatLine(text)
+    local out = DEFAULT_CHAT_FRAME or (ChatFrame1)
+    local line = "|cFFC41F3B" .. (VC.name or "TibiSuite") .. "|r " .. text
+    if out and out.AddMessage then out:AddMessage(line) else print(line) end
+  end
+
+  local function NewText(newV, mine)
+    return string.format(TXT_NEW, "|cFF33FF33" .. newV .. "|r", "|cFFFF5555" .. mine .. "|r")
+  end
+
+  local function PatchText(mine, gameVer)
+    return string.format(TXT_PATCH, "|cFFFF5555" .. mine .. "|r", "|cFFFFD700" .. tostring(gameVer) .. "|r")
+  end
+
+  -- Ligne du chat (une seule par session). Le nom reste rouge de marque.
+  local function ShowAlert()
+    if VC.shown or not VC.newest or not VC.mine then return end
+    if InCombat() then VC.alertPending = true return end
+    VC.shown, VC.alertPending = true, nil
+    ChatLine(NewText(VC.newest, VC.mine))
+    local TS = _G.TibiSuite
+    if InSuite() and TS and TS.Notify then
+      pcall(TS.Notify, nil, string.format(TXT_NEW, VC.newest, VC.mine),
+        { toast = false, sound = false, once = "ver:" .. VC.newest })
+    end
+  end
+
+  -- Retient une version plus recente (session + memoire en suite).
+  local function Learn(v, t)
+    if VC.newestT and Compare(t, VC.newestT) <= 0 then return end
+    VC.newest, VC.newestT = v, t
+    if InSuite() then _G.TibiSuiteDB.verSeen = { v = v, at = time() } end
+    ShowAlert()
+  end
+
+  -- Numero d'interface d'un addon : API dediee si elle existe, sinon le
+  -- champ Interface des metadonnees (plus haute valeur de la liste), sinon
+  -- nil. La source retenue est gardee pour /ts version (a verifier en jeu).
+  local function TocInterface(name)
+    local api = C_AddOns and C_AddOns.GetAddOnInterfaceVersion
+    if api then
+      local ok, n = pcall(api, name)
+      if ok and type(n) == "number" and n > 0 then return n, "api" end
+    end
+    local get = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+    if get then
+      local ok, raw = pcall(get, name, "Interface")
+      if ok and type(raw) == "string" then
+        local best
+        for n in raw:gmatch("%d+") do
+          n = tonumber(n)
+          if n and n >= 10000 and (not best or n > best) then best = n end
+        end
+        if best then return best, "meta" end
+      end
+    end
+    return nil
+  end
+
+  -- Plus haute interface connue des addons de la suite charges.
+  local function OurInterface()
+    local best, src
+    for _, a in ipairs(ADDONS) do
+      if IsLoaded(a) then
+        local n, how = TocInterface(a)
+        if n and (not best or n > best) then best, src = n, how end
+      end
+    end
+    if not best then return TOC_INTERFACE, "const" end
+    -- Le repli code en dur protege d'un .toc oublie plus ancien.
+    if TOC_INTERFACE > best then return TOC_INTERFACE, "const" end
+    return best, src
+  end
+
+  local function CheckPatch()
+    if not IsOn() or not VC.mine then return end
+    local gameVer, _, _, client = GetBuildInfo()
+    client = tonumber(client)
+    local ours, src = OurInterface()
+    VC.patch = { client = client, ours = ours, src = src, game = gameVer }
+    if not client or client <= ours then return end
+    VC.patch.old = true
+    if VC.shown or VC.patchShown or VC.newest then return end
+    if InCombat() then VC.patchPending = true return end
+    VC.patchShown, VC.patchPending = true, nil
+    ChatLine(PatchText(VC.mine, gameVer))
+    local TS = _G.TibiSuite
+    if InSuite() and TS and TS.Notify then
+      pcall(TS.Notify, nil, string.format(TXT_PATCH, VC.mine, tostring(gameVer)),
+        { toast = false, sound = false, once = "patch:" .. tostring(client) })
+    end
+  end
+
+  local function GroupChannel()
+    if IsInGroup and LE_PARTY_CATEGORY_INSTANCE and IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then return "INSTANCE_CHAT" end
+    if IsInRaid and IsInRaid() then return "RAID" end
+    if IsInGroup and IsInGroup() then return "PARTY" end
+    return nil
+  end
+
+  local function SendNow(channel)
+    if not (C_ChatInfo and C_ChatInfo.SendAddonMessage) or not VC.mine then return end
+    local msg = PROTO .. ":" .. VC.mine .. ":" .. (InSuite() and "S" or "M")
+    -- Midnight restreint la communication addon dans certains contenus
+    -- d'instance : l'echec (erreur ou code de retour) est ignore en silence,
+    -- l'annonce repartira en guilde plus tard.
+    local ok, res = pcall(C_ChatInfo.SendAddonMessage, PREFIX, msg, channel)
+    VC.lastTx[channel] = time()
+    VC.lastResult = ok and res or "error"
+    VC.lastChannel, VC.txCount = channel, (VC.txCount or 0) + 1
+  end
+
+  -- Envoi regroupe : au plus un par canal toutes les THROTTLE secondes,
+  -- reporte a la sortie de combat. Un envoi en attente n'est jamais empile.
+  local function Queue(channel, delay)
+    if not channel or not IsOn() or not VC.mine then return end
+    if VC.pending[channel] then return end
+    VC.pending[channel] = true
+    local wait = math.max(delay or 0, THROTTLE - (time() - (VC.lastTx[channel] or 0)))
+    C_Timer.After(math.max(wait, 0.1), function()
+      VC.pending[channel] = nil
+      if not IsOn() then return end
+      if InCombat() then VC.combatTx = VC.combatTx or {}; VC.combatTx[channel] = true return end
+      if channel == "GUILD" and not (IsInGuild and IsInGuild()) then return end
+      if channel ~= "GUILD" and GroupChannel() ~= channel then return end
+      SendNow(channel)
+    end)
+  end
+
+  local function Announce(delay)
+    if IsInGuild and IsInGuild() then Queue("GUILD", delay) end
+    Queue(GroupChannel(), delay)
+  end
+
+  local function OnAddonMessage(prefix, msg, channel, sender)
+    if prefix ~= PREFIX then return end
+    VC.rxCount = (VC.rxCount or 0) + 1
+    -- Valeurs secretes de Midnight : on ne touche a rien.
+    if issecretvalue and (issecretvalue(msg) or issecretvalue(sender) or issecretvalue(channel)) then
+      VC.rxSecret = (VC.rxSecret or 0) + 1
+      return
+    end
+    if type(msg) ~= "string" or type(sender) ~= "string" or not IsOn() or not VC.mineT then return end
+    local me = UnitName and UnitName("player")
+    local short = Ambiguate and Ambiguate(sender, "none") or sender:match("^[^%-]+")
+    if me and short == me then
+      -- Echo de notre propre envoi : preuve que l'envoi ET la reception
+      -- marchent sur ce canal, avec un seul client.
+      VC.echo = { channel = channel, at = time() }
+      return
+    end
+    local proto, v = msg:match("^(V%d+):([^:]+):[SM]$")
+    if proto ~= PROTO then return end
+    local t = Parse(v)
+    if not t then return end
+    -- Garde-fou : un saut de plus d'une version majeure est ignore.
+    if t[1] > VC.mineT[1] + 1 then return end
+    VC.heard[sender] = v
+    local cmp = Compare(t, VC.mineT)
+    if cmp > 0 then
+      Learn(v, t)
+    elseif cmp < 0 and (channel == "GUILD" or channel == "PARTY" or channel == "RAID" or channel == "INSTANCE_CHAT") then
+      -- L'expediteur est en retard : on repond sur le meme canal (debit
+      -- limite) pour qu'il l'apprenne meme si personne d'autre ne parle.
+      Queue(channel, 3)
+    end
+  end
+
+  local function Init()
+    if VC.ready then return end
+    VC.ready = true
+    VC.mine, VC.mineT, VC.name = Mine()
+    if not VC.mineT then return end
+    if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
+      local ok, res = pcall(C_ChatInfo.RegisterAddonMessagePrefix, PREFIX)
+      VC.regResult = ok and res or "error"
+    end
+    if InSuite() then
+      local seen = _G.TibiSuiteDB.verSeen
+      local st = type(seen) == "table" and Parse(seen.v)
+      if st and Compare(st, VC.mineT) > 0 and st[1] <= VC.mineT[1] + 1 then
+        -- Rappel : une version plus recente a deja ete vue, pas encore installee.
+        VC.newest, VC.newestT = seen.v, st
+        if IsOn() then C_Timer.After(12, ShowAlert) end
+      elseif seen ~= nil then
+        _G.TibiSuiteDB.verSeen = nil  -- mise a jour faite (ou valeur illisible)
+      end
+    end
+    VC.wasInGuild = IsInGuild and IsInGuild() or false
+    VC.groupSize  = GetNumGroupMembers and GetNumGroupMembers() or 0
+    Announce(10)
+    -- Apres l'eventuel rappel (12 s) : l'alerte exacte passe devant.
+    C_Timer.After(15, CheckPatch)
+  end
+
+  local f = UI._vcFrame or CreateFrame("Frame")
+  UI._vcFrame = f
+  f:UnregisterAllEvents()
+  f:RegisterEvent("PLAYER_ENTERING_WORLD")
+  f:RegisterEvent("CHAT_MSG_ADDON")
+  f:RegisterEvent("GROUP_ROSTER_UPDATE")
+  f:RegisterEvent("PLAYER_GUILD_UPDATE")
+  f:RegisterEvent("PLAYER_REGEN_ENABLED")
+  f:SetScript("OnEvent", function(_, event, ...)
+    if event == "PLAYER_ENTERING_WORLD" then
+      Init()
+    elseif not VC.ready then
+      return
+    elseif event == "CHAT_MSG_ADDON" then
+      OnAddonMessage(...)
+    elseif event == "GROUP_ROSTER_UPDATE" then
+      local n = GetNumGroupMembers and GetNumGroupMembers() or 0
+      if n > (VC.groupSize or 0) then Queue(GroupChannel(), 5) end
+      VC.groupSize = n
+    elseif event == "PLAYER_GUILD_UPDATE" then
+      local g = IsInGuild and IsInGuild() or false
+      if g and not VC.wasInGuild then Queue("GUILD", 5) end
+      VC.wasInGuild = g
+    elseif event == "PLAYER_REGEN_ENABLED" then
+      if VC.alertPending then ShowAlert() end
+      if VC.patchPending then CheckPatch() end
+      if VC.combatTx then
+        local list = VC.combatTx
+        VC.combatTx = nil
+        for ch in pairs(list) do Queue(ch, 2) end
+      end
+    end
+  end)
+  -- Socle charge apres l'entree en jeu (rare) : on s'initialise tout de suite.
+  if IsLoggedIn and IsLoggedIn() then C_Timer.After(0, Init) end
+
+  -- /ts version test : affiche les deux lignes avec des valeurs fictives, sans
+  -- rien memoriser (ni verSeen, ni fil), puis force une annonce sur les
+  -- canaux disponibles pour verifier l'echo. Ne change pas l'etat de session.
+  function UI.VersionTest()
+    local mine = VC.mine or "7.1.5.49"
+    local t = Parse(mine) or { 7, 1, 5, 49 }
+    t[#t] = t[#t] + 1
+    local fake = table.concat(t, ".")
+    local gameVer = (GetBuildInfo and GetBuildInfo()) or "?"
+    ChatLine("|cFF808080[test]|r " .. NewText(fake, mine))
+    ChatLine("|cFF808080[test]|r " .. PatchText(mine, gameVer))
+    if not VC.ready or not IsOn() or InCombat() then return false end
+    local sent = false
+    if IsInGuild and IsInGuild() then VC.lastTx.GUILD = nil; SendNow("GUILD"); sent = true end
+    local g = GroupChannel()
+    if g then VC.lastTx[g] = nil; SendNow(g); sent = true end
+    return sent
+  end
+
+  -- Lecture pour /ts version et /ts doctor (core).
+  function UI.VersionInfo()
+    local byVer, total = {}, 0
+    for _, v in pairs(VC.heard) do byVer[v] = (byVer[v] or 0) + 1; total = total + 1 end
+    local seen = InSuite() and _G.TibiSuiteDB.verSeen or nil
+    return {
+      on = IsOn(), mine = VC.mine, name = VC.name, newest = VC.newest,
+      seenAt = type(seen) == "table" and seen.at or nil,
+      heard = byVer, heardCount = total, lastResult = VC.lastResult,
+      patch = VC.patch,
+      regResult = VC.regResult, txCount = VC.txCount or 0, lastChannel = VC.lastChannel,
+      rxCount = VC.rxCount or 0, rxSecret = VC.rxSecret or 0, echo = VC.echo,
+      inGuild = IsInGuild and IsInGuild() or false, groupChannel = GroupChannel(),
+    }
+  end
+end
+
+-- ============================================================================
+-- BOUTON DE MINICARTE (v23, audit poids 2026-11-13, lot 5)
+-- ----------------------------------------------------------------------------
+-- Un seul code pour les boutons propres des modules EN AUTONOME (en suite, le
+-- core porte le seul bouton). Deux rendus repris tels quels des modules :
+--   style "compact" (Stats, XPBar, RepBar, Opacity...) : 31 px, anneau 53,
+--     icone 20, surbrillance Blizzard, rayon fixe 105 ;
+--   style "tracker" (Daily, Donjons, Leg, Reput.) : 32 px, icone ronde 24
+--     masquee, anneau 52, halo, rayon = demi-largeur de la minicarte + 10.
+-- cfg = { name, icon, style, getAngle = fn() -> degres, setAngle = fn(deg),
+--         default = degres, onClick = fn(bouton, cadre), tooltip = fn(GameTooltip),
+--         radiusPad = ecart au bord de la minicarte (sinon selon le style),
+--         texCoord = { g, d, h, b } pour recadrer une icone Blizzard }
+-- Le nom et la sauvegarde de l'angle restent ceux du module (collecteurs
+-- MiniHub / EllesmereUI et SavedVariables inchanges). Un bouton range par un
+-- collecteur (parent autre que la minicarte) n'est jamais recolle dessus.
+-- OnUpdate pose seulement pendant le glisser.
+-- ============================================================================
+UI.mmButtons = UI.mmButtons or {}
+local mmZoom
+local function MMRadius(btn)
+  local pad = btn._mmCfg.radiusPad
+  if pad then return (Minimap:GetWidth() / 2) + pad end
+  if btn._mmTracker then return (Minimap:GetWidth() / 2) + 10 end
+  return 105
+end
+local function MMPlace(btn)
+  if btn:GetParent() ~= Minimap then return end
+  local cfg = btn._mmCfg
+  local a = tonumber(cfg.getAngle and cfg.getAngle()) or cfg.default or 200
+  local rad, r = math.rad(a), MMRadius(btn)
+  btn:ClearAllPoints()
+  btn:SetPoint("CENTER", Minimap, "CENTER", math.cos(rad) * r, math.sin(rad) * r)
+end
+local function MMDrag(self)
+  if self:GetParent() ~= Minimap then return end
+  local mx, my = Minimap:GetCenter()
+  local cx, cy = GetCursorPosition()
+  local sc = Minimap:GetEffectiveScale()
+  local deg = math.deg(math.atan2(cy / sc - my, cx / sc - mx)) % 360
+  if self._mmCfg.setAngle then self._mmCfg.setAngle(deg) end
+  MMPlace(self)
+end
+
+function UI.MinimapButton(cfg)
+  if type(cfg) ~= "table" or not cfg.name or not Minimap then return nil end
+  local btn = _G[cfg.name]
+  if btn then return btn end
+  local tracker = cfg.style == "tracker"
+  btn = CreateFrame("Button", cfg.name, Minimap)
+  btn._mmCfg, btn._mmTracker = cfg, tracker
+  btn:SetFrameStrata("MEDIUM")
+  btn:SetFrameLevel(8)
+  btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+  btn:RegisterForDrag("LeftButton")
+  if tracker then
+    btn:SetSize(32, 32)
+    btn:EnableMouse(true)
+    btn:SetClampedToScreen(true)
+    btn:SetToplevel(true)
+    local icon = btn:CreateTexture(nil, "ARTWORK")
+    icon:SetPoint("CENTER", 0, 0)
+    icon:SetSize(24, 24)
+    icon:SetTexture(cfg.icon)
+    local mask = btn:CreateMaskTexture()
+    mask:SetAllPoints(icon)
+    mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+    icon:AddMaskTexture(mask)
+    local ring = btn:CreateTexture(nil, "OVERLAY")
+    ring:SetSize(52, 52)
+    ring:SetPoint("TOPLEFT", btn, "TOPLEFT", 0, 0)
+    ring:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    local hl = btn:CreateTexture(nil, "ARTWORK")
+    hl:SetPoint("CENTER", 0, 0)
+    hl:SetSize(20, 20)
+    hl:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+    hl:SetVertexColor(1, 1, 1, 0.25)
+    hl:SetAlpha(0)
+    btn._hl = hl
+    btn.icon = icon
+  else
+    btn:SetSize(31, 31)
+    btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight")
+    local overlay = btn:CreateTexture(nil, "OVERLAY")
+    overlay:SetSize(53, 53)
+    overlay:SetPoint("TOPLEFT", 0, 0)
+    overlay:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    local icon = btn:CreateTexture(nil, "BACKGROUND")
+    icon:SetSize(20, 20)
+    icon:SetPoint("CENTER", 0, 1)
+    icon:SetTexture(cfg.icon)
+    btn.icon = icon
+  end
+  if cfg.texCoord and btn.icon.SetTexCoord then btn.icon:SetTexCoord(unpack(cfg.texCoord)) end
+
+  btn.UpdatePosition = MMPlace
+  btn:SetScript("OnShow", MMPlace)
+  btn:SetScript("OnDragStart", function(self) self:SetScript("OnUpdate", MMDrag) end)
+  btn:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
+  btn:SetScript("OnClick", function(self, button) if cfg.onClick then cfg.onClick(button, self) end end)
+  btn:SetScript("OnEnter", function(self)
+    if self._hl then self._hl:SetAlpha(1) end
+    if not cfg.tooltip then return end
+    GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+    cfg.tooltip(GameTooltip)
+    GameTooltip:Show()
+  end)
+  btn:SetScript("OnLeave", function(self)
+    if self._hl then self._hl:SetAlpha(0) end
+    GameTooltip:Hide()
+  end)
+
+  -- Zoom de la minicarte : sa largeur change le rayon du style "tracker".
+  UI.mmButtons[#UI.mmButtons + 1] = btn
+  if not mmZoom then
+    mmZoom = CreateFrame("Frame")
+    pcall(mmZoom.RegisterEvent, mmZoom, "MINIMAP_UPDATE_ZOOM")
+    mmZoom:SetScript("OnEvent", function()
+      for _, b in ipairs(UI.mmButtons) do if b._mmTracker or b._mmCfg.radiusPad then MMPlace(b) end end
+    end)
+  end
+  MMPlace(btn)
+  return btn
+end
+
+-- Alias tourne vers l'avenir : le meme socle est aussi accessible via
+-- _G.TibiSuiteUI. Le global historique _G.TibiMidnight reste la reference
+-- utilisee par les modules existants (ne pas le retirer).
+_G.TibiSuiteUI = UI
+
+-- Fin de TibiSuiteUI (ex TibiMidnightUI)

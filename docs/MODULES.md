@@ -1,4 +1,4 @@
-# TibiSuite : modules Opacity, Standby, PostBox et Anchor
+# TibiSuite : modules Opacity, Standby, PostBox, Anchor et ReadyUp
 
 > Extrait de CLAUDE.md, déplacé tel quel (texte non modifié). À lire quand on travaille sur ce sujet.
 
@@ -109,3 +109,47 @@ prise en charge (pas de poignée sécurisée).
 
 Validé en jeu par Tibiscui le 10 novembre 2026. Textes CurseForge :
 `_dev/Anchor_CurseForge.md`.
+
+## Module ReadyUp (« suis-je prêt ? », 2026-11-14, non testé en jeu)
+
+Accent vert « feu vert » `#4CD964` = `{0.298, 0.851, 0.392}`, clé de module
+`ReadyUp`, groupe « À faire » du Panneau vivant. Slash `/readyup` et `/rdy`
+(`check`, `on`, `off`, `options`). Slug CurseForge `readyup` libre au
+14 novembre 2026, projet à créer (identifiant à reporter dans le `.toc` :
+[ID-CURSEFORGE-READYUP]). **Tous les noms globaux portent le préfixe
+`TibiReadyUp`** (`TibiReadyUpDB`, `TibiReadyUpMainFrame`, `TibiReadyUpOptions`,
+`TibiReadyUpToast`, `TibiReadyUp_Toggle`...). Même règle d'activation que
+Standby et Anchor (pas de migration ponctuelle). Multi-versions : `.toc`
+principal plus `ReadyUp_Wrath.toc`.
+
+Positionnement (étude de marché du 14 novembre 2026) : assistant personnel
+sans configuration. Preflight (listes à construire soi-même) et PrepCheck
+(audit de groupe pour le chef de raid) occupent les deux autres créneaux :
+pas d'éditeur de listes ni d'audit de groupe dans ReadyUp.
+
+Fichiers : `Core.lua` (sauvegarde, couche de compatibilité `RU.API` : sacs,
+améliorations, sorts connus, objets, contexte), `Checks.lua` (les contrôles et
+`RU.Evaluate`), `Toast.lua` (moments et alerte), `UI.lua` (fenêtre, options),
+`Bridge.lua` (`statusFn`, `overviewFn`, badge d'onglet, recherche,
+`TibiReadyUp_DoctorNote`), `ReadyUp_Module.lua` (glue, minicarte, slash).
+
+Contrôles : usure, place dans les sacs (famille 0), nourriture et flacon (raid
+et donjon mythique, niveau maximum), enchantement temporaire d'arme (poisons
+du voleur, expiration sous 10 min), familier (chasseur sans Loup solitaire,
+démoniste sans Grimoire du sacrifice, chevalier de la mort impie), munitions
+(seulement si `GetInventorySlotInfo("AmmoSlot")` répond), composants Classic
+(seulement si l'infobulle du sort cite l'objet). Moments : entrée en instance
+(une fois par instance et difficulté), `READY_CHECK`, `MERCHANT_SHOW` avec
+réparation, connexion (décochée). Rien ne s'affiche si tout va bien, sauf au
+ready check.
+
+Règles : **aucune lecture en combat** (`RU.Evaluate` renvoie nil ; un moment
+reçu en combat attend `PLAYER_REGEN_ENABLED`) ; toute valeur secrète ou
+lecture impossible donne l'état « inconnu », jamais une alerte. Hypothèses à
+vérifier en jeu : nom localisé du sort 19705 ou icône 136000 pour la
+nourriture, mots-clés localisés pour flacons et poisons (`KW_FLASK`,
+`KW_POISON` dans les Locales), identifiants de sorts et d'objets des
+composants, ligne de composants dans l'infobulle des sorts Classic.
+
+Logo : `medias/Logo.tga` généré (disque vert et coche), pas encore de `.blp`
+DXT5 ; `Logo.tga` reste donc dans l'archive (voir `.pkgmeta`).

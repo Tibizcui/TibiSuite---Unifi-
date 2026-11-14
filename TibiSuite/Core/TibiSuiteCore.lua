@@ -718,6 +718,24 @@ local MODULES = {
     -- Pas de migration ponctuelle (decision 2026-10-04) : decoche pour les
     -- joueurs existants, actif pour une nouvelle installation.
   },
+  {
+    key         = "ReadyUp",
+    addonName   = "ReadyUp",
+    label       = "ReadyUp",
+    frameGlobal = "TibiReadyUpMainFrame",
+    mmBtnGlobal = "TibiReadyUpMinimapBtn",  -- propre bouton minimap seulement en mode autonome (masque si TibiSuite present)
+    toggleFn    = "TibiReadyUp_Toggle",
+    optionsFn   = "TibiReadyUp_OpenOptions",
+    doctorFn    = "TibiReadyUp_DoctorNote",
+    slashList   = "TIBIREADYUP",  -- secours : /readyup si la fonction Toggle est absente
+    col         = { r=0.298, g=0.851, b=0.392 },  -- vert « feu vert » #4CD964 (identite ReadyUp)
+    curseUrl    = "https://www.curseforge.com/wow/addons/readyup",  -- slug libre au 2026-11-14, projet a creer
+    saved       = { "TibiReadyUpDB" },
+    escClose    = true,
+    -- 2026-11-14 : meme regle que Standby et Anchor, pas de migration
+    -- ponctuelle (decoche pour les joueurs existants, actif pour une
+    -- nouvelle installation).
+  },
 }
 
 -- Logo propre a chaque module (chemins sans extension, WoW resout .tga).
@@ -740,6 +758,7 @@ local MODULE_LOGO = {
   Opacity = "Interface\\AddOns\\Opacity\\medias\\Logo",
   Standby = "Interface\\AddOns\\Standby\\medias\\Logo",
   Anchor  = "Interface\\AddOns\\Anchor\\medias\\Logo",
+  ReadyUp = "Interface\\AddOns\\ReadyUp\\medias\\Logo",
   Suite   = "Interface\\AddOns\\TibiSuite\\medias\\TibiSuite",
 }
 TibiSuite.MODULE_LOGO = MODULE_LOGO
@@ -1954,7 +1973,7 @@ end
 -- rouge et remonte en tete de son groupe. Toujours vertical.
 -- ----------------------------------------------------------------
 local PANEL_GROUPS = {
-  { label = "PANEL_GRP_TODO", keys = { "Daily", "Weekly", "Post" } },
+  { label = "PANEL_GRP_TODO", keys = { "Daily", "Weekly", "Post", "ReadyUp" } },
   { label = "PANEL_GRP_PROG", keys = { "Rep", "Skill", "Lvl", "Stats", "Dgn", "Leg", "Lair" } },
   { label = "PANEL_GRP_UI",   keys = { "XPBar", "Anchor", "RepBar", "MiniHub", "Opacity", "Standby" }, icons = true },
 }
@@ -2666,6 +2685,7 @@ local INDIVIDUAL_MM_BTNS = {
   "OpacityMinimapBtn",       -- Opacity (mode standalone uniquement)
   "StandbyMinimapBtn",       -- Standby (mode standalone uniquement)
   "TibiAnchorMinimapBtn",         -- Anchor (mode autonome uniquement)
+  "TibiReadyUpMinimapBtn",        -- ReadyUp (mode autonome uniquement)
 }
 
 local function HideIndividualMinimapButtons()

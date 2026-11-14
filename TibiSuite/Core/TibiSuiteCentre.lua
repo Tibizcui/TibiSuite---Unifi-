@@ -2681,6 +2681,7 @@ local PANEL_PAGE = {
   StatsOptions                 = "Stats",
   OpacityOptions               = "Opacity",
   TibiAnchorOptions            = "Anchor",
+  TibiReadyUpOptions           = "ReadyUp",
   TibiSuiteModulesPanel        = "maint",
 }
 TibiSuite.PANEL_PAGE = PANEL_PAGE

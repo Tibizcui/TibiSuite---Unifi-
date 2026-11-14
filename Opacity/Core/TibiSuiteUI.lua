@@ -21,7 +21,7 @@
   Auteur : Tibiscui - Kirin Tor
 ============================================================================]]
 
-local NS_VERSION = 23
+local NS_VERSION = 24
 
 if _G.TibiMidnight and (_G.TibiMidnight._version or 0) >= NS_VERSION then
   return
@@ -1267,15 +1267,16 @@ end
 -- v19 : diagnostics (prefixe, envois, echo de nos propres messages en
 -- guilde, messages recus) et UI.VersionTest() pour /ts version test.
 -- v20 : module Anchor ajoute a la liste des dossiers de la suite.
+-- v24 : module ReadyUp ajoute a la liste des dossiers de la suite.
 -- ============================================================================
 do
   local PREFIX   = "TibiSuite"
   local PROTO    = "V1"
   local THROTTLE = 60   -- secondes entre deux envois sur un meme canal
-  -- Les 17 dossiers de la suite, core en tete puis ordre alphabetique.
+  -- Les 18 dossiers de la suite, core en tete puis ordre alphabetique.
   local ADDONS = {
     "TibiSuite", "Anchor", "DailyTracker", "DgnTracker", "LairLens", "LegTracker",
-    "LvlHistory", "MiniHub", "Opacity", "PostBox", "RenTracker", "RepBar",
+    "LvlHistory", "MiniHub", "Opacity", "PostBox", "ReadyUp", "RenTracker", "RepBar",
     "SkillTracker", "Standby", "Stats", "WeeklyCompass", "XPBar",
   }
 

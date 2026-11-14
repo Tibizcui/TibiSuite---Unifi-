@@ -33,7 +33,7 @@ local MODULE_LOGO = TibiSuite.MODULE_LOGO
 local MODULE_NEWS = {
   Weekly = 2, Rep = 3, RepBar = 4, XPBar = 5, Leg = 6, Daily = 7, Lvl = 8,
   Skill = 9, Dgn = 10, Lair = 11, Post = 12, MiniHub = 13, Opacity = 14, Stats = 15,
-  Standby = "WN_40_1", Anchor = "WN_65_0",
+  Standby = "WN_40_1", Anchor = "WN_65_0", ReadyUp = "WN_73_0",
 }
 
 -- Raccourci de chaque module, affiche dans la vitrine.
@@ -41,6 +41,7 @@ local MODULE_SLASH = {
   Daily = "/dt", Dgn = "/dg", Leg = "/lt", Rep = "/rt", Lvl = "/lvlh", Weekly = "/wc",
   MiniHub = "/mh", XPBar = "/xpbar", RepBar = "/repbar", Lair = "/ll", Skill = "/skt",
   Post = "/pb", Stats = "/stats", Opacity = "/opa", Standby = "/standby", Anchor = "/anchor",
+  ReadyUp = "/readyup",
 }
 
 -- ================================================================
@@ -72,6 +73,7 @@ L.DESC_Stats   = L.DESC_Stats   or "Quêtes, or, donjons et M+, temps de jeu par
 L.DESC_Opacity = L.DESC_Opacity or "Transparence des fenêtres au survol, en combat ou en monture, profils par spécialisation, réglage à la molette."
 L.DESC_Standby = L.DESC_Standby or "Écran d'absence : ton héros, ta semaine et ton équipement d'un coup d'œil. S'écarte tout seul pour une file, un appel ou un combat."
 L.DESC_Anchor  = L.DESC_Anchor  or "Déplace les fenêtres du jeu : magnétisme, grille, annulation, une disposition par écran et par personnage, placement du butin."
+L.DESC_ReadyUp = L.DESC_ReadyUp or "Suis-je prêt ? Usure, sacs, nourriture, flacon, enchantement d'arme, familier, munitions et composants vérifiés avant le pull."
 
 -- Vitrine de l'installateur : explication detaillee (DETAIL_) et points forts
 -- (FEAT_, un par ligne, 4 maximum) de chaque module.
@@ -107,6 +109,8 @@ L.DETAIL_Standby = L.DETAIL_Standby or "Standby prend le relais quand ton person
 L.FEAT_Standby   = L.FEAT_Standby   or "Vitrine, Fiche du personnage, Épurée, Économie, en diaporama\nTuiles À faire ce soir et Mes personnages, lues dans la suite\nFond Scène, illustration d\'extension ou noir\nS\'écarte tout seul, réglages toujours rétablis"
 L.DETAIL_Anchor  = L.DETAIL_Anchor  or "Anchor te laisse placer les fenêtres du jeu où tu veux : personnage, sacs, carte, butin, lancers de dés... Il s'aimante aux bords et aux autres fenêtres, et laisse la main à ElvUI, EllesmereUI ou BlizzMove quand ils gèrent déjà une fenêtre."
 L.FEAT_Anchor    = L.FEAT_Anchor    or "Magnétisme, repères d'alignement et grille\nAnnuler le dernier déplacement\nUne disposition par résolution d'écran et par personnage\nPlacement du butin, des lancers de dés et du jet de bonus"
+L.DETAIL_ReadyUp = L.DETAIL_ReadyUp or "ReadyUp vérifie, hors combat, ce qui te manque avant un pull : équipement usé, sacs pleins, plat ou flacon oublié, poisons, familier, munitions et composants. Rien à configurer : les contrôles suivent ta classe, ton niveau et l'endroit où tu es. Il ne dit rien quand tout va bien."
+L.FEAT_ReadyUp   = L.FEAT_ReadyUp   or "Alerte à l'entrée en instance et au ready check\nContrôles adaptés à ta classe et au contexte\nRappel de réparation chez le marchand\nRetail, Forever et Classic"
 
 L.URL_HINT = L.URL_HINT or "Ctrl+C pour copier"
 
@@ -334,6 +338,9 @@ L.WN_59_1  = L.WN_59_1  or "LvlHistory : nouvel onglet Raids (runs par difficult
 L.WN_59_2  = L.WN_59_2  or "Dashboard : les raids et le temps en instance de LvlHistory apparaissent dans la carte Leveling (site et Tibi Companion), via l'export de Stats."
 L.WN_65_0  = L.WN_65_0  or "Nouveau module Anchor : place les fenêtres du jeu où tu veux. Magnétisme et repères d'alignement, grille, annuler, une disposition par résolution d'écran et par personnage, placement du butin et des lancers de dés. Laisse la main à ElvUI, EllesmereUI ou BlizzMove quand ils gèrent déjà une fenêtre."
 L.WN_ANCHOR_HEAD = L.WN_ANCHOR_HEAD or "Nouveau module : Anchor"
+-- ReadyUp (2026-11-14) : carte prete, a placer dans WHATSNEW a la release.
+L.WN_READYUP_HEAD = L.WN_READYUP_HEAD or "Nouveau module : ReadyUp"
+L.WN_73_0  = L.WN_73_0  or "Nouveau module ReadyUp : « suis-je prêt ? » vérifié pour toi avant le pull, sans rien configurer. Usure, sacs, nourriture, flacon, enchantement d'arme, familier, munitions et composants. Une alerte discrète en entrant en instance, à l'appel « Prêt ? » et chez un marchand qui répare. Retail, Forever et Classic."
 L.WN_69_0  = L.WN_69_0  or "Opacity : une minicarte réglée à moins de 5 % est maintenant entièrement cachée, flèche du joueur et repères de quêtes compris, et réapparaît au survol. L'opacité de l'infobulle est enfin respectée à chaque affichage."
 L.WN_70_0  = L.WN_70_0  or "Opacity : l'infobulle reste atténuée pendant son fondu de disparition, au lieu de remonter à 100 % quand la souris quitte l'objet. Nouvelle ligne « Infobulle (bulle d'aide) » dans « Ajouter des fenêtres », plus besoin de la pipette."
 L.WN_72_0  = L.WN_72_0  or "Nouveau : « Bon retour ». Un personnage qui revient après 30 jours d'absence reçoit jusqu'à 5 étapes calculées pour lui (niveau, équipement, Grand coffre, renommées, métiers), chacune avec un bouton vers le bon module. À tout moment : /ts retour."
@@ -433,7 +440,7 @@ local GROUP = { XPBar = "h", RepBar = "h", MiniHub = "o", Post = "o", Opacity = 
 local PRESETS = {
   { id = "all",     label = L.WIZ_PRESET_ALL },
   { id = "level",   label = L.WIZ_PRESET_LEVEL,   keys = { "XPBar", "RepBar", "Lvl", "Daily", "Rep", "Stats", "MiniHub" } },
-  { id = "end",     label = L.WIZ_PRESET_END,     keys = { "Weekly", "Dgn", "Lair", "Leg", "Stats", "Rep", "Daily", "Skill", "MiniHub", "Standby" } },
+  { id = "end",     label = L.WIZ_PRESET_END,     keys = { "Weekly", "Dgn", "Lair", "Leg", "Stats", "Rep", "Daily", "Skill", "MiniHub", "Standby", "ReadyUp" } },
   { id = "collect", label = L.WIZ_PRESET_COLLECT, keys = { "Leg", "Rep", "Dgn", "Skill", "Stats", "Weekly", "MiniHub" } },
   { id = "min",     label = L.WIZ_PRESET_MIN,     keys = { "Stats", "XPBar", "MiniHub" } },
 }
