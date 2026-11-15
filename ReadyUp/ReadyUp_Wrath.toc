@@ -4,7 +4,7 @@
 ## Notes: Am I ready? Durability, bags, food, flask, weapon enchant, pet, ammo and reagents checked for you before the pull, with zero setup. Works on Retail, Forever and Classic.
 ## Notes-frFR: Suis-je pret ? Usure, sacs, nourriture, flacon, enchantement d'arme, familier, munitions et composants verifies pour toi avant le pull, sans rien configurer. Retail, Forever et Classic.
 ## Author: Tibizcui - Kirin Tor
-## Version: 7.6.1
+## Version: 7.6.2
 ## X-Curse-Project-ID: 1806747
 # MULTI-VERSIONS (comme Anchor) : ce fichier sert Midnight et WoW Forever
 # (16001). Ce fichier-ci sert Wrath (client 3.4, anterieur aux listes a

@@ -205,6 +205,13 @@ LegTrackerData.Extensions = {
         {currencyID=1906, name="Scories d'âme", need=2000, howTo="Tourment (étages supérieurs) et désenchantement de légendaires."},
         {currencyID=2009, name="Flux cosmique", need=2000, howTo="Contenus de Zereth Mortis, raids et donjons de Shadowlands 9.2."},
       } },
+      -- 2026-11-15 : arc legendaire de Sylvanas Coursevent (patch 9.1).
+      -- itemID 186414 et instanceID 2450 (Sanctum de domination) donnes de
+      -- memoire, a confirmer par /lt verify. classes=nil : equipable
+      -- par les Chasseurs seulement, mais loote par un Paladin de Tibiscui le
+      -- 15/11/2026, donc farmable et compte pour toutes les classes. Pas de
+      -- tour de force associe connu : aucun achievementID.
+      { itemID=186414, raids={{instanceID=2450, name="Sanctum de domination", bosses="Sylvanas Coursevent"}}, name="Rae'shalare, Murmure de la mort", classes=nil, source="Arc légendaire, butin de Sylvanas Coursevent au Sanctum de domination. Équipable par les Chasseurs, lootable par toutes les classes.", quests={}, trackers={} },
     },
   },
   {

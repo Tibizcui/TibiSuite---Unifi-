@@ -340,6 +340,7 @@ L.WN_65_0  = L.WN_65_0  or "Nouveau module Anchor : place les fenêtres du jeu o
 L.WN_ANCHOR_HEAD = L.WN_ANCHOR_HEAD or "Nouveau module : Anchor"
 -- ReadyUp (2026-11-14) : carte prete, a placer dans WHATSNEW a la release.
 L.WN_READYUP_HEAD = L.WN_READYUP_HEAD or "Nouveau module : ReadyUp"
+L.WN_76_0  = L.WN_76_0  or "LegTracker : Rae'shalare, Murmure de la mort, l'arc de Sylvanas Coursevent au Sanctum de domination, rejoint l'onglet Shadowlands. Il compte pour toutes les classes, puisque tout le monde peut le looter."
 L.WN_75_0  = L.WN_75_0  or "LvlHistory : nouveau chronomètre d'instance à l'écran, en donjon, Mythique+, raid, repaire, gouffre, scénario, champ de bataille et arène, avec les boss tués sur le total. Chaque type se désactive dans les options, et une mort ne remet plus le chrono à zéro si tu reviens dans les 15 minutes."
 L.WN_74_0  = L.WN_74_0  or "Opacity :la minicarte reste lisible à l'intérieur des bâtiments (maisons, donjons, villes), suit l'opacité réglée sur Classic, se cache entièrement dès 5 %, et les curseurs avancent maintenant de 1 %."
 L.WN_73_0  = L.WN_73_0  or "Nouveau module ReadyUp : « suis-je prêt ? » vérifié pour toi, partout (solo, gouffre, donjon, raid, champ de bataille, arène), sans rien configurer. Usure, enchantements, châsses, nourriture, flacon, potions, poisons, améliorations de classe, familier, flèches, composants et sacs, chacun activable dans les options. Une alerte vivante qui se met au vert quand tu règles le problème. Retail, Forever et Classic."
@@ -460,6 +461,12 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- 7.6.2 : LegTracker, Rae'shalare (Sanctum de domination) toutes classes.
+  ["7.6.2"] = {
+    { key = "Leg", title = "LegTracker", text = L.WN_76_0, new = true },
+    { key = "Lvl", title = "LvlHistory", text = L.WN_75_0, new = false },
+    { key = "ReadyUp", title = "ReadyUp", headline = L.WN_READYUP_HEAD, text = L.WN_73_0, new = false },
+  },
   -- 7.6.1 : chronometre d'instance de LvlHistory (boss tues sur le total).
   ["7.6.1"] = {
     { key = "Lvl", title = "LvlHistory", text = L.WN_75_0, new = true },

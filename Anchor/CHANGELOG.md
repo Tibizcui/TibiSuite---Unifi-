@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.2
+- Version alignée sur la suite TibiSuite (correctif de LegTracker), sans changement pour ce module.
+
 ## 7.6.1
 - Version alignée sur la suite TibiSuite (chronomètre d'instance de LvlHistory), sans changement pour ce module.
 

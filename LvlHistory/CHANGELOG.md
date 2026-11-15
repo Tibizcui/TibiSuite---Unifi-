@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.2
+- Version alignée sur la suite TibiSuite (correctif de LegTracker), sans changement pour ce module.
+
 ## 7.6.1
 - Nouveau chronomètre d'instance à l'écran : nom de l'instance, temps passé (écrans de chargement exclus) et type, en donjon, Mythique+, raid, repaire, gouffre, scénario et Tourment, champ de bataille et arène.
 - Boss tués sur le total à côté du chrono (donjons, Mythique+, raids, repaires) : verrou d'instance, sinon Journal des donjons ; sur Classic sans journal, le nombre de boss tués seul.
