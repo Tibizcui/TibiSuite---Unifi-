@@ -71,7 +71,7 @@ local function Slider(parent, w)
   local sl = CreateFrame("Slider", nil, parent, "OptionsSliderTemplate")
   sl:SetWidth(w)
   sl:SetMinMaxValues(0, 100)
-  sl:SetValueStep(5)
+  sl:SetValueStep(1)   -- au pourcent pres (avant : pas de 5 %)
   sl:SetObeyStepOnDrag(true)
   if sl.Low then sl.Low:SetText("") end
   if sl.High then sl.High:SetText("") end
@@ -167,7 +167,7 @@ local function MakeRow(i)
   r.value:SetPoint("LEFT", r.slider, "RIGHT", 6, 0)
   r.value:SetWidth(40); r.value:SetJustifyH("LEFT")
   r.slider:SetScript("OnValueChanged", function(s, v)
-    v = math.floor(v / 5 + 0.5) * 5
+    v = math.floor(v + 0.5)
     r.value:SetText(v .. " %")
     if not refreshing and r.name then OP.SetFrameField(r.name, "alpha", v / 100) end
   end)
@@ -698,7 +698,7 @@ local function BuildMain()
   main.masterValue = main:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
   main.masterValue:SetPoint("LEFT", main.master, "RIGHT", 6, 0)
   main.master:SetScript("OnValueChanged", function(_, v)
-    v = math.floor(v / 5 + 0.5) * 5
+    v = math.floor(v + 0.5)
     main.masterValue:SetText(v .. " %")
     if not refreshing then OP.SetMaster(v / 100) end
   end)
@@ -831,7 +831,7 @@ local function BuildOptions()
     p:Check(OP.CONTEXT_LABELS[key],
       function() return prof().contexts[key].on end,
       function(v) prof().contexts[key].on = v; OP.UpdateContext(); OP.Refresh() end)
-    p:Slider(T("OPT_CTX_VALUE", "Opacité"), 0, 100, 5,
+    p:Slider(T("OPT_CTX_VALUE", "Opacité"), 0, 100, 1,
       function() return math.floor(prof().contexts[key].value * 100 + 0.5) end,
       function(v) prof().contexts[key].value = v / 100; OP.Refresh() end)
   end
@@ -873,8 +873,8 @@ local function BuildOptions()
     function() return OpacityDB.minimapFullHide ~= false end,
     function(v) OpacityDB.minimapFullHide = v and true or false; if OP.ApplyMinimapNow then OP.ApplyMinimapNow() end end)
   p:Note(T("OPT_MM_FULLHIDE_NOTE", "La flèche du joueur et les repères de quêtes sont dessinés par le jeu et ignorent l'opacité. "
-    .. "Sous 5 %, Opacity cache donc la minicarte entière, puis la réaffiche dès qu'elle remonte (survol, contexte). "
-    .. "Entre 5 et 99 %, la flèche et les repères restent visibles : c'est une limite du jeu."))
+    .. "À 5 % ou moins, Opacity cache donc la minicarte entière, puis la réaffiche dès qu'elle remonte (survol, contexte). "
+    .. "Entre 6 et 99 %, la flèche et les repères restent visibles : c'est une limite du jeu."))
 
   p:Section(T("OPT_SEC_RESET", "Réinitialiser"))
   p:Button(T("OPT_RESET", "Vider la liste (tout revient à 100 %)"), function() OP.ResetProfile() end)

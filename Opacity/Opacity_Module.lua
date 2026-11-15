@@ -129,6 +129,12 @@ SlashCmdList["TIBIOPACITY"] = function(msg)
   elseif cmd == "pick" or cmd == "pipette" then OP.StartPicker()
   elseif cmd == "tune" or cmd == "reglage" or cmd == "molette" then OP.StartTuner()
   elseif cmd == "probe" or cmd == "sonde" then OP.RunProbe()
+  elseif cmd == "indoor" or cmd == "interieur" then
+    -- Test du bug « minicarte vide a l'interieur » (voir Core.lua,
+    -- MinimapIndoorSafe) : coupe ou remet la parade.
+    local on = OP.ToggleIndoorSafe and OP.ToggleIndoorSafe()
+    OP.Print(on and T("MSG_INDOOR_ON", "minicarte à 100 % à l'intérieur des bâtiments (réglage par défaut).")
+                 or T("MSG_INDOOR_OFF", "minicarte atténuée aussi à l'intérieur (test : la carte du bâtiment peut disparaître). Retapez /opa indoor pour revenir."))
   elseif cmd == "profile" or cmd == "profil" then
     if rest ~= "" and OpacityDB.profiles[rest] then OP.SwitchProfile(rest)
     else OP.Print(T("MSG_PROF_LIST", "profils : ") .. table.concat(OP.ProfileNames(), ", ")) end

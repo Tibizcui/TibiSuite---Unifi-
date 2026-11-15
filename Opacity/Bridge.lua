@@ -194,4 +194,20 @@ function OP.RunProbe()
   if #res.children > 0 then print("  " .. T("PROBE_CHILDREN", "Mode enfants (fondu externe détecté) : ") .. table.concat(res.children, ", ")) end
   if #res.pending > 0 then print("  " .. T("PROBE_PENDING", "En attente : ") .. table.concat(res.pending, ", ")) end
   if res.blockedInCombat then print("  " .. R .. T("PROBE_BLOCKED", "Le client a refusé un SetAlpha protégé en combat (file d'attente active).") .. "|r") end
+
+  -- Minicarte (bug « carte noire a l'interieur », 2026-11-15) : valeurs
+  -- brutes, a lancer dehors puis dans un batiment.
+  if OP.MinimapProbe then
+    local m = OP.MinimapProbe()
+    res.minimap = m
+    local function F(v) return type(v) == "number" and string.format("%.2f", v) or tostring(v) end
+    print("  " .. T("PROBE_MINIMAP", "Minicarte : ") .. Y
+      .. "indoors=" .. tostring(m.indoors) .. " safe=" .. tostring(m.safe)
+      .. " shown=" .. tostring(m.shown) .. " alpha=" .. F(m.alpha) .. " eff=" .. F(m.eff)
+      .. " ignoreParent=" .. tostring(m.ignore) .. " zoom=" .. tostring(m.zoom)
+      .. " parent=" .. tostring(m.parent) .. "|r")
+    print("    |cFFAAAAAAcluster alpha=" .. F(m.clAlpha) .. " eff=" .. F(m.clEff)
+      .. " ; mm factor=" .. F(m.mmFactor) .. " base=" .. F(m.mmBase) .. " hidden=" .. tostring(m.mmHidden) .. " detached=" .. tostring(m.mmDetached) .. "|r")
+    for _, line in ipairs(m.rows) do print("    |cFFAAAAAA" .. line .. "|r") end
+  end
 end

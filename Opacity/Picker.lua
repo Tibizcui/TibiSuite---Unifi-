@@ -183,7 +183,9 @@ local function Build()
         OP.AddFrame(c.name, 1)
       end
       local e = p.frames[c.name]
-      if e then OP.SetFrameField(c.name, "alpha", math.floor(e.alpha * 20 + 0.5) / 20 + delta * 0.05) end
+      -- Cran de 5 % par cran de molette, sans recaler sur une grille de 5 %
+      -- (les curseurs reglent au pourcent pres depuis 2026-11-15).
+      if e then OP.SetFrameField(c.name, "alpha", math.floor((e.alpha + delta * 0.05) * 100 + 0.5) / 100) end
       if not pcall(Place) then hl:Hide() end
       return
     end

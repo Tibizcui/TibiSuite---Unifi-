@@ -25,8 +25,9 @@
   Aucune autre ecriture sur les frames des autres : pas d'EnableMouse, pas de
   Show/Hide, pas de SetParent, pas de hook de fonction globale Blizzard.
   SEULE EXCEPTION, la minicarte (voir PilotMinimap plus bas) : quand
-  MinimapCluster est attenue, Opacity pilote aussi la Minimap elle-meme, et la
-  cache sous 5 % (case OpacityDB.minimapFullHide, nil = actif).
+  MinimapCluster est attenue, Opacity pilote aussi la Minimap elle-meme, la
+  detache de l'opacite de son parent (SetIgnoreParentAlpha, rendu a la fin),
+  et la cache sous 5 % (case OpacityDB.minimapFullHide, nil = actif).
 ============================================================================]]
 
 local ADDON, OP = ...
@@ -271,14 +272,37 @@ end
 --     1. le facteur est aussi applique a la Minimap, SEULEMENT si elle
 --        n'herite pas du cluster (sinon, sur Classic par exemple, il serait
 --        applique deux fois) ; meme principe lire-et-multiplier ;
---     2. sous MM_HIDE_BELOW, la Minimap est cachee (case minimapFullHide),
+--     2. a MM_HIDE_BELOW ou moins, la Minimap est cachee (case minimapFullHide),
 --        et reaffichee des que le facteur remonte. Opacity ne reaffiche que
 --        ce qu'il a lui-meme cache.
 --   Le survol continue de marcher : il est teste sur MinimapCluster, qui
 --   reste affiche (seulement transparent).
 -- ============================================================================
 local MM_HIDE_BELOW = 0.05
+-- Seuil INCLUS (retour Tibiscui 2026-11-15) : a 5 % pile, la carte etait
+-- attenuee mais fleche et reperes restaient a 100 %. Marge pour les arrondis.
+local function MinimapHideLevel(cur) return cur <= MM_HIDE_BELOW + 1e-6 end
 local mm = { hooked = false, base = 1, factor = nil, hidden = false, desire = false, busy = false }
+
+-- INTERIEUR (retour joueur 2026-11-15, capture a l'appui, NON VERIFIE EN JEU) :
+-- Opacity actif, la carte des batiments (maisons, donjons, villes) ne
+-- s'affiche plus dans la minicarte : cercle, boutons et fleche presents,
+-- interieur vide. Hypothese (a confirmer avec /opa probe puis /opa indoor) :
+-- le jeu ne dessine plus la carte d'interieur des que l'opacite effective de
+-- la Minimap passe sous 100 %, meme a 80 %. Dehors, le terrain suit
+-- l'opacite normalement (verifie en 7.5.5).
+-- Parade : a l'interieur (IsIndoors), les deux lignes qui pilotent la
+-- minicarte (MinimapCluster et Minimap) restent a 100 %. Seul le masquage
+-- complet sous 5 % est conserve (Hide ne depend pas de l'opacite). Le
+-- facteur reprend des la sortie (evenements plus bas, ApplyMinimapNow).
+-- OpacityDB.minimapIndoorSafe == false coupe la parade (/opa indoor), pour
+-- verifier l'hypothese en jeu.
+local function MinimapIndoorSafe()
+  if OpacityDB and OpacityDB.minimapIndoorSafe == false then return false end
+  local ok, inside = pcall(IsIndoors)
+  return (ok and inside) and true or false
+end
+OP.MinimapIndoorSafe = MinimapIndoorSafe
 
 -- La Minimap ignore-t-elle l'opacite de MinimapCluster ?
 local function MinimapIndependent(mmf, cluster)
@@ -297,7 +321,10 @@ end
 local function HookMinimap(mmf)
   if mm.hooked then return end
   mm.hooked = true
-  mm.base = mmf:GetAlpha() or 1
+  -- Si la ligne "Minimap" pilote deja son alpha, GetAlpha renvoie une valeur
+  -- deja attenuee par nous : la vraie base est celle de cette ligne.
+  local s = state[mmf]
+  mm.base = (s and s.base) or mmf:GetAlpha() or 1
   -- Un tiers change l'alpha de la Minimap : nouvelle base, notre facteur reste.
   hooksecurefunc(mmf, "SetAlpha", function(self, a)
     if applying then return end
@@ -311,6 +338,41 @@ local function HookMinimap(mmf)
     mm.hidden = true
     mm.busy = true; pcall(self.Hide, self); mm.busy = false
   end)
+end
+
+-- MEME FONCTIONNEMENT SUR LES 3 VERSIONS (retour en jeu 2026-11-15, Classic,
+-- minicarte a 5 % : bordure effacee mais terrain a 100 %). Sur Retail, la
+-- Minimap ignore deja l'opacite du cluster et Opacity lui applique le
+-- facteur directement (le terrain le suit, verifie en 7.5.5). Sur Classic,
+-- la Minimap est un enfant du cluster qui herite de son opacite : Opacity
+-- comptait sur cet heritage, mais le terrain n'en tient pas compte.
+-- Pendant que le cluster est attenue, on detache donc la Minimap de
+-- l'opacite de son parent (SetIgnoreParentAlpha), comme sur Retail, et le
+-- facteur lui est applique directement (sans double attenuation des
+-- elements poses sur la carte). On ne rattache que ce qu'on a detache.
+-- HYPOTHESE NON VERIFIEE EN JEU : le terrain de Classic suit l'opacite
+-- propre de la Minimap (test : /run Minimap:SetAlpha(0.05)).
+-- Renvoie false si le combat bloque (frame protegee) : a refaire apres.
+local function MinimapCombatLocked(mmf)
+  local ok, prot = pcall(mmf.IsProtected, mmf)
+  return InCombatLockdown() and ok and prot
+end
+
+local function DetachMinimapAlpha(mmf)
+  if mm.detached or not (mmf.SetIgnoreParentAlpha and mmf.IsIgnoringParentAlpha) then return true end
+  local okI, ign = pcall(mmf.IsIgnoringParentAlpha, mmf)
+  if not okI or ign then return true end   -- deja detachee (Retail) : rien a faire
+  if MinimapCombatLocked(mmf) then return false end
+  if pcall(mmf.SetIgnoreParentAlpha, mmf, true) then mm.detached = true end
+  return true
+end
+
+local function RestoreMinimapAlpha(mmf)
+  if not mm.detached then return true end
+  if MinimapCombatLocked(mmf) then return false end
+  pcall(mmf.SetIgnoreParentAlpha, mmf, false)
+  mm.detached = false
+  return true
 end
 
 -- Deux lignes de la liste peuvent piloter la minicarte : MinimapCluster (le
@@ -329,6 +391,11 @@ local function PilotMinimap(frame, st, cur, source)
   -- 1. Opacite (cluster seulement, et pas si la Minimap est elle-meme dans
   --    la liste : un seul pilote pour son alpha)
   if source == "cluster" then
+    -- Meme fonctionnement sur toutes les versions : la Minimap est detachee
+    -- de l'opacite du cluster pendant qu'il est attenue (voir
+    -- DetachMinimapAlpha), puis rattachee. Pas pendant la capture d'ecran.
+    local detach = active and not OP.screenshot
+    if detach and not DetachMinimapAlpha(mmf) then pendingCombat[frame] = true end
     local own = byName.Minimap and state[byName.Minimap] and state[byName.Minimap].active
     if active and not own and MinimapIndependent(mmf, frame) then
       mm.factor = cur
@@ -337,9 +404,10 @@ local function PilotMinimap(frame, st, cur, source)
       mm.factor = nil
       if not own then SetAlphaRaw(mmf, mm.base) end
     end
+    if not detach and not RestoreMinimapAlpha(mmf) then pendingCombat[frame] = true end
   end
   -- 2. Masquage complet sous le seuil
-  mm.want[source] = (active and cur < MM_HIDE_BELOW) and true or false
+  mm.want[source] = (active and MinimapHideLevel(cur)) and true or false
   local want = (mm.want.cluster or mm.want.self) and not (OpacityDB and OpacityDB.minimapFullHide == false)
   mm.desire = want and true or false
   if InCombatLockdown() and mmf:IsProtected() then
@@ -362,6 +430,13 @@ function OP.Push(frame)
   if not st then return end
   if Blockable(frame) then pendingCombat[frame] = true; return end
   local cur = st.cur or 1
+  -- Minicarte a l'interieur : 100 %, sauf masquage complet (voir
+  -- MinimapIndoorSafe). Seule la valeur appliquee change : st.cur continue
+  -- d'etre anime, et la sortie du batiment rend le facteur reel.
+  if cur < 1 and (st.name == "MinimapCluster" or st.name == "Minimap") and MinimapIndoorSafe() then
+    local fullHide = st.active and MinimapHideLevel(cur) and not (OpacityDB and OpacityDB.minimapFullHide == false)
+    if not fullHide then cur = 1 end
+  end
   if st.mode == "children" then
     for obj, os in pairs(st.objs) do SetAlphaRaw(obj, (os.base or 1) * cur) end
   else
@@ -375,6 +450,59 @@ end
 function OP.ApplyMinimapNow()
   if byName.MinimapCluster then OP.Push(byName.MinimapCluster) end
   if byName.Minimap then OP.Push(byName.Minimap) end
+end
+
+-- Entree / sortie d'un batiment : on repousse la minicarte seulement si
+-- l'etat change (pas a chaque changement de sous-zone).
+local lastIndoor
+function OP.CheckIndoor()
+  local now = MinimapIndoorSafe()
+  if now == lastIndoor then return end
+  lastIndoor = now
+  OP.ApplyMinimapNow()
+end
+
+-- /opa indoor : coupe ou remet la parade (test de l'hypothese en jeu).
+function OP.ToggleIndoorSafe()
+  if not OpacityDB then return end
+  if OpacityDB.minimapIndoorSafe == false then OpacityDB.minimapIndoorSafe = nil
+  else OpacityDB.minimapIndoorSafe = false end
+  lastIndoor = nil
+  OP.CheckIndoor()
+  return OpacityDB.minimapIndoorSafe ~= false
+end
+
+-- Etat de la minicarte pour /opa probe (Bridge.lua).
+function OP.MinimapProbe()
+  local r = {}
+  local function Try(fn, ...) local ok, v = pcall(fn, ...); if ok then return v end return nil end
+  r.indoors = Try(IsIndoors)
+  r.safe = OpacityDB and OpacityDB.minimapIndoorSafe ~= false
+  local mmf, cl = _G.Minimap, _G.MinimapCluster
+  if IsUsableFrame(mmf) then
+    r.shown = Try(mmf.IsShown, mmf)
+    r.alpha = Try(mmf.GetAlpha, mmf)
+    r.eff = mmf.GetEffectiveAlpha and Try(mmf.GetEffectiveAlpha, mmf)
+    r.ignore = mmf.IsIgnoringParentAlpha and Try(mmf.IsIgnoringParentAlpha, mmf)
+    r.zoom = mmf.GetZoom and Try(mmf.GetZoom, mmf)
+    local p = Try(mmf.GetParent, mmf)
+    r.parent = p and (Try(p.GetName, p) or "?") or "-"
+  end
+  if IsUsableFrame(cl) then
+    r.clAlpha = Try(cl.GetAlpha, cl)
+    r.clEff = cl.GetEffectiveAlpha and Try(cl.GetEffectiveAlpha, cl)
+  end
+  r.rows = {}
+  for _, n in ipairs({ "MinimapCluster", "Minimap" }) do
+    local f = byName[n]
+    local st = f and state[f]
+    if st then
+      r.rows[#r.rows + 1] = string.format("%s active=%s cur=%.2f target=%.2f mode=%s",
+        n, tostring(st.active), st.cur or 1, st.target or 1, tostring(st.mode))
+    end
+  end
+  r.mmFactor, r.mmBase, r.mmHidden, r.mmDetached = mm.factor, mm.base, mm.hidden, mm.detached
+  return r
 end
 
 -- Crochet "lire" sur un enfant / une region d'une frame en mode "children".
@@ -438,7 +566,13 @@ end
 local function Attach(name, frame)
   local st = state[frame]
   if not st then
-    st = { name = name, base = frame:GetAlpha() or 1, cur = 1, target = 1, mode = "frame" }
+    local base = frame:GetAlpha() or 1
+    -- Minimap ajoutee (pipette) alors que la ligne MinimapCluster l'attenue
+    -- deja (mm.factor) : GetAlpha renvoie base * facteur, pas la base. Sans
+    -- cette correction (2026-11-15), la carte restait bloquee sous 100 %,
+    -- survol compris, jusqu'au /reload.
+    if frame == _G.Minimap and mm.factor then base = mm.base end
+    st = { name = name, base = base, cur = 1, target = 1, mode = "frame" }
     state[frame] = st
     -- hooksecurefunc ne s'enleve jamais : quand la frame n'est plus
     -- controlee, le crochet se contente de memoriser la base (st.active=false).
@@ -617,7 +751,7 @@ end
 
 function OP.SetMaster(v)
   local p = OP.Profile()
-  p.master = math.floor(Clamp01(v) * 20 + 0.5) / 20   -- pas de 5 %
+  p.master = math.floor(Clamp01(v) * 100 + 0.5) / 100   -- pas de 1 % (avant : 5 %)
   OP.Refresh()
 end
 
@@ -672,6 +806,9 @@ function OP.SetScreenshot(on)
     savedUIAlpha = nil
   end
   OP.Refresh()
+  -- Minimap detachee de l'opacite de son parent (voir DetachMinimapAlpha) :
+  -- elle doit suivre UIParent a 0 pendant la capture, puis se redetacher.
+  if OP.ApplyMinimapNow then OP.ApplyMinimapNow() end
   return true
 end
 
@@ -713,6 +850,14 @@ pcall(ev.RegisterEvent, ev, "PLAYER_REGEN_DISABLED")
 pcall(ev.RegisterEvent, ev, "ADDON_ACTION_BLOCKED")
 pcall(ev.RegisterEvent, ev, "SCREENSHOT_SUCCEEDED")
 pcall(ev.RegisterEvent, ev, "SCREENSHOT_FAILED")
+-- Entree / sortie d'un batiment (minicarte, voir MinimapIndoorSafe). Plusieurs
+-- evenements par prudence : lequel part a coup sur selon la version du jeu
+-- n'est pas verifie. OP.CheckIndoor ne fait rien si l'etat n'a pas change.
+pcall(ev.RegisterEvent, ev, "ZONE_CHANGED_INDOORS")
+pcall(ev.RegisterEvent, ev, "ZONE_CHANGED")
+pcall(ev.RegisterEvent, ev, "ZONE_CHANGED_NEW_AREA")
+pcall(ev.RegisterEvent, ev, "MINIMAP_UPDATE_ZOOM")
+pcall(ev.RegisterEvent, ev, "PLAYER_ENTERING_WORLD")
 
 -- Frames pas encore creees (fenetres Blizzard a la demande, addons qui
 -- construisent leur interface tard) : on repasse toutes les 5 s pendant la
@@ -800,6 +945,13 @@ ev:SetScript("OnEvent", function(_, event, arg1, arg2)
       pendingCombat[frame] = nil
       OP.Push(frame)
     end
+
+  elseif event == "ZONE_CHANGED_INDOORS" or event == "ZONE_CHANGED" or event == "ZONE_CHANGED_NEW_AREA"
+      or event == "MINIMAP_UPDATE_ZOOM" or event == "PLAYER_ENTERING_WORLD" then
+    -- Tout de suite, puis une demi-seconde plus tard (IsIndoors peut ne
+    -- basculer qu'apres l'evenement : non verifie).
+    OP.CheckIndoor()
+    C_Timer.After(0.5, OP.CheckIndoor)
 
   elseif event == "PLAYER_REGEN_DISABLED" then
     -- Securite : jamais d'interface invisible en combat.
