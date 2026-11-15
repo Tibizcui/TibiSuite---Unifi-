@@ -11,7 +11,7 @@ local function Loc(key, default) return L[key] or default end
 -- ─────────────────────────────────────────────
 -- Constantes
 -- ─────────────────────────────────────────────
-local ADDON_VERSION = "7.6.2"
+local ADDON_VERSION = "7.6.3"
 local SAVE_INTERVAL = 300  -- sauvegarde incrémentale toutes les 5 minutes
 local RESUME_WINDOW = 600  -- /reload ou reconnexion en moins de 10 min : meme session
 T.VERSION = ADDON_VERSION
@@ -828,6 +828,23 @@ function T.InstMarkRaid(zoneName, diffCode)
     v.name, v.diff = zoneName, diffCode
 end
 
+--- Difficulte de raid changee sans ecran de chargement (constat en jeu du
+--- 2026-11-15 : chrono en « N » dans un raid en Mythique). La difficulte n'etait
+--- lue qu'a l'entree ; on la relit (PLAYER_DIFFICULTY_CHANGED et chaque seconde
+--- du chronometre) et le temps deja cumule suit la nouvelle difficulte, comme
+--- au premier boss tue (T.InstMarkRaid). Renvoie true si elle a change.
+function T.InstCheckDiff()
+    local v = T.db and T.db._inst
+    if not (v and v.kind == "raid" and v.t0 and not v.leftAt and v.name) then return false end
+    -- Toujours dans un raid (pas un repaire) : T.InstKind est defini plus bas
+    local kind, diffID = T.InstKind()
+    if kind ~= "raid" or not diffID or diffID == 0 then return false end
+    local code = T.RaidDiffCode(diffID)
+    if code == v.diff then return false end
+    T.InstMarkRaid(v.name, code)
+    return true
+end
+
 -- Type d'instance du chrono. Seuls "party" et "raid" alimentent les totaux
 -- (dgnTime, raidTime) ; les autres types ("lair", "delve", "scenario", "pvp",
 -- "arena") ne servent qu'a l'affichage du chronometre (Timer.lua).
@@ -1044,6 +1061,7 @@ pcall(dgnFrame.RegisterEvent, dgnFrame, "ENCOUNTER_END")            -- tout boss
 pcall(dgnFrame.RegisterEvent, dgnFrame, "PLAYER_ENTERING_WORLD")    -- détection sortie d'instance
 pcall(dgnFrame.RegisterEvent, dgnFrame, "SCENARIO_COMPLETED")       -- gouffres
 pcall(dgnFrame.RegisterEvent, dgnFrame, "SCENARIO_CRITERIA_UPDATE") -- palier du gouffre en cours
+pcall(dgnFrame.RegisterEvent, dgnFrame, "PLAYER_DIFFICULTY_CHANGED") -- difficulte changee sur place
 
 dgnFrame:SetScript("OnEvent", function(self, event, ...)
     if not T.db then return end
@@ -1121,6 +1139,10 @@ dgnFrame:SetScript("OnEvent", function(self, event, ...)
         if not d.diffName or d.diffName == "" then
             d.diffName = GetDifficultyLabel()
         end
+
+    -- ── Difficulte changee sans ecran de chargement ────────────────────────
+    elseif event == "PLAYER_DIFFICULTY_CHANGED" then
+        T.InstCheckDiff()
 
     -- ── Gouffres ───────────────────────────────────────────────────────────
     elseif event == "SCENARIO_CRITERIA_UPDATE" then
@@ -1215,6 +1237,11 @@ SlashCmdList["LVLHISTORY"] = function(msg)
         else
             print("|cFF5EE223LvlHistory|r chrono : aucun (pas en instance suivie)")
         end
+        -- Difficulte brute du jeu (diagnostic d'un identifiant inconnu)
+        local iname, itype, idiff, idiffName = GetInstanceInfo()
+        print(string.format("  instance : %s [%s] difficultyID %s (%s) -> code %s",
+            tostring(iname), tostring(itype), tostring(idiff), tostring(idiffName),
+            itype == "raid" and T.RaidDiffCode(idiff) or "-"))
         local n = 0
         for name, secs in pairs(T.db and T.db.dgnTime or {}) do
             n = n + 1

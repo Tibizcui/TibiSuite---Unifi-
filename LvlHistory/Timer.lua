@@ -381,6 +381,8 @@ end
 -- Mise a jour (une fois par seconde, uniquement quand le cadre est visible)
 -- ─────────────────────────────────────────────
 function Timer.Refresh()
+    -- Difficulte de raid changee sur place : realigne le chrono (Core.lua)
+    if T.InstCheckDiff and T.InstCheckDiff() then BossDirty() end
     local elapsed, v
     if T.InstElapsed then elapsed, v = T.InstElapsed() end
 

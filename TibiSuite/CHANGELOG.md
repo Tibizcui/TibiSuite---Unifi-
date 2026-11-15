@@ -1,7 +1,7 @@
 # Changelog
 
-## 7.6.2
-- « Quoi de neuf » : carte LegTracker (Rae'shalare, Murmure de la mort).
+## 7.6.3
+- « Quoi de neuf » : cartes LegTracker (Rae'shalare, Murmure de la mort) et LvlHistory (difficulté du raid relue en continu).
 
 ## 7.6.1
 - « Quoi de neuf » : carte du chronomètre d'instance de LvlHistory.

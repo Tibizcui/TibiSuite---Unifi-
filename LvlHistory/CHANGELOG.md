@@ -1,7 +1,7 @@
 # Changelog
 
-## 7.6.2
-- Version alignée sur la suite TibiSuite (correctif de LegTracker), sans changement pour ce module.
+## 7.6.3
+- Chronomètre d'instance : la difficulté du raid est relue en continu (changement de difficulté sans écran de chargement). Le temps déjà passé suit la nouvelle difficulté au lieu de rester en Normal. `/lvlh temps` affiche aussi l'identifiant de difficulté brut, pour le diagnostic.
 
 ## 7.6.1
 - Nouveau chronomètre d'instance à l'écran : nom de l'instance, temps passé (écrans de chargement exclus) et type, en donjon, Mythique+, raid, repaire, gouffre, scénario et Tourment, champ de bataille et arène.

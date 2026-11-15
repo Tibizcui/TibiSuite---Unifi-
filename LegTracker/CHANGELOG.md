@@ -1,6 +1,6 @@
 # Changelog
 
-## 7.6.2
+## 7.6.3
 - Ajout de Rae'shalare, Murmure de la mort (arc de Sylvanas Coursevent, Sanctum de domination) dans l'onglet Shadowlands. Comptée pour toutes les classes : équipable par les Chasseurs, lootable par toutes.
 
 ## 7.6.1
