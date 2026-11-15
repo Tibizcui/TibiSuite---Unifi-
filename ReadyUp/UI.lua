@@ -116,6 +116,9 @@ local function Refresh()
   else
     head = string.format("|cFFFFB347" .. T("SUM_ISSUES", "%d point(s) à revoir") .. "|r", ev.issues)
   end
+  if RU.SuiteDisabled() then
+    head = "|cFFFF7F7F" .. T("SUM_SUITE_OFF", "Décoché dans TibiSuite : aucune alerte") .. "|r"
+  end
   main.summary:SetText(head .. "  |cFF888888" .. string.format(T("SUM_CTX", "contexte : %s"), RU.ContextLabel(ev.context)) .. "|r")
   main.enabled:SetChecked(TibiReadyUpDB.enabled and true or false)
 end
@@ -210,37 +213,68 @@ local function BuildOptions()
   end
 
   p:Section(T("OPT_SEC_WHEN", "Quand prévenir"))
-  chk(T("OPT_ON_INSTANCE", "En entrant en donjon, raid ou gouffre"), "onInstance",
-    T("TT_ON_INSTANCE", "Une seule fois par instance, et seulement s'il manque quelque chose."))
+  chk(T("OPT_ON_SOLO", "Pendant le jeu, dès qu'un seuil est franchi"), "onSolo",
+    T("TT_ON_SOLO", "Partout (solo, gouffre, donjon, raid, champ de bataille, arène) : une seule fois par problème, jamais en combat. Ce qui ne va pas à la connexion est annoncé une fois."))
+  chk(T("OPT_ON_INSTANCE", "En entrant en donjon, raid, gouffre, champ de bataille ou arène"), "onInstance",
+    T("TT_ON_INSTANCE", "Une seule fois par instance."))
+  chk(T("OPT_OK_ENTER", "En entrant, confirmer « Prêt » quand tout va bien"), "okOnEnter")
   chk(T("OPT_ON_READY", "À l'appel « Prêt ? » du groupe"), "onReadyCheck")
   chk(T("OPT_OK_READY", "Confirmer « Prêt » quand tout va bien"), "okOnReady")
   chk(T("OPT_ON_MERCHANT", "Chez un marchand qui répare, si l'usure est basse"), "onMerchant")
-  chk(T("OPT_ON_SOLO", "En quête, quand un seuil est franchi"), "onSolo",
-    T("TT_ON_SOLO", "En solo, hors instance : sacs pleins, usure, familier, munitions ou composants. Une seule fois par problème, jamais en combat."))
-  chk(T("OPT_ON_LOGIN", "À la connexion"), "onLogin")
+  chk(T("OPT_SOUND", "Son discret à l'alerte"), "sound")
+  p:Check(T("OPT_BEACON", "Voyant permanent tant qu'il reste un problème"),
+    function() return db.beacon and true or false end,
+    function(v) db.beacon = v; if RU.UpdateBeacon then RU.UpdateBeacon() end end,
+    T("TT_BEACON", "Petite icône déplaçable avec le nombre de points à revoir. Clic : détail. Elle disparaît quand tout est réglé."))
+  p:Slider(T("OPT_REMIND", "Rappel si ça dure, en solo et en gouffre (min, 0 = jamais)"), 0, 60, 5,
+    function() return db.remindMin end, function(v) db.remindMin = v end)
 
-  p:Section(T("OPT_SEC_CHECKS", "Contrôles"))
+  -- Ce qu'il faut verifier, par famille.
+  p:Section(T("OPT_SEC_GEAR", "Équipement"))
   chk(T("CHK_DUR", "Usure de l'équipement"), "chkDurability")
-  chk(T("CHK_BAGS", "Place dans les sacs"), "chkBags")
+  chk(T("CHK_ENCHANT", "Enchantements"), "chkEnchant",
+    T("TT_ENCHANT", "Emplacements sans enchantement, au niveau maximum, en raid, donjon mythique et arène. Emplacements selon la version du jeu, encore à vérifier en jeu."))
+  chk(T("CHK_ARMORKIT", "Renfort d'armure"), "chkArmorKit",
+    T("TT_ARMORKIT", "Jambes sans renfort d'armure ni fil, mêmes conditions que les enchantements."))
+  chk(T("CHK_GEMS", "Châsses vides"), "chkGems", T("TT_GEMS", "Châsses sans gemme, mêmes conditions que les enchantements."))
+
+  p:Section(T("OPT_SEC_CONSUM", "Consommables"))
   chk(T("CHK_FOOD", "Nourriture"), "chkFood", T("TT_CONSUM", "Au niveau maximum, en raid et en donjon mythique."))
   chk(T("CHK_FLASK", "Flacon ou élixir"), "chkFlask", T("TT_CONSUM", "Au niveau maximum, en raid et en donjon mythique."))
-  chk(T("OPT_CONSUM_DUNGEON", "Nourriture et flacon aussi en donjon normal"), "consumInDungeons")
-  chk(T("CHK_WEAPON", "Enchantement d'arme"), "chkWeapon",
+  chk(T("CHK_POTION", "Potions"), "chkPotion", T("TT_POTION", "Potions dans les sacs, au niveau maximum, en raid, donjon mythique et arène."))
+  chk(T("OPT_CONSUM_DUNGEON", "Nourriture et flacon aussi en donjon normal et en gouffre"), "consumInDungeons")
+  chk(T("OPT_CONSUM_ARENA", "Nourriture et flacon aussi en arène"), "consumInArena")
+  chk(T("CHK_WEAPON", "Enchantement temporaire d'arme"), "chkWeapon",
     T("TT_WEAPON", "Poisons du voleur, et avertissement quand une huile, une pierre ou un poison expire bientôt."))
   chk(T("OPT_WEAPON_ALL", "Exiger un enchantement d'arme pour toutes les classes"), "weaponForAll")
-  chk(T("CHK_PET", "Familier"), "chkPet", T("TT_PET", "Chasseur, démoniste et chevalier de la mort impie."))
-  chk(T("CHK_AMMO", "Munitions"), "chkAmmo", T("TT_AMMO", "Chasseur, sur les versions du jeu qui ont des munitions."))
-  chk(T("CHK_REAGENTS", "Composants"), "chkReagents", T("TT_REAGENTS", "Seulement les composants que tes sorts réclament dans cette version du jeu."))
 
-  p:Section(T("OPT_SEC_LIMITS", "Seuils"))
-  p:Slider(T("OPT_DUR", "Usure : prévenir sous (%)"), 10, 90, 5,
-    function() return db.durWarn end, function(v) db.durWarn = v; RU.Evaluate("manual") end)
-  p:Slider(T("OPT_BAGS", "Sacs : prévenir sous (places)"), 1, 20, 1,
-    function() return db.bagWarn end, function(v) db.bagWarn = v; RU.Evaluate("manual") end)
-  p:Slider(T("OPT_AMMO", "Munitions : prévenir sous"), 50, 1000, 50,
-    function() return db.ammoWarn end, function(v) db.ammoWarn = v; RU.Evaluate("manual") end)
-  p:Slider(T("OPT_REAGENTS", "Composants : prévenir sous"), 1, 20, 1,
-    function() return db.reagentWarn end, function(v) db.reagentWarn = v; RU.Evaluate("manual") end)
+  p:Section(T("OPT_SEC_CLASS", "Classe et inventaire"))
+  chk(T("CHK_SELFBUFF", "Amélioration de classe"), "chkSelfBuff",
+    T("TT_SELFBUFF", "Aspect du chasseur, armures du mage et du démoniste, Feu intérieur, Robustesse, Intelligence des Arcanes, Marque du fauve, boucliers du chaman, auras du paladin..."))
+  chk(T("CHK_PET", "Familier"), "chkPet", T("TT_PET", "Chasseur, démoniste et chevalier de la mort impie."))
+  chk(T("CHK_AMMO", "Flèches ou balles"), "chkAmmo", T("TT_AMMO", "Chasseur, sur les versions du jeu qui ont des munitions."))
+  chk(T("CHK_REAGENTS", "Composants"), "chkReagents", T("TT_REAGENTS", "Seulement les composants que tes sorts réclament dans cette version du jeu."))
+  chk(T("CHK_BAGS", "Place dans les sacs"), "chkBags")
+
+  -- Seuils qui declenchent les alertes, ranges comme les controles. Chaque
+  -- changement relance les controles : le voyant suit tout de suite.
+  local function sl(label, key, minV, maxV, step)
+    p:Slider(label, minV, maxV, step,
+      function() return db[key] end, function(v) db[key] = v; RU.Evaluate("manual") end)
+  end
+  p:Section(T("OPT_SEC_LIMITS", "Seuils des alertes"))
+  p:Note(T("NOTE_LIMITS", "Orange : à revoir. Rouge : critique. Une durée à 0 coupe l'avertissement « expire bientôt »."))
+  sl(T("OPT_DUR", "Usure : prévenir sous (%)"), "durWarn", 10, 90, 5)
+  sl(T("OPT_DUR_CRIT", "Usure : critique sous (%)"), "durCrit", 0, 50, 5)
+  sl(T("OPT_BUFF_EXP", "Nourriture et flacon : expirent dans moins de (min)"), "buffExpireMin", 0, 30, 1)
+  sl(T("OPT_POTION", "Potions : prévenir sous"), "potionWarn", 1, 10, 1)
+  sl(T("OPT_WEAPON_MIN", "Enchantement d'arme : expire dans moins de (min)"), "weaponMin", 0, 30, 1)
+  sl(T("OPT_AMMO", "Flèches ou balles : prévenir sous"), "ammoWarn", 50, 1000, 50)
+  sl(T("OPT_REAGENTS", "Composants : prévenir sous"), "reagentWarn", 1, 20, 1)
+  sl(T("OPT_SHARD", "Fragments d'âme : prévenir sous"), "shardWarn", 1, 20, 1)
+  sl(T("OPT_BAGS", "Sacs : prévenir sous (places)"), "bagWarn", 1, 20, 1)
+
+  p:Section(T("OPT_SEC_DISPLAY", "Affichage"))
   p:Slider(T("OPT_TOAST_TIME", "Durée de l'alerte (secondes)"), 4, 30, 1,
     function() return db.toastTime end, function(v) db.toastTime = v end)
   p:Button(T("BTN_TOAST_RESET", "Replacer l'alerte en haut de l'écran"), function()
@@ -248,6 +282,7 @@ local function BuildOptions()
     local t = _G.TibiReadyUpToast
     if t then t:ClearAllPoints(); t:SetPoint("TOP", UIParent, "TOP", 0, -160) end
   end)
+  p:Button(T("BTN_BEACON_RESET", "Replacer le voyant en haut de l'écran"), function() RU.ResetBeacon() end)
 
   -- Section standard, toujours en dernier (socle v22).
   if p.FloatControls then p:FloatControls(FLOAT_FRAME, { search = true }) end

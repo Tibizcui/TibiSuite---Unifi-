@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.0
+- Nouveau module ReadyUp dans la suite (18e addon) ; aucun changement dans ce module.
+
 ## 7.5.9
 - Fix bug display : corrections d'affichage.
 

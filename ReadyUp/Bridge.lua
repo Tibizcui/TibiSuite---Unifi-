@@ -26,7 +26,7 @@ function RU.Overview()
   if not (TibiReadyUpDB and ev) then return out end
   local list = {}
   for _, r in ipairs(ev.results) do list[#list + 1] = r end
-  table.sort(list, function(a, b) return RU.RANK[a.state] > RU.RANK[b.state] end)
+  table.sort(list, RU.MoreUrgent or function(a, b) return RU.RANK[a.state] > RU.RANK[b.state] end)
   for i = 1, math.min(5, #list) do
     local r = list[i]
     local cr, cg, cb = RU.StateColor(r.state)

@@ -133,27 +133,59 @@ améliorations, sorts connus, objets, contexte), `Checks.lua` (les contrôles et
 `Bridge.lua` (`statusFn`, `overviewFn`, badge d'onglet, recherche,
 `TibiReadyUp_DoctorNote`), `ReadyUp_Module.lua` (glue, minicarte, slash).
 
-Contrôles : usure, place dans les sacs (famille 0), nourriture et flacon (raid
-et donjon mythique, niveau maximum), enchantement temporaire d'arme (poisons
-du voleur, expiration sous 10 min), familier (chasseur sans Loup solitaire,
-démoniste sans Grimoire du sacrifice, chevalier de la mort impie), munitions
-(seulement si `GetInventorySlotInfo("AmmoSlot")` répond), composants Classic
-(seulement si l'infobulle du sort cite l'objet). Moments : entrée en instance
-(une fois par instance et difficulté), `READY_CHECK`, `MERCHANT_SHOW` avec
-réparation, connexion (décochée), et **en quête** (`onSolo`, solo hors
-instance) : alerte quand usure, sacs, familier, munitions ou composants
-franchissent un seuil, une fois par problème (nouvelle alerte seulement s'il
-disparaît puis revient, ou s'aggrave), après 3 s de persistance, jamais en
-combat ni en fantôme ; les problèmes déjà là au premier contrôle solo ne sont
-pas annoncés. Rien ne s'affiche si tout va bien, sauf au ready check.
+Contrôles (une case chacun, regroupés Équipement / Consommables / Classe et
+inventaire) : usure ; enchantements, renfort d'armure (jambes) et châsses
+vides (niveau maximum, raid, donjon mythique, arène ; enchantements et renfort
+décochés par défaut, table `ENCHANT_SLOTS` par extension via
+`GetClassicExpansionLevel` sinon `GetExpansionLevel`, liste Midnight à
+vérifier) ; nourriture et flacon (raid et donjon mythique au niveau maximum,
+options donjon normal et gouffre, arène) ; potions dans les sacs (sous-classe
+1 ou mot-clé `KW_POTION`) ; enchantement temporaire d'arme (poisons du voleur,
+y compris en solo ; expiration sous 10 min) ; améliorations de classe sur soi
+(`SELF_BUFFS` : aspects, armures, Feu intérieur, Robustesse, Intelligence des
+Arcanes, Marque du fauve, boucliers, auras, Bénédiction du bronze) ; familier ;
+flèches ou balles (seulement si `GetInventorySlotInfo("AmmoSlot")` répond) ;
+composants Classic (seulement si l'infobulle du sort cite l'objet) ; place
+dans les sacs (famille 0, ignorée en champ de bataille et arène).
+
+Contextes (`RU.API.Context`) : `solo`, `delve` (scénario de difficulté 208,
+hypothèse), `dungeon`, `keystone`, `raid`, `pvp`, `arena`. Table `RU.WANT`
+des contextes par contrôle.
+
+Moments (2026-11-15) : **suivi continu partout** (`onSolo`) : alerte dès qu'un
+contrôle franchit son seuil, une fois par problème (de nouveau s'il disparaît
+puis revient, ou s'aggrave), tout de suite (familier : 5 s de persistance),
+jamais en combat ni en fantôme. Contrôle à chaque changement et toutes les
+30 s (ticker). Plus de silence au départ : ce qui ne va pas est annoncé une
+fois, 5 s après la connexion (l'option « À la connexion » a été retirée). Rappel
+d'un problème qui dure (`remindMin`, 10 min, 0 = jamais) en solo et en
+gouffre, via un ticker d'une minute. Entrée en instance (y compris champ de
+bataille et arène), `READY_CHECK`, `MERCHANT_SHOW` : ce qui y est montré est
+noté comme annoncé. Alerte **vivante** : titre par contexte (« Avant le
+raid »), lignes qui passent à « réglé », puis « Tout est réglé » ;
+« Prêt pour le donjon » en entrant si tout va bien (`okOnEnter`) ; son
+`SOUNDKIT.TELL_MESSAGE` (`sound`). Décoché dans TibiSuite : `/readyup` et la
+fenêtre le disent (`MSG_SUITE_OFF`). **Voyant permanent** `TibiReadyUpBeacon`
+(`beacon`, position `beaconPos`) tant qu'il reste un problème. **Diagnostic**
+`/readyup debug` : état du suivi et journal des 40 dernières décisions
+(`RU.Log`, mémoire seulement) ; toute erreur du suivi est attrapée et notée.
+Tout est dans `Toast.lua` (aucun nouveau fichier : pas de redémarrage client).
+
+Seuils réglables (section « Seuils des alertes ») : `durWarn` (30 %),
+`durCrit` (10 %, rouge), `buffExpireMin` (5 min, nourriture et flacon qui
+expirent, 0 = coupé), `potionWarn` (1), `weaponMin` (10 min, 0 = coupé),
+`ammoWarn` (200), `reagentWarn` (5), `shardWarn` (3), `bagWarn` (4). Ordre de
+priorité à niveau égal (`PRIORITY` dans `Toast.lua`, `RU.MoreUrgent`) :
+familier, flèches, arme, amélioration de classe, nourriture, flacon, potions,
+usure, composants, enchantements, renfort, châsses, sacs.
 
 Règles : **aucune lecture en combat** (`RU.Evaluate` renvoie nil ; un moment
 reçu en combat attend `PLAYER_REGEN_ENABLED`) ; toute valeur secrète ou
 lecture impossible donne l'état « inconnu », jamais une alerte. Hypothèses à
 vérifier en jeu : nom localisé du sort 19705 ou icône 136000 pour la
-nourriture, mots-clés localisés pour flacons et poisons (`KW_FLASK`,
-`KW_POISON` dans les Locales), identifiants de sorts et d'objets des
+nourriture, mots-clés localisés pour flacons, poisons et potions (`KW_FLASK`,
+`KW_POISON`, `KW_POTION` dans les Locales), identifiants des améliorations de classe, identifiants de sorts et d'objets des
 composants, ligne de composants dans l'infobulle des sorts Classic.
 
-Logo : `medias/Logo.tga` généré (disque vert et coche), pas encore de `.blp`
+Logo : `medias/Logo.tga` = emblème Tibi Addons décliné en vert #4CD964 (teinte du logo du core recolorée, 128 px, 2026-11-15), pas encore de `.blp`
 DXT5 ; `Logo.tga` reste donc dans l'archive (voir `.pkgmeta`).

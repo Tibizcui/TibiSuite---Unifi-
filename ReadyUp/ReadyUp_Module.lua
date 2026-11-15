@@ -73,15 +73,21 @@ SLASH_TIBIREADYUP2 = "/rdy"
 SlashCmdList["TIBIREADYUP"] = function(msg)
   local cmd = ((msg or ""):match("^%s*(%S*)") or ""):lower()
   if not TibiReadyUpDB then return end
+  -- Decoche dans TibiSuite : les alertes automatiques sont coupees. On le dit
+  -- clairement au lieu de laisser croire que tout marche.
+  if RU.SuiteDisabled() then
+    RU.Print(T("MSG_SUITE_OFF", "est décoché dans TibiSuite : coche-le dans /ts modules pour recevoir les alertes."))
+  end
   if cmd == "" then TibiReadyUp_Toggle()
   elseif cmd == "check" or cmd == "verifier" then
     local ev = RU.Evaluate("manual")
     if not ev then RU.Print(T("IN_COMBAT", "En combat : vérification après le combat.")); return end
     RU.ShowToast(ev, true)
+  elseif cmd == "debug" then RU.PrintDebug()
   elseif cmd == "on" then TibiReadyUpDB.enabled = true; RU.Print(T("MSG_ON", "activé")); RU.OnChanged()
   elseif cmd == "off" then TibiReadyUpDB.enabled = false; RU.Print(T("MSG_OFF", "désactivé")); RU.OnChanged()
   elseif cmd == "options" or cmd == "config" then TibiReadyUp_OpenOptions()
   else
-    RU.Print(T("HELP", "commandes : /readyup (fenêtre), check (vérifier maintenant), on, off, options"))
+    RU.Print(T("HELP", "commandes : /readyup (fenêtre), check (vérifier maintenant), debug (diagnostic des alertes), on, off, options"))
   end
 end

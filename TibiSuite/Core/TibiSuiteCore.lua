@@ -1,5 +1,5 @@
 -- ================================================================
--- TibiSuiteCore v7.5.9
+-- TibiSuiteCore v7.6.0
 -- Auteur  : Tibiscui - Kirin Tor
 -- Role    : Coeur de la suite. Charge le socle une seule fois
 --           (TibiSuiteUI.lua), tient le catalogue des modules,
@@ -12,7 +12,7 @@
 -- ================================================================
 
 local ADDON   = "TibiSuite"
-local VERSION = "7.5.9"
+local VERSION = "7.6.0"
 
 -- ================================================================
 -- LOCALISATION
@@ -729,7 +729,7 @@ local MODULES = {
     doctorFn    = "TibiReadyUp_DoctorNote",
     slashList   = "TIBIREADYUP",  -- secours : /readyup si la fonction Toggle est absente
     col         = { r=0.298, g=0.851, b=0.392 },  -- vert « feu vert » #4CD964 (identite ReadyUp)
-    curseUrl    = "https://www.curseforge.com/wow/addons/readyup",  -- slug libre au 2026-11-14, projet a creer
+    curseUrl    = "https://www.curseforge.com/projects/1806747",  -- projet CurseForge ReadyUp (adresse par identifiant, en validation au 2026-11-15)
     saved       = { "TibiReadyUpDB" },
     escClose    = true,
     -- 2026-11-14 : meme regle que Standby et Anchor, pas de migration

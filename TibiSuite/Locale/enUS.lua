@@ -248,7 +248,7 @@ L.DESC_Stats   = "Quests, gold, dungeons and M+, playtime per day and per charac
 L.DESC_Opacity = "Window transparency on hover, in combat or mounted, per-specialization profiles, mouse-wheel tuning."
 L.DESC_Standby = "AFK screen: your hero, your week and your gear at a glance. Steps aside on its own for a queue, a ready check or combat."
 L.DESC_Anchor  = "Moves the game windows: snapping, grid, undo, one layout per screen and per character, loot placement."
-L.DESC_ReadyUp = "Am I ready? Durability, bags, food, flask, weapon enchant, pet, ammunition and reagents checked before the pull."
+L.DESC_ReadyUp = "Am I ready? Durability, enchants, sockets, food, flask, potions, poisons, class buffs, pet, arrows and bags: checked everywhere."
 
 -- Vitrine de l'installateur
 L.DETAIL_Daily   = "DailyTracker lists the daily and weekly quests of Midnight and The War Within, and ticks them off on its own when you turn them in. Tracking is per character: you see at a glance what is left to do on your main and on your alts."
@@ -284,7 +284,7 @@ L.FEAT_Standby   = "Showcase, Character sheet, Minimal, Power saving, as a slide
 L.DETAIL_Anchor  = "Anchor lets you place the game windows wherever you want: character, bags, map, loot, loot rolls... It snaps to the edges and to other windows, and steps aside for ElvUI, EllesmereUI or BlizzMove when they already handle a window."
 L.FEAT_Anchor    = "Snapping, alignment guides and grid\nUndo the last move\nOne layout per screen resolution and per character\nLoot, loot rolls and bonus roll placement"
 L.DETAIL_ReadyUp = "ReadyUp checks, out of combat, what you are missing before a pull: worn gear, full bags, a forgotten meal or flask, poisons, pet, ammunition and reagents. Nothing to set up: the checks follow your class, your level and where you are. It stays silent when everything is fine."
-L.FEAT_ReadyUp   = "Alert when entering an instance and on the ready check\nChecks fitted to your class and the context\nRepair reminder at the merchant\nRetail, Forever and Classic"
+L.FEAT_ReadyUp   = "Solo, delve, dungeon, raid, battleground, arena\nAlert as soon as a threshold is crossed, once\nEvery check can be toggled in the options\nRetail, Forever and Classic"
 
 L.URL_HINT = "Ctrl+C to copy"
 
@@ -501,7 +501,8 @@ L.WN_59_2  = "Dashboard: LvlHistory raids and instance time now show in the Leve
 L.WN_65_0  = "New Anchor module: place the game windows wherever you want. Snapping and alignment guides, grid, undo, one layout per screen resolution and per character, loot and loot roll placement. Steps aside for ElvUI, EllesmereUI or BlizzMove when they already handle a window."
 L.WN_ANCHOR_HEAD = "New module: Anchor"
 L.WN_READYUP_HEAD = "New module: ReadyUp"
-L.WN_73_0  = "New ReadyUp module: \"am I ready?\" checked for you before the pull, with zero setup. Durability, bags, food, flask, weapon enchant, pet, ammunition and reagents. A discreet alert when entering an instance, on the ready check, at a repair merchant and while questing as soon as a threshold is crossed. Retail, Forever and Classic."
+L.WN_74_0  = "Opacity: the minimap stays readable inside buildings (houses, dungeons, cities), follows your opacity setting on Classic, hides completely from 5%, and sliders now move by 1%."
+L.WN_73_0  = "New ReadyUp module: \"am I ready?\" checked for you everywhere (solo, delve, dungeon, raid, battleground, arena), with zero setup. Durability, enchants, sockets, food, flask, potions, poisons, class buffs, pet, arrows, reagents and bags, each one can be toggled in the options. A live alert that turns green as you fix things. Retail, Forever and Classic."
 L.WN_69_0  = "Opacity: a minimap set below 5% is now fully hidden, player arrow and quest markers included, and comes back on hover. The tooltip opacity is finally kept on every display."
 L.WN_70_0  = "Opacity: the tooltip stays dimmed during its fade-out instead of jumping back to 100% when the mouse leaves the object. New \"Tooltip\" line in \"Add windows\", no need for the picker anymore."
 L.WN_72_0  = "New: \"Welcome back\". A character returning after 30 days away gets up to 5 steps made for it (level, gear, Great Vault, renown, professions), each with a button to the right module. Anytime: /ts back."

@@ -2447,6 +2447,9 @@ local function Build()
   ver:SetPoint("LEFT", title, "RIGHT", 10, -1)
   local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", 0, -10)
+  -- Au-dessus de l'en-tete : meme niveau, l'en-tete (souris active pour le
+  -- deplacement) pouvait capter le clic a la place de la croix.
+  close:SetFrameLevel(head:GetFrameLevel() + 5)
   close:SetScript("OnClick", function() f:Hide() end)
 
   -- Barre laterale

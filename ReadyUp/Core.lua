@@ -172,7 +172,10 @@ function A.Spec()
   if ok then return s end
 end
 
--- Contexte : "raid", "keystone" (M+ ou mythique), "dungeon" ou "solo".
+-- Contexte : "raid", "keystone" (M+ ou mythique), "dungeon", "delve"
+-- (gouffre), "pvp" (champ de bataille), "arena" ou "solo".
+-- HYPOTHESE : un gouffre est une instance « scenario » de difficulte 208
+-- (Midnight), a verifier en jeu ; sinon il compte comme un donjon.
 function A.Context()
   local inInst, iType = false, "none"
   if _G.IsInInstance then
@@ -180,10 +183,13 @@ function A.Context()
     if ok then inInst, iType = a, b end
   end
   if inInst and iType == "raid" then return "raid" end
+  if inInst and iType == "pvp" then return "pvp" end
+  if inInst and iType == "arena" then return "arena" end
   if inInst and (iType == "party" or iType == "scenario") then
     if _G.GetInstanceInfo then
       local ok, _, _, diff = pcall(GetInstanceInfo)
       if ok and (diff == 8 or diff == 23) then return "keystone" end
+      if ok and diff == 208 then return "delve" end
     end
     return "dungeon"
   end
@@ -209,9 +215,12 @@ local DEFAULTS = {
   onInstance   = true,   -- entree en donjon, raid, gouffre
   onReadyCheck = true,   -- appel « Pret ? » du groupe
   onMerchant   = true,   -- chez un marchand qui repare, si l'usure est basse
-  onLogin      = false,
-  onSolo       = true,   -- en quete (solo, hors instance) : quand un seuil est franchi
+  onSolo       = true,   -- pendant le jeu : des qu'un seuil est franchi (toutes situations)
   okOnReady    = true,   -- afficher « Pret » au ready check si tout va bien
+  okOnEnter    = true,   -- afficher « Pret pour le donjon » en entrant si tout va bien
+  sound        = true,   -- son discret a l'alerte
+  beacon       = true,   -- voyant permanent tant qu'il reste un probleme
+  remindMin    = 10,     -- rappel d'un probleme qui dure (minutes, 0 = jamais), en solo et en gouffre
   -- controles
   chkDurability = true,
   chkBags       = true,
@@ -221,13 +230,24 @@ local DEFAULTS = {
   chkPet        = true,
   chkAmmo       = true,
   chkReagents   = true,
-  consumInDungeons = false,  -- nourriture et flacon aussi en donjon normal / heroique
+  chkPotion     = true,
+  chkSelfBuff   = true,
+  chkGems       = true,
+  chkEnchant    = false,     -- emplacements par extension a confirmer en jeu
+  chkArmorKit   = false,     -- idem (jambes)
+  consumInDungeons = false,  -- nourriture et flacon aussi en donjon normal / heroique et en gouffre
+  consumInArena    = false,  -- nourriture et flacon aussi en arene
   weaponForAll     = false,  -- exiger un enchantement d'arme pour toutes les classes
   -- seuils
   durWarn    = 30,   -- pourcentage
   bagWarn    = 4,    -- places libres
   ammoWarn   = 200,
   reagentWarn = 5,
+  potionWarn = 1,
+  durCrit    = 10,   -- usure critique (pourcentage), alerte rouge
+  shardWarn  = 3,    -- fragments d'ame du demoniste
+  weaponMin  = 10,   -- enchantement d'arme : prevenir a moins de N minutes (0 = jamais)
+  buffExpireMin = 5, -- nourriture et flacon : prevenir a moins de N minutes (0 = jamais)
   toastTime  = 12,   -- secondes
   minimapAngle = 215,
 }

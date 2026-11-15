@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.6.0
+- Nouveau module ReadyUp (18e addon) : catalogue, Centre, barre, recherche et « Quoi de neuf ».
+- Centre TibiSuite : la croix en haut à droite ferme de nouveau la fenêtre.
+
 ## 7.5.9
 - Fix bug display : corrections d'affichage.
 

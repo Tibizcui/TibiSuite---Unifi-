@@ -73,7 +73,7 @@ L.DESC_Stats   = L.DESC_Stats   or "Quêtes, or, donjons et M+, temps de jeu par
 L.DESC_Opacity = L.DESC_Opacity or "Transparence des fenêtres au survol, en combat ou en monture, profils par spécialisation, réglage à la molette."
 L.DESC_Standby = L.DESC_Standby or "Écran d'absence : ton héros, ta semaine et ton équipement d'un coup d'œil. S'écarte tout seul pour une file, un appel ou un combat."
 L.DESC_Anchor  = L.DESC_Anchor  or "Déplace les fenêtres du jeu : magnétisme, grille, annulation, une disposition par écran et par personnage, placement du butin."
-L.DESC_ReadyUp = L.DESC_ReadyUp or "Suis-je prêt ? Usure, sacs, nourriture, flacon, enchantement d'arme, familier, munitions et composants vérifiés avant le pull."
+L.DESC_ReadyUp = L.DESC_ReadyUp or "Suis-je prêt ? Usure, enchantements, châsses, nourriture, flacon, potions, poisons, améliorations de classe, familier, flèches, sacs : vérifiés partout."
 
 -- Vitrine de l'installateur : explication detaillee (DETAIL_) et points forts
 -- (FEAT_, un par ligne, 4 maximum) de chaque module.
@@ -110,7 +110,7 @@ L.FEAT_Standby   = L.FEAT_Standby   or "Vitrine, Fiche du personnage, Épurée, 
 L.DETAIL_Anchor  = L.DETAIL_Anchor  or "Anchor te laisse placer les fenêtres du jeu où tu veux : personnage, sacs, carte, butin, lancers de dés... Il s'aimante aux bords et aux autres fenêtres, et laisse la main à ElvUI, EllesmereUI ou BlizzMove quand ils gèrent déjà une fenêtre."
 L.FEAT_Anchor    = L.FEAT_Anchor    or "Magnétisme, repères d'alignement et grille\nAnnuler le dernier déplacement\nUne disposition par résolution d'écran et par personnage\nPlacement du butin, des lancers de dés et du jet de bonus"
 L.DETAIL_ReadyUp = L.DETAIL_ReadyUp or "ReadyUp vérifie, hors combat, ce qui te manque avant un pull : équipement usé, sacs pleins, plat ou flacon oublié, poisons, familier, munitions et composants. Rien à configurer : les contrôles suivent ta classe, ton niveau et l'endroit où tu es. Il ne dit rien quand tout va bien."
-L.FEAT_ReadyUp   = L.FEAT_ReadyUp   or "Alerte à l'entrée en instance et au ready check\nContrôles adaptés à ta classe et au contexte\nRappel de réparation chez le marchand\nRetail, Forever et Classic"
+L.FEAT_ReadyUp   = L.FEAT_ReadyUp   or "Solo, gouffre, donjon, raid, champ de bataille, arène\nAlerte dès qu'un seuil est franchi, une fois\nChaque contrôle activable dans les options\nRetail, Forever et Classic"
 
 L.URL_HINT = L.URL_HINT or "Ctrl+C pour copier"
 
@@ -340,7 +340,8 @@ L.WN_65_0  = L.WN_65_0  or "Nouveau module Anchor : place les fenêtres du jeu o
 L.WN_ANCHOR_HEAD = L.WN_ANCHOR_HEAD or "Nouveau module : Anchor"
 -- ReadyUp (2026-11-14) : carte prete, a placer dans WHATSNEW a la release.
 L.WN_READYUP_HEAD = L.WN_READYUP_HEAD or "Nouveau module : ReadyUp"
-L.WN_73_0  = L.WN_73_0  or "Nouveau module ReadyUp : « suis-je prêt ? » vérifié pour toi avant le pull, sans rien configurer. Usure, sacs, nourriture, flacon, enchantement d'arme, familier, munitions et composants. Une alerte discrète en entrant en instance, à l'appel « Prêt ? », chez un marchand qui répare et en quête dès qu'un seuil est franchi. Retail, Forever et Classic."
+L.WN_74_0  = L.WN_74_0  or "Opacity : la minicarte reste lisible à l'intérieur des bâtiments (maisons, donjons, villes), suit l'opacité réglée sur Classic, se cache entièrement dès 5 %, et les curseurs avancent maintenant de 1 %."
+L.WN_73_0  = L.WN_73_0  or "Nouveau module ReadyUp : « suis-je prêt ? » vérifié pour toi, partout (solo, gouffre, donjon, raid, champ de bataille, arène), sans rien configurer. Usure, enchantements, châsses, nourriture, flacon, potions, poisons, améliorations de classe, familier, flèches, composants et sacs, chacun activable dans les options. Une alerte vivante qui se met au vert quand tu règles le problème. Retail, Forever et Classic."
 L.WN_69_0  = L.WN_69_0  or "Opacity : une minicarte réglée à moins de 5 % est maintenant entièrement cachée, flèche du joueur et repères de quêtes compris, et réapparaît au survol. L'opacité de l'infobulle est enfin respectée à chaque affichage."
 L.WN_70_0  = L.WN_70_0  or "Opacity : l'infobulle reste atténuée pendant son fondu de disparition, au lieu de remonter à 100 % quand la souris quitte l'objet. Nouvelle ligne « Infobulle (bulle d'aide) » dans « Ajouter des fenêtres », plus besoin de la pipette."
 L.WN_72_0  = L.WN_72_0  or "Nouveau : « Bon retour ». Un personnage qui revient après 30 jours d'absence reçoit jusqu'à 5 étapes calculées pour lui (niveau, équipement, Grand coffre, renommées, métiers), chacune avec un bouton vers le bon module. À tout moment : /ts retour."
@@ -458,6 +459,12 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- 7.6.0 : nouveau module ReadyUp (18e addon), minicarte d'Opacity en interieur.
+  ["7.6.0"] = {
+    { key = "ReadyUp", title = "ReadyUp", headline = L.WN_READYUP_HEAD, text = L.WN_73_0, new = true },
+    { key = "Opacity", title = "Opacity", text = L.WN_74_0, new = false },
+    { key = "Suite", title = "TibiSuite", text = L.WN_72_0, new = false },
+  },
   -- 7.5.9 : fix bug display (memes cartes que la 7.5.8).
   ["7.5.9"] = {
     { key = "Suite", title = "TibiSuite", text = L.WN_72_0, new = true },
