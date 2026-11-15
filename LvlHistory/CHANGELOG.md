@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.4
+- Chronomètre d'instance : le prochain boss à tuer s'affiche sous le compteur de boss, dans l'ordre du Journal des donjons (sinon du verrou d'instance), et « Tous les boss sont vaincus » à la fin. Option « Afficher le prochain boss à tuer » pour le masquer.
+
 ## 7.6.3
 - Chronomètre d'instance : la difficulté du raid est relue en continu (changement de difficulté sans écran de chargement). Le temps déjà passé suit la nouvelle difficulté au lieu de rester en Normal. `/lvlh temps` affiche aussi l'identifiant de difficulté brut, pour le diagnostic.
 

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.4
+- « Quoi de neuf » : carte du prochain boss à tuer dans le chronomètre de LvlHistory.
+
 ## 7.6.3
 - « Quoi de neuf » : cartes LegTracker (Rae'shalare, Murmure de la mort) et LvlHistory (difficulté du raid relue en continu).
 

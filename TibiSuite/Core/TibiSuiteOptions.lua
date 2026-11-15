@@ -340,7 +340,8 @@ L.WN_65_0  = L.WN_65_0  or "Nouveau module Anchor : place les fenêtres du jeu o
 L.WN_ANCHOR_HEAD = L.WN_ANCHOR_HEAD or "Nouveau module : Anchor"
 -- ReadyUp (2026-11-14) : carte prete, a placer dans WHATSNEW a la release.
 L.WN_READYUP_HEAD = L.WN_READYUP_HEAD or "Nouveau module : ReadyUp"
-L.WN_77_0  = L.WN_77_0  or "LvlHistory : le chronomètre d'instance suit maintenant un changement de difficulté du raid fait sur place, sans écran de chargement. Le temps déjà passé bascule sur la bonne difficulté au lieu de rester en Normal."
+L.WN_78_0  = L.WN_78_0  or "LvlHistory : le chronomètre d'instance affiche le prochain boss à tuer sous le compteur de boss, dans l'ordre du Journal des donjons, et « Tous les boss sont vaincus » à la fin. Une case dans les options le masque."
+L.WN_77_0  = L.WN_77_0  or"LvlHistory : le chronomètre d'instance suit maintenant un changement de difficulté du raid fait sur place, sans écran de chargement. Le temps déjà passé bascule sur la bonne difficulté au lieu de rester en Normal."
 L.WN_76_0  = L.WN_76_0  or "LegTracker : Rae'shalare, Murmure de la mort, l'arc de Sylvanas Coursevent au Sanctum de domination, rejoint l'onglet Shadowlands. Il compte pour toutes les classes, puisque tout le monde peut le looter."
 L.WN_75_0  = L.WN_75_0  or "LvlHistory : nouveau chronomètre d'instance à l'écran, en donjon, Mythique+, raid, repaire, gouffre, scénario, champ de bataille et arène, avec les boss tués sur le total. Chaque type se désactive dans les options, et une mort ne remet plus le chrono à zéro si tu reviens dans les 15 minutes."
 L.WN_74_0  = L.WN_74_0  or "Opacity :la minicarte reste lisible à l'intérieur des bâtiments (maisons, donjons, villes), suit l'opacité réglée sur Classic, se cache entièrement dès 5 %, et les curseurs avancent maintenant de 1 %."
@@ -462,6 +463,12 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- 7.6.4 : LvlHistory, prochain boss a tuer dans le chronometre d'instance.
+  ["7.6.4"] = {
+    { key = "Lvl", title = "LvlHistory", text = L.WN_78_0, new = true },
+    { key = "Leg", title = "LegTracker", text = L.WN_76_0, new = false },
+    { key = "ReadyUp", title = "ReadyUp", headline = L.WN_READYUP_HEAD, text = L.WN_73_0, new = false },
+  },
   -- 7.6.3 (7.6.2 jamais publiee) : LegTracker, Rae'shalare (Sanctum de
   -- domination) toutes classes ; LvlHistory, difficulte de raid relue en continu.
   ["7.6.3"] = {
