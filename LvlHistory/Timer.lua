@@ -152,43 +152,47 @@ local function JournalOpen()
     return EncounterJournal and EncounterJournal.IsShown and EncounterJournal:IsShown()
 end
 
-local function CountEJ(jid, withArg)
-    local n = 0
+-- Boss du journal, dans l'ordre : { { name, enc } }. enc = dungeonEncounterID
+-- (8e retour de EJ_GetEncounterInfoByIndex), le meme identifiant que
+-- ENCOUNTER_END : il relie un boss tue a sa ligne du journal.
+local function ReadEJ(jid, withArg)
+    local list = {}
     for i = 1, 30 do
-        local ok, bname
-        if withArg then ok, bname = pcall(EJ_GetEncounterInfoByIndex, i, jid)
-        else ok, bname = pcall(EJ_GetEncounterInfoByIndex, i) end
+        local ok, bname, enc, _
+        if withArg then ok, bname, _, _, _, _, _, enc = pcall(EJ_GetEncounterInfoByIndex, i, jid)
+        else ok, bname, _, _, _, _, _, enc = pcall(EJ_GetEncounterInfoByIndex, i) end
         if not ok or not bname then break end
-        n = n + 1
+        list[#list + 1] = { name = bname, enc = enc }
     end
-    return n
+    return list
 end
 
-local ejTotal = {}   -- [journalInstanceID] = nombre de boss
+local ejList = {}   -- [journalInstanceID] = liste des boss
 
-local function EJTotal()
+local function EJBosses()
     if not (EJ_GetInstanceForMap and EJ_GetEncounterInfoByIndex and C_Map and C_Map.GetBestMapForUnit) then return nil end
     local okM, uiMap = pcall(C_Map.GetBestMapForUnit, "player")
     if not okM or not uiMap then return nil end
     local okJ, jid = pcall(EJ_GetInstanceForMap, uiMap)
     if not okJ or not jid or jid == 0 then return nil end
-    if ejTotal[jid] then return ejTotal[jid] end
+    if ejList[jid] then return ejList[jid] end
     -- Selectionner une instance du journal : jamais en combat ni journal ouvert
     if InCombatLockdown and InCombatLockdown() then return nil end
-    local n = CountEJ(jid, true)
-    if n == 0 and EJ_SelectInstance and not JournalOpen() then
+    local list = ReadEJ(jid, true)
+    if #list == 0 and EJ_SelectInstance and not JournalOpen() then
         local tier = EJ_GetCurrentTier and EJ_GetCurrentTier()
         if pcall(EJ_SelectInstance, jid) then
-            n = CountEJ(jid, false)
-            if n == 0 then n = CountEJ(jid, true) end
+            list = ReadEJ(jid, false)
+            if #list == 0 then list = ReadEJ(jid, true) end
         end
         if tier and EJ_SelectTier then pcall(EJ_SelectTier, tier) end
     end
-    if n > 0 then ejTotal[jid] = n; return n end
+    if #list > 0 then ejList[jid] = list; return list end
     return nil
 end
 
--- Verrou d'instance courant : boss tues, total (nil sans verrou)
+-- Verrou d'instance courant : boss tues, total, liste { { name, killed } }
+-- dans l'ordre du verrou (nil sans verrou)
 local function Lockout()
     if not (GetNumSavedInstances and GetSavedInstanceInfo) then return nil end
     local ok, _, _, diff, _, _, _, _, mapID = pcall(GetInstanceInfo)
@@ -197,7 +201,14 @@ local function Lockout()
     for i = 1, (okN and num or 0) do
         local okI, _, _, _, d, locked, _, _, _, _, _, numEnc, progress, _, instID = pcall(GetSavedInstanceInfo, i)
         if okI and instID == mapID and d == diff and locked and numEnc and numEnc > 0 then
-            return progress or 0, numEnc
+            local list = {}
+            if GetSavedInstanceEncounterInfo then
+                for j = 1, numEnc do
+                    local okE, bname, _, isKilled = pcall(GetSavedInstanceEncounterInfo, i, j)
+                    if okE and bname then list[#list + 1] = { name = bname, killed = isKilled and true or false } end
+                end
+            end
+            return progress or 0, numEnc, list
         end
     end
     return nil
@@ -205,6 +216,23 @@ end
 
 local bossCache = { ref = nil, dirty = true, killed = 0, total = nil }
 local function BossDirty() bossCache.dirty = true end
+
+-- Prochain boss a tuer : le premier, dans l'ordre du journal (sinon du verrou),
+-- qui n'est ni tue pendant la visite (identifiant) ni tue dans le verrou (nom).
+-- Dans un raid a ailes ou a ordre libre, c'est le prochain dans l'ordre du
+-- journal, pas forcement celui que le groupe attaquera.
+local function NextBoss(v, ej, lockList)
+    local deadName = {}
+    for _, b in ipairs(lockList or {}) do
+        if b.killed then deadName[b.name] = true end
+    end
+    local kills = type(v.kills) == "table" and v.kills or {}
+    for _, b in ipairs(ej or lockList or {}) do
+        local dead = deadName[b.name] or b.killed or (b.enc and kills[b.enc]) or kills[b.name]
+        if not dead then return b.name end
+    end
+    return nil
+end
 
 local function BossInfo(v)
     if bossCache.ref ~= v then
@@ -214,15 +242,40 @@ local function BossInfo(v)
         bossCache.dirty = false
         local own = 0
         if type(v.kills) == "table" then for _ in pairs(v.kills) do own = own + 1 end end
-        local lk, lt = Lockout()
+        local lk, lt, lockList = Lockout()
+        local ej = EJBosses()
         local killed = math.max(own, lk or 0)
-        local total = lt or bossCache.total or EJTotal()
+        local total = lt or (ej and #ej) or nil
         if total and killed > total then killed = total end
         bossCache.killed, bossCache.total = killed, total
-        -- Journal pas encore lisible (combat) : on reessaiera au prochain evenement
-        if not total and EJ_GetInstanceForMap then bossCache.retry = true else bossCache.retry = nil end
+        bossCache.next = NextBoss(v, ej, lockList)
+        bossCache.allDone = (total ~= nil and killed >= total) or false
+        -- Journal pas encore lisible (combat) : on reessaiera plus tard
+        if not ej and EJ_GetInstanceForMap then bossCache.retry = true else bossCache.retry = nil end
     end
     return bossCache.killed, bossCache.total
+end
+
+function Timer.IsNextOn()
+    local s = S()
+    return not s or s.timerNext ~= false
+end
+
+function Timer.SetNextOn(on)
+    local s = S()
+    if s then
+        if on then s.timerNext = nil else s.timerNext = false end
+    end
+    Timer.Refresh()
+end
+
+-- Ligne « Suivant : X » (vide si option coupee, type sans boss ou inconnu)
+local function NextText(v, view)
+    if not BOSS_KINDS[view] or not Timer.IsNextOn() then return "" end
+    BossInfo(v)
+    if bossCache.allDone then return Loc("TIMER_NEXT_DONE", "Tous les boss sont vaincus") end
+    if bossCache.next then return format(Loc("TIMER_NEXT_FMT", "Suivant : %s"), bossCache.next) end
+    return ""
 end
 
 local function BossText(v, view)
@@ -315,7 +368,8 @@ local function Build()
     f.nameFs = name
 
     local clock = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
-    clock:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 8, 6)
+    -- Ancre au HAUT du cadre : la ligne « Suivant » s'ajoute dessous (hauteur variable)
+    clock:SetPoint("BOTTOMLEFT", f, "TOPLEFT", 8, -38)
     clock:SetJustifyH("LEFT")
     f.clockFs = clock
 
@@ -327,9 +381,18 @@ local function Build()
     f.bossFs = boss
 
     local kindFs = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-    kindFs:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
+    kindFs:SetPoint("BOTTOMRIGHT", f, "TOPRIGHT", -8, -36)
     kindFs:SetJustifyH("RIGHT")
     f.kindFs = kindFs
+
+    -- Prochain boss a tuer (option timerNext), troisieme ligne
+    local nextFs = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    nextFs:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -42)
+    nextFs:SetPoint("TOPRIGHT", f, "TOPRIGHT", -8, -42)
+    nextFs:SetJustifyH("LEFT")
+    if nextFs.SetWordWrap then nextFs:SetWordWrap(false) end
+    nextFs:SetTextColor(0.85, 0.85, 0.85)
+    f.nextFs = nextFs
 
     -- Croix : masque le chronometre jusqu'a la prochaine instance
     local close = CreateFrame("Button", nil, f)
@@ -413,6 +476,10 @@ function Timer.Refresh()
         if now - (bossCache.lastTry or 0) >= 10 then bossCache.lastTry = now; BossDirty() end
     end
     f.bossFs:SetText(BossText(v, view))
+    local nextText = NextText(v, view)
+    f.nextFs:SetText(nextText)
+    local h = (nextText ~= "") and 58 or 44
+    if f:GetHeight() ~= h then f:SetHeight(h) end
     f.kindFs:SetText(Timer.KindLabel(view))
     local c = KIND_COLOR[view]
     local UI = _G.TibiMidnight
