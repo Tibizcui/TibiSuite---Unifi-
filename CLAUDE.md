@@ -288,4 +288,4 @@ Pour garder ce fichier court, le détail est rangé dans `docs/`. Ne le charge q
 
 - `docs/CENTRE-ET-BARRE.md` : styles de la barre (Dock, Panneau vivant) et Centre TibiSuite.
 - `docs/MODULES.md` : modules Opacity, Standby, PostBox, Anchor et ReadyUp.
-- `docs/JOURNAL-DEV.md` : journal de développement (multi-versions Classic et Forever, LvlHistory Raids et temps en instance).
+- `docs/JOURNAL-DEV.md` : journal de développement (multi-versions Classic et Forever, LvlHistory Raids et temps en instance, chronomètre d'instance à l'écran `LvlHistory/Timer.lua`, désactivable par type).

@@ -64,6 +64,27 @@ local function BuildOptions()
     if LvlHistory.UI and LvlHistory.UI.OpenTab then LvlHistory.UI.OpenTab(7) end
   end)
 
+  -- Chronometre d'instance (Timer.lua) : une case generale, puis une par type
+  local TM = LvlHistory.Timer
+  if TM then
+    panel:Section(T("OPT_SEC_TIMER", "Chronomètre d'instance"))
+    panel:Check(T("OPT_TIMER_ON", "Afficher le chronomètre en instance"),
+      function() return TM.IsOn() end,
+      function(v) TM.SetOn(v) end)
+    for _, kind in ipairs(TM.KINDS) do
+      if not (TM.RETAIL_ONLY[kind] and not C_DelvesUI) then
+        panel:Check("   " .. TM.KindLabel(kind, true),
+          function() return TM.IsKindOn(kind) end,
+          function(v) TM.SetKindOn(kind, v) end)
+      end
+    end
+    panel:Check(T("OPT_TIMER_LOCK", "Verrouiller la position du chronomètre"),
+      function() return TM.IsLocked() end,
+      function(v) TM.SetLocked(v) end)
+    panel:Button(T("OPT_TIMER_RECENTER", "Replacer le chronomètre"), function() TM.Recenter() end)
+    panel:Note(T("OPT_TIMER_NOTE", "Décoche un type pour ne plus afficher le chronomètre dans ce contenu. Le temps des donjons et des raids reste enregistré dans les onglets."))
+  end
+
   panel:Note(T("OPT_NOTE", "Astuce : clic droit sur la vignette Lvl Hist dans la barre TibiSuite ouvre aussi ces options."))
   -- Section standard, toujours en dernier (socle v22).
   if panel.FloatControls then panel:FloatControls(FRAME, { search = true }) end

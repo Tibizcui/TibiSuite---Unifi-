@@ -65,6 +65,8 @@ Farming.lua
 API.lua
 Minimap.lua
 UI.lua
+## Chronometre d'instance affiche a l'ecran (NOUVEAU FICHIER, 2026-11-15)
+Timer.lua
 ## Glue TibiSuite historique : recherche globale, options, habillage fenetre
 LvlHistory_Suite.lua
 ## Glue TibiSuite : inscription comme onglet de la barre unifiee

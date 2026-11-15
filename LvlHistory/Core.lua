@@ -729,8 +729,46 @@ function T.InstPause()
     if v then v.t0 = nil end
 end
 
---- Tick periodique (sauvegarde incrementale) : verse le temps sans pause.
-function T.InstTick() InstAccrue() end
+-- Reprise apres une mort (2026-11-15) : un joueur fantome qui sort de
+-- l'instance (cimetiere dehors) garde son chrono en attente (v.leftAt) ;
+-- s'il revient dans la meme instance sous INST_GRACE, le chrono reprend au
+-- lieu de repartir de zero. Seulement donjon pas encore compte et raid : un
+-- champ de bataille, une arene ou un gouffre quitte est termine.
+local INST_GRACE = 15 * 60
+
+local function IsGhost()
+    return UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") and true or false
+end
+
+local function InstCanWait(v)
+    if not IsGhost() then return false end
+    return (v.kind == "party" and not v.counted) or v.kind == "raid"
+end
+
+--- Tick periodique (sauvegarde incrementale) : verse le temps sans pause, et
+--- clot un chrono en attente dont le delai de reprise est depasse.
+function T.InstTick()
+    local v = T.db and T.db._inst
+    if v and v.leftAt and (time() - v.leftAt) > INST_GRACE then
+        InstClose()
+        return
+    end
+    InstAccrue()
+end
+
+--- Temps ecoule dans l'instance en cours (lecture seule, pour l'affichage du
+--- chronometre de Timer.lua). Renvoie secondes, etat db._inst ; nil hors
+--- instance (y compris un chrono en attente apres une mort).
+function T.InstElapsed()
+    local v = T.db and T.db._inst
+    if not v or not v.name or v.leftAt then return nil end
+    local s = v.acc or 0
+    if v.t0 then
+        local dt = time() - v.t0
+        if dt > 0 and dt <= INST_MAX_STEP then s = s + dt end
+    end
+    return s, v
+end
 
 --- Un donjon vient d'etre comptabilise : le chrono en cours est un run termine.
 function T.InstMarkRun(name, runSecs, diffName)
@@ -790,12 +828,45 @@ function T.InstMarkRaid(zoneName, diffCode)
     v.name, v.diff = zoneName, diffCode
 end
 
+-- Type d'instance du chrono. Seuls "party" et "raid" alimentent les totaux
+-- (dgnTime, raidTime) ; les autres types ("lair", "delve", "scenario", "pvp",
+-- "arena") ne servent qu'a l'affichage du chronometre (Timer.lua).
+-- Repaire (Grotte des Marees, 12.1) : type raid, difficultyID 250 (confirme
+-- en jeu). Avant cette version, son temps etait range dans raidTime en "N".
+local function IsLair(diffID)
+    if diffID == 250 then return true end
+    if C_DelvesUI and C_DelvesUI.IsInLair then
+        local ok, v = pcall(C_DelvesUI.IsInLair)
+        if ok and v then return true end
+    end
+    return false
+end
+
+--- Renvoie le type d'instance du chrono (ou nil hors instance suivie), difficultyID.
+function T.InstKind()
+    local inInst, instType = IsInInstance()
+    if not inInst then return nil end
+    local _, _, diffID = GetInstanceInfo()
+    if instType == "party" then return "party", diffID end
+    if instType == "raid" then
+        if IsLair(diffID) then return "lair", diffID end
+        return "raid", diffID
+    end
+    if instType == "scenario" then
+        -- Gouffre (Retail) ; sinon scenario generique : Tourment, scenarios
+        -- de Mists, Visions... (le nom affiche vient de GetInstanceInfo)
+        if T.CurrentContext() == "delve" then return "delve", diffID end
+        return "scenario", diffID
+    end
+    if instType == "pvp" or instType == "arena" then return instType, diffID end
+    return nil
+end
+
 function T.InstSync()
     local db = T.db
     if not db then return end
     InstCleanupOnce(db)
-    local inInst, instType = IsInInstance()
-    local kind = inInst and (instType == "party" or instType == "raid") and instType or nil
+    local kind = T.InstKind()
     local name, diff
     if kind then
         -- A PLAYER_ENTERING_WORLD, GetRealZoneText() renvoie encore la zone
@@ -807,12 +878,37 @@ function T.InstSync()
         if kind == "raid" then diff = T.RaidDiffCode(diffID) end
     end
     local v = db._inst
-    if v and kind and name and v.kind == kind and v.name == name and v.diff == diff then
+    local same = v and kind and name and v.kind == kind and v.name == name and v.diff == diff
+
+    -- Chrono en attente (sortie apres une mort) : retour dans la meme instance
+    -- a temps = on reprend ; sinon la visite est close comme avant.
+    if v and v.leftAt then
+        if same and (time() - v.leftAt) <= INST_GRACE then
+            v.leftAt = nil
+            v.t0 = time()
+            return
+        end
+        InstClose()
+        v, same = nil, false
+    end
+
+    if same then
         -- Meme instance (reload, reconnexion, couloir de chargement) : on reprend
         v.t0 = time()
         return
     end
-    if v then InstClose() end
+    if v then
+        -- Sortie vers le monde en fantome (course depuis le cimetiere) : on
+        -- garde le chrono en attente au lieu de le clore. Le temps dehors ne
+        -- compte pas (t0 = nil).
+        if not kind and InstCanWait(v) then
+            InstAccrue()
+            v.t0 = nil
+            v.leftAt = time()
+            return
+        end
+        InstClose()
+    end
     if kind and name and name ~= "" then
         db._inst = { name = name, kind = kind, diff = diff, t0 = time(), acc = 0 }
     end
@@ -1005,6 +1101,9 @@ dgnFrame:SetScript("OnEvent", function(self, event, ...)
         -- Raids : suivi dans son propre jeu de donnees (voir T.RecordRaidKill)
         if inInst and instType == "raid" then
             local encID, encName, diffID = ...
+            -- Repaire (type raid, difficulte 250) : ce n'est pas un raid, on
+            -- ne le compte ni en run ni en boss (2026-11-15)
+            if IsLair(diffID) then return end
             T.RecordRaidKill(GetRealZoneText() or "", T.RaidDiffCode(diffID), encID, encName)
             return
         end
@@ -1048,15 +1147,29 @@ dgnFrame:SetScript("OnEvent", function(self, event, ...)
         local inInst, instType = IsInInstance()
 
         if d.inInstance and not inInst then
-            -- Sortie d'instance — enregistrer si pas déjà compté et au moins 1 boss tué
-            if not d.countedByLFG and (d.bossKills or 0) > 0 and (d.zoneName or "") ~= "" then
-                T.RecordDungeon(d.zoneName, d.diffName ~= "" and d.diffName or nil)
+            if IsGhost() and not d.countedByLFG then
+                -- Sortie en fantome (cimetiere dehors) : le run n'est pas fini,
+                -- on le garde en attente du retour (2026-11-15)
+                d.ghostOut = true
+            else
+                -- Sortie d'instance — enregistrer si pas déjà compté et au moins 1 boss tué
+                if not d.countedByLFG and (d.bossKills or 0) > 0 and (d.zoneName or "") ~= "" then
+                    T.RecordDungeon(d.zoneName, d.diffName ~= "" and d.diffName or nil)
+                end
+                T.DgnReset()
             end
-            T.DgnReset()
 
         elseif inInst and instType == "party" then
+            -- Retour en fantome dans le meme donjon : on garde le run en cours
+            local inst = T.db._inst
+            local back = d.ghostOut and inst and inst.leftAt and inst.name == (GetInstanceInfo())
+            d.ghostOut = nil
             -- Entrée dans un nouveau donjon : ne reset que si on change de zone
-            if d.zoneName ~= (GetRealZoneText() or "") then
+            if not back and d.zoneName ~= (GetRealZoneText() or "") then
+                -- Run quitte en fantome sans y revenir : compte comme avant
+                if d.inInstance and not d.countedByLFG and (d.bossKills or 0) > 0 and (d.zoneName or "") ~= "" then
+                    T.RecordDungeon(d.zoneName, d.diffName ~= "" and d.diffName or nil)
+                end
                 d.inInstance   = true
                 d.zoneName     = GetRealZoneText() or ""
                 d.bossKills    = 0
@@ -1098,9 +1211,9 @@ SlashCmdList["LVLHISTORY"] = function(msg)
         if v then
             print(string.format("|cFF5EE223LvlHistory|r chrono : %s [%s%s] cumule %ds, %s",
                 tostring(v.name), tostring(v.kind), v.diff and ("/" .. v.diff) or "",
-                v.acc or 0, v.t0 and "en cours" or "en pause"))
+                v.acc or 0, v.leftAt and "en attente du retour (mort)" or (v.t0 and "en cours" or "en pause")))
         else
-            print("|cFF5EE223LvlHistory|r chrono : aucun (pas en instance de donjon ou de raid)")
+            print("|cFF5EE223LvlHistory|r chrono : aucun (pas en instance suivie)")
         end
         local n = 0
         for name, secs in pairs(T.db and T.db.dgnTime or {}) do
