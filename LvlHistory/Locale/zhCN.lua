@@ -74,4 +74,5 @@ for k, v in pairs({
   SEARCH_TITLE = "搜索", SEARCH_LEVEL_FMT = "等级 ", SEARCH_DUNGEON = "地下城", SEARCH_DELVE = "地下堡",
   -- Timer.lua (chronometre d'instance)
   OPT_SEC_TIMER = "副本计时器", OPT_TIMER_ON = "在副本中显示计时器", OPT_TIMER_LOCK = "锁定计时器位置", OPT_TIMER_RECENTER = "重置计时器位置", OPT_TIMER_NOTE = "取消勾选某类型后，该内容中将不再显示计时器。地下城和团队副本的时间仍会记录在标签页中。", TIMER_K_PARTY = "地下城（普通、英雄、史诗0层）", TIMER_K_MPLUS = "史诗钥石", TIMER_K_RAID = "团队副本", TIMER_K_LAIR = "巢穴", TIMER_K_DELVE = "地下堡", TIMER_K_SCENARIO = "场景战役与托加斯特", TIMER_K_PVP = "战场", TIMER_K_ARENA = "竞技场", TIMER_S_PARTY = "地下城", TIMER_S_MPLUS = "史诗钥石", TIMER_S_RAID = "团队副本", TIMER_S_LAIR = "巢穴", TIMER_S_DELVE = "地下堡", TIMER_S_SCENARIO = "场景战役", TIMER_S_PVP = "战场", TIMER_S_ARENA = "竞技场", TIMER_TT_TITLE = "副本计时器", TIMER_TT_NOTE = "进入后的时间，不含读取画面。", TIMER_TT_DRAG = "拖动：移动", TIMER_TT_RCLICK = "右键：选项", TIMER_TT_CLOSE = "隐藏至下一个副本",
+  OPT_TIMER_BOSS = "显示已击杀首领/总数（地下城和团队副本）", TIMER_BOSS_FMT = "首领 %d/%d", TIMER_BOSS_ONLY_FMT = "首领 %d",
 }) do L[k] = v end

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.1
+- Version alignée sur la suite TibiSuite (chronomètre d'instance de LvlHistory), sans changement pour ce module.
+
 ## 7.6.0
 - Minicarte : à l'intérieur des bâtiments (maisons, donjons, villes), la carte du lieu ne s'affichait plus quand la minicarte était atténuée. Elle reste désormais à 100 % à l'intérieur et reprend son opacité dès la sortie ; le masquage complet sous 5 % est conservé. `/opa indoor` désactive cette protection pour un test, `/opa probe` affiche l'état de la minicarte.
 - Minicarte : même fonctionnement sur Midnight, Forever et Classic. Sur Classic, la carte elle-même restait à 100 % quand la minicarte était atténuée (seuls la bordure et les boutons s'effaçaient). Elle suit maintenant l'opacité réglée, comme sur Midnight.

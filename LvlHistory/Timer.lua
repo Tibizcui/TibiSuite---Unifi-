@@ -125,6 +125,114 @@ local function IsMythicPlus()
     return ok and diffID == 8   -- 8 = Mythique+ (cle active)
 end
 
+-- ─────────────────────────────────────────────
+-- Boss tues / total (donjon, Mythique+, raid, repaire). NON TESTE EN JEU.
+-- Tues : le plus grand de (verrou d'instance, boss tues pendant la visite).
+-- Total : verrou d'instance (tous clients, apres le premier boss), sinon
+-- Journal des donjons (Retail, Cata, Mists : meme methode que DgnTracker).
+-- Sans total connu (Classic sans journal, donjon sans verrou) : "N boss".
+-- Le journal peut lister un boss absent d'une difficulte (rare).
+-- ─────────────────────────────────────────────
+local BOSS_KINDS = { party = true, mplus = true, raid = true, lair = true }
+
+function Timer.IsBossOn()
+    local s = S()
+    return not s or s.timerBoss ~= false
+end
+
+function Timer.SetBossOn(on)
+    local s = S()
+    if s then
+        if on then s.timerBoss = nil else s.timerBoss = false end
+    end
+    Timer.Refresh()
+end
+
+local function JournalOpen()
+    return EncounterJournal and EncounterJournal.IsShown and EncounterJournal:IsShown()
+end
+
+local function CountEJ(jid, withArg)
+    local n = 0
+    for i = 1, 30 do
+        local ok, bname
+        if withArg then ok, bname = pcall(EJ_GetEncounterInfoByIndex, i, jid)
+        else ok, bname = pcall(EJ_GetEncounterInfoByIndex, i) end
+        if not ok or not bname then break end
+        n = n + 1
+    end
+    return n
+end
+
+local ejTotal = {}   -- [journalInstanceID] = nombre de boss
+
+local function EJTotal()
+    if not (EJ_GetInstanceForMap and EJ_GetEncounterInfoByIndex and C_Map and C_Map.GetBestMapForUnit) then return nil end
+    local okM, uiMap = pcall(C_Map.GetBestMapForUnit, "player")
+    if not okM or not uiMap then return nil end
+    local okJ, jid = pcall(EJ_GetInstanceForMap, uiMap)
+    if not okJ or not jid or jid == 0 then return nil end
+    if ejTotal[jid] then return ejTotal[jid] end
+    -- Selectionner une instance du journal : jamais en combat ni journal ouvert
+    if InCombatLockdown and InCombatLockdown() then return nil end
+    local n = CountEJ(jid, true)
+    if n == 0 and EJ_SelectInstance and not JournalOpen() then
+        local tier = EJ_GetCurrentTier and EJ_GetCurrentTier()
+        if pcall(EJ_SelectInstance, jid) then
+            n = CountEJ(jid, false)
+            if n == 0 then n = CountEJ(jid, true) end
+        end
+        if tier and EJ_SelectTier then pcall(EJ_SelectTier, tier) end
+    end
+    if n > 0 then ejTotal[jid] = n; return n end
+    return nil
+end
+
+-- Verrou d'instance courant : boss tues, total (nil sans verrou)
+local function Lockout()
+    if not (GetNumSavedInstances and GetSavedInstanceInfo) then return nil end
+    local ok, _, _, diff, _, _, _, _, mapID = pcall(GetInstanceInfo)
+    if not ok or not mapID then return nil end
+    local okN, num = pcall(GetNumSavedInstances)
+    for i = 1, (okN and num or 0) do
+        local okI, _, _, _, d, locked, _, _, _, _, _, numEnc, progress, _, instID = pcall(GetSavedInstanceInfo, i)
+        if okI and instID == mapID and d == diff and locked and numEnc and numEnc > 0 then
+            return progress or 0, numEnc
+        end
+    end
+    return nil
+end
+
+local bossCache = { ref = nil, dirty = true, killed = 0, total = nil }
+local function BossDirty() bossCache.dirty = true end
+
+local function BossInfo(v)
+    if bossCache.ref ~= v then
+        bossCache.ref, bossCache.dirty, bossCache.total = v, true, nil
+    end
+    if bossCache.dirty then
+        bossCache.dirty = false
+        local own = 0
+        if type(v.kills) == "table" then for _ in pairs(v.kills) do own = own + 1 end end
+        local lk, lt = Lockout()
+        local killed = math.max(own, lk or 0)
+        local total = lt or bossCache.total or EJTotal()
+        if total and killed > total then killed = total end
+        bossCache.killed, bossCache.total = killed, total
+        -- Journal pas encore lisible (combat) : on reessaiera au prochain evenement
+        if not total and EJ_GetInstanceForMap then bossCache.retry = true else bossCache.retry = nil end
+    end
+    return bossCache.killed, bossCache.total
+end
+
+local function BossText(v, view)
+    if not BOSS_KINDS[view] or not Timer.IsBossOn() then return "" end
+    local killed, total = BossInfo(v)
+    if total then return format(Loc("TIMER_BOSS_FMT", "%d/%d boss"), killed, total) end
+    if killed > 0 then return format(Loc("TIMER_BOSS_ONLY_FMT", "%d boss"), killed) end
+    return ""
+end
+
 local function Fmt(secs)
     secs = floor(math.max(0, secs or 0))
     local h = floor(secs / 3600)
@@ -188,7 +296,7 @@ local function Build()
     local UI = _G.TibiMidnight
     local tpl = BackdropTemplateMixin and "BackdropTemplate" or nil
     local f = CreateFrame("Frame", FRAME_NAME, UIParent, tpl)
-    f:SetSize(176, 44)
+    f:SetSize(200, 44)
     f:SetFrameStrata("MEDIUM")
     f:SetClampedToScreen(true)
     f:EnableMouse(true)
@@ -210,6 +318,13 @@ local function Build()
     clock:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", 8, 6)
     clock:SetJustifyH("LEFT")
     f.clockFs = clock
+
+    -- Boss tues / total, a droite de l'horloge
+    local boss = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    boss:SetPoint("LEFT", clock, "RIGHT", 10, 0)
+    boss:SetJustifyH("LEFT")
+    boss:SetTextColor(1, 0.82, 0)
+    f.bossFs = boss
 
     local kindFs = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
     kindFs:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
@@ -290,6 +405,12 @@ function Timer.Refresh()
     if v.kind == "raid" and v.diff then label = label .. " (" .. v.diff .. ")" end
     f.nameFs:SetText(label)
     f.clockFs:SetText(Fmt(elapsed))
+    -- Total des boss pas encore lisible (journal en combat) : nouvel essai toutes les 10 s
+    if bossCache.retry and not (InCombatLockdown and InCombatLockdown()) then
+        local now = GetTime and GetTime() or 0
+        if now - (bossCache.lastTry or 0) >= 10 then bossCache.lastTry = now; BossDirty() end
+    end
+    f.bossFs:SetText(BossText(v, view))
     f.kindFs:SetText(Timer.KindLabel(view))
     local c = KIND_COLOR[view]
     local UI = _G.TibiMidnight
@@ -307,15 +428,45 @@ end
 -- Evenements : le chrono de Core.lua est synchronise a PLAYER_ENTERING_WORLD
 -- par un autre cadre ; on rafraichit avec un court delai pour passer apres lui.
 -- ─────────────────────────────────────────────
+local function AskLockouts()
+    if RequestRaidInfo then pcall(RequestRaidInfo) end
+end
+
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_LEAVING_WORLD",
-                     "CHALLENGE_MODE_START", "CHALLENGE_MODE_COMPLETED" }) do
+                     "CHALLENGE_MODE_START", "CHALLENGE_MODE_COMPLETED",
+                     "ENCOUNTER_END", "UPDATE_INSTANCE_INFO" }) do
     pcall(ev.RegisterEvent, ev, e)   -- evenements Mythique+ absents sur Classic
 end
-ev:SetScript("OnEvent", function(_, e)
+ev:SetScript("OnEvent", function(_, e, ...)
     if e == "PLAYER_LEAVING_WORLD" then
         if frame then frame:Hide() end
         return
+    end
+    if e == "UPDATE_INSTANCE_INFO" then
+        BossDirty()
+        if frame and frame:IsShown() then Timer.Refresh() end
+        return
+    end
+    if e == "ENCOUNTER_END" then
+        -- Boss tue pendant la visite : garde dans db._inst.kills (survit au /reload)
+        local encID, encName, _, _, success = ...
+        if success == 1 or success == true then
+            local _, v
+            if T.InstElapsed then _, v = T.InstElapsed() end
+            if v then
+                v.kills = v.kills or {}
+                v.kills[encID or encName or (#v.kills + 1)] = true
+            end
+            BossDirty()
+            if C_Timer and C_Timer.After then C_Timer.After(2, AskLockouts) end
+        end
+        if frame and frame:IsShown() then Timer.Refresh() end
+        return
+    end
+    if e == "PLAYER_ENTERING_WORLD" then
+        BossDirty()
+        AskLockouts()
     end
     if C_Timer and C_Timer.After then
         C_Timer.After(1, Timer.Refresh)

@@ -1,5 +1,12 @@
 # Changelog
 
+## 7.6.1
+- Nouveau chronomètre d'instance à l'écran : nom de l'instance, temps passé (écrans de chargement exclus) et type, en donjon, Mythique+, raid, repaire, gouffre, scénario et Tourment, champ de bataille et arène.
+- Boss tués sur le total à côté du chrono (donjons, Mythique+, raids, repaires) : verrou d'instance, sinon Journal des donjons ; sur Classic sans journal, le nombre de boss tués seul.
+- Options : une case générale, une case par type de contenu, une case pour les boss, verrouillage et replacement du cadre.
+- Une mort qui te fait sortir de l'instance ne remet plus le chrono à zéro si tu reviens dans les 15 minutes, et le run de donjon garde ses boss tués.
+- Les Repaires ne sont plus comptés comme des raids (temps et boss).
+
 ## 7.6.0
 - Nouveau module ReadyUp dans la suite (18e addon) ; aucun changement dans ce module.
 

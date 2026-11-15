@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.1
+- « Quoi de neuf » : carte du chronomètre d'instance de LvlHistory.
+
 ## 7.6.0
 - Nouveau module ReadyUp (18e addon) : catalogue, Centre, barre, recherche et « Quoi de neuf ».
 - Centre TibiSuite : la croix en haut à droite ferme de nouveau la fenêtre.

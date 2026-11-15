@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.1
+- Version alignée sur la suite TibiSuite (chronomètre d'instance de LvlHistory), sans changement pour ce module.
+
 ## 7.6.0
 - Première version de ReadyUp : « suis-je prêt ? », vérifié pour toi avant le pull, sans rien configurer.
 - Contrôles, chacun avec sa case dans les options :

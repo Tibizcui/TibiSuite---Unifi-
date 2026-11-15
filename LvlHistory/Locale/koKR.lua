@@ -74,4 +74,5 @@ for k, v in pairs({
   SEARCH_TITLE = "검색", SEARCH_LEVEL_FMT = "Lv ", SEARCH_DUNGEON = "던전", SEARCH_DELVE = "구렁",
   -- Timer.lua (chronometre d'instance)
   OPT_SEC_TIMER = "인스턴스 타이머", OPT_TIMER_ON = "인스턴스에서 타이머 표시", OPT_TIMER_LOCK = "타이머 위치 고정", OPT_TIMER_RECENTER = "타이머 위치 초기화", OPT_TIMER_NOTE = "유형을 해제하면 해당 콘텐츠에서 타이머를 표시하지 않습니다. 던전과 공격대 시간은 계속 탭에 기록됩니다.", TIMER_K_PARTY = "던전 (일반, 영웅, 신화 0)", TIMER_K_MPLUS = "쐐기돌", TIMER_K_RAID = "공격대", TIMER_K_LAIR = "소굴", TIMER_K_DELVE = "구렁", TIMER_K_SCENARIO = "시나리오 및 토르가스트", TIMER_K_PVP = "전장", TIMER_K_ARENA = "투기장", TIMER_S_PARTY = "던전", TIMER_S_MPLUS = "쐐기돌", TIMER_S_RAID = "공격대", TIMER_S_LAIR = "소굴", TIMER_S_DELVE = "구렁", TIMER_S_SCENARIO = "시나리오", TIMER_S_PVP = "전장", TIMER_S_ARENA = "투기장", TIMER_TT_TITLE = "인스턴스 타이머", TIMER_TT_NOTE = "입장 후 경과 시간 (로딩 화면 제외).", TIMER_TT_DRAG = "드래그: 이동", TIMER_TT_RCLICK = "오른쪽 클릭: 설정", TIMER_TT_CLOSE = "다음 인스턴스까지 숨기기",
+  OPT_TIMER_BOSS = "처치한 우두머리 / 전체 표시 (던전 및 공격대)", TIMER_BOSS_FMT = "우두머리 %d/%d", TIMER_BOSS_ONLY_FMT = "우두머리 %d",
 }) do L[k] = v end

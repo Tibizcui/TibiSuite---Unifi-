@@ -340,7 +340,8 @@ L.WN_65_0  = L.WN_65_0  or "Nouveau module Anchor : place les fenêtres du jeu o
 L.WN_ANCHOR_HEAD = L.WN_ANCHOR_HEAD or "Nouveau module : Anchor"
 -- ReadyUp (2026-11-14) : carte prete, a placer dans WHATSNEW a la release.
 L.WN_READYUP_HEAD = L.WN_READYUP_HEAD or "Nouveau module : ReadyUp"
-L.WN_74_0  = L.WN_74_0  or "Opacity : la minicarte reste lisible à l'intérieur des bâtiments (maisons, donjons, villes), suit l'opacité réglée sur Classic, se cache entièrement dès 5 %, et les curseurs avancent maintenant de 1 %."
+L.WN_75_0  = L.WN_75_0  or "LvlHistory : nouveau chronomètre d'instance à l'écran, en donjon, Mythique+, raid, repaire, gouffre, scénario, champ de bataille et arène, avec les boss tués sur le total. Chaque type se désactive dans les options, et une mort ne remet plus le chrono à zéro si tu reviens dans les 15 minutes."
+L.WN_74_0  = L.WN_74_0  or "Opacity :la minicarte reste lisible à l'intérieur des bâtiments (maisons, donjons, villes), suit l'opacité réglée sur Classic, se cache entièrement dès 5 %, et les curseurs avancent maintenant de 1 %."
 L.WN_73_0  = L.WN_73_0  or "Nouveau module ReadyUp : « suis-je prêt ? » vérifié pour toi, partout (solo, gouffre, donjon, raid, champ de bataille, arène), sans rien configurer. Usure, enchantements, châsses, nourriture, flacon, potions, poisons, améliorations de classe, familier, flèches, composants et sacs, chacun activable dans les options. Une alerte vivante qui se met au vert quand tu règles le problème. Retail, Forever et Classic."
 L.WN_69_0  = L.WN_69_0  or "Opacity : une minicarte réglée à moins de 5 % est maintenant entièrement cachée, flèche du joueur et repères de quêtes compris, et réapparaît au survol. L'opacité de l'infobulle est enfin respectée à chaque affichage."
 L.WN_70_0  = L.WN_70_0  or "Opacity : l'infobulle reste atténuée pendant son fondu de disparition, au lieu de remonter à 100 % quand la souris quitte l'objet. Nouvelle ligne « Infobulle (bulle d'aide) » dans « Ajouter des fenêtres », plus besoin de la pipette."
@@ -459,6 +460,12 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- 7.6.1 : chronometre d'instance de LvlHistory (boss tues sur le total).
+  ["7.6.1"] = {
+    { key = "Lvl", title = "LvlHistory", text = L.WN_75_0, new = true },
+    { key = "ReadyUp", title = "ReadyUp", headline = L.WN_READYUP_HEAD, text = L.WN_73_0, new = false },
+    { key = "Opacity", title = "Opacity", text = L.WN_74_0, new = false },
+  },
   -- 7.6.0 : nouveau module ReadyUp (18e addon), minicarte d'Opacity en interieur.
   ["7.6.0"] = {
     { key = "ReadyUp", title = "ReadyUp", headline = L.WN_READYUP_HEAD, text = L.WN_73_0, new = true },

@@ -74,4 +74,5 @@ for k, v in pairs({
   SEARCH_TITLE = "搜尋", SEARCH_LEVEL_FMT = "等級 ", SEARCH_DUNGEON = "地城", SEARCH_DELVE = "探究",
   -- Timer.lua (chronometre d'instance)
   OPT_SEC_TIMER = "副本計時器", OPT_TIMER_ON = "在副本中顯示計時器", OPT_TIMER_LOCK = "鎖定計時器位置", OPT_TIMER_RECENTER = "重設計時器位置", OPT_TIMER_NOTE = "取消勾選某類型後，該內容中將不再顯示計時器。地城與團隊副本的時間仍會記錄在分頁中。", TIMER_K_PARTY = "地城（普通、英雄、傳奇0層）", TIMER_K_MPLUS = "傳奇鑰石", TIMER_K_RAID = "團隊副本", TIMER_K_LAIR = "巢穴", TIMER_K_DELVE = "探究", TIMER_K_SCENARIO = "事件與托伽司", TIMER_K_PVP = "戰場", TIMER_K_ARENA = "競技場", TIMER_S_PARTY = "地城", TIMER_S_MPLUS = "傳奇鑰石", TIMER_S_RAID = "團隊副本", TIMER_S_LAIR = "巢穴", TIMER_S_DELVE = "探究", TIMER_S_SCENARIO = "事件", TIMER_S_PVP = "戰場", TIMER_S_ARENA = "競技場", TIMER_TT_TITLE = "副本計時器", TIMER_TT_NOTE = "進入後的時間，不含讀取畫面。", TIMER_TT_DRAG = "拖曳：移動", TIMER_TT_RCLICK = "右鍵：選項", TIMER_TT_CLOSE = "隱藏至下一個副本",
+  OPT_TIMER_BOSS = "顯示已擊殺首領/總數（地城與團隊副本）", TIMER_BOSS_FMT = "首領 %d/%d", TIMER_BOSS_ONLY_FMT = "首領 %d",
 }) do L[k] = v end

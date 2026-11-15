@@ -78,6 +78,9 @@ local function BuildOptions()
           function(v) TM.SetKindOn(kind, v) end)
       end
     end
+    panel:Check(T("OPT_TIMER_BOSS", "Afficher les boss tués sur le total (donjons et raids)"),
+      function() return TM.IsBossOn() end,
+      function(v) TM.SetBossOn(v) end)
     panel:Check(T("OPT_TIMER_LOCK", "Verrouiller la position du chronomètre"),
       function() return TM.IsLocked() end,
       function(v) TM.SetLocked(v) end)
