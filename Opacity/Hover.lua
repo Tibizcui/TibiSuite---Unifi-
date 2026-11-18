@@ -46,9 +46,28 @@ end
 
 -- IsMouseOver(haut, bas, gauche, droite) : des decalages positifs en haut et
 -- a droite, negatifs en bas et a gauche, elargissent la zone testee.
+local function OverRaw(frame, r)
+  local hit
+  if r > 0 then hit = frame:IsMouseOver(r, -r, -r, r) else hit = frame:IsMouseOver() end
+  -- VALEURS SECRETES (precaution, 2026-11-18) : en instance, le client rend
+  -- deja secret l'alpha des lignes d'infobulle. Si un jour la geometrie l'est
+  -- aussi, le simple test de ce booleen leverait une erreur a chaque image :
+  -- une reponse secrete vaut « pas survolee ».
+  if issecretvalue and issecretvalue(hit) then return false end
+  return hit and true or false
+end
+
+-- Visible ET sous la souris, sous pcall : une erreur vaut « pas survolee ».
+-- Fonction nommee passee a pcall avec ses arguments (pas de closure neuve
+-- 20 fois par seconde, voir l'audit poids 2026-11-13).
+local function VisibleOver(frame, r)
+  if not frame:IsVisible() then return false end
+  return OverRaw(frame, r)
+end
+
 local function Over(frame, r)
-  if r > 0 then return frame:IsMouseOver(r, -r, -r, r) end
-  return frame:IsMouseOver()
+  local ok, res = pcall(VisibleOver, frame, r)
+  return ok and res or false
 end
 
 -- Minicarte cachee par Opacity (ligne "Minimap", voir PilotMinimap dans
@@ -95,7 +114,7 @@ driver:SetScript("OnUpdate", function(self, dt)
     for _, frame in pairs(OP.byName) do
       local st = OP.state[frame]
       if st and st.active and st.hover
-         and ((frame:IsVisible() and Over(frame, radius)) or (HiddenByUs(frame, st) and OverHidden(frame, radius))) then
+         and (Over(frame, radius) or (HiddenByUs(frame, st) and OverHidden(frame, radius))) then
         overSince[frame] = now
         if st.group then groupSince[st.group] = now end
       end

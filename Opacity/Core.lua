@@ -218,6 +218,30 @@ local function IsUsableFrame(f)
 end
 OP.IsUsableFrame = IsUsableFrame
 
+-- VALEURS SECRETES (rapport joueur 2026-11-17, donjon en groupe) : en
+-- instance, le client peut rendre secret l'alpha d'une ligne d'infobulle
+-- (GetAlpha ou argument de SetAlpha). Toute arithmetique ou comparaison
+-- dessus leve « attempt to perform arithmetic on a secret number value ».
+-- On ne lit donc jamais un alpha sans passer par ici : valeur secrete ou
+-- illisible => 1 (opacite pleine, la base par defaut d'Opacity).
+local issecretvalue = _G.issecretvalue
+local function SafeAlpha(a)
+  if a == nil then return 1 end
+  if issecretvalue then
+    local ok, secret = pcall(issecretvalue, a)
+    if not ok or secret then return 1 end
+  end
+  if type(a) ~= "number" then a = tonumber(a) end
+  return a or 1
+end
+OP.SafeAlpha = SafeAlpha
+
+local function ReadAlpha(obj)
+  local ok, a = pcall(obj.GetAlpha, obj)
+  if not ok then return 1 end
+  return SafeAlpha(a)
+end
+
 -- ============================================================================
 -- DEUX MODES D'APPLICATION
 --   "frame"    : SetAlpha sur la frame elle-meme (base * facteur). Mode par
@@ -324,11 +348,11 @@ local function HookMinimap(mmf)
   -- Si la ligne "Minimap" pilote deja son alpha, GetAlpha renvoie une valeur
   -- deja attenuee par nous : la vraie base est celle de cette ligne.
   local s = state[mmf]
-  mm.base = (s and s.base) or mmf:GetAlpha() or 1
+  mm.base = (s and s.base) or ReadAlpha(mmf)
   -- Un tiers change l'alpha de la Minimap : nouvelle base, notre facteur reste.
   hooksecurefunc(mmf, "SetAlpha", function(self, a)
     if applying then return end
-    mm.base = tonumber(a) or 1
+    mm.base = SafeAlpha(a)
     if mm.factor then SetAlphaRaw(self, mm.base * mm.factor) end
   end)
   -- Un tiers la reaffiche alors qu'elle doit rester cachee : on la recache.
@@ -438,9 +462,11 @@ function OP.Push(frame)
     if not fullHide then cur = 1 end
   end
   if st.mode == "children" then
-    for obj, os in pairs(st.objs) do SetAlphaRaw(obj, (os.base or 1) * cur) end
+    -- SafeAlpha aussi ici : une base deja stockee avant ce correctif (ou
+    -- posee ailleurs) ne doit jamais faire planter la boucle.
+    for obj, os in pairs(st.objs) do SetAlphaRaw(obj, SafeAlpha(os.base) * cur) end
   else
-    SetAlphaRaw(frame, (st.base or 1) * cur)
+    SetAlphaRaw(frame, SafeAlpha(st.base) * cur)
   end
   if st.name == "MinimapCluster" then PilotMinimap(frame, st, st.active and cur or 1, "cluster")
   elseif st.name == "Minimap" then PilotMinimap(frame, st, st.active and cur or 1, "self") end
@@ -510,7 +536,7 @@ local function OnObjSetAlpha(obj, a)
   if applying then return end
   local os = objState[obj]
   if not os then return end
-  os.base = tonumber(a) or 1
+  os.base = SafeAlpha(a)
   local st = os.owner and state[os.owner]
   if st and st.active and st.mode == "children" and st.objs[obj] and (st.cur or 1) ~= 1 then
     if not Blockable(os.owner) then SetAlphaRaw(obj, os.base * st.cur) end
@@ -526,7 +552,7 @@ function OP.CollectObjs(frame)
     if st.objs[obj] or not IsUsableFrame(obj) then return end
     local os = objState[obj]
     if not os then
-      os = { base = obj:GetAlpha() or 1 }
+      os = { base = ReadAlpha(obj) }
       objState[obj] = os
       hooksecurefunc(obj, "SetAlpha", OnObjSetAlpha)
     end
@@ -552,7 +578,7 @@ local function OnExternalSetAlpha(frame, a)
   if applying then return end
   local st = state[frame]
   if not st then return end
-  st.base = tonumber(a) or 1
+  st.base = SafeAlpha(a)
   if st.mode == "children" or not st.active or (st.cur or 1) == 1 then return end
   if not st.noSwitch then
     local now = GetTime()
@@ -566,7 +592,7 @@ end
 local function Attach(name, frame)
   local st = state[frame]
   if not st then
-    local base = frame:GetAlpha() or 1
+    local base = ReadAlpha(frame)
     -- Minimap ajoutee (pipette) alors que la ligne MinimapCluster l'attenue
     -- deja (mm.factor) : GetAlpha renvoie base * facteur, pas la base. Sans
     -- cette correction (2026-11-15), la carte restait bloquee sous 100 %,
@@ -795,7 +821,7 @@ function OP.SetScreenshot(on)
         if not OP.screenshot then self:Hide() end
       end)
     end
-    savedUIAlpha = UIParent:GetAlpha() or 1
+    savedUIAlpha = ReadAlpha(UIParent)
     OP.screenshot = true
     SetAlphaRaw(UIParent, 0)
     shotGuard:Show(); shotWatch:Show()

@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.5
+- « Quoi de neuf » : carte du correctif d'Opacity (infobulles en donjon et en groupe).
+
 ## 7.6.4
 - « Quoi de neuf » : carte du prochain boss à tuer dans le chronomètre de LvlHistory.
 

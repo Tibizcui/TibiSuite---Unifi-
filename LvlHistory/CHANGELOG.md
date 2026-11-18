@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.5
+- Version alignée sur la suite TibiSuite (correctif d'Opacity et de Standby), sans changement pour ce module.
+
 ## 7.6.4
 - Chronomètre d'instance : le prochain boss à tuer s'affiche sous le compteur de boss, dans l'ordre du Journal des donjons (sinon du verrou d'instance), et « Tous les boss sont vaincus » à la fin. Option « Afficher le prochain boss à tuer » pour le masquer.
 

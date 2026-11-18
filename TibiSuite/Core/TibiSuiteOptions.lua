@@ -340,6 +340,7 @@ L.WN_65_0  = L.WN_65_0  or "Nouveau module Anchor : place les fenêtres du jeu o
 L.WN_ANCHOR_HEAD = L.WN_ANCHOR_HEAD or "Nouveau module : Anchor"
 -- ReadyUp (2026-11-14) : carte prete, a placer dans WHATSNEW a la release.
 L.WN_READYUP_HEAD = L.WN_READYUP_HEAD or "Nouveau module : ReadyUp"
+L.WN_79_0  = L.WN_79_0  or "Opacity : plus d'erreur Lua en donjon et en groupe quand une infobulle s'affiche. Le jeu masque certaines valeurs en instance, Opacity les reconnaît maintenant et garde l'infobulle à la bonne opacité."
 L.WN_78_0  = L.WN_78_0  or "LvlHistory : le chronomètre d'instance affiche le prochain boss à tuer sous le compteur de boss, dans l'ordre du Journal des donjons, et « Tous les boss sont vaincus » à la fin. Une case dans les options le masque."
 L.WN_77_0  = L.WN_77_0  or"LvlHistory : le chronomètre d'instance suit maintenant un changement de difficulté du raid fait sur place, sans écran de chargement. Le temps déjà passé bascule sur la bonne difficulté au lieu de rester en Normal."
 L.WN_76_0  = L.WN_76_0  or "LegTracker : Rae'shalare, Murmure de la mort, l'arc de Sylvanas Coursevent au Sanctum de domination, rejoint l'onglet Shadowlands. Il compte pour toutes les classes, puisque tout le monde peut le looter."
@@ -463,6 +464,13 @@ local FEEDS = {
 -- release : la cle est la version du core (VERSION dans TibiSuiteCore.lua).
 -- Sans entree pour la version courante, la fenetre ne s'ouvre pas.
 local WHATSNEW = {
+  -- 7.6.5 : Opacity, valeurs secretes des infobulles en instance (rapport
+  -- joueur 2026-11-17) ; precautions identiques dans Hover.lua et Standby.
+  ["7.6.5"] = {
+    { key = "Opacity", title = "Opacity", text = L.WN_79_0, new = true },
+    { key = "Lvl", title = "LvlHistory", text = L.WN_78_0, new = false },
+    { key = "ReadyUp", title = "ReadyUp", headline = L.WN_READYUP_HEAD, text = L.WN_73_0, new = false },
+  },
   -- 7.6.4 : LvlHistory, prochain boss a tuer dans le chronometre d'instance.
   ["7.6.4"] = {
     { key = "Lvl", title = "LvlHistory", text = L.WN_78_0, new = true },

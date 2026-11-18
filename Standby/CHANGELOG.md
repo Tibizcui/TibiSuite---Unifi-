@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.5
+- Précaution : un alpha secret renvoyé par le jeu n'est plus comparé, la fenêtre est tenue pour opaque.
+
 ## 7.6.4
 - Version alignée sur la suite TibiSuite (prochain boss dans le chronomètre de LvlHistory), sans changement pour ce module.
 

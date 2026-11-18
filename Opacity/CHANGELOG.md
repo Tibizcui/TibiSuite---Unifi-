@@ -1,5 +1,9 @@
 # Changelog
 
+## 7.6.5
+- Correctif : plus d'erreur Lua « attempt to perform arithmetic on a secret number value » en donjon et en groupe à l'affichage d'une infobulle (rapport joueur). Toute lecture d'alpha passe désormais par un contrôle des valeurs secrètes : une valeur masquée par le jeu vaut 100 %.
+- Précaution : le test de survol est protégé de la même façon (pcall, réponse secrète = non survolée).
+
 ## 7.6.4
 - Version alignée sur la suite TibiSuite (prochain boss dans le chronomètre de LvlHistory), sans changement pour ce module.
 

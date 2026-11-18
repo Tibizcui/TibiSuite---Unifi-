@@ -501,6 +501,7 @@ L.WN_59_2  = "Dashboard: LvlHistory raids and instance time now show in the Leve
 L.WN_65_0  = "New Anchor module: place the game windows wherever you want. Snapping and alignment guides, grid, undo, one layout per screen resolution and per character, loot and loot roll placement. Steps aside for ElvUI, EllesmereUI or BlizzMove when they already handle a window."
 L.WN_ANCHOR_HEAD = "New module: Anchor"
 L.WN_READYUP_HEAD = "New module: ReadyUp"
+L.WN_79_0  = "Opacity: no more Lua error in dungeons and groups when a tooltip shows. The game hides some values inside instances; Opacity now recognizes them and keeps the tooltip at the right opacity."
 L.WN_78_0  = "LvlHistory: the instance timer shows the next boss to kill under the boss counter, in Dungeon Journal order, and \"All bosses defeated\" at the end. A checkbox in the options hides it."
 L.WN_77_0  = "LvlHistory:the instance timer now follows a raid difficulty change made on the spot, without a loading screen. Time already spent moves to the right difficulty instead of staying on Normal."
 L.WN_76_0  = "LegTracker: Rae'shalare, Death's Whisper, Sylvanas Windrunner's bow from the Sanctum of Domination, joins the Shadowlands tab. It counts for every class, since anyone can loot it."

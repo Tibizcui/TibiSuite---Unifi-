@@ -201,6 +201,13 @@ local function FrameVisible(name)
   local ok, vis = pcall(f.IsVisible, f)
   if not (ok and vis) then return false end
   local okA, a = pcall(f.GetEffectiveAlpha or f.GetAlpha, f)
+  -- Valeur secrete (precaution 2026-11-18, meme cas qu'Opacity) : elle reste
+  -- de type "number", mais la comparer leve une erreur. On la tient pour
+  -- opaque, comme une lecture ratee.
+  if okA and issecretvalue then
+    local okS, secret = pcall(issecretvalue, a)
+    if not okS or secret then okA = false end
+  end
   if okA and type(a) == "number" and a < 0.05 then return false end
   return true
 end
