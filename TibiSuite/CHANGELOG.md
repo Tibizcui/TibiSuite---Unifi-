@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.6
+- « Quoi de neuf » : carte LvlHistory (chronomètre arrêté au boss de fin, Labyrinthe de Kindo'jan, difficulté affichée).
+
 ## 7.6.5
 - « Quoi de neuf » : carte du correctif d'Opacity (infobulles en donjon et en groupe).
 

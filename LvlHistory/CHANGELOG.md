@@ -1,5 +1,11 @@
 # Changelog
 
+## 7.6.6
+- Chronomètre d'instance : il s'arrête dès que le boss de fin est vaincu (dernier boss du Journal des donjons, tous les boss du verrou, Mythique+ terminée, récompense du chercheur de groupe, gouffre ou scénario terminé). L'horloge se fige en vert ; le temps compté dans les onglets inclut toujours le pillage.
+- Labyrinthe de Kindo'jan : le chronomètre s'ouvre aussi sans écran de chargement et dans un gouffre actif que le jeu ne déclare pas comme instance classique. La mort de Kindo'jan arrête le chrono.
+- Difficulté affichée à côté du nom : palier du gouffre ou du scénario, niveau de la clé Mythique+, difficulté du donjon (le raid garde son code LFR, N, H, M).
+- `/lvlh temps` affiche aussi la détection brute (type d'instance, identifiant, scénario, gouffre, repaire, palier) pour diagnostiquer une instance non reconnue.
+
 ## 7.6.5
 - Version alignée sur la suite TibiSuite (correctif d'Opacity et de Standby), sans changement pour ce module.
 

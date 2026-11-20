@@ -250,6 +250,8 @@ local function BossInfo(v)
         bossCache.killed, bossCache.total = killed, total
         bossCache.next = NextBoss(v, ej, lockList)
         bossCache.allDone = (total ~= nil and killed >= total) or false
+        -- Boss de fin = dernier boss du journal (identifiant de rencontre)
+        bossCache.lastEnc = ej and ej[#ej] and ej[#ej].enc or nil
         -- Journal pas encore lisible (combat) : on reessaiera plus tard
         if not ej and EJ_GetInstanceForMap then bossCache.retry = true else bossCache.retry = nil end
     end
@@ -284,6 +286,53 @@ local function BossText(v, view)
     if total then return format(Loc("TIMER_BOSS_FMT", "%d/%d boss"), killed, total) end
     if killed > 0 then return format(Loc("TIMER_BOSS_ONLY_FMT", "%d boss"), killed) end
     return ""
+end
+
+-- ─────────────────────────────────────────────
+-- Arret au boss de fin (2026-11-20, NON TESTE EN JEU). Seul l'AFFICHAGE est
+-- fige : le temps passe en instance (onglets, moyennes) continue d'inclure le
+-- pillage, comme avant. v.doneAt (secondes figees) vit dans db._inst : il
+-- survit au /reload et disparait avec la visite.
+-- Fin d'instance reconnue : dernier boss du journal tue, tous les boss tues
+-- (verrou), Mythique+ terminee, recompense du chercheur de groupe, scenario
+-- ou gouffre termine, ou une rencontre finale connue ci-dessous.
+-- ─────────────────────────────────────────────
+local FINAL_ENC = {
+    [3548] = true,   -- Kindo'jan, Labyrinthe de Kindo'jan (DBM-Delves-Midnight)
+}
+
+local function Freeze(v, secs)
+    if not v or v.doneAt then return end
+    v.doneAt = floor(math.max(0, secs or 0))
+end
+
+function Timer.IsFrozen()
+    local _, v
+    if T.InstElapsed then _, v = T.InstElapsed() end
+    return v and v.doneAt and true or false
+end
+
+-- Difficulte affichee a cote du nom. Raid : code stable de Core.lua (LFR, N,
+-- H, M). Mythique+ : niveau de la cle. Gouffre et scenario : palier, sinon le
+-- nom de difficulte du jeu. Donjon : nom de difficulte du jeu. JcJ : rien.
+local function DiffLabel(v, view)
+    if v.kind == "raid" then return v.diff end
+    if view == "pvp" or view == "arena" then return nil end
+    if view == "mplus" then
+        local cm = C_ChallengeMode
+        if cm and cm.GetActiveKeystoneInfo then
+            local ok, lvl = pcall(cm.GetActiveKeystoneInfo)
+            if ok and type(lvl) == "number" and lvl > 0 then return "+" .. lvl end
+        end
+        return nil
+    end
+    if (view == "delve" or view == "scenario") and T.DelveTier then
+        local tier = T.DelveTier()
+        if tier then return format(Loc("TIMER_TIER_FMT", "Palier %d"), tier) end
+    end
+    local ok, _, _, _, diffName = pcall(GetInstanceInfo)
+    if ok and type(diffName) == "string" and diffName ~= "" then return diffName end
+    return nil
 end
 
 local function Fmt(secs)
@@ -337,6 +386,9 @@ local function ShowTooltip(owner)
         GameTooltip:AddLine(Timer.KindLabel(currentView), 1, 1, 1)
     end
     GameTooltip:AddLine(Loc("TIMER_TT_NOTE", "Temps passé depuis l'entrée, écrans de chargement exclus."), 0.7, 0.7, 0.7, true)
+    if Timer.IsFrozen() then
+        GameTooltip:AddLine(Loc("TIMER_TT_DONE", "Arrêté à la fin de l'instance (boss de fin vaincu)."), 0.37, 0.89, 0.14, true)
+    end
     if not Timer.IsLocked() then
         GameTooltip:AddLine(Loc("TIMER_TT_DRAG", "Glisser : déplacer"), 0.6, 0.8, 1)
     end
@@ -467,9 +519,17 @@ function Timer.Refresh()
     local f = Build()
     currentView = view
     local label = v.name or ""
-    if v.kind == "raid" and v.diff then label = label .. " (" .. v.diff .. ")" end
+    local diff = DiffLabel(v, view)
+    if diff then label = label .. " (" .. diff .. ")" end
     f.nameFs:SetText(label)
-    f.clockFs:SetText(Fmt(elapsed))
+    -- Instance terminee : horloge figee, en vert
+    if v.doneAt then
+        f.clockFs:SetText(Fmt(v.doneAt))
+        f.clockFs:SetTextColor(0.37, 0.89, 0.14)
+    else
+        f.clockFs:SetText(Fmt(elapsed))
+        f.clockFs:SetTextColor(1, 1, 1)
+    end
     -- Total des boss pas encore lisible (journal en combat) : nouvel essai toutes les 10 s
     if bossCache.retry and not (InCombatLockdown and InCombatLockdown()) then
         local now = GetTime and GetTime() or 0
@@ -488,10 +548,36 @@ function Timer.Refresh()
         f._tibiView = view
     end
     if not f:IsShown() then f:Show() end
-    if not ticker and C_Timer and C_Timer.NewTicker then
+    -- Fige : plus besoin du tic de chaque seconde (les evenements rafraichissent)
+    if v.doneAt then
+        StopTicker()
+    elseif not ticker and C_Timer and C_Timer.NewTicker then
         ticker = C_Timer.NewTicker(1, Timer.Refresh)
     end
 end
+
+-- Boss tue : est-ce la fin de l'instance ? Verifie tout de suite (journal),
+-- puis apres la mise a jour du verrou (tous les boss tues). secs = temps au
+-- moment du kill, pour que l'horloge s'arrete a l'instant exact.
+local function CheckFinal(v, encID, secs)
+    if not v or v.doneAt then return end
+    if encID and FINAL_ENC[encID] then Freeze(v, secs); return end
+    local view = v.kind
+    if not BOSS_KINDS[view] then return end
+    BossDirty()
+    BossInfo(v)
+    if (encID and bossCache.lastEnc and bossCache.lastEnc == encID) or bossCache.allDone then
+        Freeze(v, secs)
+    end
+end
+
+-- Fin signalee par le jeu (M+, chercheur de groupe, scenario, gouffre)
+local function FreezeNow(kinds)
+    local secs, v
+    if T.InstElapsed then secs, v = T.InstElapsed() end
+    if v and (not kinds or kinds[v.kind]) then Freeze(v, secs) end
+end
+local SCENARIO_KINDS = { delve = true, scenario = true }
 
 -- ─────────────────────────────────────────────
 -- Evenements : le chrono de Core.lua est synchronise a PLAYER_ENTERING_WORLD
@@ -504,12 +590,35 @@ end
 local ev = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_ENTERING_WORLD", "PLAYER_LEAVING_WORLD",
                      "CHALLENGE_MODE_START", "CHALLENGE_MODE_COMPLETED",
-                     "ENCOUNTER_END", "UPDATE_INSTANCE_INFO" }) do
+                     "ENCOUNTER_END", "UPDATE_INSTANCE_INFO",
+                     "LFG_COMPLETION_REWARD", "SCENARIO_COMPLETED",
+                     "ZONE_CHANGED_NEW_AREA", "SCENARIO_UPDATE" }) do
     pcall(ev.RegisterEvent, ev, e)   -- evenements Mythique+ absents sur Classic
 end
 ev:SetScript("OnEvent", function(_, e, ...)
     if e == "PLAYER_LEAVING_WORLD" then
         if frame then frame:Hide() end
+        return
+    end
+    if e == "ZONE_CHANGED_NEW_AREA" or e == "SCENARIO_UPDATE" then
+        -- Entree sans ecran de chargement : ouvre le chrono s'il manque
+        if T.InstRecheck and T.InstRecheck() then BossDirty(); Timer.Refresh() end
+        return
+    end
+    if e == "CHALLENGE_MODE_COMPLETED" then
+        FreezeNow()
+        Timer.Refresh()
+        return
+    end
+    if e == "LFG_COMPLETION_REWARD" then
+        local inInst = IsInInstance()
+        if inInst then FreezeNow() end
+        Timer.Refresh()
+        return
+    end
+    if e == "SCENARIO_COMPLETED" then
+        FreezeNow(SCENARIO_KINDS)
+        Timer.Refresh()
         return
     end
     if e == "UPDATE_INSTANCE_INFO" then
@@ -521,14 +630,26 @@ ev:SetScript("OnEvent", function(_, e, ...)
         -- Boss tue pendant la visite : garde dans db._inst.kills (survit au /reload)
         local encID, encName, _, _, success = ...
         if success == 1 or success == true then
-            local _, v
-            if T.InstElapsed then _, v = T.InstElapsed() end
+            local secs, v
+            if T.InstElapsed then secs, v = T.InstElapsed() end
             if v then
                 v.kills = v.kills or {}
                 v.kills[encID or encName or (#v.kills + 1)] = true
             end
             BossDirty()
-            if C_Timer and C_Timer.After then C_Timer.After(2, AskLockouts) end
+            CheckFinal(v, encID, secs)
+            if C_Timer and C_Timer.After then
+                C_Timer.After(2, AskLockouts)
+                -- Verrou relu (tous les boss tues ?) : meme visite seulement
+                C_Timer.After(4, function()
+                    local _, cur
+                    if T.InstElapsed then _, cur = T.InstElapsed() end
+                    if cur and cur == v and not cur.doneAt then
+                        CheckFinal(cur, encID, secs)
+                        Timer.Refresh()
+                    end
+                end)
+            end
         end
         if frame and frame:IsShown() then Timer.Refresh() end
         return

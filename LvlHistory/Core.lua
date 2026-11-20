@@ -11,7 +11,7 @@ local function Loc(key, default) return L[key] or default end
 -- ─────────────────────────────────────────────
 -- Constantes
 -- ─────────────────────────────────────────────
-local ADDON_VERSION = "7.6.5"
+local ADDON_VERSION = "7.6.6"
 local SAVE_INTERVAL = 300  -- sauvegarde incrémentale toutes les 5 minutes
 local RESUME_WINDOW = 600  -- /reload ou reconnexion en moins de 10 min : meme session
 T.VERSION = ADDON_VERSION
@@ -859,10 +859,33 @@ local function IsLair(diffID)
     return false
 end
 
+-- Gouffre actif hors des types connus (2026-11-20, NON TESTE EN JEU) : le
+-- Labyrinthe de Kindo'jan (mega-gouffre 12.1.5) n'ouvrait pas le chrono. Son
+-- type d'instance reel n'a pas ete releve ; on accepte donc un gouffre actif
+-- (C_DelvesUI) dans un scenario (C_Scenario), quel que soit le type rendu par
+-- IsInInstance. Les deux conditions ecartent le logement et le monde ouvert.
+local function ActiveDelveAnywhere()
+    if not (C_DelvesUI and C_DelvesUI.HasActiveDelve) then return false end
+    local okD, d = pcall(C_DelvesUI.HasActiveDelve)
+    if not (okD and d) then return false end
+    if C_Scenario and C_Scenario.IsInScenario then
+        local okS, s = pcall(C_Scenario.IsInScenario)
+        return okS and s and true or false
+    end
+    return false
+end
+
 --- Renvoie le type d'instance du chrono (ou nil hors instance suivie), difficultyID.
 function T.InstKind()
     local inInst, instType = IsInInstance()
-    if not inInst then return nil end
+    if not inInst or not (instType == "party" or instType == "raid" or instType == "scenario"
+                          or instType == "pvp" or instType == "arena") then
+        if ActiveDelveAnywhere() then
+            local _, _, d = GetInstanceInfo()
+            return "delve", d
+        end
+        return nil
+    end
     local _, _, diffID = GetInstanceInfo()
     if instType == "party" then return "party", diffID end
     if instType == "raid" then
@@ -929,6 +952,19 @@ function T.InstSync()
     if kind and name and name ~= "" then
         db._inst = { name = name, kind = kind, diff = diff, t0 = time(), acc = 0 }
     end
+end
+
+--- Entree sans ecran de chargement (2026-11-20, NON TESTE EN JEU) : le chrono
+--- n'etait ouvert qu'a PLAYER_ENTERING_WORLD. Appele par Timer.lua sur les
+--- changements de zone et de scenario. N'agit que si AUCUN chrono n'est
+--- ouvert : un chrono existant (renomme par InstMarkRun ou InstMarkRaid,
+--- en attente apres une mort) reste gere par PLAYER_ENTERING_WORLD.
+function T.InstRecheck()
+    local db = T.db
+    if not db or db._inst then return false end
+    if not T.InstKind() then return false end
+    T.InstSync()
+    return db._inst ~= nil
 end
 
 -- ─────────────────────────────────────────────
@@ -1035,6 +1071,7 @@ local function ReadDelveTier()
     if ok and type(t) == "number" and t > 0 then return t end
     return nil
 end
+T.DelveTier = ReadDelveTier   -- palier affiche par le chronometre (Timer.lua)
 
 local function RecordDelve()
     local db = T.db
@@ -1242,6 +1279,18 @@ SlashCmdList["LVLHISTORY"] = function(msg)
         print(string.format("  instance : %s [%s] difficultyID %s (%s) -> code %s",
             tostring(iname), tostring(itype), tostring(idiff), tostring(idiffName),
             itype == "raid" and T.RaidDiffCode(idiff) or "-"))
+        -- Detection brute (diagnostic d'une instance non reconnue, ex. Labyrinthe)
+        local function Q(ns, fn)
+            local f = ns and ns[fn]
+            if not f then return "absent" end
+            local ok, r = pcall(f)
+            return ok and tostring(r) or "erreur"
+        end
+        local inI, iT = IsInInstance()
+        print(string.format("  IsInInstance %s [%s] | instanceID %s | scenario %s | gouffre %s | repaire %s | palier %s -> type %s",
+            tostring(inI), tostring(iT), tostring(select(8, GetInstanceInfo())),
+            Q(C_Scenario, "IsInScenario"), Q(C_DelvesUI, "HasActiveDelve"), Q(C_DelvesUI, "IsInLair"),
+            tostring(T.DelveTier and T.DelveTier()), tostring(T.InstKind())))
         local n = 0
         for name, secs in pairs(T.db and T.db.dgnTime or {}) do
             n = n + 1

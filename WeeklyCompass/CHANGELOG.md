@@ -1,5 +1,8 @@
 # Changelog
 
+## 7.6.6
+- Version alignée sur la suite TibiSuite (chronomètre d'instance de LvlHistory), sans changement pour ce module.
+
 ## 7.6.5
 - Version alignée sur la suite TibiSuite (correctif d'Opacity et de Standby), sans changement pour ce module.
 
